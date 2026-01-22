@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #000000;
+  --border: #e5e5e5;
+  --border-dark: #000000;
+  --muted: #666666;
+  --muted-foreground: #999999;
+  --accent: #f5f5f5;
+  --success: #22c55e;
+  --error: #ef4444;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+.btn {
+  @apply px-8 py-3 font-medium text-sm transition-all;
+}
+
+.btn-primary {
+  @apply bg-black text-white hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-400;
+}
+
+.btn-secondary {
+  @apply bg-white text-black border border-black hover:bg-neutral-50;
+}
+
+.input {
+  @apply w-full p-4 border border-border focus:border-foreground focus:outline-none transition-colors;
+}
+
+.input-underline {
+  @apply w-full p-0 border-0 border-b border-border bg-transparent placeholder-neutral-300 resize-none focus:ring-0 focus:border-black transition-colors;
+}

@@ -1,0 +1,47 @@
+{
+  "name": "@latex-writer/cli",
+  "version": "0.1.0",
+  "description": "CLI for local LaTeX compilation and sync with LaTeX Writer",
+  "type": "module",
+  "bin": {
+    "latex-writer": "./dist/cli.js",
+    "lw": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/cli.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@latex-writer/shared": "workspace:*",
+    "cac": "^6.7.14",
+    "chalk": "^5.4.0",
+    "chokidar": "^4.0.0",
+    "conf": "^13.1.0",
+    "cross-spawn": "^7.0.6",
+    "open": "^10.1.0",
+    "ora": "^8.2.0"
+  },
+  "devDependencies": {
+    "@types/cross-spawn": "^6.0.6",
+    "@types/node": "^22.13.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.7.0"
+  }
+}
