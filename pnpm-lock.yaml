@@ -102,9 +102,6 @@ importers:
       '@codemirror/view':
         specifier: ^6.39.11
         version: 6.39.11
-      '@latex-writer/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@lezer/highlight':
         specifier: ^1.2.3
         version: 1.2.3

@@ -20,7 +20,6 @@
     "@codemirror/state": "^6.5.4",
     "@codemirror/theme-one-dark": "^6.1.3",
     "@codemirror/view": "^6.39.11",
-    "@latex-writer/shared": "workspace:*",
     "@lezer/highlight": "^1.2.3",
     "@supabase/ssr": "^0.6.0",
     "@supabase/supabase-js": "^2.48.0",
