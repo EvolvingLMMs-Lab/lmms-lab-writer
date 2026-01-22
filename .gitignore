@@ -45,7 +45,5 @@ coverage
 *.synctex.gz
 *.toc
 
-# Planning files (keep in repo for reference)
-# task_plan.md
-# findings.md
-# progress.md
+# Claude memory (local only)
+CLAUDE.md
