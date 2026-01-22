@@ -50,3 +50,4 @@ coverage
 # Claude memory (local only)
 CLAUDE.md
 .vercel
+.env*.local

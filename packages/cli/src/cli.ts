@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { cac } from 'cac'
 import chalk from 'chalk'
 import { compile } from './commands/compile.js'
@@ -31,7 +30,7 @@ cli
 
 cli
   .command('init', 'Initialize a new LaTeX project')
-  .option('-t, --template <template>', 'Project template (article, thesis, beamer)', { default: 'article' })
+  .option('-t, --template <template>', 'Project template (article, thesis, beamer, neurips, iclr, tech-report)', { default: 'article' })
   .action(async (options) => {
     await init(options)
   })
