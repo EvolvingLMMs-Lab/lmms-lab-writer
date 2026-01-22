@@ -198,9 +198,12 @@ export function generatePresenceColor(): string {
  * Calculate SHA256 hash of content (browser-compatible)
  */
 export async function sha256(content: string | Uint8Array): Promise<string> {
-  const data =
-    typeof content === 'string' ? new TextEncoder().encode(content) : content
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data as ArrayBuffer)
+  const encoder = new TextEncoder()
+  const data: ArrayBuffer =
+    typeof content === 'string'
+      ? encoder.encode(content).buffer as ArrayBuffer
+      : new Uint8Array(content).buffer as ArrayBuffer
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
   const hashArray = Array.from(new Uint8Array(hashBuffer))
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
 }
