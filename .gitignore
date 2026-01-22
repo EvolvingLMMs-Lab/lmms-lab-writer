@@ -1,6 +1,8 @@
 # Dependencies
 node_modules
 .pnpm-store
+package-lock.json
+yarn.lock
 
 # Build outputs
 dist
@@ -47,3 +49,4 @@ coverage
 
 # Claude memory (local only)
 CLAUDE.md
+.vercel
