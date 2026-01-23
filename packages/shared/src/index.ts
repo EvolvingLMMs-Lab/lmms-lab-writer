@@ -107,6 +107,40 @@ export interface GitInfo {
     message: string;
     date: string;
   };
+  remote?: {
+    name: string;
+    url: string;
+  };
+  ahead?: number;
+  behind?: number;
+}
+
+export interface GitFileChange {
+  path: string;
+  status: "modified" | "added" | "deleted" | "renamed" | "untracked";
+  staged: boolean;
+}
+
+export interface GitStatus {
+  branch: string;
+  remote?: string;
+  ahead: number;
+  behind: number;
+  changes: GitFileChange[];
+  isRepo: boolean;
+}
+
+export interface GitLogEntry {
+  hash: string;
+  shortHash: string;
+  message: string;
+  author: string;
+  date: string;
+}
+
+export interface GitDiff {
+  file: string;
+  content: string;
 }
 
 // ============================================================================

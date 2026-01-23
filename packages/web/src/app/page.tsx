@@ -106,9 +106,9 @@ export default async function Home() {
               <div className="mb-6 text-accent">
                 <svg className="w-8 h-8 md:w-10 md:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="square" strokeLinejoin="miter" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
               </div>
-              <h3 className="text-lg md:text-xl font-bold uppercase tracking-wide mb-4 group-hover:text-accent transition-colors duration-75">Local CLI</h3>
+              <h3 className="text-lg md:text-xl font-bold uppercase tracking-wide mb-4 group-hover:text-accent transition-colors duration-75">One-Time Setup</h3>
               <p className="text-sm md:text-base text-muted leading-relaxed font-mono">
-                Compile LaTeX locally with XeLaTeX, pdfLaTeX, or LuaLaTeX. Watch mode enabled for instant feedback.
+                Install once, works forever. Background service runs automatically. No commands to remember.
               </p>
             </div>
             <div className="p-8 md:p-12 hover:bg-neutral-50 transition-colors duration-75 group">
@@ -136,36 +136,37 @@ export default async function Home() {
           <div className="max-w-4xl mx-auto">
              <div className="flex items-center gap-3 mb-8">
                <span className="w-3 h-3 bg-accent"></span>
-               <h2 className="text-xl md:text-2xl font-bold uppercase tracking-wide">Quick Start</h2>
+               <h2 className="text-xl md:text-2xl font-bold uppercase tracking-wide">How It Works</h2>
              </div>
-             
-             <div className="bg-surface p-8 text-white font-mono text-sm md:text-base relative group overflow-hidden">
-               <div className="absolute top-0 right-0 p-2 opacity-50 text-xs uppercase tracking-widest">
-                 BASH
+
+             <div className="grid md:grid-cols-3 gap-8">
+               <div className="space-y-4">
+                 <div className="w-12 h-12 border-2 border-black flex items-center justify-center text-2xl font-bold">1</div>
+                 <h3 className="font-bold text-lg">Install</h3>
+                 <p className="text-muted text-sm">
+                   First time only. One command installs a background service that runs automatically.
+                 </p>
                </div>
-               <div className="space-y-2">
-                 <div className="flex items-center gap-4">
-                   <span className="text-accent select-none">$</span>
-                   <span>npm install -g @lmms-lab/writer-cli</span>
-                 </div>
-                 <div className="flex items-center gap-4">
-                   <span className="text-accent select-none">$</span>
-                   <span>llw init -t neurips</span>
-                 </div>
-                 <div className="flex items-center gap-4">
-                   <span className="text-accent select-none">$</span>
-                   <span>llw serve</span>
-                 </div>
+               <div className="space-y-4">
+                 <div className="w-12 h-12 border-2 border-black flex items-center justify-center text-2xl font-bold">2</div>
+                 <h3 className="font-bold text-lg">Open Folder</h3>
+                 <p className="text-muted text-sm">
+                   Click &quot;Open Folder&quot; in the editor and select your LaTeX project. That&apos;s it.
+                 </p>
                </div>
-               <div className="text-neutral-500 text-sm mt-4 select-none">
-                 &gt; Daemon started on ws://localhost:3001
-                 <br />
-                 &gt; Open the web editor and start writing
-                 <br />
-                 &gt; Or let Claude Code do it for you
+               <div className="space-y-4">
+                 <div className="w-12 h-12 border-2 border-black flex items-center justify-center text-2xl font-bold">3</div>
+                 <h3 className="font-bold text-lg">Write</h3>
+                 <p className="text-muted text-sm">
+                   Edit in browser, compile with one click, commit changes. Or let AI do it all.
+                 </p>
                </div>
-               
-               <div className="absolute bottom-0 left-0 h-1 bg-accent w-full transform -translate-x-full group-hover:translate-x-0 transition-transform duration-700 ease-in-out"></div>
+             </div>
+
+             <div className="mt-12 text-center">
+               <Link href="/signup" className="btn btn-primary px-8 py-4 text-base">
+                 Get Started Free
+               </Link>
              </div>
           </div>
         </section>
@@ -176,7 +177,7 @@ export default async function Home() {
               AI Writes, You Review
             </h2>
             <p className="text-muted font-mono text-lg mb-8 max-w-2xl mx-auto">
-              Point Claude Code at your .tex files. Watch edits appear in real-time. 
+              Point Claude Code at your .tex files. Watch edits appear in real-time.
               Compile locally. Commit when ready.
             </p>
             <div className="inline-flex gap-4 flex-wrap justify-center">
@@ -186,6 +187,34 @@ export default async function Home() {
               <span className="px-4 py-2 border border-border text-sm font-mono">Cursor</span>
               <span className="px-4 py-2 border border-border text-sm font-mono">Any AI Editor</span>
             </div>
+          </div>
+        </section>
+
+        <section className="py-24 px-6 border-t border-neutral-800">
+          <div className="max-w-4xl mx-auto">
+             <div className="flex items-center gap-3 mb-8">
+               <span className="w-3 h-3 bg-accent"></span>
+               <h2 className="text-xl md:text-2xl font-bold uppercase tracking-wide">Requirements</h2>
+             </div>
+
+             <div className="grid md:grid-cols-2 gap-6">
+               <div className="border border-border p-6">
+                 <h3 className="font-bold mb-3">Node.js 20+</h3>
+                 <p className="text-sm text-muted mb-3">Required for the background service</p>
+                 <a href="https://nodejs.org" target="_blank" rel="noopener noreferrer" className="text-sm underline hover:text-accent">
+                   Download from nodejs.org
+                 </a>
+               </div>
+               <div className="border border-border p-6">
+                 <h3 className="font-bold mb-3">LaTeX Distribution</h3>
+                 <p className="text-sm text-muted mb-3">Required for compilation</p>
+                 <div className="text-sm space-y-1">
+                   <p><span className="text-muted">macOS:</span> <code className="bg-neutral-100 px-1">brew install --cask mactex</code></p>
+                   <p><span className="text-muted">Linux:</span> <code className="bg-neutral-100 px-1">apt install texlive-full</code></p>
+                   <p><span className="text-muted">Windows:</span> <a href="https://miktex.org" target="_blank" rel="noopener noreferrer" className="underline hover:text-accent">MiKTeX</a></p>
+                 </div>
+               </div>
+             </div>
           </div>
         </section>
       </main>
@@ -198,13 +227,13 @@ export default async function Home() {
             </div>
             <span className="font-bold tracking-tight uppercase">LMMs-Lab Writer</span>
           </div>
-          
+
           <div className="text-xs text-muted font-mono uppercase tracking-widest text-center md:text-left">
             Local-First LaTeX
           </div>
-          
+
           <div className="flex gap-8">
-            <Link href="https://github.com/LMMs-Lab/writer" className="uppercase tracking-widest text-sm hover:text-accent transition-colors duration-75">
+            <Link href="https://github.com/Luodian/latex-writer" className="uppercase tracking-widest text-sm hover:text-accent transition-colors duration-75">
               GitHub
             </Link>
             <Link href="/docs" className="uppercase tracking-widest text-sm hover:text-accent transition-colors duration-75">

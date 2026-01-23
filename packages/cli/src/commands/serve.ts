@@ -3,13 +3,12 @@ import pty from 'node-pty'
 import chalk from 'chalk'
 import chokidar from 'chokidar'
 import { readdirSync, readFileSync, writeFileSync, existsSync } from 'fs'
-import { join, extname } from 'path'
-import { execSync } from 'child_process'
+import { join, resolve } from 'path'
+import { execSync, spawn } from 'child_process'
+import { homedir } from 'os'
 
 interface ServeOptions {
   port: number
-  shell?: string
-  raw?: boolean
 }
 
 interface FileNode {
@@ -27,6 +26,48 @@ interface GitInfo {
     message: string
     date: string
   }
+  remote?: {
+    name: string
+    url: string
+  }
+  ahead?: number
+  behind?: number
+}
+
+interface GitFileChange {
+  path: string
+  status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked'
+  staged: boolean
+}
+
+interface GitStatus {
+  branch: string
+  remote?: string
+  ahead: number
+  behind: number
+  changes: GitFileChange[]
+  isRepo: boolean
+}
+
+interface GitLogEntry {
+  hash: string
+  shortHash: string
+  message: string
+  author: string
+  date: string
+}
+
+interface ClientState {
+  projectPath: string | null
+  ptyProcess: ReturnType<typeof pty.spawn> | null
+  watcher: ReturnType<typeof chokidar.watch> | null
+}
+
+function getDefaultShell(): string {
+  if (process.platform === 'win32') {
+    return process.env.COMSPEC || 'powershell.exe'
+  }
+  return process.env.SHELL || '/bin/zsh'
 }
 
 function getFileTree(dir: string, basePath: string = ''): FileNode[] {
@@ -97,9 +138,174 @@ function getGitInfo(cwd: string): GitInfo | null {
       // No commits yet
     }
 
-    return { branch, isDirty, lastCommit }
+    // Get remote info
+    let remote: GitInfo['remote'] | undefined
+    try {
+      const remoteName = execSync('git remote', { cwd, encoding: 'utf-8' }).trim().split('\n')[0]
+      if (remoteName) {
+        const remoteUrl = execSync(`git remote get-url ${remoteName}`, { cwd, encoding: 'utf-8' }).trim()
+        remote = { name: remoteName, url: remoteUrl }
+      }
+    } catch {
+      // No remote
+    }
+
+    // Get ahead/behind
+    let ahead = 0
+    let behind = 0
+    try {
+      const aheadBehind = execSync(`git rev-list --left-right --count HEAD...@{u}`, { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim()
+      const [a, b] = aheadBehind.split('\t').map(Number)
+      ahead = a ?? 0
+      behind = b ?? 0
+    } catch {
+      // No tracking branch
+    }
+
+    return { branch, isDirty, lastCommit, remote, ahead, behind }
   } catch {
     return null
+  }
+}
+
+function getGitStatus(cwd: string): GitStatus {
+  const gitDir = join(cwd, '.git')
+  if (!existsSync(gitDir)) {
+    return { branch: '', ahead: 0, behind: 0, changes: [], isRepo: false }
+  }
+
+  try {
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', { cwd, encoding: 'utf-8' }).trim()
+    const statusOutput = execSync('git status --porcelain', { cwd, encoding: 'utf-8' })
+
+    const changes: GitFileChange[] = []
+    for (const line of statusOutput.split('\n').filter(Boolean)) {
+      const staged = line[0] !== ' ' && line[0] !== '?'
+      const statusChar = staged ? line[0] : line[1]
+      let status: GitFileChange['status'] = 'modified'
+
+      switch (statusChar) {
+        case 'M': status = 'modified'; break
+        case 'A': status = 'added'; break
+        case 'D': status = 'deleted'; break
+        case 'R': status = 'renamed'; break
+        case '?': status = 'untracked'; break
+      }
+
+      const path = line.slice(3).trim()
+      changes.push({ path, status, staged })
+    }
+
+    // Get remote and ahead/behind
+    let remote: string | undefined
+    let ahead = 0
+    let behind = 0
+    try {
+      const remoteName = execSync('git remote', { cwd, encoding: 'utf-8' }).trim().split('\n')[0]
+      if (remoteName) {
+        remote = execSync(`git remote get-url ${remoteName}`, { cwd, encoding: 'utf-8' }).trim()
+        try {
+          const aheadBehind = execSync(`git rev-list --left-right --count HEAD...@{u}`, { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim()
+          const [a, b] = aheadBehind.split('\t').map(Number)
+          ahead = a ?? 0
+          behind = b ?? 0
+        } catch {
+          // No tracking branch
+        }
+      }
+    } catch {
+      // No remote
+    }
+
+    return { branch, remote, ahead, behind, changes, isRepo: true }
+  } catch {
+    return { branch: '', ahead: 0, behind: 0, changes: [], isRepo: false }
+  }
+}
+
+function getGitLog(cwd: string, limit = 20): GitLogEntry[] {
+  try {
+    const format = '%H%n%h%n%s%n%an%n%ci%n---'
+    const output = execSync(`git log -${limit} --format="${format}"`, { cwd, encoding: 'utf-8' })
+    const entries: GitLogEntry[] = []
+
+    const parts = output.split('---\n').filter(Boolean)
+    for (const part of parts) {
+      const [hash, shortHash, message, author, date] = part.trim().split('\n')
+      if (hash && shortHash && message && author && date) {
+        entries.push({ hash, shortHash, message, author, date })
+      }
+    }
+
+    return entries
+  } catch {
+    return []
+  }
+}
+
+function getGitDiff(cwd: string, file?: string, staged = false): string {
+  try {
+    const stagedFlag = staged ? '--staged' : ''
+    const fileArg = file ? `-- "${file}"` : ''
+    return execSync(`git diff ${stagedFlag} ${fileArg}`, { cwd, encoding: 'utf-8' })
+  } catch {
+    return ''
+  }
+}
+
+function gitAdd(cwd: string, files: string[]): { success: boolean; error?: string } {
+  try {
+    const fileArgs = files.map(f => `"${f}"`).join(' ')
+    execSync(`git add ${fileArgs}`, { cwd, encoding: 'utf-8' })
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+}
+
+function gitCommit(cwd: string, message: string): { success: boolean; error?: string; hash?: string } {
+  try {
+    execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, { cwd, encoding: 'utf-8' })
+    const hash = execSync('git rev-parse --short HEAD', { cwd, encoding: 'utf-8' }).trim()
+    return { success: true, hash }
+  } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+}
+
+function gitPush(cwd: string): { success: boolean; error?: string } {
+  try {
+    execSync('git push', { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] })
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+}
+
+function gitPull(cwd: string): { success: boolean; error?: string } {
+  try {
+    execSync('git pull', { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] })
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+}
+
+function gitInit(cwd: string): { success: boolean; error?: string } {
+  try {
+    execSync('git init', { cwd, encoding: 'utf-8' })
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+}
+
+function gitClone(url: string, targetDir: string): { success: boolean; error?: string; path?: string } {
+  try {
+    execSync(`git clone "${url}" "${targetDir}"`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] })
+    return { success: true, path: targetDir }
+  } catch (err) {
+    return { success: false, error: (err as Error).message }
   }
 }
 
@@ -137,139 +343,203 @@ function findPdfFile(cwd: string): string | null {
   }
 }
 
+function findMainTexFile(cwd: string): string | null {
+  try {
+    const entries = readdirSync(cwd, { withFileTypes: true })
+    // Prefer main.tex, then any .tex file
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name === 'main.tex') {
+        return entry.name
+      }
+    }
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name.endsWith('.tex')) {
+        return entry.name
+      }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 export async function serve(options: ServeOptions): Promise<void> {
   const port = options.port
-  const shell = options.shell || process.env.SHELL || '/bin/zsh'
-  const raw = options.raw || false
-  const cwd = process.cwd()
+  const shell = getDefaultShell()
 
   const wss = new WebSocketServer({ port })
 
   console.log(chalk.green(`\nLMMs-Lab Writer daemon started`))
   console.log(chalk.gray(`  WebSocket: ws://localhost:${port}`))
-  console.log(chalk.gray(`  Shell: ${shell}${raw ? ' (raw mode)' : ' (clean mode)'}`))
-  console.log(chalk.gray(`  Working directory: ${cwd}`))
+  console.log(chalk.gray(`  Mode: Background service (no project directory required)`))
   console.log(chalk.gray(`\nPress Ctrl+C to stop\n`))
 
   wss.on('connection', (ws: WebSocket) => {
     console.log(chalk.blue('Client connected'))
 
-    const fileTree = getFileTree(cwd)
-    ws.send(JSON.stringify({ type: 'files', data: fileTree }))
-
-    const gitInfo = getGitInfo(cwd)
-    if (gitInfo) {
-      ws.send(JSON.stringify({ type: 'git-info', data: gitInfo }))
+    // Per-client state
+    const state: ClientState = {
+      projectPath: null,
+      ptyProcess: null,
+      watcher: null,
     }
 
-    const watcher = chokidar.watch(cwd, {
-      ignored: [
-        /(^|[\/\\])\../,
-        '**/node_modules/**',
-        '**/.git/**',
-        '**/*.aux',
-        '**/*.log',
-        '**/*.out',
-        '**/*.toc',
-        '**/*.fls',
-        '**/*.fdb_latexmk',
-        '**/*.synctex.gz',
-        '**/*.bbl',
-        '**/*.blg',
-      ],
-      persistent: true,
-      ignoreInitial: true,
-    })
+    // Send initial connection status
+    ws.send(JSON.stringify({ type: 'connected', version: '0.1.0' }))
 
-    let debounceTimer: NodeJS.Timeout | null = null
-    const debouncedFileChange = (path: string) => {
-      if (debounceTimer) clearTimeout(debounceTimer)
-      debounceTimer = setTimeout(() => {
-        const relativePath = path.replace(cwd + '/', '')
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'file-changed', path: relativePath }))
+    const setupWatcher = (projectPath: string) => {
+      if (state.watcher) {
+        state.watcher.close()
+      }
 
-          if (path.endsWith('.pdf')) {
-            ws.send(JSON.stringify({ type: 'pdf-url', url: `file://${path}` }))
+      state.watcher = chokidar.watch(projectPath, {
+        ignored: [
+          /(^|[\/\\])\../,
+          '**/node_modules/**',
+          '**/.git/**',
+          '**/*.aux',
+          '**/*.log',
+          '**/*.out',
+          '**/*.toc',
+          '**/*.fls',
+          '**/*.fdb_latexmk',
+          '**/*.synctex.gz',
+          '**/*.bbl',
+          '**/*.blg',
+        ],
+        persistent: true,
+        ignoreInitial: true,
+      })
+
+      let debounceTimer: NodeJS.Timeout | null = null
+      const debouncedFileChange = (path: string) => {
+        if (debounceTimer) clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(() => {
+          const relativePath = path.replace(projectPath + '/', '')
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'file-changed', path: relativePath }))
+
+            if (path.endsWith('.pdf')) {
+              ws.send(JSON.stringify({ type: 'pdf-url', url: `file://${path}` }))
+            }
           }
+        }, 100)
+      }
+
+      state.watcher.on('change', debouncedFileChange)
+      state.watcher.on('add', debouncedFileChange)
+      state.watcher.on('unlink', () => {
+        if (ws.readyState === WebSocket.OPEN && state.projectPath) {
+          const tree = getFileTree(state.projectPath)
+          ws.send(JSON.stringify({ type: 'files', data: tree }))
         }
-      }, 100)
+      })
     }
 
-    watcher.on('change', debouncedFileChange)
-    watcher.on('add', debouncedFileChange)
-    watcher.on('unlink', () => {
-      if (ws.readyState === WebSocket.OPEN) {
-        const tree = getFileTree(cwd)
-        ws.send(JSON.stringify({ type: 'files', data: tree }))
+    const setupPty = (projectPath: string) => {
+      if (state.ptyProcess) {
+        state.ptyProcess.kill()
       }
-    })
 
-    const useCleanZsh = shell.endsWith('zsh') && !raw
-    const ptyProcess = pty.spawn(shell, useCleanZsh ? ['-f'] : [], {
-      name: 'xterm-256color',
-      cols: 120,
-      rows: 30,
-      cwd,
-      env: {
-        ...process.env,
-        TERM: 'xterm-256color',
-        COLORTERM: 'truecolor',
-      },
-    })
+      const isWindows = process.platform === 'win32'
+      const useCleanZsh = shell.endsWith('zsh')
+      const shellArgs = useCleanZsh ? ['-f'] : isWindows ? [] : []
 
-    console.log(chalk.gray(`PTY spawned (pid: ${ptyProcess.pid})`))
+      state.ptyProcess = pty.spawn(shell, shellArgs, {
+        name: 'xterm-256color',
+        cols: 120,
+        rows: 30,
+        cwd: projectPath,
+        env: {
+          ...process.env,
+          TERM: 'xterm-256color',
+          COLORTERM: 'truecolor',
+        },
+      })
 
-    if (useCleanZsh) {
-      setTimeout(() => {
-        ptyProcess.write('autoload -Uz compinit && compinit; PROMPT="%~ %# "; clear\n')
-      }, 50)
+      console.log(chalk.gray(`PTY spawned for ${projectPath} (pid: ${state.ptyProcess.pid})`))
+
+      if (useCleanZsh) {
+        setTimeout(() => {
+          state.ptyProcess?.write('autoload -Uz compinit && compinit; PROMPT="%~ %# "; clear\n')
+        }, 50)
+      }
+
+      state.ptyProcess.onData((data: string) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'output', data }))
+        }
+      })
+
+      state.ptyProcess.onExit(({ exitCode }: { exitCode: number }) => {
+        console.log(chalk.gray(`PTY exited (code: ${exitCode})`))
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'exit', code: exitCode }))
+        }
+      })
     }
-
-    ptyProcess.onData((data: string) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'output', data }))
-      }
-    })
-
-    ptyProcess.onExit(({ exitCode }: { exitCode: number }) => {
-      console.log(chalk.gray(`PTY exited (code: ${exitCode})`))
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'exit', code: exitCode }))
-      }
-    })
 
     ws.on('message', (message: Buffer) => {
       try {
         const msg = JSON.parse(message.toString())
 
         switch (msg.type) {
+          case 'set-project': {
+            const projectPath = resolve(msg.path)
+            if (!existsSync(projectPath)) {
+              ws.send(JSON.stringify({ type: 'error', message: `Directory not found: ${projectPath}` }))
+              break
+            }
+
+            state.projectPath = projectPath
+            console.log(chalk.blue(`Project set to: ${projectPath}`))
+
+            // Setup watcher and PTY for the project
+            setupWatcher(projectPath)
+            setupPty(projectPath)
+
+            // Send initial data
+            const tree = getFileTree(projectPath)
+            ws.send(JSON.stringify({ type: 'files', data: tree }))
+
+            const gitInfo = getGitInfo(projectPath)
+            ws.send(JSON.stringify({ type: 'git-info', data: gitInfo }))
+
+            const gitStatus = getGitStatus(projectPath)
+            ws.send(JSON.stringify({ type: 'git-status', data: gitStatus }))
+
+            const mainTex = findMainTexFile(projectPath)
+            ws.send(JSON.stringify({ type: 'project-info', path: projectPath, mainFile: mainTex }))
+            break
+          }
+
           case 'input':
-            ptyProcess.write(msg.data)
+            state.ptyProcess?.write(msg.data)
             break
 
           case 'resize':
             if (msg.cols && msg.rows) {
-              ptyProcess.resize(msg.cols, msg.rows)
+              state.ptyProcess?.resize(msg.cols, msg.rows)
             }
             break
 
           case 'refresh-files': {
-            const tree = getFileTree(cwd)
+            if (!state.projectPath) break
+            const tree = getFileTree(state.projectPath)
             ws.send(JSON.stringify({ type: 'files', data: tree }))
             break
           }
 
           case 'get-git-info': {
-            const info = getGitInfo(cwd)
-            if (info) {
-              ws.send(JSON.stringify({ type: 'git-info', data: info }))
-            }
+            if (!state.projectPath) break
+            const info = getGitInfo(state.projectPath)
+            ws.send(JSON.stringify({ type: 'git-info', data: info }))
             break
           }
 
           case 'read-file': {
-            const content = readFile(cwd, msg.path)
+            if (!state.projectPath) break
+            const content = readFile(state.projectPath, msg.path)
             if (content !== null) {
               ws.send(JSON.stringify({ type: 'file-content', path: msg.path, content }))
             }
@@ -277,7 +547,8 @@ export async function serve(options: ServeOptions): Promise<void> {
           }
 
           case 'write-file': {
-            const success = writeFile(cwd, msg.path, msg.content)
+            if (!state.projectPath) break
+            const success = writeFile(state.projectPath, msg.path, msg.content)
             if (!success) {
               console.log(chalk.yellow(`Failed to write file: ${msg.path}`))
             }
@@ -285,10 +556,147 @@ export async function serve(options: ServeOptions): Promise<void> {
           }
 
           case 'get-pdf': {
-            const pdfPath = findPdfFile(cwd)
+            if (!state.projectPath) break
+            const pdfPath = findPdfFile(state.projectPath)
             if (pdfPath) {
               ws.send(JSON.stringify({ type: 'pdf-url', url: `file://${pdfPath}` }))
             }
+            break
+          }
+
+          case 'git-status': {
+            if (!state.projectPath) break
+            const status = getGitStatus(state.projectPath)
+            ws.send(JSON.stringify({ type: 'git-status', data: status }))
+            break
+          }
+
+          case 'git-log': {
+            if (!state.projectPath) break
+            const limit = msg.limit || 20
+            const entries = getGitLog(state.projectPath, limit)
+            ws.send(JSON.stringify({ type: 'git-log', data: entries }))
+            break
+          }
+
+          case 'git-diff': {
+            if (!state.projectPath) break
+            const diff = getGitDiff(state.projectPath, msg.file, msg.staged)
+            ws.send(JSON.stringify({ type: 'git-diff', data: { file: msg.file, content: diff } }))
+            break
+          }
+
+          case 'git-add': {
+            if (!state.projectPath) break
+            const addResult = gitAdd(state.projectPath, msg.files || [])
+            ws.send(JSON.stringify({ type: 'git-add-result', ...addResult }))
+            if (addResult.success) {
+              const status = getGitStatus(state.projectPath)
+              ws.send(JSON.stringify({ type: 'git-status', data: status }))
+            }
+            break
+          }
+
+          case 'git-commit': {
+            if (!state.projectPath) break
+            const commitResult = gitCommit(state.projectPath, msg.message)
+            ws.send(JSON.stringify({ type: 'git-commit-result', ...commitResult }))
+            if (commitResult.success) {
+              const status = getGitStatus(state.projectPath)
+              ws.send(JSON.stringify({ type: 'git-status', data: status }))
+              const info = getGitInfo(state.projectPath)
+              if (info) {
+                ws.send(JSON.stringify({ type: 'git-info', data: info }))
+              }
+            }
+            break
+          }
+
+          case 'git-push': {
+            if (!state.projectPath) break
+            const pushResult = gitPush(state.projectPath)
+            ws.send(JSON.stringify({ type: 'git-push-result', ...pushResult }))
+            if (pushResult.success) {
+              const status = getGitStatus(state.projectPath)
+              ws.send(JSON.stringify({ type: 'git-status', data: status }))
+            }
+            break
+          }
+
+          case 'git-pull': {
+            if (!state.projectPath) break
+            const pullResult = gitPull(state.projectPath)
+            ws.send(JSON.stringify({ type: 'git-pull-result', ...pullResult }))
+            if (pullResult.success && state.projectPath) {
+              const tree = getFileTree(state.projectPath)
+              ws.send(JSON.stringify({ type: 'files', data: tree }))
+              const status = getGitStatus(state.projectPath)
+              ws.send(JSON.stringify({ type: 'git-status', data: status }))
+            }
+            break
+          }
+
+          case 'git-init': {
+            if (!state.projectPath) break
+            const initResult = gitInit(state.projectPath)
+            ws.send(JSON.stringify({ type: 'git-init-result', ...initResult }))
+            if (initResult.success) {
+              const info = getGitInfo(state.projectPath)
+              ws.send(JSON.stringify({ type: 'git-info', data: info }))
+              const status = getGitStatus(state.projectPath)
+              ws.send(JSON.stringify({ type: 'git-status', data: status }))
+            }
+            break
+          }
+
+          case 'git-clone': {
+            const targetDir = msg.directory || join(homedir(), 'Documents', msg.repoName || 'cloned-repo')
+            const cloneResult = gitClone(msg.url, targetDir)
+            ws.send(JSON.stringify({ type: 'git-clone-result', ...cloneResult }))
+            break
+          }
+
+          case 'compile': {
+            if (!state.projectPath) break
+            const file = msg.file || findMainTexFile(state.projectPath)
+            if (!file) {
+              ws.send(JSON.stringify({ type: 'compile-result', success: false, error: 'No .tex file found' }))
+              break
+            }
+
+            const engine = msg.engine || 'xelatex'
+            const engineArg = engine === 'xelatex' ? '-xelatex' : engine === 'lualatex' ? '-lualatex' : '-pdf'
+
+            ws.send(JSON.stringify({ type: 'compile-start', file }))
+
+            const latexmk = spawn('latexmk', [engineArg, '-interaction=nonstopmode', '-file-line-error', '-synctex=1', file], {
+              cwd: state.projectPath,
+            })
+
+            let output = ''
+            latexmk.stdout.on('data', (data) => {
+              output += data.toString()
+              ws.send(JSON.stringify({ type: 'compile-output', data: data.toString() }))
+            })
+            latexmk.stderr.on('data', (data) => {
+              output += data.toString()
+              ws.send(JSON.stringify({ type: 'compile-output', data: data.toString() }))
+            })
+
+            latexmk.on('close', (code) => {
+              const success = code === 0
+              ws.send(JSON.stringify({ type: 'compile-result', success, code, output }))
+              if (success && state.projectPath) {
+                const pdfPath = findPdfFile(state.projectPath)
+                if (pdfPath) {
+                  ws.send(JSON.stringify({ type: 'pdf-url', url: `file://${pdfPath}` }))
+                }
+              }
+            })
+
+            latexmk.on('error', (err) => {
+              ws.send(JSON.stringify({ type: 'compile-result', success: false, error: err.message }))
+            })
             break
           }
 
@@ -302,14 +710,14 @@ export async function serve(options: ServeOptions): Promise<void> {
 
     ws.on('close', () => {
       console.log(chalk.blue('Client disconnected'))
-      watcher.close()
-      ptyProcess.kill()
+      state.watcher?.close()
+      state.ptyProcess?.kill()
     })
 
     ws.on('error', (err) => {
       console.error(chalk.red('WebSocket error:'), err)
-      watcher.close()
-      ptyProcess.kill()
+      state.watcher?.close()
+      state.ptyProcess?.kill()
     })
   })
 

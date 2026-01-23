@@ -1,7 +1,7 @@
 "use client";
 
 import "./types";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { FileNode } from "@lmms-lab/writer-shared";
 
 type FileSystemState = {
@@ -87,8 +87,7 @@ async function getFileHandle(
 
 export function useFileSystem() {
   const [state, setState] = useState<FileSystemState>({
-    isSupported:
-      typeof window !== "undefined" && "showDirectoryPicker" in window,
+    isSupported: false,
     isOpen: false,
     rootHandle: null,
     files: [],
@@ -96,6 +95,13 @@ export function useFileSystem() {
   });
 
   const handleMapRef = useRef<Map<string, FileSystemFileHandle>>(new Map());
+
+  useEffect(() => {
+    setState((s) => ({
+      ...s,
+      isSupported: "showDirectoryPicker" in window,
+    }));
+  }, []);
 
   const openFolder = useCallback(async () => {
     if (!state.isSupported) {
