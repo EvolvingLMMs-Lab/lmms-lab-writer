@@ -6,7 +6,7 @@ export default function Home() {
       <header className="border-b border-neutral-200 px-6 py-4">
         <nav className="max-w-6xl mx-auto flex items-center justify-between">
           <Link href="/" className="text-xl font-bold tracking-tight">
-            LMMs-Lab Write
+            LMMs-Lab Writer
           </Link>
           <div className="flex items-center gap-6">
             <Link
@@ -96,7 +96,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-neutral-400">
-              LMMs-Lab Write
+              LMMs-Lab Writer
             </p>
             <div className="flex gap-6">
               <Link
