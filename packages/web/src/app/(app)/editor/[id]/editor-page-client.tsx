@@ -2,29 +2,14 @@
 
 import { CollaborativeEditor } from "@/components/editor/collaborative-editor";
 import { FileTree } from "@/components/editor/file-tree";
+import { useFileSystem } from "@/lib/filesystem";
 import { ShareModal } from "@/components/sharing/share-modal";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { createClient } from "@/lib/supabase/client";
-import type { FileNode, GitInfo } from "@lmms-lab/writer-shared";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-const DynamicTerminal = dynamic(
-  () =>
-    import("@/components/editor/local-terminal").then(
-      (mod) => mod.LocalTerminal,
-    ),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-full flex items-center justify-center text-muted text-sm">
-        Loading terminal...
-      </div>
-    ),
-  },
-);
 
 const DynamicOpenCodePanel = dynamic(
   () =>
@@ -58,21 +43,16 @@ type Props = {
 
 export function EditorPageClient({ document, userId, userName, role }: Props) {
   const router = useRouter();
+  const fs = useFileSystem();
   const [title, setTitle] = useState(document.title);
   const [isSaving, setIsSaving] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [files, setFiles] = useState<FileNode[]>([]);
   const [selectedFile, setSelectedFile] = useState<string>();
   const [fileContent, setFileContent] = useState<string>("");
-  const [isConnected, setIsConnected] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
   const [showTerminal, setShowTerminal] = useState(true);
   const [showPdf, setShowPdf] = useState(false);
-  const [rightPanelMode, setRightPanelMode] = useState<"terminal" | "opencode">(
-    "opencode",
-  );
-  const [gitInfo, setGitInfo] = useState<GitInfo | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(224);
   const [terminalWidth, setTerminalWidth] = useState(400);
@@ -81,7 +61,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingTitleRef = useRef<string | null>(null);
   const isMountedRef = useRef(true);
-  const wsRef = useRef<WebSocket | null>(null);
+  const contentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const saveTitleToDb = useCallback(
     async (newTitle: string, skipStateUpdate = false) => {
@@ -157,53 +137,40 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
-        if (selectedFile && wsRef.current?.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify({ type: "refresh-files" }));
-        }
+        fs.refreshFiles();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedFile]);
+  }, [fs]);
 
-  const handleFileSelect = useCallback((path: string) => {
-    setSelectedFile(path);
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "read-file", path }));
-    }
-  }, []);
-
-  const handleFileContentUpdate = useCallback(
-    (path: string, content: string) => {
-      if (path === selectedFile) {
+  const handleFileSelect = useCallback(
+    async (path: string) => {
+      setSelectedFile(path);
+      const content = await fs.readFile(path);
+      if (content !== null) {
         setFileContent(content);
       }
     },
-    [selectedFile],
+    [fs],
   );
-
-  const handleGitInfoUpdate = useCallback((info: GitInfo) => {
-    setGitInfo(info);
-  }, []);
-
-  const handlePdfUpdate = useCallback((url: string) => {
-    setPdfUrl(url);
-  }, []);
 
   const handleContentChange = useCallback(
     (content: string) => {
-      if (selectedFile && wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(
-          JSON.stringify({
-            type: "write-file",
-            path: selectedFile,
-            content,
-          }),
-        );
+      setFileContent(content);
+
+      if (contentSaveTimeoutRef.current) {
+        clearTimeout(contentSaveTimeoutRef.current);
       }
+
+      contentSaveTimeoutRef.current = setTimeout(async () => {
+        if (selectedFile) {
+          await fs.writeFile(selectedFile, content);
+        }
+      }, 500);
     },
-    [selectedFile],
+    [selectedFile, fs],
   );
 
   const handleDeleteConfirm = useCallback(async () => {
@@ -262,31 +229,6 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
               placeholder="Untitled Document"
             />
             {isSaving && <span className="text-xs text-muted">Saving...</span>}
-
-            {gitInfo && (
-              <div className="flex items-center gap-2 text-xs text-muted">
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                  />
-                </svg>
-                <span className="font-mono">{gitInfo.branch}</span>
-                {gitInfo.isDirty && (
-                  <span
-                    className="size-2 bg-black"
-                    title="Uncommitted changes"
-                  />
-                )}
-              </div>
-            )}
           </div>
 
           <div className="flex items-center gap-4">
@@ -400,23 +342,52 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                 <span className="text-xs font-medium uppercase tracking-wider text-muted">
                   Files
                 </span>
-                <span
-                  className={`size-2 ${isConnected ? "bg-black" : "bg-muted"}`}
-                  title={
-                    isConnected ? "Connected to local daemon" : "Not connected"
-                  }
-                />
+                {fs.isOpen && (
+                  <button
+                    onClick={fs.closeFolder}
+                    className="text-xs text-muted hover:text-black"
+                    title="Close folder"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                )}
               </div>
-              <FileTree
-                files={files}
-                selectedFile={selectedFile}
-                onFileSelect={handleFileSelect}
-                className="flex-1"
-              />
-              {!isConnected && files.length === 0 && (
-                <div className="p-3 text-xs text-muted border-t border-border">
-                  Run <code className="bg-border px-1">llw serve</code> to
-                  connect
+              {fs.isOpen ? (
+                <FileTree
+                  files={fs.files}
+                  selectedFile={selectedFile}
+                  onFileSelect={handleFileSelect}
+                  className="flex-1"
+                />
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
+                  <button
+                    onClick={fs.openFolder}
+                    disabled={!fs.isSupported}
+                    className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 transition-colors disabled:opacity-50"
+                  >
+                    Open Folder
+                  </button>
+                  {!fs.isSupported && (
+                    <p className="mt-2 text-xs text-muted">
+                      Use Chrome or Edge
+                    </p>
+                  )}
+                  {fs.error && (
+                    <p className="mt-2 text-xs text-red-600">{fs.error}</p>
+                  )}
                 </div>
               )}
             </aside>
@@ -428,7 +399,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
         )}
 
         <div className="flex-1 min-w-0 flex flex-col">
-          {isConnected && selectedFile ? (
+          {fs.isOpen && selectedFile ? (
             <CollaborativeEditor
               documentId={document.id}
               userId={userId}
@@ -441,12 +412,18 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
             />
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted">
-              {isConnected ? (
+              {fs.isOpen ? (
                 <p>Select a file to edit</p>
               ) : (
                 <div className="text-center space-y-4">
-                  <p>Connect to your local project</p>
-                  <code className="bg-border px-3 py-2 text-sm">llw serve</code>
+                  <p>Open a local folder to start editing</p>
+                  <button
+                    onClick={fs.openFolder}
+                    disabled={!fs.isSupported}
+                    className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 transition-colors disabled:opacity-50"
+                  >
+                    Open Folder
+                  </button>
                   <p className="text-xs max-w-md">
                     Works with Claude Code, OpenCode, Codex, and any AI coding
                     assistant that can edit files directly.
@@ -475,12 +452,6 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                 <div className="h-full flex items-center justify-center text-muted text-sm">
                   <div className="text-center space-y-2">
                     <p>No PDF available</p>
-                    <p className="text-xs">
-                      Run{" "}
-                      <code className="bg-border px-1">
-                        llw compile main.tex
-                      </code>
-                    </p>
                   </div>
                 </div>
               )}
@@ -499,38 +470,15 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
               className="border-l border-border flex-shrink-0 flex flex-col"
             >
               <div className="flex items-center justify-between px-3 py-2 border-b border-border flex-shrink-0">
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => setRightPanelMode("terminal")}
-                    className={`px-2 py-1 text-xs transition-colors ${rightPanelMode === "terminal" ? "bg-black text-white" : "text-muted hover:text-black"}`}
-                  >
-                    Terminal
-                  </button>
-                  <button
-                    onClick={() => setRightPanelMode("opencode")}
-                    className={`px-2 py-1 text-xs transition-colors ${rightPanelMode === "opencode" ? "bg-black text-white" : "text-muted hover:text-black"}`}
-                  >
-                    OpenCode
-                  </button>
-                </div>
+                <span className="text-xs font-medium uppercase tracking-wider text-muted">
+                  OpenCode
+                </span>
               </div>
               <div className="flex-1 min-h-0">
-                {rightPanelMode === "terminal" ? (
-                  <DynamicTerminal
-                    onFilesUpdate={setFiles}
-                    onConnectionChange={setIsConnected}
-                    onFileContent={handleFileContentUpdate}
-                    onGitInfo={handleGitInfoUpdate}
-                    onPdfUrl={handlePdfUpdate}
-                    wsRef={wsRef}
-                    className="h-full"
-                  />
-                ) : (
-                  <DynamicOpenCodePanel
-                    baseUrl="http://localhost:4096"
-                    className="h-full"
-                  />
-                )}
+                <DynamicOpenCodePanel
+                  baseUrl="http://localhost:4096"
+                  className="h-full"
+                />
               </div>
             </aside>
           </>
