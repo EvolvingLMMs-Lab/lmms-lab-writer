@@ -1,4 +1,4 @@
-# AGENTS.md - LMMs-Lab Write
+# AGENTS.md - LMMs-Lab Writer
 
 Guidelines for AI agents operating in this codebase.
 

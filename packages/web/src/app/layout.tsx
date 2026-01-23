@@ -13,8 +13,24 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'LaTeX Writer',
+  title: 'LMMs-Lab Write',
   description: 'Collaborative LaTeX editor with real-time sync',
+  icons: {
+    icon: '/icons8-w-key-96.png',
+    apple: '/icons8-w-key-96.png',
+  },
+  openGraph: {
+    title: 'LMMs-Lab Write',
+    description: 'Collaborative LaTeX editor with real-time sync',
+    type: 'website',
+    locale: 'en_US',
+    siteName: 'LMMs-Lab Write',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'LMMs-Lab Write',
+    description: 'Collaborative LaTeX editor with real-time sync',
+  },
 }
 
 export default function RootLayout({

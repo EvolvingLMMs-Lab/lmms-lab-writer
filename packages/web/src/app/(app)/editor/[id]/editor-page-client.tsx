@@ -2,6 +2,7 @@
 
 import { CollaborativeEditor } from '@/components/editor/collaborative-editor'
 import { ShareModal } from '@/components/sharing/share-modal'
+import { AlertDialog } from '@/components/ui/alert-dialog'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -27,6 +28,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
   const [title, setTitle] = useState(document.title)
   const [isSaving, setIsSaving] = useState(false)
   const [isShareOpen, setIsShareOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const handleTitleChange = useCallback(async (newTitle: string) => {
     if (role === 'viewer') return
@@ -43,9 +45,8 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
     setIsSaving(false)
   }, [document.id, role])
 
-  const handleDelete = useCallback(async () => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (role !== 'owner') return
-    if (!confirm('Are you sure you want to delete this document?')) return
 
     const supabase = createClient()
     await supabase
@@ -63,15 +64,16 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
   const userColor = userColors[userId.charCodeAt(0) % userColors.length]
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-dvh flex flex-col">
       <header className="border-b border-border flex-shrink-0">
         <div className="px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link 
               href="/dashboard" 
+              aria-label="Back to dashboard"
               className="text-muted hover:text-black transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
               </svg>
             </Link>
@@ -100,13 +102,13 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                   onClick={() => setIsShareOpen(true)}
                   className="text-sm text-muted hover:text-black transition-colors flex items-center gap-1"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                   </svg>
                   Share
                 </button>
                 <button
-                  onClick={handleDelete}
+                  onClick={() => setIsDeleteDialogOpen(true)}
                   className="text-sm text-muted hover:text-red-500 transition-colors"
                 >
                   Delete
@@ -132,6 +134,17 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
         documentId={document.id}
         isOpen={isShareOpen}
         onClose={() => setIsShareOpen(false)}
+      />
+
+      <AlertDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete document"
+        description="Are you sure you want to delete this document? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
       />
     </div>
   )

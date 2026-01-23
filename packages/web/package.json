@@ -24,10 +24,12 @@
     "@supabase/ssr": "^0.6.0",
     "@supabase/supabase-js": "^2.48.0",
     "@uiw/react-codemirror": "^4.23.0",
+    "clsx": "^2.1.1",
     "codemirror": "^6.0.0",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.4.0",
     "y-codemirror.next": "^0.3.5",
     "y-protocols": "^1.0.6",
     "yjs": "^13.6.29"

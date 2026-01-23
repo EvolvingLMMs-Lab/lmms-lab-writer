@@ -21,7 +21,7 @@ body {
 }
 
 .btn {
-  @apply px-8 py-3 font-medium text-sm transition-all;
+  @apply px-8 py-3 font-medium text-sm transition-colors;
 }
 
 .btn-primary {

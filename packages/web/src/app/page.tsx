@@ -6,7 +6,7 @@ export default function Home() {
       <header className="border-b border-neutral-200 px-6 py-4">
         <nav className="max-w-6xl mx-auto flex items-center justify-between">
           <Link href="/" className="text-xl font-bold tracking-tight">
-            LaTeX Writer
+            LMMs-Lab Write
           </Link>
           <div className="flex items-center gap-6">
             <Link
@@ -24,12 +24,12 @@ export default function Home() {
 
       <main className="flex-1">
         <section className="max-w-6xl mx-auto px-6 py-24">
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tighter text-black">
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tighter text-black text-balance">
             Write LaTeX,
             <br />
             Together.
           </h1>
-          <p className="mt-8 text-xl md:text-2xl text-neutral-500 font-light leading-relaxed max-w-2xl">
+          <p className="mt-8 text-xl md:text-2xl text-neutral-500 font-light leading-relaxed max-w-2xl text-pretty">
             A modern collaborative LaTeX editor. Write locally with our CLI,
             sync to the cloud, and collaborate in real-time.
           </p>
@@ -79,10 +79,10 @@ export default function Home() {
 
         <section className="border-t border-neutral-200 py-24 bg-accent">
           <div className="max-w-6xl mx-auto px-6 text-center">
-            <h2 className="text-3xl font-bold tracking-tight mb-4">
+            <h2 className="text-3xl font-bold tracking-tight mb-4 text-balance">
               Install the CLI
             </h2>
-            <p className="text-neutral-500 font-light mb-8">
+            <p className="text-neutral-500 font-light mb-8 text-pretty">
               Get started in seconds with npm
             </p>
             <code className="inline-block bg-black text-white px-8 py-4 font-mono text-lg">
@@ -96,7 +96,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-neutral-400">
-              LaTeX Writer - Open Source
+              LMMs-Lab Write
             </p>
             <div className="flex gap-6">
               <Link

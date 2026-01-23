@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 type Collaborator = {
   user_id: string
@@ -31,6 +31,9 @@ export function ShareModal({ documentId, isOpen, onClose }: Props) {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([])
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
+  
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const previousActiveElement = useRef<Element | null>(null)
 
   const fetchShareData = useCallback(async () => {
     const res = await fetch(`/api/documents/${documentId}/share`)
@@ -40,6 +43,52 @@ export function ShareModal({ documentId, isOpen, onClose }: Props) {
       setPendingInvites(data.pendingInvites)
     }
   }, [documentId])
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    function handleEscapeKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+
+    document.addEventListener('keydown', handleEscapeKey)
+    return () => document.removeEventListener('keydown', handleEscapeKey)
+  }, [isOpen, onClose])
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    previousActiveElement.current = document.activeElement
+    dialogRef.current?.focus()
+
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = originalOverflow
+      if (previousActiveElement.current instanceof HTMLElement) {
+        previousActiveElement.current.focus()
+      }
+    }
+  }, [isOpen])
+
+  function handleFocusTrap(e: React.KeyboardEvent) {
+    if (e.key !== 'Tab' || !dialogRef.current) return
+
+    const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault()
+      last?.focus()
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault()
+      first?.focus()
+    }
+  }
 
   useEffect(() => {
     if (isOpen) {
@@ -104,15 +153,25 @@ export function ShareModal({ documentId, isOpen, onClose }: Props) {
       <div 
         className="absolute inset-0 bg-black/20" 
         onClick={onClose}
+        aria-hidden="true"
       />
-      <div className="relative bg-white border border-black w-full max-w-lg mx-4">
+      <div 
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="share-modal-title"
+        tabIndex={-1}
+        onKeyDown={handleFocusTrap}
+        className="relative bg-white border border-black w-full max-w-lg mx-4 outline-none"
+      >
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-lg font-medium">Share document</h2>
+          <h2 id="share-modal-title" className="text-lg font-medium">Share document</h2>
           <button 
             onClick={onClose}
+            aria-label="Close"
             className="text-muted hover:text-black transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>

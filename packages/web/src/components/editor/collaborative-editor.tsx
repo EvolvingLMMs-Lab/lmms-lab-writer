@@ -220,7 +220,7 @@ export function CollaborativeEditor({
               className="inline-flex items-center gap-1"
             >
               <span
-                className="w-2 h-2"
+                className="size-2"
                 style={{ backgroundColor: user?.color || '#666' }}
               />
               <span>{user?.name || 'Anonymous'}</span>
