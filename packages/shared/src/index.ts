@@ -22,14 +22,6 @@ export interface DocumentFile {
   updated_at: string;
 }
 
-export interface YjsUpdate {
-  id: number;
-  document_id: string;
-  created_at: string;
-  is_snapshot: boolean;
-  update: Uint8Array;
-}
-
 // ============================================================================
 // User & Auth Types
 // ============================================================================
