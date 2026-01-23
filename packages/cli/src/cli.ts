@@ -5,8 +5,9 @@ import { watch } from './commands/watch.js'
 import { init } from './commands/init.js'
 import { login, logout, whoami } from './commands/auth.js'
 import { sync } from './commands/sync.js'
+import { serve } from './commands/serve.js'
 
-const cli = cac('latex-writer')
+const cli = cac('llw')
 
 cli
   .command('[file]', 'Compile a LaTeX document')
@@ -66,6 +67,15 @@ cli
   .option('--pull', 'Pull remote changes to local')
   .action(async (options) => {
     await sync(options)
+  })
+
+cli
+  .command('serve', 'Start local daemon for web terminal connection')
+  .option('-p, --port <port>', 'WebSocket port', { default: 3001 })
+  .option('-s, --shell <shell>', 'Shell to use (default: $SHELL or /bin/zsh)')
+  .option('--raw', 'Use shell with full user config (may cause display issues)')
+  .action(async (options) => {
+    await serve({ port: Number(options.port), shell: options.shell, raw: options.raw })
   })
 
 cli.help()

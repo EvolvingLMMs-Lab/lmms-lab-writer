@@ -39,7 +39,7 @@ export async function login(): Promise<void> {
     attempts++
     if (attempts >= maxAttempts) {
       spinner.fail(chalk.red('Authentication timed out'))
-      console.log(chalk.yellow('Please try again with: latex-writer login'))
+      console.log(chalk.yellow('Please try again with: llw login'))
       return false
     }
 
@@ -68,7 +68,7 @@ export async function whoami(): Promise<void> {
 
   if (!token) {
     console.log(chalk.yellow('Not logged in.'))
-    console.log(chalk.gray('Run: latex-writer login'))
+    console.log(chalk.gray('Run: llw login'))
     return
   }
 
@@ -88,7 +88,7 @@ export async function whoami(): Promise<void> {
     } else if (response.status === 401) {
       spinner.fail(chalk.red('Session expired'))
       clearTokens()
-      console.log(chalk.yellow('Please login again: latex-writer login'))
+      console.log(chalk.yellow('Please login again: llw login'))
     } else {
       spinner.fail(chalk.red('Failed to fetch user info'))
     }

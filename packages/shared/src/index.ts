@@ -139,7 +139,7 @@ export interface CLIConfig {
 }
 
 export const DEFAULT_CLI_CONFIG: CLIConfig = {
-  apiUrl: 'https://latex-writer.vercel.app',
+  apiUrl: 'https://lmms-lab-writer.vercel.app',
   defaultEngine: 'xelatex',
   watchIgnore: [
     '*.aux',

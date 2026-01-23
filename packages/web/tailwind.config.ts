@@ -16,6 +16,7 @@ export default {
         muted: '#737373',
         'muted-foreground': '#a3a3a3',
         accent: '#0a0a0a',
+        'accent-hover': '#f5f5f5',
         'accent-muted': '#404040',
         'accent-dark': '#000000',
         surface: '#171717',

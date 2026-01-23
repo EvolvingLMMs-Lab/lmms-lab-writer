@@ -118,7 +118,7 @@ export default async function DashboardPage() {
           <h1 className="text-3xl font-light tracking-tight">Documents</h1>
           {profile && (
             <div className="flex items-center gap-3 text-sm">
-              <div className="size-8 border border-border flex items-center justify-center bg-accent">
+              <div className="size-8 border border-border flex items-center justify-center bg-border">
                 <span className="font-medium">{profile.email.charAt(0).toUpperCase()}</span>
               </div>
               <div>
@@ -145,7 +145,7 @@ export default async function DashboardPage() {
               <Link
                 key={doc.id}
                 href={`/editor/${doc.id}`}
-                className="flex items-center justify-between p-4 hover:bg-accent transition-colors group"
+                className="flex items-center justify-between p-4 hover:bg-accent-hover transition-colors group"
               >
                 <div className="flex items-center gap-4">
                   <div className="size-10 border border-border flex items-center justify-center group-hover:border-black transition-colors">

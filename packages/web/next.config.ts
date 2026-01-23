@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  transpilePackages: ['@latex-writer/shared'],
+  transpilePackages: ['@lmms-lab/writer-shared'],
 }
 
 export default nextConfig

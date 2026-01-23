@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection, rectangularSelection } from '@codemirror/view'
 import { EditorState, Compartment } from '@codemirror/state'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
@@ -9,10 +9,8 @@ import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
 import { bracketMatching, foldGutter, indentOnInput, syntaxHighlighting, defaultHighlightStyle, StreamLanguage, HighlightStyle } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
 import { stex } from '@codemirror/legacy-modes/mode/stex'
-import * as Y from 'yjs'
-import { yCollab } from 'y-codemirror.next'
-import { SupabaseProvider } from '@/lib/yjs/supabase-provider'
-import type { Awareness } from 'y-protocols/awareness'
+import { createClient } from '@/lib/supabase/client'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 
 const latexLanguage = StreamLanguage.define(stex)
 
@@ -81,33 +79,23 @@ const monochromTheme = EditorView.theme({
     overflow: 'auto',
     height: '100%',
   },
-  '.cm-ySelectionInfo': {
-    fontSize: '11px',
-    fontFamily: 'system-ui, sans-serif',
-    padding: '2px 4px',
-    position: 'absolute',
-    top: '-1.4em',
-    left: '-1px',
-    zIndex: 10,
-    opacity: 1,
-  },
 })
+
+type Viewer = {
+  id: string
+  email: string
+  color: string
+}
 
 type Props = {
   documentId: string
   userId: string
   userName: string
   userColor?: string
+  content?: string
   readOnly?: boolean
   className?: string
-}
-
-type AwarenessState = {
-  user?: {
-    id: string
-    name: string
-    color: string
-  }
+  onContentChange?: (content: string) => void
 }
 
 export function CollaborativeEditor({
@@ -115,32 +103,62 @@ export function CollaborativeEditor({
   userId,
   userName,
   userColor = '#000',
+  content = '',
   readOnly = false,
   className = '',
+  onContentChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
-  const ydocRef = useRef<Y.Doc | null>(null)
-  const providerRef = useRef<SupabaseProvider | null>(null)
-  const throttleRef = useRef<NodeJS.Timeout | null>(null)
-  const pendingAwarenessRef = useRef<Map<string, AwarenessState> | null>(null)
+  const channelRef = useRef<RealtimeChannel | null>(null)
   const [mounted, setMounted] = useState(false)
-  const [collaborators, setCollaborators] = useState<Map<string, AwarenessState>>(new Map())
+  const [viewers, setViewers] = useState<Viewer[]>([])
+  const contentRef = useRef(content)
+  const isExternalUpdateRef = useRef(false)
 
-  const handleAwarenessUpdate = useCallback((awareness: Map<string, AwarenessState>) => {
-    if (!throttleRef.current) {
-      setCollaborators(new Map(awareness))
-      throttleRef.current = setTimeout(() => {
-        throttleRef.current = null
-        if (pendingAwarenessRef.current) {
-          setCollaborators(new Map(pendingAwarenessRef.current))
-          pendingAwarenessRef.current = null
+  useEffect(() => {
+    const supabase = createClient()
+    const channelName = `presence:doc:${documentId}`
+    
+    const channel = supabase.channel(channelName)
+    channelRef.current = channel
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState()
+        const currentViewers: Viewer[] = []
+        
+        Object.values(state).forEach((presences) => {
+          const typedPresences = presences as unknown as Array<{ user_id: string; email: string; color: string }>
+          typedPresences.forEach((presence) => {
+            if (presence.user_id !== userId) {
+              currentViewers.push({
+                id: presence.user_id,
+                email: presence.email,
+                color: presence.color,
+              })
+            }
+          })
+        })
+        
+        setViewers(currentViewers)
+      })
+      .subscribe(async (status: string) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({
+            user_id: userId,
+            email: userName,
+            color: userColor,
+            online_at: new Date().toISOString(),
+          })
         }
-      }, 100)
-    } else {
-      pendingAwarenessRef.current = awareness
+      })
+
+    return () => {
+      channel.unsubscribe()
+      channelRef.current = null
     }
-  }, [])
+  }, [documentId, userId, userName, userColor])
 
   useEffect(() => {
     setMounted(true)
@@ -149,35 +167,10 @@ export function CollaborativeEditor({
   useEffect(() => {
     if (!mounted || !containerRef.current) return
 
-    const ydoc = new Y.Doc()
-    ydocRef.current = ydoc
-    
-    const provider = new SupabaseProvider(ydoc, {
-      documentId,
-      userId,
-      userName,
-      userColor,
-    })
-    providerRef.current = provider
-
-    const awareness = provider.getAwareness()
-    const onAwarenessChange = () => {
-      const states = new Map<string, AwarenessState>()
-      awareness.getStates().forEach((state: Record<string, unknown>, clientId: number) => {
-        const user = state.user as { id: string; name: string; color: string } | undefined
-        if (user) {
-          states.set(String(clientId), { user })
-        }
-      })
-      handleAwarenessUpdate(states)
-    }
-    awareness.on('change', onAwarenessChange)
-
-    const ytext = ydoc.getText('content')
     const readOnlyCompartment = new Compartment()
 
     const state = EditorState.create({
-      doc: ytext.toString(),
+      doc: content,
       extensions: [
         lineNumbers(),
         highlightActiveLineGutter(),
@@ -202,7 +195,13 @@ export function CollaborativeEditor({
           ...closeBracketsKeymap,
           indentWithTab,
         ]),
-        yCollab(ytext, provider.getAwareness()),
+        EditorView.updateListener.of((update: { docChanged: boolean; state: EditorState }) => {
+          if (update.docChanged && !isExternalUpdateRef.current) {
+            const newContent = update.state.doc.toString()
+            contentRef.current = newContent
+            onContentChange?.(newContent)
+          }
+        }),
       ],
     })
 
@@ -214,27 +213,30 @@ export function CollaborativeEditor({
     viewRef.current = view
 
     return () => {
-      awareness.off('change', onAwarenessChange)
       view.destroy()
       viewRef.current = null
-      provider.destroy()
-      providerRef.current = null
-      ydoc.destroy()
-      ydocRef.current = null
-      if (throttleRef.current) {
-        clearTimeout(throttleRef.current)
-        throttleRef.current = null
-      }
     }
-  }, [mounted, documentId, userId, userName, userColor, readOnly, handleAwarenessUpdate])
+  }, [mounted, readOnly, onContentChange])
 
-  const otherUsers = useMemo(() => 
-    Array.from(collaborators.entries())
-      .filter(([id]) => id !== userId)
-      .map(([, state]) => state.user)
-      .filter(Boolean),
-    [collaborators, userId]
-  )
+  useEffect(() => {
+    if (!viewRef.current || content === contentRef.current) return
+    
+    isExternalUpdateRef.current = true
+    const view = viewRef.current
+    const currentContent = view.state.doc.toString()
+    
+    if (content !== currentContent) {
+      view.dispatch({
+        changes: {
+          from: 0,
+          to: currentContent.length,
+          insert: content,
+        },
+      })
+      contentRef.current = content
+    }
+    isExternalUpdateRef.current = false
+  }, [content])
 
   if (!mounted) {
     return (
@@ -248,23 +250,39 @@ export function CollaborativeEditor({
 
   return (
     <div className={`flex flex-col ${className}`}>
-      {otherUsers.length > 0 && (
-        <div className="flex items-center gap-2 px-4 py-2 border-b border-border text-sm">
-          <span className="text-muted">Editing with:</span>
-          {otherUsers.map((user, i) => (
-            <span
-              key={user?.id || i}
-              className="inline-flex items-center gap-1"
-            >
-              <span
-                className="size-2"
-                style={{ backgroundColor: user?.color || '#666' }}
-              />
-              <span>{user?.name || 'Anonymous'}</span>
-            </span>
-          ))}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border text-sm bg-background">
+        <div className="flex items-center gap-2">
+          {viewers.length > 0 ? (
+            <>
+              <span className="text-muted">Viewing:</span>
+              <div className="flex items-center -space-x-2">
+                {viewers.slice(0, 5).map((viewer) => (
+                  <div
+                    key={viewer.id}
+                    className="size-6 border-2 border-white flex items-center justify-center text-xs font-medium text-white"
+                    style={{ backgroundColor: viewer.color }}
+                    title={viewer.email}
+                  >
+                    {viewer.email.charAt(0).toUpperCase()}
+                  </div>
+                ))}
+                {viewers.length > 5 && (
+                  <div className="size-6 border-2 border-white bg-muted flex items-center justify-center text-xs font-medium text-white">
+                    +{viewers.length - 5}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <span className="text-muted">Only you</span>
+          )}
         </div>
-      )}
+        
+        <div className="flex items-center gap-3 text-xs text-muted">
+          <span>Auto-saved to local file</span>
+        </div>
+      </div>
+      
       <div 
         ref={containerRef} 
         className="flex-1 overflow-hidden"

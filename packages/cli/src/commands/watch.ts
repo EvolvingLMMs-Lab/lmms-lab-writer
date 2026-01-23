@@ -2,8 +2,8 @@ import chokidar from 'chokidar'
 import chalk from 'chalk'
 import { resolve, dirname, relative } from 'path'
 import { existsSync } from 'fs'
-import type { LaTeXEngine } from '@latex-writer/shared'
-import { DEFAULT_CLI_CONFIG } from '@latex-writer/shared'
+import type { LaTeXEngine } from '@lmms-lab/writer-shared'
+import { DEFAULT_CLI_CONFIG } from '@lmms-lab/writer-shared'
 import { compile } from './compile.js'
 
 interface WatchOptions {

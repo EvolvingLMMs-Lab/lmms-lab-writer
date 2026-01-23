@@ -245,8 +245,8 @@ export async function init(options: InitOptions): Promise<void> {
   }
 
   console.log(chalk.blue('\nProject initialized successfully!'))
-  console.log(chalk.gray(`\nTo compile, run:\n  latex-writer compile ${mainFile}`))
-  console.log(chalk.gray(`\nTo watch for changes:\n  latex-writer watch ${mainFile}`))
+  console.log(chalk.gray(`\nTo compile, run:\n  llw compile ${mainFile}`))
+  console.log(chalk.gray(`\nTo watch for changes:\n  llw watch ${mainFile}`))
   
   if (options.template === 'neurips') {
     console.log(chalk.yellow('\nNeurIPS template options:'))

@@ -1,9 +1,9 @@
 import Conf from 'conf'
-import type { CLIConfig } from '@latex-writer/shared'
-import { DEFAULT_CLI_CONFIG } from '@latex-writer/shared'
+import type { CLIConfig } from '@lmms-lab/writer-shared'
+import { DEFAULT_CLI_CONFIG } from '@lmms-lab/writer-shared'
 
 const config = new Conf<CLIConfig>({
-  projectName: 'latex-writer',
+  projectName: 'lmms-lab-writer',
   defaults: DEFAULT_CLI_CONFIG,
 })
 

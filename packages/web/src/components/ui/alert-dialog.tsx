@@ -113,7 +113,7 @@ export function AlertDialog({
             }}
             className={`px-4 py-2 text-sm text-white transition-colors ${
               destructive 
-                ? 'bg-red-600 hover:bg-red-700' 
+                ? 'bg-black hover:bg-neutral-800' 
                 : 'bg-black hover:bg-neutral-800'
             }`}
           >

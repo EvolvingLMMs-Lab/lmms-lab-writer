@@ -205,13 +205,13 @@ export function ShareModal({ documentId, isOpen, onClose }: Props) {
           </form>
 
           {error && (
-            <div className="p-2 mb-4 border border-red-500 text-red-500 text-sm">
-              {error}
+            <div className="p-2 mb-4 border border-black text-black text-sm font-medium">
+              Error: {error}
             </div>
           )}
 
           {success && (
-            <div className="p-2 mb-4 border border-green-600 text-green-600 text-sm">
+            <div className="p-2 mb-4 border border-black text-black text-sm bg-accent-hover">
               {success}
             </div>
           )}
@@ -246,7 +246,7 @@ export function ShareModal({ documentId, isOpen, onClose }: Props) {
                   </div>
                   <button
                     onClick={() => handleRemove(c.user_id)}
-                    className="text-xs text-muted hover:text-red-500"
+                    className="text-xs text-muted hover:text-black hover:font-bold transition-all"
                   >
                     Remove
                   </button>
@@ -261,7 +261,7 @@ export function ShareModal({ documentId, isOpen, onClose }: Props) {
                   </div>
                   <button
                     onClick={() => handleRemove(undefined, invite.id)}
-                    className="text-xs text-muted hover:text-red-500"
+                    className="text-xs text-muted hover:text-black hover:font-bold transition-all"
                   >
                     Cancel
                   </button>

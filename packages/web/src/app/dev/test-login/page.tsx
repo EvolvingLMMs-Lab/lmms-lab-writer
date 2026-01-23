@@ -51,8 +51,8 @@ export default function DevTestLoginPage() {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 border border-red-500 text-red-500 text-sm">
-            {error}
+          <div className="mb-6 p-4 border border-black text-black text-sm font-medium">
+            Error: {error}
           </div>
         )}
 
@@ -69,7 +69,7 @@ export default function DevTestLoginPage() {
 
         <div className="mt-8 text-xs text-muted">
           <p>Test account: test@latex-writer.dev</p>
-          <p className="mt-2 text-red-500">Development only - not available in production</p>
+          <p className="mt-2 text-black font-medium">Development only - not available in production</p>
         </div>
       </div>
     </div>

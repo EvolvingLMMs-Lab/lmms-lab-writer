@@ -3,8 +3,8 @@ import chalk from 'chalk'
 import ora from 'ora'
 import { resolve, dirname, basename } from 'path'
 import { existsSync } from 'fs'
-import type { LaTeXEngine, CompileResult } from '@latex-writer/shared'
-import { parseLatexLog } from '@latex-writer/shared'
+import type { LaTeXEngine, CompileResult } from '@lmms-lab/writer-shared'
+import { parseLatexLog } from '@lmms-lab/writer-shared'
 
 interface CompileOptions {
   engine: LaTeXEngine

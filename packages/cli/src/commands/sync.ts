@@ -13,15 +13,15 @@ export async function sync(options: SyncOptions): Promise<void> {
 
   if (!token) {
     console.log(chalk.yellow('Not logged in.'))
-    console.log(chalk.gray('Run: latex-writer login'))
+    console.log(chalk.gray('Run: llw login'))
     return
   }
 
   if (!options.push && !options.pull) {
     console.log(chalk.yellow('Please specify --push or --pull'))
     console.log(chalk.gray('\nExamples:'))
-    console.log(chalk.gray('  latex-writer sync --push   # Upload local changes'))
-    console.log(chalk.gray('  latex-writer sync --pull   # Download remote changes'))
+    console.log(chalk.gray('  llw sync --push   # Upload local changes'))
+    console.log(chalk.gray('  llw sync --pull   # Download remote changes'))
     return
   }
 
@@ -49,7 +49,7 @@ export async function sync(options: SyncOptions): Promise<void> {
       }
     } else if (response.status === 401) {
       spinner.fail(chalk.red('Session expired'))
-      console.log(chalk.yellow('Please login again: latex-writer login'))
+      console.log(chalk.yellow('Please login again: llw login'))
     } else {
       const error = (await response.json()) as { message: string }
       spinner.fail(chalk.red(`Sync failed: ${error.message}`))

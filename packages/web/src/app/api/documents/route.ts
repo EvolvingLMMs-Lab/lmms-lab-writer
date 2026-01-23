@@ -1,16 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { getTemplate, type TemplateId } from '@/lib/templates'
-import * as Y from 'yjs'
-
-function encodeYjsUpdate(content: string): string {
-  const ydoc = new Y.Doc()
-  const ytext = ydoc.getText('content')
-  ytext.insert(0, content)
-  const update = Y.encodeStateAsUpdate(ydoc)
-  ydoc.destroy()
-  return btoa(String.fromCharCode(...update))
-}
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -21,11 +10,9 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}))
-  const templateId = body.template as TemplateId | undefined
-  const template = templateId ? getTemplate(templateId) : undefined
-  const title = body.title || template?.name || 'Untitled Document'
+  const title = body.title || 'Untitled Document'
 
-  const { data, error } = await supabase
+  const { data: doc, error } = await supabase
     .from('documents')
     .insert({ title, created_by: user.id })
     .select('id, title, created_at')
@@ -35,24 +22,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  if (template) {
-    const encodedUpdate = encodeYjsUpdate(template.content)
-    
-    const { error: yjsError } = await supabase
-      .from('yjs_updates')
-      .insert({
-        document_id: data.id,
-        file_path: 'main.tex',
-        update: encodedUpdate,
-        is_snapshot: true,
-      })
-
-    if (yjsError) {
-      console.error('Failed to insert template content:', yjsError)
-    }
-  }
-
-  return NextResponse.json(data, { status: 201 })
+  return NextResponse.json(doc, { status: 201 })
 }
 
 export async function GET() {

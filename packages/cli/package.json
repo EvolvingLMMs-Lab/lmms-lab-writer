@@ -1,11 +1,11 @@
 {
-  "name": "@latex-writer/cli",
+  "name": "@lmms-lab/writer-cli",
   "version": "0.1.0",
-  "description": "CLI for local LaTeX compilation and sync with LaTeX Writer",
+  "description": "CLI for local LaTeX compilation and sync with LMMs-Lab Writer",
   "type": "module",
   "bin": {
-    "latex-writer": "./dist/cli.js",
-    "lw": "./dist/cli.js"
+    "lmms-lab-writer": "./dist/cli.js",
+    "llw": "./dist/cli.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -29,18 +29,21 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@latex-writer/shared": "workspace:*",
+    "@lmms-lab/writer-shared": "workspace:*",
     "cac": "^6.7.14",
     "chalk": "^5.4.0",
     "chokidar": "^4.0.0",
     "conf": "^13.1.0",
     "cross-spawn": "^7.0.6",
+    "node-pty": "^1.1.0",
     "open": "^10.1.0",
-    "ora": "^8.2.0"
+    "ora": "^8.2.0",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "@types/cross-spawn": "^6.0.6",
     "@types/node": "^22.13.0",
+    "@types/ws": "^8.18.1",
     "tsup": "^8.5.0",
     "typescript": "^5.7.0"
   }
