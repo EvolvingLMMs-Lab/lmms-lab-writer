@@ -5,29 +5,29 @@
 // ============================================================================
 
 export interface Document {
-  id: string
-  title: string
-  created_at: string
-  updated_at: string
-  created_by: string
-  workspace_id?: string
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  workspace_id?: string;
 }
 
 export interface DocumentFile {
-  id: string
-  document_id: string
-  path: string
-  storage_key: string
-  sha256: string
-  updated_at: string
+  id: string;
+  document_id: string;
+  path: string;
+  storage_key: string;
+  sha256: string;
+  updated_at: string;
 }
 
 export interface YjsUpdate {
-  id: number
-  document_id: string
-  created_at: string
-  is_snapshot: boolean
-  update: Uint8Array
+  id: number;
+  document_id: string;
+  created_at: string;
+  is_snapshot: boolean;
+  update: Uint8Array;
 }
 
 // ============================================================================
@@ -35,42 +35,42 @@ export interface YjsUpdate {
 // ============================================================================
 
 export interface User {
-  id: string
-  email: string
-  full_name?: string
-  avatar_url?: string
-  created_at: string
+  id: string;
+  email: string;
+  full_name?: string;
+  avatar_url?: string;
+  created_at: string;
 }
 
 export interface Session {
-  access_token: string
-  refresh_token: string
-  expires_at: number
-  user: User
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+  user: User;
 }
 
 // ============================================================================
 // Sharing & Permissions
 // ============================================================================
 
-export type DocumentRole = 'owner' | 'editor' | 'viewer'
+export type DocumentRole = "owner" | "editor" | "viewer";
 
 export interface DocumentAccess {
-  document_id: string
-  user_id: string
-  role: DocumentRole
-  invited_by?: string
-  created_at: string
+  document_id: string;
+  user_id: string;
+  role: DocumentRole;
+  invited_by?: string;
+  created_at: string;
 }
 
 export interface ShareInvite {
-  id: string
-  document_id: string
-  email: string
-  role: DocumentRole
-  token: string
-  expires_at: string
-  created_by: string
+  id: string;
+  document_id: string;
+  email: string;
+  role: DocumentRole;
+  token: string;
+  expires_at: string;
+  created_by: string;
 }
 
 // ============================================================================
@@ -78,52 +78,73 @@ export interface ShareInvite {
 // ============================================================================
 
 export interface PresenceState {
-  user_id: string
-  username: string
-  color: string
-  cursor?: CursorPosition
-  selection?: SelectionRange
-  online_at: string
+  user_id: string;
+  username: string;
+  color: string;
+  cursor?: CursorPosition;
+  selection?: SelectionRange;
+  online_at: string;
 }
 
 export interface CursorPosition {
-  line: number
-  column: number
+  line: number;
+  column: number;
 }
 
 export interface SelectionRange {
-  start: CursorPosition
-  end: CursorPosition
+  start: CursorPosition;
+  end: CursorPosition;
+}
+
+// ============================================================================
+// File System Types (for CLI daemon integration)
+// ============================================================================
+
+export interface FileNode {
+  name: string;
+  path: string;
+  type: "file" | "directory";
+  children?: FileNode[];
+}
+
+export interface GitInfo {
+  branch: string;
+  isDirty: boolean;
+  lastCommit?: {
+    hash: string;
+    message: string;
+    date: string;
+  };
 }
 
 // ============================================================================
 // LaTeX Compilation
 // ============================================================================
 
-export type LaTeXEngine = 'pdflatex' | 'xelatex' | 'lualatex'
+export type LaTeXEngine = "pdflatex" | "xelatex" | "lualatex";
 
 export interface CompileOptions {
-  engine: LaTeXEngine
-  mainFile: string
-  outputDir?: string
-  synctex?: boolean
-  clean?: boolean
+  engine: LaTeXEngine;
+  mainFile: string;
+  outputDir?: string;
+  synctex?: boolean;
+  clean?: boolean;
 }
 
 export interface CompileResult {
-  success: boolean
-  outputFile?: string
-  logs: string
-  warnings: string[]
-  errors: CompileError[]
-  duration: number
+  success: boolean;
+  outputFile?: string;
+  logs: string;
+  warnings: string[];
+  errors: CompileError[];
+  duration: number;
 }
 
 export interface CompileError {
-  file: string
-  line: number
-  message: string
-  type: 'error' | 'warning'
+  file: string;
+  line: number;
+  message: string;
+  type: "error" | "warning";
 }
 
 // ============================================================================
@@ -131,55 +152,55 @@ export interface CompileError {
 // ============================================================================
 
 export interface CLIConfig {
-  apiUrl: string
-  accessToken?: string
-  refreshToken?: string
-  defaultEngine: LaTeXEngine
-  watchIgnore: string[]
+  apiUrl: string;
+  accessToken?: string;
+  refreshToken?: string;
+  defaultEngine: LaTeXEngine;
+  watchIgnore: string[];
 }
 
 export const DEFAULT_CLI_CONFIG: CLIConfig = {
-  apiUrl: 'https://lmms-lab-writer.vercel.app',
-  defaultEngine: 'xelatex',
+  apiUrl: "https://lmms-lab-writer.vercel.app",
+  defaultEngine: "xelatex",
   watchIgnore: [
-    '*.aux',
-    '*.bbl',
-    '*.blg',
-    '*.fdb_latexmk',
-    '*.fls',
-    '*.log',
-    '*.out',
-    '*.synctex.gz',
-    '*.toc',
-    '*.lof',
-    '*.lot',
-    '*.brf',
-    '.git/**',
-    'node_modules/**',
+    "*.aux",
+    "*.bbl",
+    "*.blg",
+    "*.fdb_latexmk",
+    "*.fls",
+    "*.log",
+    "*.out",
+    "*.synctex.gz",
+    "*.toc",
+    "*.lof",
+    "*.lot",
+    "*.brf",
+    ".git/**",
+    "node_modules/**",
   ],
-}
+};
 
 // ============================================================================
 // API Types
 // ============================================================================
 
 export interface APIResponse<T = unknown> {
-  data?: T
-  error?: APIError
+  data?: T;
+  error?: APIError;
 }
 
 export interface APIError {
-  code: string
-  message: string
-  details?: Record<string, unknown>
+  code: string;
+  message: string;
+  details?: Record<string, unknown>;
 }
 
 export interface PaginatedResponse<T> {
-  data: T[]
-  total: number
-  page: number
-  pageSize: number
-  hasMore: boolean
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
 }
 
 // ============================================================================
@@ -190,71 +211,71 @@ export interface PaginatedResponse<T> {
  * Generate a random color for presence indicators
  */
 export function generatePresenceColor(): string {
-  const hue = Math.floor(Math.random() * 360)
-  return `hsl(${hue}, 70%, 50%)`
+  const hue = Math.floor(Math.random() * 360);
+  return `hsl(${hue}, 70%, 50%)`;
 }
 
 /**
  * Calculate SHA256 hash of content (browser-compatible)
  */
 export async function sha256(content: string | Uint8Array): Promise<string> {
-  const encoder = new TextEncoder()
+  const encoder = new TextEncoder();
   const data: ArrayBuffer =
-    typeof content === 'string'
-      ? encoder.encode(content).buffer as ArrayBuffer
-      : new Uint8Array(content).buffer as ArrayBuffer
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+    typeof content === "string"
+      ? (encoder.encode(content).buffer as ArrayBuffer)
+      : (new Uint8Array(content).buffer as ArrayBuffer);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /**
  * Parse LaTeX log file for errors and warnings
  */
 export function parseLatexLog(log: string): {
-  errors: CompileError[]
-  warnings: string[]
+  errors: CompileError[];
+  warnings: string[];
 } {
-  const errors: CompileError[] = []
-  const warnings: string[] = []
+  const errors: CompileError[] = [];
+  const warnings: string[] = [];
 
-  const lines = log.split('\n')
-  let currentFile = ''
+  const lines = log.split("\n");
+  let currentFile = "";
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]!
+    const line = lines[i]!;
 
     // Track current file
-    const fileMatch = line.match(/^\(([^)]+\.tex)/)
+    const fileMatch = line.match(/^\(([^)]+\.tex)/);
     if (fileMatch) {
-      currentFile = fileMatch[1]!
+      currentFile = fileMatch[1]!;
     }
 
     // Parse errors
-    const errorMatch = line.match(/^! (.+)/)
+    const errorMatch = line.match(/^! (.+)/);
     if (errorMatch) {
       // Look for line number in following lines
-      let lineNum = 0
+      let lineNum = 0;
       for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
-        const lineNumMatch = lines[j]?.match(/^l\.(\d+)/)
+        const lineNumMatch = lines[j]?.match(/^l\.(\d+)/);
         if (lineNumMatch) {
-          lineNum = parseInt(lineNumMatch[1]!, 10)
-          break
+          lineNum = parseInt(lineNumMatch[1]!, 10);
+          break;
         }
       }
       errors.push({
         file: currentFile,
         line: lineNum,
         message: errorMatch[1]!,
-        type: 'error',
-      })
+        type: "error",
+      });
     }
 
     // Parse warnings
-    if (line.includes('Warning:')) {
-      warnings.push(line.trim())
+    if (line.includes("Warning:")) {
+      warnings.push(line.trim());
     }
   }
 
-  return { errors, warnings }
+  return { errors, warnings };
 }
