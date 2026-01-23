@@ -26,6 +26,21 @@ type SharedAccess = {
   documents: OwnedDoc | null
 }
 
+type UserProfile = {
+  email: string
+  created_at: string
+}
+
+async function getUserProfile(): Promise<UserProfile | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  return {
+    email: user.email ?? '',
+    created_at: user.created_at,
+  }
+}
+
 async function getDocuments(): Promise<Document[]> {
   const supabase = await createClient()
   
@@ -76,14 +91,20 @@ function formatDate(date: string): string {
 }
 
 export default async function DashboardPage() {
-  const documents = await getDocuments()
+  const [documents, profile] = await Promise.all([
+    getDocuments(),
+    getUserProfile(),
+  ])
 
   return (
     <div className="min-h-screen">
       <header className="border-b border-border">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold tracking-tight">
-            LaTeX Writer
+          <Link href="/" className="text-xl font-bold tracking-tight flex items-center gap-3">
+            <div className="logo-bar text-foreground">
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            </div>
+            LMMs-Lab Writer
           </Link>
           <div className="flex items-center gap-4">
             <NewDocumentButton />
@@ -93,7 +114,20 @@ export default async function DashboardPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-12">
-        <h1 className="text-3xl font-light tracking-tight mb-8">Documents</h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-light tracking-tight">Documents</h1>
+          {profile && (
+            <div className="flex items-center gap-3 text-sm">
+              <div className="size-8 border border-border flex items-center justify-center bg-accent">
+                <span className="font-medium">{profile.email.charAt(0).toUpperCase()}</span>
+              </div>
+              <div>
+                <p className="font-medium">{profile.email}</p>
+                <p className="text-muted text-xs">Member since {formatDate(profile.created_at)}</p>
+              </div>
+            </div>
+          )}
+        </div>
 
         {documents.length === 0 ? (
           <div className="border border-border p-12 text-center">

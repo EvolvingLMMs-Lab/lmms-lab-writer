@@ -1,26 +1,33 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection, rectangularSelection } from '@codemirror/view'
 import { EditorState, Compartment } from '@codemirror/state'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
-import { bracketMatching, foldGutter, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
+import { bracketMatching, foldGutter, indentOnInput, syntaxHighlighting, defaultHighlightStyle, StreamLanguage, HighlightStyle } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
-import { HighlightStyle } from '@codemirror/language'
+import { stex } from '@codemirror/legacy-modes/mode/stex'
 import * as Y from 'yjs'
 import { yCollab } from 'y-codemirror.next'
 import { SupabaseProvider } from '@/lib/yjs/supabase-provider'
+import type { Awareness } from 'y-protocols/awareness'
+
+const latexLanguage = StreamLanguage.define(stex)
 
 const latexHighlightStyle = HighlightStyle.define([
   { tag: tags.keyword, color: '#000', fontWeight: 'bold' },
-  { tag: tags.comment, color: '#666', fontStyle: 'italic' },
+  { tag: tags.comment, color: '#888', fontStyle: 'italic' },
   { tag: tags.string, color: '#333' },
   { tag: tags.number, color: '#333' },
   { tag: tags.operator, color: '#000' },
-  { tag: tags.bracket, color: '#666' },
+  { tag: tags.bracket, color: '#555' },
   { tag: tags.meta, color: '#000', fontWeight: 'bold' },
+  { tag: tags.tagName, color: '#000', fontWeight: 'bold' },
+  { tag: tags.attributeName, color: '#333' },
+  { tag: tags.atom, color: '#000', fontWeight: 'bold' },
+  { tag: tags.special(tags.string), color: '#444' },
 ])
 
 const monochromTheme = EditorView.theme({
@@ -115,11 +122,24 @@ export function CollaborativeEditor({
   const viewRef = useRef<EditorView | null>(null)
   const ydocRef = useRef<Y.Doc | null>(null)
   const providerRef = useRef<SupabaseProvider | null>(null)
+  const throttleRef = useRef<NodeJS.Timeout | null>(null)
+  const pendingAwarenessRef = useRef<Map<string, AwarenessState> | null>(null)
   const [mounted, setMounted] = useState(false)
   const [collaborators, setCollaborators] = useState<Map<string, AwarenessState>>(new Map())
 
   const handleAwarenessUpdate = useCallback((awareness: Map<string, AwarenessState>) => {
-    setCollaborators(new Map(awareness))
+    if (!throttleRef.current) {
+      setCollaborators(new Map(awareness))
+      throttleRef.current = setTimeout(() => {
+        throttleRef.current = null
+        if (pendingAwarenessRef.current) {
+          setCollaborators(new Map(pendingAwarenessRef.current))
+          pendingAwarenessRef.current = null
+        }
+      }, 100)
+    } else {
+      pendingAwarenessRef.current = awareness
+    }
   }, [])
 
   useEffect(() => {
@@ -136,14 +156,22 @@ export function CollaborativeEditor({
       documentId,
       userId,
       userName,
+      userColor,
     })
     providerRef.current = provider
 
-    provider.setAwareness({
-      user: { id: userId, name: userName, color: userColor }
-    })
-
-    provider.onAwarenessUpdate(handleAwarenessUpdate)
+    const awareness = provider.getAwareness()
+    const onAwarenessChange = () => {
+      const states = new Map<string, AwarenessState>()
+      awareness.getStates().forEach((state: Record<string, unknown>, clientId: number) => {
+        const user = state.user as { id: string; name: string; color: string } | undefined
+        if (user) {
+          states.set(String(clientId), { user })
+        }
+      })
+      handleAwarenessUpdate(states)
+    }
+    awareness.on('change', onAwarenessChange)
 
     const ytext = ydoc.getText('content')
     const readOnlyCompartment = new Compartment()
@@ -162,6 +190,7 @@ export function CollaborativeEditor({
         bracketMatching(),
         closeBrackets(),
         highlightSelectionMatches(),
+        latexLanguage,
         syntaxHighlighting(defaultHighlightStyle),
         syntaxHighlighting(latexHighlightStyle),
         monochromTheme,
@@ -185,14 +214,27 @@ export function CollaborativeEditor({
     viewRef.current = view
 
     return () => {
+      awareness.off('change', onAwarenessChange)
       view.destroy()
       viewRef.current = null
       provider.destroy()
       providerRef.current = null
       ydoc.destroy()
       ydocRef.current = null
+      if (throttleRef.current) {
+        clearTimeout(throttleRef.current)
+        throttleRef.current = null
+      }
     }
   }, [mounted, documentId, userId, userName, userColor, readOnly, handleAwarenessUpdate])
+
+  const otherUsers = useMemo(() => 
+    Array.from(collaborators.entries())
+      .filter(([id]) => id !== userId)
+      .map(([, state]) => state.user)
+      .filter(Boolean),
+    [collaborators, userId]
+  )
 
   if (!mounted) {
     return (
@@ -203,11 +245,6 @@ export function CollaborativeEditor({
       </div>
     )
   }
-
-  const otherUsers = Array.from(collaborators.entries())
-    .filter(([id]) => id !== userId)
-    .map(([, state]) => state.user)
-    .filter(Boolean)
 
   return (
     <div className={`flex flex-col ${className}`}>

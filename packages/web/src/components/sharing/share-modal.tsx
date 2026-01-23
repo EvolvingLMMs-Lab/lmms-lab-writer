@@ -151,7 +151,7 @@ export function ShareModal({ documentId, isOpen, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div 
-        className="absolute inset-0 bg-black/20" 
+        className="absolute inset-0 bg-black/20 modal-overlay" 
         onClick={onClose}
         aria-hidden="true"
       />
@@ -162,7 +162,7 @@ export function ShareModal({ documentId, isOpen, onClose }: Props) {
         aria-labelledby="share-modal-title"
         tabIndex={-1}
         onKeyDown={handleFocusTrap}
-        className="relative bg-white border border-black w-full max-w-lg mx-4 outline-none"
+        className="relative bg-white border border-black w-full max-w-lg mx-4 outline-none modal-content"
       >
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 id="share-modal-title" className="text-lg font-medium">Share document</h2>

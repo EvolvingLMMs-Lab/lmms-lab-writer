@@ -9,15 +9,17 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#ffffff',
-        foreground: '#000000',
+        background: '#fafafa',
+        foreground: '#0a0a0a',
         border: '#e5e5e5',
-        'border-dark': '#000000',
-        muted: '#666666',
-        'muted-foreground': '#999999',
-        accent: '#f5f5f5',
-        success: '#22c55e',
-        error: '#ef4444',
+        'border-dark': '#404040',
+        muted: '#737373',
+        'muted-foreground': '#a3a3a3',
+        accent: '#0a0a0a',
+        'accent-muted': '#404040',
+        'accent-dark': '#000000',
+        surface: '#171717',
+        'surface-text': '#fafafa',
       },
       fontFamily: {
         sans: ['var(--font-geist-sans)', 'system-ui', '-apple-system', 'sans-serif'],

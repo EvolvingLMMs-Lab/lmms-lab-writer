@@ -78,7 +78,7 @@ export function AlertDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div 
-        className="absolute inset-0 bg-black/20" 
+        className="absolute inset-0 bg-black/20 modal-overlay" 
         onClick={onClose}
         aria-hidden="true"
       />
@@ -90,7 +90,7 @@ export function AlertDialog({
         aria-describedby="alert-dialog-description"
         tabIndex={-1}
         onKeyDown={handleFocusTrap}
-        className="relative bg-white border border-black w-full max-w-md mx-4 p-6 outline-none"
+        className="relative bg-white border border-black w-full max-w-md mx-4 p-6 outline-none modal-content"
       >
         <h2 id="alert-dialog-title" className="text-lg font-medium mb-2">
           {title}

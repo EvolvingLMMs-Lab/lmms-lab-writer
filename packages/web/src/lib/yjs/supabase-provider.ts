@@ -1,4 +1,5 @@
 import * as Y from 'yjs'
+import { Awareness, encodeAwarenessUpdate, applyAwarenessUpdate } from 'y-protocols/awareness'
 import { createClient } from '@/lib/supabase/client'
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
 
@@ -10,19 +11,7 @@ type YjsUpdate = {
 type BroadcastPayload = {
   sender: string
   update?: string
-  state?: AwarenessState
-}
-
-type AwarenessState = {
-  user?: {
-    id: string
-    name: string
-    color: string
-  }
-  cursor?: {
-    anchor: number
-    head: number
-  }
+  awarenessUpdate?: string
 }
 
 type ProviderOptions = {
@@ -30,6 +19,7 @@ type ProviderOptions = {
   filePath?: string
   userId?: string
   userName?: string
+  userColor?: string
 }
 
 export class SupabaseProvider {
@@ -40,7 +30,8 @@ export class SupabaseProvider {
   private filePath: string
   private userId: string
   private userName: string
-  private awareness: Map<string, AwarenessState> = new Map()
+  private userColor: string
+  public awareness: Awareness
   private connected = false
   private destroyed = false
   private pendingUpdates: Uint8Array[] = []
@@ -53,6 +44,17 @@ export class SupabaseProvider {
     this.filePath = options.filePath || 'main.tex'
     this.userId = options.userId || crypto.randomUUID()
     this.userName = options.userName || 'Anonymous'
+    this.userColor = options.userColor || '#000000'
+    
+    this.awareness = new Awareness(doc)
+    this.awareness.setLocalStateField('user', {
+      id: this.userId,
+      name: this.userName,
+      color: this.userColor,
+      colorLight: this.userColor + '33',
+    })
+    
+    this.awareness.on('update', this.handleAwarenessUpdate.bind(this))
     
     this.doc.on('update', this.handleLocalUpdate.bind(this))
     this.connect()
@@ -104,13 +106,13 @@ export class SupabaseProvider {
       .on('broadcast', { event: 'yjs-update' }, ({ payload }: { payload: BroadcastPayload }) => {
         if (payload.sender !== this.userId && payload.update) {
           const update = this.decodeBase64(payload.update)
-          Y.applyUpdate(this.doc, update)
+          Y.applyUpdate(this.doc, update, 'remote')
         }
       })
       .on('broadcast', { event: 'awareness' }, ({ payload }: { payload: BroadcastPayload }) => {
-        if (payload.sender !== this.userId && payload.state) {
-          this.awareness.set(payload.sender, payload.state)
-          this.onAwarenessChange()
+        if (payload.sender !== this.userId && payload.awarenessUpdate) {
+          const update = this.decodeBase64(payload.awarenessUpdate)
+          applyAwarenessUpdate(this.awareness, update, 'remote')
         }
       })
       .on('presence', { event: 'sync' }, () => {
@@ -118,8 +120,13 @@ export class SupabaseProvider {
         this.broadcastAwareness()
       })
       .on('presence', { event: 'leave' }, ({ key }: { key: string }) => {
-        this.awareness.delete(key)
-        this.onAwarenessChange()
+        const states = this.awareness.getStates()
+        states.forEach((_state: unknown, clientId: number) => {
+          const state = this.awareness.getStates().get(clientId) as { user?: { id: string } } | undefined
+          if (state?.user?.id === key) {
+            this.awareness.setLocalStateField('user', null)
+          }
+        })
       })
       .subscribe(async (status: string) => {
         if (status === 'SUBSCRIBED') {
@@ -140,6 +147,15 @@ export class SupabaseProvider {
     this.flushTimeout = setTimeout(() => {
       this.flushUpdates()
     }, 100)
+  }
+
+  private handleAwarenessUpdate({ added, updated, removed }: { added: number[], updated: number[], removed: number[] }, origin: unknown) {
+    if (origin === 'remote' || this.destroyed) return
+    
+    const changedClients = added.concat(updated).concat(removed)
+    if (changedClients.length === 0) return
+    
+    this.broadcastAwareness()
   }
 
   private async flushUpdates() {
@@ -166,32 +182,22 @@ export class SupabaseProvider {
       })
   }
 
-  setAwareness(state: Partial<AwarenessState>) {
-    const currentState = this.awareness.get(this.userId) || {}
-    const newState = { ...currentState, ...state }
-    this.awareness.set(this.userId, newState)
-    this.broadcastAwareness()
-  }
-
   private broadcastAwareness() {
-    const state = this.awareness.get(this.userId)
-    if (!state || !this.channel) return
+    if (!this.channel || this.destroyed) return
+
+    const encodedUpdate = this.encodeBase64(
+      encodeAwarenessUpdate(this.awareness, [this.doc.clientID])
+    )
 
     this.channel.send({
       type: 'broadcast',
       event: 'awareness',
-      payload: { sender: this.userId, state }
+      payload: { sender: this.userId, awarenessUpdate: encodedUpdate }
     })
   }
 
-  getAwareness(): Map<string, AwarenessState> {
+  getAwareness(): Awareness {
     return this.awareness
-  }
-
-  private onAwarenessChange() {}
-
-  onAwarenessUpdate(callback: (awareness: Map<string, AwarenessState>) => void) {
-    this.onAwarenessChange = () => callback(this.awareness)
   }
 
   private encodeBase64(data: Uint8Array): string {
@@ -210,6 +216,8 @@ export class SupabaseProvider {
       this.flushUpdates()
     }
 
+    this.awareness.off('update', this.handleAwarenessUpdate.bind(this))
+    this.awareness.destroy()
     this.channel?.unsubscribe()
     this.channel = null
     this.doc.off('update', this.handleLocalUpdate.bind(this))

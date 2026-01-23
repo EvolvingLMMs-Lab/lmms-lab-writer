@@ -6,7 +6,7 @@ import { AlertDialog } from '@/components/ui/alert-dialog'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 type Document = {
   id: string
@@ -29,21 +29,51 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
   const [isSaving, setIsSaving] = useState(false)
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const pendingTitleRef = useRef<string | null>(null)
+  const isMountedRef = useRef(true)
 
-  const handleTitleChange = useCallback(async (newTitle: string) => {
-    if (role === 'viewer') return
-    
-    setTitle(newTitle)
-    setIsSaving(true)
-
+  const saveTitleToDb = useCallback(async (newTitle: string, skipStateUpdate = false) => {
+    if (!skipStateUpdate) setIsSaving(true)
     const supabase = createClient()
     await supabase
       .from('documents')
       .update({ title: newTitle })
       .eq('id', document.id)
+    if (!skipStateUpdate && isMountedRef.current) setIsSaving(false)
+  }, [document.id])
 
-    setIsSaving(false)
-  }, [document.id, role])
+  const handleTitleChange = useCallback((newTitle: string) => {
+    if (role === 'viewer') return
+    
+    setTitle(newTitle)
+    pendingTitleRef.current = newTitle
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      if (pendingTitleRef.current !== null) {
+        saveTitleToDb(pendingTitleRef.current)
+        pendingTitleRef.current = null
+      }
+    }, 300)
+  }, [role, saveTitleToDb])
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+        if (pendingTitleRef.current !== null) {
+          saveTitleToDb(pendingTitleRef.current, true)
+        }
+      }
+    }
+  }, [saveTitleToDb])
 
   const handleDeleteConfirm = useCallback(async () => {
     if (role !== 'owner') return

@@ -37,8 +37,11 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-full max-w-md p-8">
         <div className="mb-12">
-          <Link href="/" className="text-2xl font-bold tracking-tight">
-            LaTeX Writer
+          <Link href="/" className="text-2xl font-bold tracking-tight flex items-center gap-3">
+            <div className="logo-bar text-foreground">
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            </div>
+            LMMs-Lab Writer
           </Link>
         </div>
 
