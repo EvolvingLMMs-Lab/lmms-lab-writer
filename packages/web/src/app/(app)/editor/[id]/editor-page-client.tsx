@@ -364,14 +364,26 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                 />
               </svg>
             </Link>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => handleTitleChange(e.target.value)}
-              disabled={role === "viewer"}
-              className="text-lg font-medium bg-transparent border-0 focus:outline-none focus:ring-0 w-auto min-w-[200px] disabled:opacity-50"
-              placeholder="Untitled Document"
-            />
+            <div className="group relative flex items-center">
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => handleTitleChange(e.target.value)}
+                disabled={role === "viewer"}
+                className="text-lg font-medium bg-transparent border-0 focus:outline-none focus:ring-0 w-auto min-w-[200px] disabled:opacity-50 pr-6 hover:bg-neutral-100 focus:bg-neutral-100 px-2 py-0.5 -ml-2 transition-colors"
+                placeholder="Untitled Document"
+              />
+              {role !== "viewer" && (
+                <svg
+                  className="w-4 h-4 text-muted absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              )}
+            </div>
             {isSaving && <span className="text-xs text-muted">Saving...</span>}
           </div>
 
@@ -427,6 +439,20 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
               <span className="size-2 bg-green-500 rounded-full" />
               Connected
             </div>
+
+            {/* Feedback link */}
+            <a
+              href="https://github.com/Luodian/latex-writer/issues/new"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-muted hover:text-black transition-colors"
+              title="Send feedback"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              Feedback
+            </a>
 
             {role !== "owner" && (
               <span className="text-xs uppercase tracking-wider text-muted border border-border px-2 py-1">
