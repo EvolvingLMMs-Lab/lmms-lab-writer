@@ -190,14 +190,23 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
     // We'll use the directory name and let the user confirm
     const name = handle.name;
 
-    // Try to guess a reasonable default path
-    const defaultPath = `~/Documents/${name}`;
+    // Try to get last used base path from localStorage
+    const lastBasePath = localStorage.getItem('latex-writer-base-path') || '~/Github';
 
     // Prompt user to enter the path since browsers don't expose full paths
     const userPath = prompt(
-      `Enter the full path to "${name}":\n\nYou can use ~ for home directory.\nExample: ~/Documents/${name}`,
-      defaultPath
+      `Enter the full path to "${name}":\n\nCommon locations:\n  ~/Github/${name}\n  ~/Documents/${name}\n  ~/Projects/${name}\n\nUse ~ for home directory.`,
+      `${lastBasePath}/${name}`
     );
+
+    // Save the base path for next time
+    if (userPath) {
+      const basePath = userPath.substring(0, userPath.lastIndexOf('/'));
+      if (basePath) {
+        localStorage.setItem('latex-writer-base-path', basePath);
+      }
+    }
+
     return userPath;
   };
 
