@@ -86,6 +86,11 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         <string>$CLI_PATH</string>
         <string>serve</string>
     </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>

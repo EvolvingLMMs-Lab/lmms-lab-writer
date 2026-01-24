@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
+import { DocumentList } from './document-list'
 import { NewDocumentButton } from './new-document-button'
 import { SignOutButton } from './sign-out-button'
 
@@ -147,35 +148,7 @@ export default async function DashboardPage() {
             </div>
           </div>
         ) : (
-          <div className="border border-border divide-y divide-border">
-            {documents.map(doc => (
-              <Link
-                key={doc.id}
-                href={`/editor/${doc.id}`}
-                className="flex items-center justify-between p-4 hover:bg-accent-hover transition-colors group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="size-10 border border-border flex items-center justify-center group-hover:border-black transition-colors">
-                    <svg className="w-5 h-5 text-muted group-hover:text-black transition-colors" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-medium">{doc.title}</h3>
-                    <p className="text-sm text-muted">
-                      {doc.role !== 'owner' && (
-                        <span className="mr-2 text-xs uppercase tracking-wider">{doc.role}</span>
-                      )}
-                      {formatDate(doc.updated_at)}
-                    </p>
-                  </div>
-                </div>
-                <svg className="w-5 h-5 text-muted group-hover:text-black transition-colors" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1.5} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            ))}
-          </div>
+          <DocumentList documents={documents} />
         )}
       </main>
     </div>

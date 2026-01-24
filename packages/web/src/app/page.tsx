@@ -93,21 +93,21 @@ export default async function Home() {
                 <div className="w-12 h-12 mx-auto mb-4 border-2 border-black flex items-center justify-center text-xl font-bold">1</div>
                 <h3 className="font-bold mb-2">Install CLI</h3>
                 <p className="text-sm text-muted">
-                  One command. Background service starts automatically.
+                  One command
                 </p>
               </div>
               <div className="text-center">
                 <div className="w-12 h-12 mx-auto mb-4 border-2 border-black flex items-center justify-center text-xl font-bold">2</div>
                 <h3 className="font-bold mb-2">Open Project</h3>
                 <p className="text-sm text-muted">
-                  Select your LaTeX folder. Files sync to browser instantly.
+                  Pick your folder
                 </p>
               </div>
               <div className="text-center">
                 <div className="w-12 h-12 mx-auto mb-4 border-2 border-black flex items-center justify-center text-xl font-bold">3</div>
                 <h3 className="font-bold mb-2">Write & Compile</h3>
                 <p className="text-sm text-muted">
-                  Edit manually or let AI help. Compile locally with one click.
+                  AI helps, you control
                 </p>
               </div>
             </div>

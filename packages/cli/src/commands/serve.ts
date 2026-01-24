@@ -441,42 +441,53 @@ export async function serve(options: ServeOptions): Promise<void> {
         state.ptyProcess.kill()
       }
 
-      const isWindows = process.platform === 'win32'
-      const useCleanZsh = shell.endsWith('zsh')
-      const shellArgs = useCleanZsh ? ['-f'] : isWindows ? [] : []
+      try {
+        const isWindows = process.platform === 'win32'
+        const useCleanZsh = shell.endsWith('zsh')
+        const shellArgs = useCleanZsh ? ['-f'] : isWindows ? [] : []
 
-      state.ptyProcess = pty.spawn(shell, shellArgs, {
-        name: 'xterm-256color',
-        cols: 120,
-        rows: 30,
-        cwd: projectPath,
-        env: {
-          ...process.env,
-          TERM: 'xterm-256color',
-          COLORTERM: 'truecolor',
-        },
-      })
+        // Ensure PATH includes common locations for LaunchAgent environment
+        const envPath = process.env.PATH || ''
+        const additionalPaths = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin'
+        const fullPath = envPath.includes('/opt/homebrew/bin') ? envPath : `${additionalPaths}:${envPath}`
 
-      console.log(chalk.gray(`PTY spawned for ${projectPath} (pid: ${state.ptyProcess.pid})`))
+        state.ptyProcess = pty.spawn(shell, shellArgs, {
+          name: 'xterm-256color',
+          cols: 120,
+          rows: 30,
+          cwd: projectPath,
+          env: {
+            ...process.env,
+            PATH: fullPath,
+            TERM: 'xterm-256color',
+            COLORTERM: 'truecolor',
+          },
+        })
 
-      if (useCleanZsh) {
-        setTimeout(() => {
-          state.ptyProcess?.write('autoload -Uz compinit && compinit; PROMPT="%~ %# "; clear\n')
-        }, 50)
+        console.log(chalk.gray(`PTY spawned for ${projectPath} (pid: ${state.ptyProcess.pid})`))
+
+        if (useCleanZsh) {
+          setTimeout(() => {
+            state.ptyProcess?.write('autoload -Uz compinit && compinit; PROMPT="%~ %# "; clear\n')
+          }, 50)
+        }
+
+        state.ptyProcess.onData((data: string) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'output', data }))
+          }
+        })
+
+        state.ptyProcess.onExit(({ exitCode }: { exitCode: number }) => {
+          console.log(chalk.gray(`PTY exited (code: ${exitCode})`))
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'exit', code: exitCode }))
+          }
+        })
+      } catch (err) {
+        console.error(chalk.yellow(`PTY spawn failed: ${(err as Error).message}`))
+        // PTY is optional - file operations will still work
       }
-
-      state.ptyProcess.onData((data: string) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'output', data }))
-        }
-      })
-
-      state.ptyProcess.onExit(({ exitCode }: { exitCode: number }) => {
-        console.log(chalk.gray(`PTY exited (code: ${exitCode})`))
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'exit', code: exitCode }))
-        }
-      })
     }
 
     ws.on('message', (message: Buffer) => {
