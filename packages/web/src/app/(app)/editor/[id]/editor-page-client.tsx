@@ -104,6 +104,18 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
     };
   }, [saveTitleToDb]);
 
+  // Intercept Cmd/Ctrl+S globally to prevent browser save dialog
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        // Content is auto-saved, no action needed
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   useEffect(() => {
     if (!resizing) return;
 

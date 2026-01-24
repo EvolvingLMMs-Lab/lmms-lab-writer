@@ -189,6 +189,11 @@ export function CollaborativeEditor({
         monochromTheme,
         readOnlyCompartment.of(EditorState.readOnly.of(readOnly)),
         keymap.of([
+          // Intercept Cmd/Ctrl+S to prevent browser save dialog
+          { key: 'Mod-s', run: () => {
+            // Content is auto-saved, so just prevent default
+            return true
+          }},
           ...defaultKeymap,
           ...historyKeymap,
           ...searchKeymap,
