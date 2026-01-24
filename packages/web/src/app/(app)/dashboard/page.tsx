@@ -79,16 +79,18 @@ async function getDashboardData(): Promise<{
 export default async function DashboardPage() {
   const { documents } = await getDashboardData();
 
+  const isEmpty = documents.length === 0;
+
   return (
     <div className="min-h-screen">
-      <Header />
+      <Header hideNewButton={isEmpty} />
 
       <main className="max-w-5xl mx-auto px-6 py-12">
         <div className="mb-8">
           <h1 className="text-3xl font-light tracking-tight">Documents</h1>
         </div>
 
-        {documents.length === 0 ? (
+        {isEmpty ? (
           <div className="flex flex-col items-center justify-center py-24 border border-dashed border-neutral-300 bg-neutral-50/50">
             <div className="relative w-16 h-20 mb-8 group cursor-default">
               <div className="absolute inset-0 bg-neutral-200 border border-neutral-300 translate-x-2 translate-y-2 transition-transform duration-300 group-hover:translate-x-3 group-hover:translate-y-3" />
@@ -112,7 +114,7 @@ export default async function DashboardPage() {
               compilation.
             </p>
 
-            <NewDocumentButton variant="primary" />
+            <NewDocumentButton />
           </div>
         ) : (
           <DocumentList documents={documents} />

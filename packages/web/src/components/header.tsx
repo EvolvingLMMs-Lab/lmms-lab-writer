@@ -41,7 +41,11 @@ async function getUser(): Promise<UserProfile | null> {
   };
 }
 
-export async function Header() {
+type HeaderProps = {
+  hideNewButton?: boolean;
+};
+
+export async function Header({ hideNewButton = false }: HeaderProps) {
   const user = await getUser();
 
   return (
@@ -64,7 +68,7 @@ export async function Header() {
         </Link>
         {user ? (
           <div className="flex items-center gap-4">
-            <NewDocumentButton />
+            {!hideNewButton && <NewDocumentButton />}
             <UserDropdown
               email={user.email}
               name={user.name}
