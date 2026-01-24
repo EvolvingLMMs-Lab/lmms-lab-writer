@@ -1,8 +1,5 @@
-import { UserDropdown } from "@/components/user-dropdown";
-import { getDaysRemaining } from "@/lib/github/config";
+import { Header } from "@/components/header";
 import { createClient } from "@/lib/supabase/server";
-import type { Session } from "@supabase/supabase-js";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { DocumentList } from "./document-list";
@@ -29,36 +26,8 @@ type SharedAccess = {
   documents: OwnedDoc | null;
 };
 
-type UserProfile = {
-  email: string;
-  name: string | null;
-  avatarUrl: string | null;
-  tier: "free" | "supporter";
-  daysRemaining: number | null;
-};
-
-function getUserProfile(
-  session: Session,
-  membership: { tier: string; expires_at: string | null } | null
-): UserProfile {
-  const metadata = session.user.user_metadata || {};
-  const expiresAt = membership?.expires_at
-    ? new Date(membership.expires_at)
-    : null;
-
-  return {
-    email: session.user.email ?? "",
-    name: metadata.full_name || metadata.name || metadata.user_name || null,
-    avatarUrl: metadata.avatar_url || metadata.picture || null,
-    tier: (membership?.tier as "free" | "supporter") || "free",
-    daysRemaining: getDaysRemaining(expiresAt),
-  };
-}
-
 async function getDashboardData(): Promise<{
   documents: Document[];
-  profile: UserProfile;
-  documentsCount: number;
 }> {
   const supabase = await createClient();
 
@@ -72,25 +41,17 @@ async function getDashboardData(): Promise<{
   const userId = session.user.id;
 
   // Parallel database queries
-  const [ownedDocsResult, sharedAccessResult, membershipResult] =
-    await Promise.all([
-      supabase
-        .from("documents")
-        .select("id, title, created_at, updated_at")
-        .eq("created_by", userId)
-        .order("updated_at", { ascending: false }),
-      supabase
-        .from("document_access")
-        .select("document_id, role, documents(id, title, created_at, updated_at)")
-        .eq("user_id", userId),
-      supabase
-        .from("user_memberships")
-        .select("tier, expires_at")
-        .eq("user_id", userId)
-        .single(),
-    ]);
-
-  const profile = getUserProfile(session, membershipResult.data);
+  const [ownedDocsResult, sharedAccessResult] = await Promise.all([
+    supabase
+      .from("documents")
+      .select("id, title, created_at, updated_at")
+      .eq("created_by", userId)
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("document_access")
+      .select("document_id, role, documents(id, title, created_at, updated_at)")
+      .eq("user_id", userId),
+  ]);
 
   const ownedDocs = ownedDocsResult.data;
   const sharedAccess = sharedAccessResult.data;
@@ -112,48 +73,15 @@ async function getDashboardData(): Promise<{
       new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
 
-  return {
-    documents,
-    profile,
-    documentsCount: owned.length,
-  };
+  return { documents };
 }
 
 export default async function DashboardPage() {
-  const { documents, profile, documentsCount } = await getDashboardData();
+  const { documents } = await getDashboardData();
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border bg-background sticky top-0 z-50">
-        <div className="w-full max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link
-            href="/"
-            className="text-lg font-bold tracking-tight uppercase flex items-center gap-3"
-          >
-            <div className="logo-bar text-foreground">
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-            LMMs-Lab Writer
-          </Link>
-          <div className="flex items-center gap-4">
-            <NewDocumentButton />
-            <UserDropdown
-              email={profile.email}
-              name={profile.name}
-              avatarUrl={profile.avatarUrl}
-              tier={profile.tier}
-              daysRemaining={profile.daysRemaining}
-              documentsCount={documentsCount}
-            />
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <main className="max-w-5xl mx-auto px-6 py-12">
         <div className="mb-8">

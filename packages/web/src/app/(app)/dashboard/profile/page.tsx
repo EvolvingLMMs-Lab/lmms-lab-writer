@@ -1,7 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
-import { getDaysRemaining, MembershipTier } from "@/lib/github/config";
+import {
+  getDaysRemaining,
+  MembershipTier,
+  StarredRepo,
+  GITHUB_CONFIG,
+} from "@/lib/github/config";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { GitHubLoginButton } from "@/components/auth/github-login-button";
 
 type UserProfile = {
   id: string;
@@ -22,12 +28,77 @@ type MembershipData = {
   tier: MembershipTier;
   daysRemaining: number | null;
   totalStars: number;
+  starredRepos: StarredRepo[];
 };
+
+type RepoInfo = {
+  name: string;
+  full_name: string;
+  description: string | null;
+  stargazers_count: number;
+  html_url: string;
+};
+
+async function getRepoInfo(): Promise<RepoInfo[]> {
+  try {
+    const response = await fetch(
+      `https://api.github.com/orgs/${GITHUB_CONFIG.ORG}/repos?per_page=20&sort=stars&direction=desc`,
+      {
+        headers: {
+          Accept: "application/vnd.github.v3+json",
+          ...(process.env.GITHUB_TOKEN && {
+            Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+          }),
+        },
+        next: { revalidate: 3600 },
+      }
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const repos = await response.json();
+
+    return repos
+      .filter((repo: { private: boolean }) => !repo.private)
+      .sort((a: { stargazers_count: number }, b: { stargazers_count: number }) =>
+        b.stargazers_count - a.stargazers_count
+      )
+      .slice(0, 5)
+      .map(
+        (repo: {
+          name: string;
+          full_name: string;
+          description: string | null;
+          stargazers_count: number;
+          html_url: string;
+        }) => ({
+          name: repo.name,
+          full_name: repo.full_name,
+          description: repo.description,
+          stargazers_count: repo.stargazers_count,
+          html_url: repo.html_url,
+        })
+      );
+  } catch {
+    return [];
+  }
+}
+
+function formatStarCount(count: number): string {
+  if (count >= 1000) {
+    return `${(count / 1000).toFixed(1)}k`;
+  }
+  return count.toString();
+}
 
 async function getProfileData(): Promise<{
   profile: UserProfile;
   stats: UserStats;
   membership: MembershipData;
+  isGitHubConnected: boolean;
+  repos: RepoInfo[];
 }> {
   const supabase = await createClient();
 
@@ -52,21 +123,28 @@ async function getProfileData(): Promise<{
     lastSignIn: user.last_sign_in_at || null,
   };
 
-  const [ownedResult, sharedResult, membershipResult] = await Promise.all([
-    supabase
-      .from("documents")
-      .select("id", { count: "exact", head: true })
-      .eq("created_by", user.id),
-    supabase
-      .from("document_access")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id),
-    supabase
-      .from("user_memberships")
-      .select("tier, expires_at, total_star_count")
-      .eq("user_id", user.id)
-      .single(),
-  ]);
+  const [ownedResult, sharedResult, membershipResult, githubTokenResult, repos] =
+    await Promise.all([
+      supabase
+        .from("documents")
+        .select("id", { count: "exact", head: true })
+        .eq("created_by", user.id),
+      supabase
+        .from("document_access")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id),
+      supabase
+        .from("user_memberships")
+        .select("tier, expires_at, total_star_count, starred_repos")
+        .eq("user_id", user.id)
+        .single(),
+      supabase
+        .from("user_github_tokens")
+        .select("id")
+        .eq("user_id", user.id)
+        .single(),
+      getRepoInfo(),
+    ]);
 
   const stats: UserStats = {
     documentsOwned: ownedResult.count ?? 0,
@@ -82,9 +160,17 @@ async function getProfileData(): Promise<{
     tier: (membershipData?.tier as MembershipTier) || "free",
     daysRemaining: getDaysRemaining(expiresAt),
     totalStars: membershipData?.total_star_count || 0,
+    starredRepos:
+      (membershipData?.starred_repos as unknown as StarredRepo[]) || [],
   };
 
-  return { profile, stats, membership };
+  return {
+    profile,
+    stats,
+    membership,
+    isGitHubConnected: !!githubTokenResult.data,
+    repos,
+  };
 }
 
 function formatDate(date: string): string {
@@ -120,9 +206,17 @@ function getProviderName(provider: string | null): string {
 }
 
 export default async function ProfilePage() {
-  const { profile, stats, membership } = await getProfileData();
+  const { profile, stats, membership, isGitHubConnected, repos } =
+    await getProfileData();
   const displayName = profile.name || profile.email.split("@")[0];
   const initial = displayName.charAt(0).toUpperCase();
+
+  const starredRepoNames = new Set(membership.starredRepos.map((r) => r.repo));
+  const maxStars = GITHUB_CONFIG.ELIGIBLE_REPOS.length;
+  const progressPercent = Math.min(
+    (membership.totalStars / maxStars) * 100,
+    100
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -145,9 +239,12 @@ export default async function ProfilePage() {
           </Link>
           <Link
             href="/dashboard"
-            className="text-sm text-muted hover:text-black transition-colors"
+            className="text-sm text-muted hover:text-black transition-colors flex items-center gap-1.5"
           >
-            ← Back to Dashboard
+            <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Back to Dashboard
           </Link>
         </div>
       </header>
@@ -163,8 +260,8 @@ export default async function ProfilePage() {
               className="size-24 border-2 border-black"
             />
           ) : (
-            <div className="size-24 border-2 border-black bg-black text-white flex items-center justify-center">
-              <span className="text-4xl font-light">{initial}</span>
+            <div className="size-24 border-2 border-black bg-neutral-100 flex items-center justify-center">
+              <span className="text-4xl font-light text-neutral-600">{initial}</span>
             </div>
           )}
 
@@ -222,10 +319,7 @@ export default async function ProfilePage() {
           </div>
 
           {/* Membership */}
-          <Link
-            href="/dashboard/membership"
-            className="border border-border p-6 hover:border-black transition-colors group cursor-pointer"
-          >
+          <div className="border border-border p-6">
             <div className="flex items-center justify-between mb-2">
               <span
                 className={`text-xs font-mono uppercase px-2 py-0.5 ${
@@ -236,19 +330,6 @@ export default async function ProfilePage() {
               >
                 {membership.tier}
               </span>
-              <svg
-                className="size-4 text-muted group-hover:text-black transition-colors"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
             </div>
             <p className="text-sm text-muted">
               {membership.tier === "supporter" && membership.daysRemaining
@@ -260,11 +341,11 @@ export default async function ProfilePage() {
                 {membership.totalStars} repos starred
               </p>
             )}
-          </Link>
+          </div>
         </div>
 
         {/* Account Details */}
-        <div className="border border-border">
+        <div className="border border-border mb-8">
           <div className="px-6 py-4 border-b border-border bg-neutral-50">
             <h2 className="text-sm font-mono uppercase tracking-wider">
               Account Details
@@ -297,6 +378,159 @@ export default async function ProfilePage() {
                 </span>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Star to Unlock Section */}
+        <div className="border border-border">
+          <div className="px-6 py-4 border-b border-border bg-neutral-50 flex items-center justify-between">
+            <h2 className="text-sm font-mono uppercase tracking-wider">
+              Star to Unlock
+            </h2>
+            {/* Progress */}
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted font-mono">
+                {membership.totalStars}/{maxStars}
+              </span>
+              <div className="w-24 h-1.5 bg-neutral-100 border border-neutral-200">
+                <div
+                  className="h-full bg-black transition-all duration-500"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6">
+            {/* GitHub Connection */}
+            {!isGitHubConnected && (
+              <div className="border-2 border-dashed border-neutral-300 p-8 text-center mb-6">
+                <svg
+                  className="size-10 mx-auto mb-4 text-neutral-400"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+                </svg>
+                <h3 className="text-lg font-medium mb-2">Connect GitHub</h3>
+                <p className="text-sm text-muted mb-6 max-w-sm mx-auto">
+                  Link your GitHub account to track stars and unlock membership.
+                </p>
+                <GitHubLoginButton />
+              </div>
+            )}
+
+            {/* Repositories to Star */}
+            <div className="space-y-2 mb-8">
+              {repos.map((repo) => {
+                const isStarred = starredRepoNames.has(repo.name);
+
+                return (
+                  <div
+                    key={repo.name}
+                    className={`flex items-center justify-between p-4 border transition-colors ${
+                      isStarred
+                        ? "border-black bg-neutral-50"
+                        : "border-neutral-200 hover:border-neutral-400"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {isStarred ? (
+                        <svg
+                          className="size-5 text-black flex-shrink-0"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                      ) : (
+                        <svg
+                          className="size-5 text-neutral-400 flex-shrink-0"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={1.5}
+                        >
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <a
+                          href={repo.html_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-sm hover:underline block truncate"
+                        >
+                          {repo.name}
+                        </a>
+                        {repo.description && (
+                          <p className="text-xs text-muted truncate mt-0.5">
+                            {repo.description}
+                          </p>
+                        )}
+                      </div>
+                      {repo.stargazers_count > 0 && (
+                        <span className="text-xs text-muted font-mono tabular-nums flex-shrink-0">
+                          {formatStarCount(repo.stargazers_count)}
+                        </span>
+                      )}
+                    </div>
+
+                    {isStarred ? (
+                      <span className="text-xs font-mono uppercase tracking-wider text-muted ml-4 flex-shrink-0">
+                        +7 days
+                      </span>
+                    ) : (
+                      <a
+                        href={repo.html_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-1.5 border border-black text-xs font-mono uppercase tracking-wider hover:bg-neutral-100 transition-colors ml-4 flex-shrink-0"
+                      >
+                        Star
+                      </a>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* How It Works */}
+            <div className="border-t border-border pt-6">
+              <h3 className="text-sm font-mono uppercase tracking-wider text-muted mb-4">
+                How It Works
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div>
+                  <div className="size-10 border border-black flex items-center justify-center mb-3 font-mono font-bold">
+                    1
+                  </div>
+                  <h4 className="font-medium mb-1">Star</h4>
+                  <p className="text-sm text-muted">
+                    Star any of our repos on GitHub.
+                  </p>
+                </div>
+                <div>
+                  <div className="size-10 border border-black flex items-center justify-center mb-3 font-mono font-bold">
+                    2
+                  </div>
+                  <h4 className="font-medium mb-1">Earn</h4>
+                  <p className="text-sm text-muted">
+                    Each star = +{GITHUB_CONFIG.DAYS_PER_STAR} days membership.
+                  </p>
+                </div>
+                <div>
+                  <div className="size-10 border border-black flex items-center justify-center mb-3 font-mono font-bold">
+                    3
+                  </div>
+                  <h4 className="font-medium mb-1">Max</h4>
+                  <p className="text-sm text-muted">
+                    Up to {GITHUB_CONFIG.MAX_DAYS} days with{" "}
+                    {GITHUB_CONFIG.MAX_STARS} stars.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </main>

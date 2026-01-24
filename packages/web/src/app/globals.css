@@ -159,7 +159,15 @@ kbd {
 }
 
 .btn-primary:hover {
-  @apply bg-neutral-800;
+  @apply bg-neutral-700;
+}
+
+.btn-soft {
+  @apply bg-neutral-900 text-white;
+}
+
+.btn-soft:hover {
+  @apply bg-neutral-700;
 }
 
 .btn-secondary {

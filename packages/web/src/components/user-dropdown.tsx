@@ -139,7 +139,7 @@ export function UserDropdown({
                   {daysRemaining > 0 ? `${daysRemaining} days left` : "Expired"}
                 </span>
                 <Link
-                  href="/dashboard/membership"
+                  href="/dashboard/profile"
                   onClick={() => setIsOpen(false)}
                   className="text-xs text-muted hover:text-black transition-colors"
                 >
@@ -148,12 +148,12 @@ export function UserDropdown({
               </div>
             ) : (
               <Link
-                href="/dashboard/membership"
+                href="/dashboard/profile"
                 onClick={() => setIsOpen(false)}
                 className="flex items-center justify-between group"
               >
                 <span className="text-sm font-medium">Star repos to unlock</span>
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-black group-hover:underline">
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-muted group-hover:text-black transition-colors">
                   Unlock
                   <svg
                     className="size-3"
@@ -182,25 +182,19 @@ export function UserDropdown({
           </div>
 
           {/* Actions */}
-          <div className="p-3">
+          <div className="px-5 py-3 flex items-center justify-between">
+            <Link
+              href="/dashboard/profile"
+              onClick={() => setIsOpen(false)}
+              className="text-sm hover:text-black text-muted transition-colors"
+            >
+              Profile
+            </Link>
             <button
               onClick={handleSignOut}
               disabled={isSigningOut}
-              className="w-full px-4 py-3 text-left hover:bg-neutral-100 transition-colors disabled:opacity-50 flex items-center gap-3"
+              className="text-sm text-muted hover:text-black transition-colors disabled:opacity-50"
             >
-              <svg
-                className="size-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                />
-              </svg>
               {isSigningOut ? "Signing out..." : "Sign out"}
             </button>
           </div>

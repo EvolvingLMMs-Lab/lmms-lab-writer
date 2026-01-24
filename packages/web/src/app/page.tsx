@@ -1,74 +1,11 @@
 import Link from "next/link";
 
-import { createClient } from "@/lib/supabase/server";
+import { Header } from "@/components/header";
 
-type UserProfile = {
-  email: string;
-};
-
-async function getUser(): Promise<UserProfile | null> {
-  const supabase = await createClient();
-  // getSession() reads from cookie - ZERO network requests
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) return null;
-  return {
-    email: session.user.email ?? "",
-  };
-}
-
-export default async function Home() {
-  const user = await getUser();
-
+export default function Home() {
   return (
     <div className="min-h-screen flex flex-col font-mono text-foreground bg-background selection:bg-accent selection:text-white">
-      {/* Header */}
-      <header className="border-b border-border bg-background sticky top-0 z-50">
-        <div className="w-full max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link
-            href="/"
-            className="text-lg font-bold tracking-tight uppercase flex items-center gap-3"
-          >
-            <div className="logo-bar text-foreground">
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-            LMMs-Lab Writer
-          </Link>
-          {user ? (
-            <Link
-              href="/dashboard"
-              className="size-8 border border-neutral-300 hover:border-black flex items-center justify-center transition-colors"
-              title={user.email}
-            >
-              <span className="text-sm font-medium text-neutral-600">
-                {user.email.charAt(0).toUpperCase()}
-              </span>
-            </Link>
-          ) : (
-            <div className="flex items-center gap-4">
-              <Link
-                href="/login"
-                className="text-sm text-muted hover:text-black transition-colors hidden sm:block"
-              >
-                Login
-              </Link>
-              <Link
-                href="/signup"
-                className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 active:bg-black/60 transition-colors"
-              >
-                Get Started
-              </Link>
-            </div>
-          )}
-        </div>
-      </header>
+      <Header />
 
       <main className="flex-1">
         {/* Hero - Single focused message */}
@@ -84,7 +21,7 @@ export default async function Home() {
             <div className="animate-fade-in-up delay-200 flex flex-col sm:flex-row gap-3 justify-center">
               <Link
                 href="/signup"
-                className="px-8 py-4 bg-black text-white font-medium hover:bg-black/80 active:bg-black/60 active:scale-[0.98] transition-all"
+                className="px-8 py-4 bg-black text-white font-medium hover:bg-neutral-700 active:bg-neutral-800 active:scale-[0.98] transition-all"
               >
                 Start Writing
               </Link>
