@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { GitHubLoginButton } from "@/components/auth/github-login-button";
+import { RefreshStarsButton } from "@/components/auth/refresh-stars-button";
 
 type UserProfile = {
   id: string;
@@ -391,16 +392,19 @@ export default async function ProfilePage() {
             <h2 className="text-sm font-mono uppercase tracking-wider">
               Star to Unlock
             </h2>
-            {/* Progress */}
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted font-mono">
-                {membership.totalStars}/{maxStars}
-              </span>
-              <div className="w-24 h-1.5 bg-neutral-100 border border-neutral-200">
-                <div
-                  className="h-full bg-black transition-all duration-500"
-                  style={{ width: `${progressPercent}%` }}
-                />
+            {/* Progress + Refresh */}
+            <div className="flex items-center gap-4">
+              {isGitHubConnected && <RefreshStarsButton />}
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted font-mono">
+                  {membership.totalStars}/{maxStars}
+                </span>
+                <div className="w-24 h-1.5 bg-neutral-100 border border-neutral-200">
+                  <div
+                    className="h-full bg-black transition-all duration-500"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
               </div>
             </div>
           </div>
