@@ -73,16 +73,16 @@ body {
   background-color: #a3a3a3;
 }
 
-/* OverlayScrollbars custom theme - sharp monochrome hollow style */
+/* OverlayScrollbars custom theme - subtle shadow on hover */
 .os-theme-monochrome {
-  --os-size: 12px;
-  --os-padding-perpendicular: 0;
-  --os-padding-axis: 0;
+  --os-size: 14px;
+  --os-padding-perpendicular: 3px;
+  --os-padding-axis: 3px;
   --os-track-border-radius: 0;
   --os-handle-border-radius: 0;
   --os-handle-bg: transparent;
-  --os-handle-bg-hover: transparent;
-  --os-handle-bg-active: #000;
+  --os-handle-bg-hover: rgba(0, 0, 0, 0.15);
+  --os-handle-bg-active: rgba(0, 0, 0, 0.25);
 }
 
 .os-theme-monochrome .os-scrollbar {
@@ -90,35 +90,31 @@ body {
 }
 
 .os-theme-monochrome .os-scrollbar .os-scrollbar-track {
-  background: #fafafa !important;
+  background: transparent !important;
 }
 
 .os-theme-monochrome .os-scrollbar-vertical .os-scrollbar-track {
-  border-left: 1px solid var(--border) !important;
+  border-left: none !important;
 }
 
 .os-theme-monochrome .os-scrollbar-horizontal .os-scrollbar-track {
-  border-top: 1px solid var(--border) !important;
+  border-top: none !important;
 }
 
 .os-theme-monochrome .os-scrollbar .os-scrollbar-handle {
   border-radius: 0 !important;
-  border: 2px solid #333 !important;
-  background: transparent !important;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease !important;
+  border: none !important;
+  background: rgba(0, 0, 0, 0.08) !important;
+  transition: background-color 0.15s ease !important;
 }
 
 .os-theme-monochrome .os-scrollbar .os-scrollbar-handle:hover {
-  border-color: #000 !important;
-  background: transparent !important;
+  background: rgba(0, 0, 0, 0.2) !important;
 }
 
 .os-theme-monochrome .os-scrollbar .os-scrollbar-handle:active,
 .os-theme-monochrome .os-scrollbar .os-scrollbar-handle.active {
-  border-color: #000 !important;
-  background: #000 !important;
+  background: rgba(0, 0, 0, 0.3) !important;
 }
 
 kbd {

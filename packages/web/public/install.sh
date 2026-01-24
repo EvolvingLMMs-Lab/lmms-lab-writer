@@ -1,6 +1,7 @@
 #!/bin/bash
-# LMMs-Lab Writer - Installation Script
-# Installs the daemon as a background service
+# Agentic LaTeX Writer - Installation Script
+# AI-native LaTeX editor for researchers
+# https://github.com/EvolvingLMMs-Lab/agentic-latex-writer
 
 set -e
 
@@ -10,9 +11,10 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo ""
-echo "╔════════════════════════════════════════════╗"
-echo "║     LMMs-Lab Writer - Installation         ║"
-echo "╚════════════════════════════════════════════╝"
+echo "╔════════════════════════════════════════════════════════════╗"
+echo "║           Agentic LaTeX Writer - Installation              ║"
+echo "║   Let Claude, Cursor, and Codex write your papers          ║"
+echo "╚════════════════════════════════════════════════════════════╝"
 echo ""
 
 # Check Node.js
@@ -149,7 +151,7 @@ echo ""
 echo "The daemon is now running in the background."
 echo ""
 echo "Next steps:"
-echo "  1. Open https://latex-writer.vercel.app"
+echo "  1. Open https://agentic-latex-writer.vercel.app"
 echo "  2. Click 'Open Folder' to select your LaTeX project"
 echo "  3. Start writing!"
 echo ""

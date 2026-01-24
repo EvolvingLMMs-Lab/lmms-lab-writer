@@ -1,12 +1,14 @@
-# LMMs-Lab Writer - Installation Script for Windows
-# Installs the daemon as a background service using Task Scheduler
+# Agentic LaTeX Writer - Installation Script for Windows
+# AI-native LaTeX editor for researchers
+# https://github.com/EvolvingLMMs-Lab/agentic-latex-writer
 
 $ErrorActionPreference = "Stop"
 
 Write-Host ""
-Write-Host "╔════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║     LMMs-Lab Writer - Installation         ║" -ForegroundColor Cyan
-Write-Host "╚════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║           Agentic LaTeX Writer - Installation              ║" -ForegroundColor Cyan
+Write-Host "║   Let Claude, Cursor, and Codex write your papers          ║" -ForegroundColor Cyan
+Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
 
 # Check Node.js
@@ -87,7 +89,7 @@ Write-Host ""
 Write-Host "The daemon is now running in the background."
 Write-Host ""
 Write-Host "Next steps:"
-Write-Host "  1. Open https://latex-writer.vercel.app"
+Write-Host "  1. Open https://agentic-latex-writer.vercel.app"
 Write-Host "  2. Click 'Open Folder' to select your LaTeX project"
 Write-Host "  3. Start writing!"
 Write-Host ""

@@ -228,6 +228,10 @@ export function useDaemon(wsUrl = "ws://localhost:3001") {
     wsRef.current?.send(JSON.stringify({ type: "git-init" }));
   }, []);
 
+  const gitAddRemote = useCallback((url: string, name = "origin") => {
+    wsRef.current?.send(JSON.stringify({ type: "git-add-remote", url, name }));
+  }, []);
+
   const clearGitInitResult = useCallback(() => {
     setState((s) => ({ ...s, gitInitResult: null }));
   }, []);
@@ -253,6 +257,7 @@ export function useDaemon(wsUrl = "ws://localhost:3001") {
     gitPush,
     gitPull,
     gitInit,
+    gitAddRemote,
     clearGitInitResult,
     refreshGitStatus,
   };

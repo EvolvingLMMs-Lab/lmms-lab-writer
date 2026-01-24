@@ -2,8 +2,8 @@ export default function DashboardLoading() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-border">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="text-xl font-bold tracking-tight flex items-center gap-3">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="text-lg font-bold tracking-tight uppercase flex items-center gap-3">
             <div className="logo-bar text-foreground">
               <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
             </div>
@@ -16,7 +16,7 @@ export default function DashboardLoading() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-12">
+      <main className="max-w-5xl mx-auto px-6 py-12">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-light tracking-tight">Documents</h1>
           <div className="flex items-center gap-3">

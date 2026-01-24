@@ -7,10 +7,20 @@ import { ShareModal } from "@/components/sharing/share-modal";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDaemon } from "@/lib/daemon";
+import { useOpenCodeDetection } from "@/lib/opencode";
 import { createClient } from "@/lib/supabase/client";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+const OpenCodePanelLazy = dynamic(
+  () =>
+    import("@/components/opencode/opencode-panel").then(
+      (mod) => mod.OpenCodePanel,
+    ),
+  { ssr: false },
+);
 
 type Document = {
   id: string;
@@ -30,6 +40,7 @@ type Props = {
 export function EditorPageClient({ document, userId, userName, role }: Props) {
   const router = useRouter();
   const daemon = useDaemon();
+  const openCodeStatus = useOpenCodeDetection({ enabled: true });
 
   const [title, setTitle] = useState(document.title);
   const [isSaving, setIsSaving] = useState(false);
@@ -38,6 +49,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
   const [selectedFile, setSelectedFile] = useState<string>();
   const [fileContent, setFileContent] = useState<string>("");
   const [openTabs, setOpenTabs] = useState<string[]>([]);
+  const [binaryPreviewUrl, setBinaryPreviewUrl] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(true);
   const [showPdf, setShowPdf] = useState(false);
   const [pdfUrl] = useState<string | null>(null);
@@ -53,7 +65,9 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
   });
   const [resizing, setResizing] = useState<"sidebar" | "right" | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"files" | "git">("files");
-  const [rightTab, setRightTab] = useState<"compile" | "terminal">("compile");
+  const [rightTab, setRightTab] = useState<"compile" | "terminal" | "opencode">(
+    "compile",
+  );
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showQuickOpen, setShowQuickOpen] = useState(false);
   const [quickOpenQuery, setQuickOpenQuery] = useState("");
@@ -64,6 +78,10 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
   // Commit state
   const [commitMessage, setCommitMessage] = useState("");
   const [showCommitInput, setShowCommitInput] = useState(false);
+
+  // Remote state
+  const [showRemoteInput, setShowRemoteInput] = useState(false);
+  const [remoteUrl, setRemoteUrl] = useState("");
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingTitleRef = useRef<string | null>(null);
@@ -172,20 +190,41 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
     };
   }, [resizing]);
 
+  const getFileType = useCallback((path: string): "text" | "image" | "pdf" => {
+    const ext = path.split(".").pop()?.toLowerCase() || "";
+    if (
+      ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico"].includes(ext)
+    ) {
+      return "image";
+    }
+    if (ext === "pdf") {
+      return "pdf";
+    }
+    return "text";
+  }, []);
+
   const handleFileSelect = useCallback(
     async (path: string) => {
-      // Add to tabs first, then set as selected
+      const fileType = getFileType(path);
+
       setOpenTabs((prev) => {
         if (prev.includes(path)) return prev;
         return [...prev, path];
       });
       setSelectedFile(path);
-      const content = await daemon.readFile(path);
-      if (content !== null) {
-        setFileContent(content);
+      setBinaryPreviewUrl(null);
+
+      if (fileType === "text") {
+        const content = await daemon.readFile(path);
+        setFileContent(content ?? "");
+      } else {
+        setBinaryPreviewUrl(
+          `http://localhost:3002/${encodeURIComponent(path)}`,
+        );
+        setFileContent("");
       }
     },
-    [daemon],
+    [daemon, getFileType],
   );
 
   // Safety: ensure selectedFile is always in openTabs
@@ -472,54 +511,47 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
   return (
     <div className="h-dvh flex flex-col">
       <header className="border-b border-border flex-shrink-0">
-        <div className="px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="px-4 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Logo - Home */}
+            <Link
+              href="/"
+              aria-label="Home"
+              className="hover:opacity-70 transition-opacity shrink-0"
+            >
+              <div className="logo-bar text-foreground">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </Link>
+            <span className="text-border">/</span>
+            {/* Back to Dashboard */}
             <Link
               href="/dashboard"
-              aria-label="Back to dashboard"
-              className="text-muted hover:text-black"
+              className="text-sm text-muted hover:text-black transition-colors shrink-0"
             >
-              <svg
-                className="size-5"
-                aria-hidden="true"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="square"
-                  strokeLinejoin="miter"
-                  strokeWidth={1.5}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
+              Dashboard
             </Link>
-            <div className="group relative flex items-center">
+            <span className="text-border">/</span>
+            {/* Document Title */}
+            <div className="flex items-center gap-2 min-w-0">
               <input
                 type="text"
                 value={title}
                 onChange={(e) => handleTitleChange(e.target.value)}
                 disabled={role === "viewer"}
-                className="text-lg font-medium bg-transparent border-0 focus:outline-none focus:ring-0 w-auto min-w-[200px] disabled:opacity-50 pr-6 hover:bg-neutral-100 focus:bg-neutral-100 px-2 py-0.5 -ml-2 transition-colors"
+                className="text-sm font-medium bg-transparent border-0 focus:outline-none focus:ring-0 min-w-0 max-w-[300px] disabled:opacity-50 hover:bg-neutral-100 focus:bg-neutral-100 px-2 py-1 -ml-2 transition-colors truncate"
                 placeholder="Untitled Document"
               />
-              {role !== "viewer" && (
-                <svg
-                  className="w-4 h-4 text-muted absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                  />
-                </svg>
+              {isSaving && (
+                <span className="text-xs text-muted shrink-0">Saving...</span>
               )}
             </div>
-            {isSaving && <span className="text-xs text-muted">Saving...</span>}
           </div>
 
           <div className="flex items-center gap-4">
@@ -895,9 +927,58 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                           </div>
                         )}
                         {!gitStatus.remote && (
-                          <p className="text-xs text-muted mt-1">
-                            Local only - push to GitHub for sync
-                          </p>
+                          <div className="mt-2">
+                            {showRemoteInput ? (
+                              <div className="space-y-2">
+                                <input
+                                  type="text"
+                                  value={remoteUrl}
+                                  onChange={(e) => setRemoteUrl(e.target.value)}
+                                  placeholder="https://github.com/user/repo.git"
+                                  className="w-full px-2 py-1 text-xs border border-border focus:outline-none focus:border-black"
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && remoteUrl.trim()) {
+                                      daemon.gitAddRemote(remoteUrl.trim());
+                                      setRemoteUrl("");
+                                      setShowRemoteInput(false);
+                                    }
+                                    if (e.key === "Escape") {
+                                      setShowRemoteInput(false);
+                                    }
+                                  }}
+                                  autoFocus
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => {
+                                      if (remoteUrl.trim()) {
+                                        daemon.gitAddRemote(remoteUrl.trim());
+                                        setRemoteUrl("");
+                                        setShowRemoteInput(false);
+                                      }
+                                    }}
+                                    disabled={!remoteUrl.trim()}
+                                    className="flex-1 px-2 py-1 bg-black text-white text-xs hover:bg-black/80 disabled:opacity-50"
+                                  >
+                                    Connect
+                                  </button>
+                                  <button
+                                    onClick={() => setShowRemoteInput(false)}
+                                    className="px-2 py-1 text-xs text-muted hover:text-black"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setShowRemoteInput(true)}
+                                className="text-xs text-black hover:underline"
+                              >
+                                + Connect to GitHub
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
 
@@ -1048,9 +1129,8 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
         )}
 
         <div className="flex-1 min-w-0 flex flex-col">
-          {/* File tabs */}
-          {openTabs.length > 0 && (
-            <div className="flex items-center border-b border-border bg-neutral-50 overflow-x-auto">
+          {selectedFile && (
+            <div className="flex items-center border-b border-border bg-neutral-50 overflow-x-auto min-h-[34px]">
               {openTabs.map((tab) => {
                 const fileName = tab.split("/").pop() || tab;
                 const isActive = tab === selectedFile;
@@ -1094,16 +1174,44 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
             </div>
           )}
           {daemon.projectPath && selectedFile ? (
-            <CollaborativeEditorLazy
-              documentId={document.id}
-              userId={userId}
-              userName={userName}
-              userColor={userColor}
-              content={fileContent}
-              readOnly={role === "viewer"}
-              onContentChange={handleContentChange}
-              className="flex-1"
-            />
+            binaryPreviewUrl ? (
+              <div className="flex-1 flex items-center justify-center bg-neutral-50 overflow-auto p-4">
+                {getFileType(selectedFile) === "image" ? (
+                  <img
+                    src={binaryPreviewUrl}
+                    alt={selectedFile}
+                    className="max-w-full max-h-full object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                      (e.target as HTMLImageElement).parentElement!.innerHTML =
+                        `
+                        <div class="text-center text-muted">
+                          <p class="mb-2">Cannot preview image</p>
+                          <p class="text-xs">${selectedFile}</p>
+                        </div>
+                      `;
+                    }}
+                  />
+                ) : (
+                  <iframe
+                    src={binaryPreviewUrl}
+                    className="w-full h-full border-0"
+                    title={`PDF: ${selectedFile}`}
+                  />
+                )}
+              </div>
+            ) : (
+              <CollaborativeEditorLazy
+                documentId={document.id}
+                userId={userId}
+                userName={userName}
+                userColor={userColor}
+                content={fileContent}
+                readOnly={role === "viewer"}
+                onContentChange={handleContentChange}
+                className="flex-1"
+              />
+            )
           ) : (
             <div className="flex-1 flex items-center justify-center">
               {daemon.projectPath ? (
@@ -1211,6 +1319,24 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                 >
                   PDF
                 </button>
+                <button
+                  onClick={() => setRightTab("opencode")}
+                  className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
+                    rightTab === "opencode"
+                      ? "text-black border-b-2 border-black -mb-px"
+                      : "text-muted hover:text-black"
+                  }`}
+                >
+                  <span
+                    className={`size-1.5 ${openCodeStatus.available ? "bg-green-500" : "bg-muted"}`}
+                    title={
+                      openCodeStatus.available
+                        ? "OpenCode server running"
+                        : "OpenCode server not detected"
+                    }
+                  />
+                  OpenCode
+                </button>
               </div>
 
               {rightTab === "compile" && (
@@ -1237,6 +1363,14 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                     </div>
                   )}
                 </div>
+              )}
+
+              {rightTab === "opencode" && (
+                <OpenCodePanelLazy
+                  className="flex-1"
+                  directory={daemon.projectPath ?? undefined}
+                  autoConnect={openCodeStatus.available}
+                />
               )}
             </aside>
           </>

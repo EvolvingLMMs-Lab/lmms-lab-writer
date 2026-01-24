@@ -1,330 +1,231 @@
-# AGENTS.md - LMMs-Lab Writer
+# AGENTS.md - Agentic LaTeX Writer
 
-Guidelines for AI agents operating in this codebase.
+**Generated:** 2026-01-24 | **Commit:** 2b1dfaa | **Branch:** main
 
-## Project Overview
+## Overview
 
-Collaborative LaTeX editing platform with real-time sync. Three packages:
-- `packages/web` - Next.js 15 web app (React 19, Supabase, Y.js)
-- `packages/cli` - Node.js CLI for local LaTeX compilation
-- `packages/shared` - Shared types and utilities
+AI-native LaTeX editing platform. Let Claude, Cursor, and Codex write your papers while you focus on research. Web editor (Next.js 15) + local CLI daemon for compilation. Real-time sync via Supabase + optional local file bridge.
 
-## Build Commands
+## Structure
+
+```
+agentic-latex-writer/
+├── packages/
+│   ├── web/          # Next.js 15 App Router - see packages/web/AGENTS.md
+│   ├── cli/          # Node CLI daemon - see packages/cli/AGENTS.md
+│   └── shared/       # Types: Document, CompileResult, GitStatus
+├── turbo.json        # Task orchestration (build depends on ^build)
+└── pnpm-workspace.yaml
+```
+
+## Where to Look
+
+| Task             | Location                                  | Notes                                               |
+| ---------------- | ----------------------------------------- | --------------------------------------------------- |
+| Editor UI        | `packages/web/src/app/(app)/editor/[id]/` | God component: `editor-page-client.tsx` (848 lines) |
+| Dashboard        | `packages/web/src/app/(app)/dashboard/`   | Document list, sharing                              |
+| API routes       | `packages/web/src/app/api/`               | Supabase + auth checks                              |
+| CLI daemon       | `packages/cli/src/commands/serve.ts`      | WebSocket server (750 lines)                        |
+| Shared types     | `packages/shared/src/index.ts`            | Domain model for both packages                      |
+| Supabase clients | `packages/web/src/lib/supabase/`          | server.ts, client.ts, admin.ts                      |
+| Local FS bridge  | `packages/web/src/lib/daemon/`            | useDaemon hook                                      |
+| DB schema        | `packages/web/supabase/migrations/`       | RLS policies defined here                           |
+
+## Architecture
+
+```
+┌─────────────┐     WebSocket      ┌─────────────┐
+│  Web App    │ ◄─────────────────► │  CLI Daemon │
+│  (Next.js)  │   ws://localhost:3001   │  (Node.js)  │
+└──────┬──────┘                    └──────┬──────┘
+       │                                  │
+       │ REST/Realtime                    │ Local FS
+       ▼                                  ▼
+┌─────────────┐                    ┌─────────────┐
+│  Supabase   │                    │  latexmk    │
+│  (Cloud)    │                    │  git, pty   │
+└─────────────┘                    └─────────────┘
+```
+
+**Key flows:**
+
+- Cloud-only: Web ↔ Supabase (documents, auth, presence)
+- Local mode: Web ↔ CLI daemon ↔ local files + latexmk
+
+## Commands
+
+**AI Agents: Do NOT start dev servers. Only use build commands for verification.**
 
 ```bash
-# Root - runs across all packages via Turborepo
-pnpm build          # Build all packages
-pnpm dev            # Dev mode all packages
-pnpm lint           # Lint all packages
-pnpm typecheck      # Type check all packages
-pnpm format         # Format with Prettier
-pnpm clean          # Clean build artifacts
+# Verify changes (use this, not dev)
+pnpm build && pnpm typecheck
 
-# Single package
-pnpm --filter web build
-pnpm --filter web dev
-pnpm --filter web typecheck
-pnpm --filter cli build
-pnpm --filter cli typecheck
+# Development (human use only)
+pnpm dev              # All packages
+pnpm --filter web dev -p 4355  # Web on port 4355
 
-# IMPORTANT: Always run before deploying
-cd packages/web && pnpm build && pnpm typecheck
+# Deploy
+cd packages/web && vercel --prod --token $VERCEL_TOKEN
+
+# CLI daemon (for local compilation)
+cd packages/cli && pnpm dev  # or: llw serve
 ```
 
-## Test Commands
+## Conventions
 
-No test framework configured yet. When adding tests:
-```bash
-# Future pattern
-pnpm test                    # All tests
-pnpm --filter web test       # Web tests only
-pnpm test -- path/to/test    # Single test file
-```
+### TypeScript
 
-## Local Development
-
-```bash
-# Start web app on custom port
-cd packages/web
-pnpm dev -p 4355
-
-# Environment variables required (.env.local)
-NEXT_PUBLIC_SUPABASE_URL=https://zafyriojatnniyabkqrc.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_xxx  # Get from Supabase Dashboard
-NEXT_PUBLIC_SITE_URL=http://localhost:4355
-```
-
-## Database Setup (Supabase)
-
-Project ref: `zafyriojatnniyabkqrc`
-
-```bash
-# Option 1: Supabase CLI (requires login)
-supabase login
-supabase link --project-ref zafyriojatnniyabkqrc
-supabase db push
-
-# Option 2: SQL Editor (if CLI has issues with $$ syntax)
-# Go to: https://supabase.com/dashboard/project/zafyriojatnniyabkqrc/sql/new
-# Run: packages/web/supabase/migrations/20240123000000_initial_schema.sql
-```
-
-## Deployment
-
-```bash
-# Source token first
-source ~/.zshrc
-
-# Deploy to Vercel
-cd packages/web
-vercel --prod --token $VERCEL_TOKEN
-
-# Verify deployment
-curl -s -o /dev/null -w "%{http_code}" https://latex-writer.vercel.app
-```
-
-### Build-Fix Loop (for deployment issues)
-
-```
-REPEAT:
-  1. Run `pnpm build && pnpm typecheck` locally first
-  2. Run `vercel --prod --token $VERCEL_TOKEN`
-  3. If build fails: fix errors, go to step 1
-  4. If succeeds: verify with curl, check for 200
-UNTIL: Build succeeds AND site returns 200
-```
-
-## Code Style
-
-### TypeScript Configuration
-- **Target**: ES2022
-- **Module**: ESNext with bundler resolution
-- **Strict mode**: Enabled
-- **`noUncheckedIndexedAccess`**: Enabled - array access returns `T | undefined`
-
-```typescript
-// WRONG - will error
-const item = items[0]
-item.doSomething()
-
-// CORRECT - handle undefined
-const item = items[0]
-if (item) item.doSomething()
-// OR
-const item = items[0]!  // Only if you're certain
-```
+- **`noUncheckedIndexedAccess: true`** - Array access returns `T | undefined`. Handle it.
+- Strict mode enabled. No `as any`, no `@ts-ignore`.
 
 ### File Naming
-- **Files**: `kebab-case.ts`, `kebab-case.tsx`
-- **Components**: `PascalCase` (`CollaborativeEditor`)
-- **Functions**: `camelCase` (`getDocuments`)
-- **Types/Interfaces**: `PascalCase` (`Document`, `CompileResult`)
-- **Constants**: `UPPER_SNAKE_CASE` (`DEFAULT_CLI_CONFIG`)
+
+- Files: `kebab-case.ts`
+- Components: `PascalCase`
+- Functions: `camelCase`
 
 ### Import Order
+
+1. External (`cross-spawn`, `chalk`)
+2. Next.js/React
+3. Internal packages (`@agentic-latex-writer/shared`)
+4. Local aliases (`@/lib/...`)
+5. Relative (`./component`)
+
+### Supabase Pattern
+
 ```typescript
-// 1. External packages
-import { spawn } from 'cross-spawn'
-import chalk from 'chalk'
+// Server components / API routes
+const supabase = await createClient(); // from @/lib/supabase/server
+const {
+  data: { user },
+} = await supabase.auth.getUser(); // NOT getSession()
 
-// 2. Next.js / React
-import { NextResponse } from 'next/server'
-import { useEffect, useState } from 'react'
-
-// 3. Internal packages
-import type { CompileResult } from '@latex-writer/shared'
-
-// 4. Local imports with alias
-import { createClient } from '@/lib/supabase/server'
-
-// 5. Relative imports
-import { SignOutButton } from './sign-out-button'
-```
-
-### Type Exports
-Use `type` keyword for type-only exports/imports:
-```typescript
-import type { LaTeXEngine } from '@latex-writer/shared'
-export type { Document, CompileResult }
-```
-
-### Component Structure
-```typescript
-'use client'  // Only if client-side interactivity needed
-
-import { ... } from 'react'
-// ... other imports
-
-type Props = {
-  documentId: string
-  readOnly?: boolean
-}
-
-export function ComponentName({ documentId, readOnly = false }: Props) {
-  // hooks first
-  const [state, setState] = useState(false)
-  
-  // effects
-  useEffect(() => { ... }, [])
-  
-  // handlers
-  const handleClick = () => { ... }
-  
-  // render
-  return (...)
-}
-```
-
-### API Routes (Next.js App Router)
-```typescript
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
-
-export async function POST(request: Request) {
-  const supabase = await createClient()
-  
-  // Auth check first
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  // Parse body safely
-  const body = await request.json().catch(() => ({}))
-  
-  // Database operation
-  const { data, error } = await supabase.from('table').insert(...)
-  
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json(data, { status: 201 })
-}
-```
-
-## Error Handling
-
-### Web Package
-```typescript
-// API routes - return JSON errors
-return NextResponse.json({ error: 'Message' }, { status: 400 })
-
-// Server components - use redirect or throw
-if (!user) redirect('/login')
-
-// Client components - use state
-const [error, setError] = useState<string | null>(null)
-```
-
-### CLI Package
-```typescript
-import chalk from 'chalk'
-import ora from 'ora'
-
-// User-facing errors
-console.error(chalk.red(`Error: ${message}`))
-
-// Progress indicators
-const spinner = ora('Compiling...').start()
-spinner.succeed(chalk.green('Done'))
-spinner.fail(chalk.red('Failed'))
+// Client components
+const supabase = createClient(); // from @/lib/supabase/client
 ```
 
 ## Design System
 
-**Monochrome only** - no colors except grayscale.
+**Monochrome only.** No exceptions.
 
-### Tailwind Colors
-```
-background: #ffffff
-foreground: #000000
-border: #e5e5e5
-muted: #666666
-accent: #f5f5f5
-```
-
-### UI Principles
-- No rounded corners (`rounded-none` or omit)
-- Sharp borders (`border border-border`)
-- High contrast (black on white)
-- Minimal shadows
-- Geist font family
+| Token      | Value     |
+| ---------- | --------- |
+| background | `#ffffff` |
+| foreground | `#000000` |
+| border     | `#e5e5e5` |
+| muted      | `#666666` |
+| accent     | `#f5f5f5` |
 
 ```tsx
 // CORRECT
 <button className="border border-border px-4 py-2 hover:bg-accent">
 
-// WRONG - no rounded corners, no colors
-<button className="rounded-lg bg-blue-500 px-4 py-2">
+// WRONG - no rounded, no colors
+<button className="rounded-lg bg-blue-500">
 ```
 
-## Path Aliases
+### Keyboard Shortcut Style (`<kbd>`)
 
-| Package | Alias | Path |
-|---------|-------|------|
-| web | `@/*` | `./src/*` |
-| cli | none | relative imports |
-| shared | none | relative imports |
+Use the global `kbd` element for keyboard shortcuts. Styled in `globals.css`:
 
-## Key Dependencies
-
-### Web
-- **Next.js 15** - App Router, Server Components
-- **React 19** - with new features
-- **Supabase** - Auth, PostgreSQL, Realtime
-- **CodeMirror 6** - Editor
-- **Y.js** - CRDT for real-time collaboration
-- **Tailwind CSS** - Styling
-
-### CLI
-- **cac** - CLI argument parsing
-- **chalk** - Terminal colors
-- **ora** - Spinners
-- **chokidar** - File watching
-- **cross-spawn** - Process spawning
-
-### CLI Templates
-
-Located in `packages/cli/templates/`. Initialize with `latex-writer init -t <template>`:
-
-| Template | Source | Description |
-|----------|--------|-------------|
-| `article` | Built-in | Simple LaTeX article |
-| `thesis` | Built-in | Thesis/dissertation |
-| `beamer` | Built-in | Presentation slides |
-| `neurips` | Official NeurIPS 2024 | Conference paper |
-| `iclr` | Official ICLR 2025 | Conference paper |
-| `tech-report` | LMMs-Lab style | Tech report with metadata |
-
-```bash
-# Examples
-latex-writer init -t neurips    # NeurIPS 2024 template
-latex-writer init -t iclr       # ICLR 2025 template
-latex-writer init -t tech-report # LMMs-Lab tech report
+```css
+kbd {
+  @apply inline-flex items-center justify-center gap-1 px-2 py-1 text-xs font-mono;
+  @apply bg-white border border-neutral-300 text-neutral-700;
+  box-shadow:
+    0 1px 0 1px rgba(0, 0, 0, 0.04),
+    0 2px 0 rgba(0, 0, 0, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+}
 ```
 
-## Common Patterns
+Usage:
 
-### Supabase Server Client
-```typescript
-import { createClient } from '@/lib/supabase/server'
+```tsx
+// Single key
+<kbd>K</kbd>
 
-const supabase = await createClient()
-const { data: { user } } = await supabase.auth.getUser()
+// Key combination - use multiple kbd elements
+<kbd>⌘</kbd> <kbd>K</kbd>
+
+// Or single kbd with gap
+<kbd>⌘ K</kbd>
 ```
 
-### Protected Routes
-Routes under `/editor/*` and `/dashboard/*` require auth (handled by middleware).
+Visual: Light background, subtle 3D pressed effect via layered box-shadow. No rounded corners.
 
-### Real-time Collaboration
-Uses Y.js with custom Supabase provider at `@/lib/yjs/supabase-provider.ts`.
+### Button Style (`.btn`)
 
-## Don'ts
+Buttons use a 3D shadow effect with press animation. Styled in `globals.css`:
 
-- Don't use `as any` or `@ts-ignore`
-- Don't add rounded corners to UI
-- Don't use colors (except grayscale)
-- Don't skip auth checks in API routes
-- Don't commit `.env` files
-- Don't add AI attribution to commits
+```css
+.btn {
+  @apply px-6 py-3 font-mono text-sm uppercase tracking-wider border border-black;
+  box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 1);
+}
+
+.btn:hover {
+  box-shadow: 2px 2px 0 0 rgba(0, 0, 0, 1);
+  transform: translate(1px, 1px);
+}
+
+.btn:active {
+  box-shadow: 0 0 0 0 rgba(0, 0, 0, 1);
+  transform: translate(3px, 3px);
+}
+```
+
+Variants:
+
+| Class            | Use Case                                 |
+| ---------------- | ---------------------------------------- |
+| `.btn-primary`   | Black bg, white text - main actions      |
+| `.btn-secondary` | White bg, black text - secondary actions |
+| `.btn-sm`        | Smaller padding, 2px shadow              |
+| `.btn-icon`      | Icon-only buttons                        |
+| `.btn-outline`   | No shadow, border only                   |
+
+Usage:
+
+```tsx
+<button className="btn btn-primary">Save</button>
+<button className="btn btn-sm btn-secondary">Cancel</button>
+```
+
+Visual: Hard offset black shadow creates 3D depth. Press animation moves button toward shadow origin.
+
+## Anti-Patterns (Forbidden)
+
+| Pattern                          | Why                                     |
+| -------------------------------- | --------------------------------------- |
+| `as any`, `@ts-ignore`           | Type safety is non-negotiable           |
+| `rounded-*` classes              | Sharp corners only                      |
+| Colors other than grayscale      | Monochrome design                       |
+| Skip auth in API routes          | Security hole                           |
+| `getSession()` for user identity | Use `getUser()` - validates with server |
+| AI attribution in commits        | No "Co-Authored-By: Claude"             |
+| Empty catch blocks               | Handle errors properly                  |
+
+## Gotchas
+
+1. **Array access**: `items[0]` returns `T | undefined` - always check
+2. **Daemon required for local mode**: Web editor can work cloud-only, but local compilation needs `llw serve` running
+3. **Vercel deploy**: `vercel.json` escapes to monorepo root (`cd ../..`) - intentional
+4. **No tests**: Zero automated tests currently. Manual dev helpers only at `/dev/test-login`
+5. **HACK in editor**: `editor-page-client.tsx:185` - manual path resolution for browser FS (browser limitation)
+
+## Complexity Hotspots
+
+| File                                        | Lines | What It Does                             |
+| ------------------------------------------- | ----- | ---------------------------------------- |
+| `packages/web/.../editor-page-client.tsx`   | 848   | Editor orchestrator - 15+ useState hooks |
+| `packages/cli/src/commands/serve.ts`        | 750   | Daemon - git/pty/file watching           |
+| `packages/web/.../opencode-panel.tsx`       | 443   | AI chat panel                            |
+| `packages/web/.../collaborative-editor.tsx` | 359   | CodeMirror + Supabase presence           |
+
+## Subdirectory Docs
+
+- `packages/web/AGENTS.md` - Next.js app specifics
+- `packages/cli/AGENTS.md` - CLI daemon specifics
+- `packages/web/src/lib/AGENTS.md` - Utility modules (daemon, supabase, filesystem, opencode)

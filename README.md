@@ -1,161 +1,184 @@
-# LaTeX Writer
+<div align="center">
 
-A collaborative LaTeX editing platform with real-time sync, similar to Overleaf.
+# Agentic LaTeX Writer
+
+**Stop writing LaTeX. Start thinking.**
+
+Let Claude, Cursor, and Codex write your papers while you focus on what matters - your research.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](https://opensource.org/licenses/MIT)
+[![Deploy with Vercel](https://img.shields.io/badge/Deploy-Vercel-black)](https://vercel.com)
+
+[Live Demo](https://agentic-latex-writer.vercel.app) | [Documentation](https://agentic-latex-writer.vercel.app/docs) | [GitHub](https://github.com/EvolvingLMMs-Lab/agentic-latex-writer)
+
+</div>
+
+---
+
+## The Problem
+
+You're a researcher. You should be thinking about your next breakthrough - not wrestling with LaTeX syntax, citation formatting, or figure placement.
+
+Every hour spent on `\begin{figure}[htbp]` is an hour not spent on your actual work.
+
+## The Solution
+
+**Agentic LaTeX Writer** is a local-first LaTeX editor designed for AI pair-programming. Your files stay on your machine. AI tools edit directly. You compile and commit locally.
+
+```
+Your laptop                          Cloud (optional)
+┌────────────────────────────────┐   ┌──────────────┐
+│  ~/papers/neurips-2025/        │   │   Supabase   │
+│  ├── main.tex  <-- AI edits    │   │   (sync)     │
+│  ├── figures/                  │   └──────────────┘
+│  └── refs.bib                  │
+│                                │
+│  Claude Code / Cursor / Codex  │
+│  ↕ WebSocket                   │
+│  llw serve (daemon)            │
+└────────────────────────────────┘
+```
+
+## Why Local-First?
+
+| Overleaf                     | Agentic LaTeX Writer     |
+| ---------------------------- | ------------------------ |
+| Files locked in cloud        | Your files, your machine |
+| AI can't access your project | AI edits directly        |
+| Compile on their servers     | Compile locally (faster) |
+| Git sync is an afterthought  | Git is first-class       |
+| $15/month for "features"     | Free and open source     |
+
+## Quick Start
+
+### 1. Install the CLI
+
+```bash
+# macOS / Linux
+curl -fsSL https://agentic-latex-writer.vercel.app/install.sh | bash
+
+# Windows
+irm https://agentic-latex-writer.vercel.app/install.ps1 | iex
+```
+
+### 2. Open your project
+
+```bash
+cd ~/papers/my-paper
+llw serve
+```
+
+### 3. Write with AI
+
+Open [agentic-latex-writer.vercel.app](https://agentic-latex-writer.vercel.app) and select your folder. Now any AI tool with file access can edit your LaTeX:
+
+- **Claude Code**: "Add a related work section comparing our method to LoRA"
+- **Cursor**: "Fix the table formatting in Section 3"
+- **Codex**: "Generate a figure showing the training curves"
+
+The web editor shows real-time changes. Hit compile. Done.
+
+## Works With
+
+<div align="center">
+
+| Tool          | Status      | How it works                       |
+| ------------- | ----------- | ---------------------------------- |
+| Claude Code   | Recommended | Direct file editing via MCP        |
+| Cursor        | Supported   | Edit in Cursor, preview in browser |
+| Codex CLI     | Supported   | Batch edits via command line       |
+| OpenCode      | Supported   | VSCode extension support           |
+| Any AI Editor | Supported   | If it can edit files, it works     |
+
+</div>
 
 ## Features
 
-- **Real-time Collaboration** - Multiple users can edit the same document simultaneously using Y.js CRDT
-- **LaTeX Editor** - CodeMirror-based editor with syntax highlighting
-- **Document Sharing** - Invite collaborators via email or shareable links
-- **Role-based Access** - Owner, Editor, and Viewer permissions
-- **CLI Tool** - Local LaTeX compilation with `latexmk`
-
-## Tech Stack
-
-- **Frontend**: Next.js 14, React, Tailwind CSS
-- **Backend**: Supabase (Auth, PostgreSQL, Realtime)
-- **Editor**: CodeMirror 6
-- **Collaboration**: Y.js CRDT + Supabase Realtime
-- **Build**: Turborepo, pnpm, tsup
+- **Local-First** - Your files never leave your machine (unless you sync to cloud)
+- **AI-Native** - Designed for Claude, Cursor, Codex, and any AI editor
+- **Real-time Preview** - See changes as AI writes them
+- **Git Integration** - Commit, diff, and push without leaving the editor
+- **Compilation** - Local `latexmk` with XeLaTeX/LuaLaTeX support
+- **Templates** - NeurIPS, ICLR, tech reports, and more
+- **Collaboration** - Optional cloud sync for team projects
 
 ## Project Structure
 
 ```
-latex-writer/
+agentic-latex-writer/
 ├── packages/
-│   ├── cli/          # Command-line tool for local LaTeX compilation
-│   ├── web/          # Next.js web application
-│   └── shared/       # Shared types and utilities
-├── turbo.json        # Turborepo configuration
+│   ├── cli/          # Local daemon (llw serve)
+│   ├── web/          # Next.js 15 web editor
+│   └── shared/       # Shared types
+├── turbo.json        # Monorepo config
 └── pnpm-workspace.yaml
 ```
 
-## Prerequisites
-
-- Node.js >= 20.0.0
-- pnpm >= 8.0.0
-- Supabase account
-- LaTeX distribution (for CLI: MacTeX, TeX Live, or MiKTeX)
-
-## Getting Started
-
-### 1. Clone the repository
+## CLI Commands
 
 ```bash
-git clone https://github.com/Luodian/latex-writer.git
-cd latex-writer
+llw serve              # Start local daemon (required for AI editing)
+llw compile main.tex   # Compile LaTeX file
+llw watch main.tex     # Watch mode - recompile on changes
+llw init               # Initialize from template
+llw login              # Connect to cloud sync (optional)
 ```
 
-### 2. Install dependencies
+## Development
 
 ```bash
+# Clone
+git clone https://github.com/EvolvingLMMs-Lab/agentic-latex-writer.git
+cd agentic-latex-writer
+
+# Install
 pnpm install
-```
 
-### 3. Set up Supabase
+# Build
+pnpm build
 
-1. Create a new Supabase project at [supabase.com](https://supabase.com)
-2. Run the database migration:
-
-```bash
-# Copy the SQL from packages/web/supabase/migrations/20240123000000_initial_schema.sql
-# and run it in Supabase SQL Editor
-```
-
-### 4. Configure environment variables
-
-```bash
-cd packages/web
-cp .env.example .env.local
-```
-
-Edit `.env.local`:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-```
-
-### 5. Run the development server
-
-```bash
+# Dev (web on :3000, daemon on :3001)
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+## Requirements
 
-## CLI Usage
+- Node.js 20+
+- LaTeX distribution (MacTeX, TeX Live, or MiKTeX)
+- Git (for version control features)
 
-The CLI tool provides local LaTeX compilation:
+## FAQ
 
-```bash
-# Install globally
-cd packages/cli
-pnpm build
-npm link
+**Q: Do I need an account?**
+A: No. The CLI works fully offline. Accounts are only for optional cloud sync.
 
-# Commands
-latex-writer compile main.tex    # Compile a LaTeX file
-latex-writer watch main.tex      # Watch and recompile on changes
-latex-writer init                # Initialize a new LaTeX project
-latex-writer login               # Authenticate with the web service
-latex-writer sync                # Sync project with cloud
-```
+**Q: Is my data sent anywhere?**
+A: Only if you enable cloud sync. Otherwise, everything stays local.
 
-## Scripts
+**Q: Can I use this with Overleaf projects?**
+A: Yes. Clone your Overleaf git repo locally and use this for editing.
 
-```bash
-# Development
-pnpm dev              # Start all packages in dev mode
-pnpm build            # Build all packages
-pnpm typecheck        # Type check all packages
-
-# Web app only
-pnpm --filter web dev
-pnpm --filter web build
-
-# CLI only
-pnpm --filter cli build
-```
-
-## Deployment
-
-### Vercel (Recommended)
-
-1. Push to GitHub
-2. Import project in Vercel
-3. Set root directory to `packages/web`
-4. Add environment variables
-5. Deploy
-
-### Manual
-
-```bash
-cd packages/web
-pnpm build
-pnpm start
-```
-
-## Database Schema
-
-The application uses the following main tables:
-
-- `documents` - LaTeX documents
-- `document_files` - Files within a document (for multi-file projects)
-- `document_access` - User access permissions
-- `share_invites` - Pending collaboration invites
-- `yjs_updates` - Y.js CRDT updates for real-time sync
-
-All tables have Row Level Security (RLS) policies enabled.
+**Q: Why not just use Overleaf?**
+A: You can't give Claude direct access to Overleaf. With local files, AI tools work naturally.
 
 ## Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
 ## License
 
-MIT
+MIT - Use it however you want.
+
+---
+
+<div align="center">
+
+**Built by [EvolvingLMMs Lab](https://github.com/EvolvingLMMs-Lab)**
+
+_Stop formatting. Start discovering._
+
+</div>

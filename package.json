@@ -1,9 +1,9 @@
 {
-  "name": "latex-writer",
+  "name": "agentic-latex-writer",
   "version": "0.1.0",
   "private": true,
-  "description": "Collaborative LaTeX editor platform with local CLI and web app",
-  "author": "Bo Li",
+  "description": "AI-native LaTeX editor - let Claude, Cursor, and Codex write your papers while you focus on research",
+  "author": "EvolvingLMMs Lab",
   "license": "MIT",
   "packageManager": "pnpm@9.15.0",
   "engines": {
