@@ -44,6 +44,7 @@ export class OpenCodeClient {
   private getHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
+      Accept: "application/json",
     };
     if (this.directory) {
       headers["x-opencode-directory"] = encodeURIComponent(this.directory);
@@ -281,15 +282,22 @@ export class OpenCodeClient {
       model?: { providerID: string; modelID: string };
     },
   ): Promise<void> {
+    const body: any = {
+      parts: [{ type: "text", text: content }],
+      agent: options?.agent,
+    };
+
+    if (options?.model) {
+      body.providerID = options.model.providerID;
+      body.modelID = options.model.modelID;
+    }
+
     const response = await fetch(
-      `${this.baseUrl}/session/${sessionID}/prompt${this.getQueryParams()}`,
+      `${this.baseUrl}/session/${sessionID}/message${this.getQueryParams()}`,
       {
         method: "POST",
         headers: this.getHeaders(),
-        body: JSON.stringify({
-          parts: [{ type: "text", text: content }],
-          ...options,
-        }),
+        body: JSON.stringify(body),
       },
     );
     if (!response.ok)

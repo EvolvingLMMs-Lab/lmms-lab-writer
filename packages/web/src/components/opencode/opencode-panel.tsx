@@ -11,11 +11,15 @@ import type {
 } from "@/lib/opencode/types";
 import { getToolInfo } from "@/lib/opencode/types";
 
+type OpenCodeDaemonStatus = "stopped" | "starting" | "running" | "unavailable";
+
 type Props = {
   className?: string;
   baseUrl?: string;
   directory?: string;
   autoConnect?: boolean;
+  daemonStatus?: OpenCodeDaemonStatus;
+  onRestartOpenCode?: () => void;
 };
 
 export function OpenCodePanel({
@@ -23,6 +27,8 @@ export function OpenCodePanel({
   baseUrl,
   directory,
   autoConnect = false,
+  daemonStatus,
+  onRestartOpenCode,
 }: Props) {
   const opencode = useOpenCode({ baseUrl, directory, autoConnect });
   const [input, setInput] = useState("");
@@ -141,6 +147,8 @@ export function OpenCodePanel({
             connecting={opencode.connecting}
             error={opencode.error}
             onConnect={handleConnect}
+            daemonStatus={daemonStatus}
+            onRestartOpenCode={onRestartOpenCode}
           />
         ) : !opencode.currentSessionId ? (
           <NoSessionState onNewSession={handleNewSession} />
@@ -194,11 +202,22 @@ function DisconnectedState({
   connecting,
   error,
   onConnect,
+  daemonStatus,
+  onRestartOpenCode,
 }: {
   connecting: boolean;
   error: string | null;
   onConnect: () => void;
+  daemonStatus?: OpenCodeDaemonStatus;
+  onRestartOpenCode?: () => void;
 }) {
+  const statusMessages: Record<OpenCodeDaemonStatus, string> = {
+    stopped: "OpenCode is not running",
+    starting: "OpenCode is starting...",
+    running: "OpenCode is ready",
+    unavailable: "OpenCode binary not found",
+  };
+
   return (
     <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
       <div className="text-muted">
@@ -216,26 +235,55 @@ function DisconnectedState({
           />
         </svg>
         <p className="font-medium">Connect to OpenCode</p>
-        <p className="text-xs mt-2 max-w-[200px]">
-          Start the OpenCode server to enable AI-assisted coding.
-        </p>
+        {daemonStatus && (
+          <p className="text-xs mt-2 max-w-[200px]">
+            {statusMessages[daemonStatus]}
+          </p>
+        )}
       </div>
 
       {error && <p className="text-xs text-red-600 max-w-[200px]">{error}</p>}
 
-      <button
-        onClick={onConnect}
-        disabled={connecting}
-        className="px-4 py-2 border border-border hover:bg-accent transition-colors text-sm disabled:opacity-50"
-      >
-        {connecting ? "Connecting..." : "Connect"}
-      </button>
-
-      <div className="text-xs text-muted space-y-1">
-        <p>Run this command first:</p>
-        <code className="bg-accent px-2 py-1 block">
-          opencode web --port 4096
-        </code>
+      <div className="flex gap-2">
+        {daemonStatus === "running" ? (
+          <button
+            onClick={onConnect}
+            disabled={connecting}
+            className="px-4 py-2 border border-border hover:bg-accent transition-colors text-sm disabled:opacity-50"
+          >
+            {connecting ? "Connecting..." : "Connect"}
+          </button>
+        ) : daemonStatus === "unavailable" ? (
+          <div className="text-xs text-muted space-y-2">
+            <p>Install OpenCode:</p>
+            <code className="bg-accent px-2 py-1 block">
+              go install github.com/opencode-ai/opencode@latest
+            </code>
+          </div>
+        ) : daemonStatus === "starting" ? (
+          <div className="flex items-center gap-2 text-xs text-muted">
+            <Spinner className="size-4" />
+            <span>Starting OpenCode...</span>
+          </div>
+        ) : (
+          <>
+            {onRestartOpenCode && (
+              <button
+                onClick={onRestartOpenCode}
+                className="px-4 py-2 border border-border hover:bg-accent transition-colors text-sm"
+              >
+                Start OpenCode
+              </button>
+            )}
+            <button
+              onClick={onConnect}
+              disabled={connecting}
+              className="px-4 py-2 border border-border hover:bg-accent transition-colors text-sm disabled:opacity-50"
+            >
+              {connecting ? "Connecting..." : "Connect"}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

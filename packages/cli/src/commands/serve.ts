@@ -10,7 +10,7 @@ import {
   statSync,
 } from "fs";
 import { join, resolve, extname } from "path";
-import { execSync, spawn } from "child_process";
+import { execSync, spawn, ChildProcess } from "child_process";
 import { homedir } from "os";
 import { createServer, IncomingMessage, ServerResponse } from "http";
 
@@ -499,6 +499,146 @@ const MIME_TYPES: Record<string, string> = {
 };
 
 let currentProjectPath: string | null = null;
+let opencodeProcess: ChildProcess | null = null;
+let opencodeStatus: "stopped" | "starting" | "running" | "unavailable" =
+  "stopped";
+let opencodeStarting = false;
+const OPENCODE_PORT = 4096;
+const OPENCODE_MAX_RETRIES = 10;
+const OPENCODE_RETRY_INTERVAL_MS = 500;
+
+async function isOpenCodeRunning(): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1000);
+    const response = await fetch(`http://127.0.0.1:${OPENCODE_PORT}/session`, {
+      method: "GET",
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+function findOpenCodeBinary(): string | null {
+  try {
+    const cmd = process.platform === "win32" ? "where" : "which";
+    const result = execSync(`${cmd} opencode`, {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    }).trim();
+    return result.split("\n")[0] || null;
+  } catch {
+    const commonPaths = [
+      join(homedir(), ".local", "bin", "opencode"),
+      join(homedir(), "go", "bin", "opencode"),
+      "/usr/local/bin/opencode",
+      "/opt/homebrew/bin/opencode",
+    ];
+    for (const p of commonPaths) {
+      if (existsSync(p)) return p;
+    }
+    return null;
+  }
+}
+
+async function waitForOpenCode(): Promise<boolean> {
+  for (let i = 0; i < OPENCODE_MAX_RETRIES; i++) {
+    if (await isOpenCodeRunning()) {
+      return true;
+    }
+    await new Promise((r) => setTimeout(r, OPENCODE_RETRY_INTERVAL_MS));
+  }
+  return false;
+}
+
+async function startOpenCode(broadcast: (msg: object) => void): Promise<void> {
+  if (opencodeStarting) {
+    return;
+  }
+
+  if (await isOpenCodeRunning()) {
+    console.log(
+      chalk.green(`OpenCode already running on port ${OPENCODE_PORT}`),
+    );
+    opencodeStatus = "running";
+    broadcast({ type: "opencode-status", status: "running" });
+    return;
+  }
+
+  const binary = findOpenCodeBinary();
+  if (!binary) {
+    console.log(
+      chalk.yellow(
+        "OpenCode binary not found. Install with: go install github.com/opencode-ai/opencode@latest",
+      ),
+    );
+    opencodeStatus = "unavailable";
+    broadcast({ type: "opencode-status", status: "unavailable" });
+    return;
+  }
+
+  opencodeStarting = true;
+  opencodeStatus = "starting";
+  broadcast({ type: "opencode-status", status: "starting" });
+
+  console.log(chalk.blue(`Starting OpenCode on port ${OPENCODE_PORT}...`));
+
+  opencodeProcess = spawn(binary, ["web", "--port", String(OPENCODE_PORT)], {
+    detached: false,
+    stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env },
+  });
+
+  opencodeProcess.on("error", (err) => {
+    console.error(chalk.red(`OpenCode failed to start: ${err.message}`));
+    opencodeStatus = "unavailable";
+    broadcast({ type: "opencode-status", status: "unavailable" });
+    opencodeProcess = null;
+    opencodeStarting = false;
+  });
+
+  opencodeProcess.on("exit", (code) => {
+    console.log(chalk.gray(`OpenCode exited with code ${code}`));
+    opencodeStatus = "stopped";
+    broadcast({ type: "opencode-status", status: "stopped" });
+    opencodeProcess = null;
+    opencodeStarting = false;
+  });
+
+  const ready = await waitForOpenCode();
+  opencodeStarting = false;
+
+  if (ready) {
+    opencodeStatus = "running";
+    broadcast({ type: "opencode-status", status: "running" });
+    console.log(chalk.green(`OpenCode running on port ${OPENCODE_PORT}`));
+  } else {
+    console.log(
+      chalk.yellow(
+        `OpenCode failed to respond after ${OPENCODE_MAX_RETRIES} attempts`,
+      ),
+    );
+    opencodeStatus = "unavailable";
+    broadcast({ type: "opencode-status", status: "unavailable" });
+    if (opencodeProcess) {
+      opencodeProcess.kill();
+      opencodeProcess = null;
+    }
+  }
+}
+
+function stopOpenCode(): void {
+  opencodeStarting = false;
+  if (opencodeProcess) {
+    console.log(chalk.gray("Stopping OpenCode..."));
+    opencodeProcess.kill();
+    opencodeProcess = null;
+    opencodeStatus = "stopped";
+  }
+}
 
 function handleStaticFile(req: IncomingMessage, res: ServerResponse): void {
   if (!currentProjectPath) {
@@ -548,13 +688,25 @@ export async function serve(options: ServeOptions): Promise<void> {
   const httpServer = createServer(handleStaticFile);
   httpServer.listen(httpPort);
 
+  const broadcast = (msg: object) => {
+    const data = JSON.stringify(msg);
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(data);
+      }
+    });
+  };
+
   console.log(chalk.green(`\nLMMs-Lab Writer daemon started`));
   console.log(chalk.gray(`  WebSocket: ws://localhost:${port}`));
   console.log(chalk.gray(`  Files HTTP: http://localhost:${httpPort}`));
+  console.log(chalk.gray(`  OpenCode: http://localhost:${OPENCODE_PORT}`));
   console.log(
     chalk.gray(`  Mode: Background service (no project directory required)`),
   );
   console.log(chalk.gray(`\nPress Ctrl+C to stop\n`));
+
+  await startOpenCode(broadcast);
 
   wss.on("connection", (ws: WebSocket) => {
     console.log(chalk.blue("Client connected"));
@@ -566,8 +718,10 @@ export async function serve(options: ServeOptions): Promise<void> {
       watcher: null,
     };
 
-    // Send initial connection status
     ws.send(JSON.stringify({ type: "connected", version: "0.1.0" }));
+    ws.send(
+      JSON.stringify({ type: "opencode-status", status: opencodeStatus }),
+    );
 
     const setupWatcher = (projectPath: string) => {
       if (state.watcher) {
@@ -687,7 +841,7 @@ export async function serve(options: ServeOptions): Promise<void> {
       }
     };
 
-    ws.on("message", (message: Buffer) => {
+    ws.on("message", async (message: Buffer) => {
       try {
         const msg = JSON.parse(message.toString());
 
@@ -1024,6 +1178,22 @@ export async function serve(options: ServeOptions): Promise<void> {
             break;
           }
 
+          case "get-opencode-status": {
+            ws.send(
+              JSON.stringify({
+                type: "opencode-status",
+                status: opencodeStatus,
+              }),
+            );
+            break;
+          }
+
+          case "restart-opencode": {
+            stopOpenCode();
+            await startOpenCode(broadcast);
+            break;
+          }
+
           default:
             console.log(chalk.yellow(`Unknown message type: ${msg.type}`));
         }
@@ -1052,6 +1222,7 @@ export async function serve(options: ServeOptions): Promise<void> {
 
   process.on("SIGINT", () => {
     console.log(chalk.blue("\nShutting down daemon..."));
+    stopOpenCode();
     wss.close();
     process.exit(0);
   });

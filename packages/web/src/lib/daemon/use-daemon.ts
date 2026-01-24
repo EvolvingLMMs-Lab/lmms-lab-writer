@@ -28,6 +28,8 @@ interface GitInitResult {
   error?: string;
 }
 
+type OpenCodeStatus = "stopped" | "starting" | "running" | "unavailable";
+
 interface DaemonState {
   connected: boolean;
   version: string | null;
@@ -40,6 +42,7 @@ interface DaemonState {
   compileOutput: string;
   isInitializingGit: boolean;
   gitInitResult: GitInitResult | null;
+  opencodeStatus: OpenCodeStatus;
 }
 
 export function useDaemon(wsUrl = "ws://localhost:3001") {
@@ -58,6 +61,7 @@ export function useDaemon(wsUrl = "ws://localhost:3001") {
     compileOutput: "",
     isInitializingGit: false,
     gitInitResult: null,
+    opencodeStatus: "stopped",
   });
 
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
@@ -126,6 +130,10 @@ export function useDaemon(wsUrl = "ws://localhost:3001") {
               isInitializingGit: false,
               gitInitResult: { success: msg.success, error: msg.error },
             }));
+            break;
+
+          case "opencode-status":
+            setState((s) => ({ ...s, opencodeStatus: msg.status }));
             break;
 
           case "error":
@@ -241,6 +249,10 @@ export function useDaemon(wsUrl = "ws://localhost:3001") {
     wsRef.current?.send(JSON.stringify({ type: "get-git-info" }));
   }, []);
 
+  const restartOpenCode = useCallback(() => {
+    wsRef.current?.send(JSON.stringify({ type: "restart-opencode" }));
+  }, []);
+
   return {
     ...state,
     terminalOutput,
@@ -260,5 +272,6 @@ export function useDaemon(wsUrl = "ws://localhost:3001") {
     gitAddRemote,
     clearGitInitResult,
     refreshGitStatus,
+    restartOpenCode,
   };
 }
