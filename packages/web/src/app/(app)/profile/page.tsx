@@ -6,7 +6,7 @@ import {
   MembershipTier,
   StarredRepo,
   GITHUB_CONFIG,
-  getTopRepos,
+  getAllPopularRepos,
   type RepoInfo,
 } from "@/lib/github/config";
 import Link from "next/link";
@@ -95,7 +95,7 @@ async function getProfileData(): Promise<{
         .select("id")
         .eq("user_id", user.id)
         .single(),
-      getTopRepos(),
+      getAllPopularRepos(),
     ]);
 
   const stats: UserStats = {
@@ -428,8 +428,8 @@ export default async function ProfilePage() {
               </div>
             )}
 
-            {/* Repositories to Star */}
-            <div className="space-y-2 mb-8">
+            {/* Repositories List - Scrollable */}
+            <div className="space-y-2 mb-8 max-h-[400px] overflow-y-auto pr-2">
               {repos.map((repo) => {
                 const isStarred = starredRepoNames.has(repo.name);
 
