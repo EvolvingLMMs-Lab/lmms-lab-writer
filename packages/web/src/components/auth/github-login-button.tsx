@@ -10,7 +10,8 @@ export function GitHubLoginButton() {
   const handleLogin = async () => {
     try {
       setLoading(true);
-      await supabase.auth.signInWithOAuth({
+      // Use linkIdentity to connect GitHub to existing account
+      await supabase.auth.linkIdentity({
         provider: "github",
         options: {
           scopes: "read:user",
@@ -18,7 +19,7 @@ export function GitHubLoginButton() {
         },
       });
     } catch (error) {
-      console.error("GitHub login failed:", error);
+      console.error("GitHub link failed:", error);
       setLoading(false);
     }
   };
