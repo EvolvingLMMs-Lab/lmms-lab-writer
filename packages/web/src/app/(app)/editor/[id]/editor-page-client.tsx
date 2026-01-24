@@ -51,7 +51,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [binaryPreviewUrl, setBinaryPreviewUrl] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(true);
-  const [showPdf, setShowPdf] = useState(false);
+  const [showPdf, setShowPdf] = useState(true);
   const [pdfUrl] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     if (typeof window === "undefined") return 224;
@@ -346,8 +346,8 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
   };
 
   const handleCompile = useCallback(() => {
-    daemon.compile();
-  }, [daemon]);
+    daemon.compile(selectedFile);
+  }, [daemon, selectedFile]);
 
   const handleStageAll = useCallback(() => {
     if (!gitStatus) return;
@@ -555,144 +555,116 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
           </div>
 
           <div className="flex items-center gap-4">
-            <button
-              onClick={handleCompile}
-              disabled={daemon.isCompiling || !daemon.projectPath}
-              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-mono bg-white border border-neutral-300 text-neutral-700 hover:border-neutral-400 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                boxShadow:
-                  "0 1px 0 1px rgba(0,0,0,0.04), 0 2px 0 rgba(0,0,0,0.06), inset 0 -1px 0 rgba(0,0,0,0.04)",
-              }}
-            >
-              {daemon.isCompiling ? (
-                <>
-                  <svg
-                    className="w-4 h-4 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Compiling...
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  Compile
-                </>
-              )}
-            </button>
-
-            <button
-              onClick={() => setShowSidebar((v) => !v)}
-              aria-label={showSidebar ? "Hide sidebar" : "Show sidebar"}
-              className={`p-1 ${showSidebar ? "text-black" : "text-muted hover:text-black"}`}
-            >
-              <svg
-                className="size-5"
-                aria-hidden="true"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            <div className="relative group z-50">
+              <button
+                className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-mono bg-white border border-neutral-300 text-neutral-700 hover:border-neutral-400"
+                style={{
+                  boxShadow:
+                    "0 1px 0 1px rgba(0,0,0,0.04), 0 2px 0 rgba(0,0,0,0.06), inset 0 -1px 0 rgba(0,0,0,0.04)",
+                }}
               >
-                <path
-                  strokeLinecap="square"
-                  strokeLinejoin="miter"
-                  strokeWidth={1.5}
-                  d="M4 6h16M4 12h16M4 18h7"
-                />
-              </svg>
-            </button>
-            <button
-              onClick={() => setShowPdf((v) => !v)}
-              aria-label={showPdf ? "Hide PDF preview" : "Show PDF preview"}
-              className={`p-1 ${showPdf ? "text-black" : "text-muted hover:text-black"}`}
-            >
-              <svg
-                className="size-5"
-                aria-hidden="true"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="square"
-                  strokeLinejoin="miter"
-                  strokeWidth={1.5}
-                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                />
-              </svg>
-            </button>
+                Agent Mode
+                <svg
+                  className="w-3 h-3 text-neutral-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
+                    strokeWidth={1.5}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
 
-            <div className="w-px h-5 bg-border" />
+              <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-black hidden group-hover:block">
+                <div className="flex flex-col py-1">
+                  <button
+                    onClick={handleCompile}
+                    disabled={daemon.isCompiling || !daemon.projectPath}
+                    className="text-left px-4 py-2 text-xs font-mono hover:bg-black hover:text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-neutral-700 flex justify-between items-center w-full group/item transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      {daemon.isCompiling && (
+                        <svg
+                          className="w-3 h-3 animate-spin"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                      )}
+                      Compile LaTeX
+                    </span>
+                    <span className="text-[10px] text-neutral-400 group-hover/item:text-white/70">
+                      SHFT + CMD + B
+                    </span>
+                  </button>
 
-            {/* Connection status */}
-            <div className="flex items-center gap-2 text-xs text-muted">
-              <span className="size-2 bg-green-500 rounded-full" />
-              Connected
+                  <button
+                    onClick={() => {
+                      setShowPdf(true);
+                      setRightTab("opencode");
+                    }}
+                    className="text-left px-4 py-2 text-xs font-mono hover:bg-black hover:text-white w-full transition-colors"
+                  >
+                    OpenCode
+                  </button>
+
+                  <button
+                    disabled
+                    className="text-left px-4 py-2 text-xs font-mono opacity-50 cursor-not-allowed w-full"
+                  >
+                    Claude
+                  </button>
+
+                  <button
+                    disabled
+                    className="text-left px-4 py-2 text-xs font-mono opacity-50 cursor-not-allowed w-full"
+                  >
+                    Cursor
+                  </button>
+                </div>
+              </div>
             </div>
-
-            {/* Feedback link */}
-            <a
-              href="https://github.com/EvolvingLMMs-Lab/agentic-latex-writer/issues/new"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Send feedback"
-              className="flex items-center gap-1 text-xs text-muted hover:text-black"
-            >
-              <svg
-                className="size-4"
-                aria-hidden="true"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                />
-              </svg>
-              Feedback
-            </a>
 
             <button
               onClick={() => setShowShortcuts(true)}
-              className="hover:opacity-70 transition-opacity"
-              title="Keyboard Shortcuts (⌘K)"
+              className="p-1 text-muted hover:text-black transition-colors"
+              title="Keyboard Shortcuts"
             >
-              <kbd>⌘ K</kbd>
+              <svg
+                className="size-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="square"
+                  strokeLinejoin="miter"
+                  d="M4 6h16v12H4V6z"
+                />
+                <path
+                  strokeLinecap="square"
+                  strokeLinejoin="miter"
+                  d="M7 10h2M11 10h2M15 10h2M8 14h8"
+                />
+              </svg>
             </button>
             {role !== "owner" && (
               <span className="text-xs uppercase tracking-wider text-muted border border-border px-2 py-1">
@@ -703,28 +675,41 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
               <>
                 <button
                   onClick={() => setIsShareOpen(true)}
-                  className="text-sm text-muted hover:text-black active:text-black/70 transition-colors flex items-center gap-1"
+                  className="p-1 text-muted hover:text-black transition-colors"
+                  title="Share"
                 >
                   <svg
-                    className="w-4 h-4"
+                    className="size-5"
                     fill="none"
-                    stroke="currentColor"
                     viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
                   >
                     <path
                       strokeLinecap="square"
                       strokeLinejoin="miter"
-                      strokeWidth={1.5}
                       d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
                     />
                   </svg>
-                  Share
                 </button>
                 <button
                   onClick={() => setIsDeleteDialogOpen(true)}
-                  className="text-sm text-muted hover:text-black active:text-black/70 transition-colors"
+                  className="p-1 text-muted hover:text-black transition-colors"
+                  title="Delete"
                 >
-                  Delete
+                  <svg
+                    className="size-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
                 </button>
               </>
             )}
@@ -737,7 +722,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
           <>
             <aside
               style={{ width: sidebarWidth }}
-              className="border-r border-border flex flex-col flex-shrink-0"
+              className="border-r border-border flex flex-col flex-shrink-0 overflow-hidden"
             >
               {/* Sidebar tabs */}
               <div className="flex items-center border-b border-border">
@@ -783,7 +768,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                         files={daemon.files}
                         selectedFile={selectedFile}
                         onFileSelect={handleFileSelect}
-                        className="flex-1"
+                        className="flex-1 min-h-0 overflow-hidden"
                       />
                     </>
                   ) : (
@@ -1128,7 +1113,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
           </>
         )}
 
-        <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
           {selectedFile && (
             <div className="flex items-center border-b border-border bg-neutral-50 overflow-x-auto min-h-[34px]">
               {openTabs.map((tab) => {
@@ -1209,7 +1194,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                 content={fileContent}
                 readOnly={role === "viewer"}
                 onContentChange={handleContentChange}
-                className="flex-1"
+                className="flex-1 min-h-0"
               />
             )
           ) : (
@@ -1296,46 +1281,130 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
             />
             <aside
               style={{ width: rightPanelWidth }}
-              className="border-l border-border flex flex-col flex-shrink-0"
+              className="border-l border-border flex flex-col flex-shrink-0 overflow-hidden"
             >
-              <div className="flex items-center border-b border-border">
-                <button
-                  onClick={() => setRightTab("compile")}
-                  className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
-                    rightTab === "compile"
-                      ? "text-black border-b-2 border-black -mb-px"
-                      : "text-muted hover:text-black"
-                  }`}
-                >
-                  Output
-                </button>
-                <button
-                  onClick={() => setRightTab("terminal")}
-                  className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
-                    rightTab === "terminal"
-                      ? "text-black border-b-2 border-black -mb-px"
-                      : "text-muted hover:text-black"
-                  }`}
-                >
-                  PDF
-                </button>
+              <div className="flex items-center border-b border-border flex-shrink-0 bg-white">
                 <button
                   onClick={() => setRightTab("opencode")}
-                  className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
+                  className={`group flex-1 flex items-center justify-center gap-1.5 h-9 px-3 text-[11px] font-mono font-medium transition-colors border-r border-border last:border-r-0 ${
                     rightTab === "opencode"
                       ? "text-black border-b-2 border-black -mb-px"
                       : "text-muted hover:text-black"
                   }`}
                 >
-                  <span
-                    className={`size-1.5 ${openCodeStatus.available ? "bg-green-500" : "bg-muted"}`}
-                    title={
-                      openCodeStatus.available
-                        ? "OpenCode server running"
-                        : "OpenCode server not detected"
-                    }
-                  />
-                  OpenCode
+                  <div className="relative flex items-center">
+                    <svg
+                      className="size-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path
+                        strokeLinecap="square"
+                        strokeLinejoin="miter"
+                        d="M12 8V4H8"
+                      />
+                      <rect
+                        width="16"
+                        height="12"
+                        x="4"
+                        y="8"
+                        strokeLinecap="square"
+                        strokeLinejoin="miter"
+                      />
+                      <path
+                        strokeLinecap="square"
+                        strokeLinejoin="miter"
+                        d="M2 14h2"
+                      />
+                      <path
+                        strokeLinecap="square"
+                        strokeLinejoin="miter"
+                        d="M20 14h2"
+                      />
+                      <path
+                        strokeLinecap="square"
+                        strokeLinejoin="miter"
+                        d="M15 13v2"
+                      />
+                      <path
+                        strokeLinecap="square"
+                        strokeLinejoin="miter"
+                        d="M9 13v2"
+                      />
+                    </svg>
+                    <span
+                      className={`absolute -right-1.5 -top-1 size-1.5 ${
+                        openCodeStatus.available ? "bg-green-500" : "bg-muted"
+                      }`}
+                      title={
+                        openCodeStatus.available
+                          ? "OpenCode server running"
+                          : "OpenCode server not detected"
+                      }
+                    />
+                  </div>
+                  Agent
+                </button>
+                <button
+                  onClick={() => setRightTab("compile")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 text-[11px] font-mono font-medium transition-colors border-r border-border last:border-r-0 ${
+                    rightTab === "compile"
+                      ? "text-black border-b-2 border-black -mb-px"
+                      : "text-muted hover:text-black"
+                  }`}
+                >
+                  <svg
+                    className="size-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <polyline
+                      points="4 17 10 11 4 5"
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
+                    />
+                    <line
+                      x1="12"
+                      y1="19"
+                      x2="20"
+                      y2="19"
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
+                    />
+                  </svg>
+                  Output
+                </button>
+                <button
+                  onClick={() => setRightTab("terminal")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 text-[11px] font-mono font-medium transition-colors border-r border-border last:border-r-0 ${
+                    rightTab === "terminal"
+                      ? "text-black border-b-2 border-black -mb-px"
+                      : "text-muted hover:text-black"
+                  }`}
+                >
+                  <svg
+                    className="size-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      d="M4 2h10l6 6v14H4V2z"
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
+                    />
+                    <path
+                      d="M14 2v6h6"
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
+                    />
+                  </svg>
+                  PDF
                 </button>
               </div>
 
@@ -1358,7 +1427,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                       title="PDF Preview"
                     />
                   ) : (
-                    <div className="h-full flex items-center justify-center text-muted text-sm">
+                    <div className="h-full flex items-center justify-center text-muted text-xs">
                       No PDF available
                     </div>
                   )}
@@ -1367,7 +1436,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
 
               {rightTab === "opencode" && (
                 <OpenCodePanelLazy
-                  className="flex-1"
+                  className="flex-1 min-h-0 overflow-hidden"
                   directory={daemon.projectPath ?? undefined}
                   autoConnect={openCodeStatus.available}
                 />
@@ -1418,11 +1487,11 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                   </div>
                   <div className="space-y-2">
                     {[
-                      ["Show shortcuts", "⌘ ?"],
-                      ["Quick open", "⌘ P"],
-                      ["Save", "⌘ S"],
-                      ["Open folder", "⌘ O"],
-                      ["Close tab", "⌘ W"],
+                      ["Show shortcuts", "CMD ?"],
+                      ["Quick open", "CMD + P"],
+                      ["Save", "CMD + S"],
+                      ["Open folder", "CMD + O"],
+                      ["Close tab", "CMD + W"],
                     ].map(([label, key]) => (
                       <div
                         key={label}
@@ -1440,14 +1509,14 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                   </div>
                   <div className="grid grid-cols-2 gap-x-8 gap-y-2">
                     {[
-                      ["Undo", "⌘ Z"],
-                      ["Redo", "⇧ ⌘ Z"],
-                      ["Cut", "⌘ X"],
-                      ["Copy", "⌘ C"],
-                      ["Paste", "⌘ V"],
-                      ["Select all", "⌘ A"],
-                      ["Find", "⌘ F"],
-                      ["Comment", "⌘ /"],
+                      ["Undo", "CMD + Z"],
+                      ["Redo", "Shift + CMD + Z"],
+                      ["Cut", "CMD + X"],
+                      ["Copy", "CMD + C"],
+                      ["Paste", "CMD + V"],
+                      ["Select all", "CMD + A"],
+                      ["Find", "CMD + F"],
+                      ["Comment", "CMD + /"],
                     ].map(([label, key]) => (
                       <div
                         key={label}
@@ -1465,10 +1534,10 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                   </div>
                   <div className="grid grid-cols-2 gap-x-8 gap-y-2">
                     {[
-                      ["Sidebar", "⌘ B"],
-                      ["PDF preview", "⌘ \\"],
-                      ["Files", "⇧ ⌘ E"],
-                      ["Git", "⇧ ⌘ G"],
+                      ["Sidebar", "CMD + B"],
+                      ["PDF preview", "CMD + \\"],
+                      ["Files", "Shift + CMD + E"],
+                      ["Git", "Shift + CMD + G"],
                     ].map(([label, key]) => (
                       <div
                         key={label}
@@ -1486,7 +1555,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Compile LaTeX</span>
-                    <kbd>⇧ ⌘ B</kbd>
+                    <kbd>Shift + CMD + B</kbd>
                   </div>
                 </div>
               </div>
@@ -1580,7 +1649,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                 <div className="px-4 py-8 text-center text-muted text-sm">
                   No files. Open a folder first.
                   <kbd className="ml-2 px-1.5 py-0.5 text-xs font-mono border border-border">
-                    ⌘O
+                    CMDO
                   </kbd>
                 </div>
               )}

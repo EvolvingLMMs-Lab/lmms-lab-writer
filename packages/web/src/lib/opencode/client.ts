@@ -1,31 +1,31 @@
-import type { Event, Message, Part, SessionInfo, SessionStatus } from './types'
+import type { Event, Message, Part, SessionInfo, SessionStatus } from "./types";
 
 export type OpenCodeClientOptions = {
-  baseUrl: string
-  directory?: string
-  onEvent?: (event: Event) => void
-  onError?: (error: Error) => void
-  onConnect?: () => void
-  onDisconnect?: () => void
-}
+  baseUrl: string;
+  directory?: string;
+  onEvent?: (event: Event) => void;
+  onError?: (error: Error) => void;
+  onConnect?: () => void;
+  onDisconnect?: () => void;
+};
 
 export type OpenCodeStore = {
-  connected: boolean
-  sessions: Map<string, SessionInfo>
-  messages: Map<string, Message[]>
-  parts: Map<string, Part[]>
-  status: Map<string, SessionStatus>
-}
+  connected: boolean;
+  sessions: Map<string, SessionInfo>;
+  messages: Map<string, Message[]>;
+  parts: Map<string, Part[]>;
+  status: Map<string, SessionStatus>;
+};
 
 export class OpenCodeClient {
-  private baseUrl: string
-  private directory?: string
-  private eventSource: EventSource | null = null
-  private options: OpenCodeClientOptions
-  private reconnectTimeout: NodeJS.Timeout | null = null
-  private reconnectAttempts = 0
-  private maxReconnectAttempts = 10
-  private reconnectDelay = 1000
+  private baseUrl: string;
+  private directory?: string;
+  private eventSource: EventSource | null = null;
+  private options: OpenCodeClientOptions;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 10;
+  private reconnectDelay = 1000;
 
   public store: OpenCodeStore = {
     connected: false,
@@ -33,153 +33,162 @@ export class OpenCodeClient {
     messages: new Map(),
     parts: new Map(),
     status: new Map(),
-  }
+  };
 
   constructor(options: OpenCodeClientOptions) {
-    this.baseUrl = options.baseUrl.replace(/\/$/, '')
-    this.directory = options.directory
-    this.options = options
+    this.baseUrl = options.baseUrl.replace(/\/$/, "");
+    this.directory = options.directory;
+    this.options = options;
   }
 
   private getHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    }
+      "Content-Type": "application/json",
+    };
     if (this.directory) {
-      headers['x-opencode-directory'] = encodeURIComponent(this.directory)
+      headers["x-opencode-directory"] = encodeURIComponent(this.directory);
     }
-    return headers
+    return headers;
   }
 
   private getQueryParams(): string {
-    if (!this.directory) return ''
-    return `?directory=${encodeURIComponent(this.directory)}`
+    if (!this.directory) return "";
+    return `?directory=${encodeURIComponent(this.directory)}`;
   }
 
   connect(): void {
     if (this.eventSource) {
-      this.eventSource.close()
+      this.eventSource.close();
     }
 
-    const url = `${this.baseUrl}/event${this.getQueryParams()}`
-    this.eventSource = new EventSource(url)
+    const url = `${this.baseUrl}/event${this.getQueryParams()}`;
+    this.eventSource = new EventSource(url);
 
     this.eventSource.onopen = () => {
-      this.store.connected = true
-      this.reconnectAttempts = 0
-      this.options.onConnect?.()
-    }
+      this.store.connected = true;
+      this.reconnectAttempts = 0;
+      this.options.onConnect?.();
+    };
 
     this.eventSource.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data) as Event
-        this.handleEvent(data)
-        this.options.onEvent?.(data)
+        const data = JSON.parse(event.data) as Event;
+        this.handleEvent(data);
+        this.options.onEvent?.(data);
       } catch (error) {
-        console.error('Failed to parse event:', error)
+        console.error("Failed to parse event:", error);
       }
-    }
+    };
 
     this.eventSource.onerror = () => {
-      this.store.connected = false
-      this.options.onDisconnect?.()
-      this.scheduleReconnect()
-    }
+      this.store.connected = false;
+      this.options.onDisconnect?.();
+      this.scheduleReconnect();
+    };
   }
 
   private scheduleReconnect(): void {
     if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout)
+      clearTimeout(this.reconnectTimeout);
     }
 
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      this.options.onError?.(new Error('Max reconnection attempts reached'))
-      return
+      this.options.onError?.(new Error("Max reconnection attempts reached"));
+      return;
     }
 
-    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts)
-    this.reconnectAttempts++
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts);
+    this.reconnectAttempts++;
 
     this.reconnectTimeout = setTimeout(() => {
-      this.connect()
-    }, delay)
+      this.connect();
+    }, delay);
   }
 
   disconnect(): void {
     if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout)
-      this.reconnectTimeout = null
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
     }
 
     if (this.eventSource) {
-      this.eventSource.close()
-      this.eventSource = null
+      this.eventSource.close();
+      this.eventSource = null;
     }
 
-    this.store.connected = false
+    this.store.connected = false;
   }
 
   private handleEvent(event: Event): void {
     switch (event.type) {
-      case 'server.connected':
-        this.store.connected = true
-        break
+      case "server.connected":
+        this.store.connected = true;
+        break;
 
-      case 'session.updated':
-        this.store.sessions.set(event.properties.info.id, event.properties.info)
-        break
+      case "session.updated":
+        this.store.sessions.set(
+          event.properties.info.id,
+          event.properties.info,
+        );
+        break;
 
-      case 'session.deleted':
-        this.store.sessions.delete(event.properties.info.id)
-        this.store.messages.delete(event.properties.info.id)
-        this.store.status.delete(event.properties.info.id)
-        break
+      case "session.deleted":
+        this.store.sessions.delete(event.properties.info.id);
+        this.store.messages.delete(event.properties.info.id);
+        this.store.status.delete(event.properties.info.id);
+        break;
 
-      case 'session.status':
-        this.store.status.set(event.properties.sessionID, event.properties.status)
-        break
+      case "session.status":
+        this.store.status.set(
+          event.properties.sessionID,
+          event.properties.status,
+        );
+        break;
 
-      case 'message.updated': {
-        const msg = event.properties.info
-        const messages = this.store.messages.get(msg.sessionID) || []
-        const existingIndex = messages.findIndex((m) => m.id === msg.id)
+      case "message.updated": {
+        const msg = event.properties.info;
+        const messages = this.store.messages.get(msg.sessionID) || [];
+        const existingIndex = messages.findIndex((m) => m.id === msg.id);
         if (existingIndex >= 0) {
-          messages[existingIndex] = msg
+          messages[existingIndex] = msg;
         } else {
-          messages.push(msg)
-          messages.sort((a, b) => a.id.localeCompare(b.id))
+          messages.push(msg);
+          messages.sort((a, b) => a.id.localeCompare(b.id));
         }
-        this.store.messages.set(msg.sessionID, messages)
-        break
+        this.store.messages.set(msg.sessionID, messages);
+        break;
       }
 
-      case 'message.removed': {
-        const messages = this.store.messages.get(event.properties.sessionID) || []
-        const filtered = messages.filter((m) => m.id !== event.properties.messageID)
-        this.store.messages.set(event.properties.sessionID, filtered)
-        break
+      case "message.removed": {
+        const messages =
+          this.store.messages.get(event.properties.sessionID) || [];
+        const filtered = messages.filter(
+          (m) => m.id !== event.properties.messageID,
+        );
+        this.store.messages.set(event.properties.sessionID, filtered);
+        break;
       }
 
-      case 'message.part.updated': {
-        const part = event.properties.part
-        const key = `${part.sessionID}:${part.messageID}`
-        const parts = this.store.parts.get(key) || []
-        const existingIndex = parts.findIndex((p) => p.id === part.id)
+      case "message.part.updated": {
+        const part = event.properties.part;
+        const key = `${part.sessionID}:${part.messageID}`;
+        const parts = this.store.parts.get(key) || [];
+        const existingIndex = parts.findIndex((p) => p.id === part.id);
         if (existingIndex >= 0) {
-          parts[existingIndex] = part
+          parts[existingIndex] = part;
         } else {
-          parts.push(part)
+          parts.push(part);
         }
-        this.store.parts.set(key, parts)
-        break
+        this.store.parts.set(key, parts);
+        break;
       }
 
-      case 'message.part.removed': {
-        const key = `${event.properties.sessionID}:${event.properties.messageID}`
-        const parts = this.store.parts.get(key) || []
-        const filtered = parts.filter((p) => p.id !== event.properties.partID)
-        this.store.parts.set(key, filtered)
-        break
+      case "message.part.removed": {
+        const key = `${event.properties.sessionID}:${event.properties.messageID}`;
+        const parts = this.store.parts.get(key) || [];
+        const filtered = parts.filter((p) => p.id !== event.properties.partID);
+        this.store.parts.set(key, filtered);
+        break;
       }
     }
   }
@@ -187,37 +196,53 @@ export class OpenCodeClient {
   // REST API Methods
 
   async listSessions(): Promise<SessionInfo[]> {
-    const response = await fetch(`${this.baseUrl}/session${this.getQueryParams()}`, {
-      headers: this.getHeaders(),
-    })
-    if (!response.ok) throw new Error(`Failed to list sessions: ${response.statusText}`)
-    return response.json()
+    const response = await fetch(
+      `${this.baseUrl}/session${this.getQueryParams()}`,
+      {
+        headers: this.getHeaders(),
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to list sessions: ${response.statusText}`);
+    return response.json();
   }
 
   async getSession(sessionID: string): Promise<SessionInfo> {
-    const response = await fetch(`${this.baseUrl}/session/${sessionID}${this.getQueryParams()}`, {
-      headers: this.getHeaders(),
-    })
-    if (!response.ok) throw new Error(`Failed to get session: ${response.statusText}`)
-    return response.json()
+    const response = await fetch(
+      `${this.baseUrl}/session/${sessionID}${this.getQueryParams()}`,
+      {
+        headers: this.getHeaders(),
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to get session: ${response.statusText}`);
+    return response.json();
   }
 
   async createSession(): Promise<SessionInfo> {
-    const response = await fetch(`${this.baseUrl}/session${this.getQueryParams()}`, {
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify({}),
-    })
-    if (!response.ok) throw new Error(`Failed to create session: ${response.statusText}`)
-    return response.json()
+    const response = await fetch(
+      `${this.baseUrl}/session${this.getQueryParams()}`,
+      {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify({}),
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to create session: ${response.statusText}`);
+    return response.json();
   }
 
   async deleteSession(sessionID: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/session/${sessionID}${this.getQueryParams()}`, {
-      method: 'DELETE',
-      headers: this.getHeaders(),
-    })
-    if (!response.ok) throw new Error(`Failed to delete session: ${response.statusText}`)
+    const response = await fetch(
+      `${this.baseUrl}/session/${sessionID}${this.getQueryParams()}`,
+      {
+        method: "DELETE",
+        headers: this.getHeaders(),
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to delete session: ${response.statusText}`);
   }
 
   async getMessages(sessionID: string): Promise<Message[]> {
@@ -225,12 +250,13 @@ export class OpenCodeClient {
       `${this.baseUrl}/session/${sessionID}/message${this.getQueryParams()}`,
       {
         headers: this.getHeaders(),
-      }
-    )
-    if (!response.ok) throw new Error(`Failed to get messages: ${response.statusText}`)
-    const messages = await response.json()
-    this.store.messages.set(sessionID, messages)
-    return messages
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to get messages: ${response.statusText}`);
+    const messages = await response.json();
+    this.store.messages.set(sessionID, messages);
+    return messages;
   }
 
   async getParts(sessionID: string, messageID: string): Promise<Part[]> {
@@ -238,64 +264,81 @@ export class OpenCodeClient {
       `${this.baseUrl}/session/${sessionID}/message/${messageID}/part${this.getQueryParams()}`,
       {
         headers: this.getHeaders(),
-      }
-    )
-    if (!response.ok) throw new Error(`Failed to get parts: ${response.statusText}`)
-    const parts = await response.json()
-    this.store.parts.set(`${sessionID}:${messageID}`, parts)
-    return parts
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to get parts: ${response.statusText}`);
+    const parts = await response.json();
+    this.store.parts.set(`${sessionID}:${messageID}`, parts);
+    return parts;
   }
 
   async chat(
     sessionID: string,
     content: string,
     options?: {
-      agent?: string
-      model?: { providerID: string; modelID: string }
-    }
+      agent?: string;
+      model?: { providerID: string; modelID: string };
+    },
   ): Promise<void> {
     const response = await fetch(
-      `${this.baseUrl}/session/${sessionID}/chat${this.getQueryParams()}`,
+      `${this.baseUrl}/session/${sessionID}/prompt${this.getQueryParams()}`,
       {
-        method: 'POST',
+        method: "POST",
         headers: this.getHeaders(),
         body: JSON.stringify({
-          parts: [{ type: 'text', text: content }],
+          parts: [{ type: "text", text: content }],
           ...options,
         }),
-      }
-    )
-    if (!response.ok) throw new Error(`Failed to send message: ${response.statusText}`)
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to send message: ${response.statusText}`);
   }
 
   async abort(sessionID: string): Promise<void> {
     const response = await fetch(
       `${this.baseUrl}/session/${sessionID}/abort${this.getQueryParams()}`,
       {
-        method: 'POST',
+        method: "POST",
         headers: this.getHeaders(),
-      }
-    )
-    if (!response.ok) throw new Error(`Failed to abort: ${response.statusText}`)
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to abort: ${response.statusText}`);
   }
 
-  async getAgents(): Promise<{ id: string; name: string; description?: string }[]> {
-    const response = await fetch(`${this.baseUrl}/agent${this.getQueryParams()}`, {
-      headers: this.getHeaders(),
-    })
-    if (!response.ok) throw new Error(`Failed to get agents: ${response.statusText}`)
-    return response.json()
+  async getAgents(): Promise<
+    { id: string; name: string; description?: string }[]
+  > {
+    const response = await fetch(
+      `${this.baseUrl}/agent${this.getQueryParams()}`,
+      {
+        headers: this.getHeaders(),
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to get agents: ${response.statusText}`);
+    return response.json();
   }
 
-  async getProviders(): Promise<{ id: string; name: string; models: { id: string; name: string }[] }[]> {
-    const response = await fetch(`${this.baseUrl}/provider${this.getQueryParams()}`, {
-      headers: this.getHeaders(),
-    })
-    if (!response.ok) throw new Error(`Failed to get providers: ${response.statusText}`)
-    return response.json()
+  async getProviders(): Promise<
+    { id: string; name: string; models: { id: string; name: string }[] }[]
+  > {
+    const response = await fetch(
+      `${this.baseUrl}/provider${this.getQueryParams()}`,
+      {
+        headers: this.getHeaders(),
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to get providers: ${response.statusText}`);
+    return response.json();
   }
 }
 
-export function createOpenCodeClient(options: OpenCodeClientOptions): OpenCodeClient {
-  return new OpenCodeClient(options)
+export function createOpenCodeClient(
+  options: OpenCodeClientOptions,
+): OpenCodeClient {
+  return new OpenCodeClient(options);
 }

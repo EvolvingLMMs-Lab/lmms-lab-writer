@@ -445,10 +445,25 @@ function findPdfFile(cwd: string): string | null {
   }
 }
 
-function findMainTexFile(cwd: string): string | null {
+const documentClassRe = /^[^%]*\\documentclass/;
+
+function isMainFile(content: string): boolean {
+  return content.split("\n").some((line) => documentClassRe.test(line));
+}
+
+function findMainTexFile(cwd: string, currentFile?: string): string | null {
   try {
+    if (currentFile && currentFile.endsWith(".tex")) {
+      const fullPath = join(cwd, currentFile);
+      if (existsSync(fullPath)) {
+        const content = readFileSync(fullPath, "utf-8");
+        if (isMainFile(content)) {
+          return currentFile;
+        }
+      }
+    }
+
     const entries = readdirSync(cwd, { withFileTypes: true });
-    // Prefer main.tex, then any .tex file
     for (const entry of entries) {
       if (entry.isFile() && entry.name === "main.tex") {
         return entry.name;
@@ -918,7 +933,7 @@ export async function serve(options: ServeOptions): Promise<void> {
 
           case "compile": {
             if (!state.projectPath) break;
-            const file = msg.file || findMainTexFile(state.projectPath);
+            const file = findMainTexFile(state.projectPath, msg.file);
             if (!file) {
               ws.send(
                 JSON.stringify({
