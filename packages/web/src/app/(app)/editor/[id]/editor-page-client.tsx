@@ -190,10 +190,13 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
     // We'll use the directory name and let the user confirm
     const name = handle.name;
 
+    // Try to guess a reasonable default path
+    const defaultPath = `~/Documents/${name}`;
+
     // Prompt user to enter the path since browsers don't expose full paths
     const userPath = prompt(
-      `Enter the full path to "${name}":\n\nExample: /Users/yourname/Documents/${name}`,
-      `${name}`
+      `Enter the full path to "${name}":\n\nYou can use ~ for home directory.\nExample: ~/Documents/${name}`,
+      defaultPath
     );
     return userPath;
   };
