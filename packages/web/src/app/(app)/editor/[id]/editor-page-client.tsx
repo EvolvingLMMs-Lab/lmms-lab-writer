@@ -104,6 +104,16 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
     };
   }, [saveTitleToDb]);
 
+  // Auto-connect to saved project path for this document
+  useEffect(() => {
+    if (!daemon.connected || daemon.projectPath) return;
+
+    const savedPath = localStorage.getItem(`latex-writer-doc-path-${document.id}`);
+    if (savedPath) {
+      daemon.setProject(savedPath);
+    }
+  }, [daemon.connected, daemon.projectPath, daemon, document.id]);
+
   useEffect(() => {
     if (!resizing) return;
 
@@ -176,13 +186,15 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
       const path = await getDirectoryPath(handle);
       if (path) {
         daemon.setProject(path);
+        // Save path association for this document
+        localStorage.setItem(`latex-writer-doc-path-${document.id}`, path);
       }
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
         console.error("Failed to open folder:", err);
       }
     }
-  }, [daemon]);
+  }, [daemon, document.id]);
 
   // Helper to get directory path (works via daemon)
   const getDirectoryPath = async (handle: FileSystemDirectoryHandle): Promise<string | null> => {
