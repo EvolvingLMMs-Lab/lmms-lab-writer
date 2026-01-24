@@ -1439,6 +1439,8 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                   className="flex-1 min-h-0 overflow-hidden"
                   directory={daemon.projectPath ?? undefined}
                   autoConnect={openCodeStatus.available}
+                  daemonStatus={daemon.opencodeStatus}
+                  onRestartOpenCode={daemon.restartOpenCode}
                 />
               )}
             </aside>
