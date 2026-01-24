@@ -116,11 +116,17 @@ async function getProfileData(): Promise<{
       (membershipData?.starred_repos as unknown as StarredRepo[]) || [],
   };
 
+  // GitHub is connected if:
+  // 1. User logged in via GitHub (provider === "github"), OR
+  // 2. User has linked GitHub account (has token in database)
+  const isGitHubConnected =
+    profile.provider === "github" || !!githubTokenResult.data;
+
   return {
     profile,
     stats,
     membership,
-    isGitHubConnected: !!githubTokenResult.data,
+    isGitHubConnected,
     repos,
   };
 }
