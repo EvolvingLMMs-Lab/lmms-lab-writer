@@ -510,8 +510,8 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
 
   return (
     <div className="h-dvh flex flex-col">
-      <header className="border-b border-border flex-shrink-0">
-        <div className="px-4 py-3 flex items-center justify-between gap-4">
+      <header className="border-b border-border flex-shrink-0 h-[72px] flex items-center">
+        <div className="w-full px-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             {/* Logo - Home */}
             <Link
