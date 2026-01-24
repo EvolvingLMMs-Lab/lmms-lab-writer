@@ -8,44 +8,51 @@ type Props = {
 
 async function getDocument(id: string) {
   const supabase = await createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+
+  // getSession() reads from cookie - ZERO network requests
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) {
     redirect('/login')
   }
 
-  const { data: doc, error } = await supabase
-    .from('documents')
-    .select('*')
-    .eq('id', id)
-    .single()
+  const userId = session.user.id
 
+  // Parallel fetch: document + access check
+  const [docResult, accessResult] = await Promise.all([
+    supabase
+      .from('documents')
+      .select('*')
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('document_access')
+      .select('role')
+      .eq('document_id', id)
+      .eq('user_id', userId)
+      .maybeSingle(),
+  ])
+
+  const { data: doc, error } = docResult
   if (error || !doc) {
     notFound()
   }
 
-  const isOwner = doc.created_by === user.id
-  let role: 'owner' | 'editor' | 'viewer' = isOwner ? 'owner' : 'viewer'
+  const isOwner = doc.created_by === userId
+  let role: 'owner' | 'editor' | 'viewer'
 
-  if (!isOwner) {
-    const { data: access } = await supabase
-      .from('document_access')
-      .select('role')
-      .eq('document_id', id)
-      .eq('user_id', user.id)
-      .single()
-
-    if (!access) {
-      notFound()
-    }
-    role = access.role as 'editor' | 'viewer'
+  if (isOwner) {
+    role = 'owner'
+  } else if (accessResult.data) {
+    role = accessResult.data.role as 'editor' | 'viewer'
+  } else {
+    notFound()
   }
 
   return {
     document: doc,
     user: {
-      id: user.id,
-      email: user.email || 'Anonymous',
+      id: userId,
+      email: session.user.email || 'Anonymous',
     },
     role,
   }

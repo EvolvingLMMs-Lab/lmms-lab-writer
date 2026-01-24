@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { User } from '@supabase/supabase-js'
+import type { Session } from '@supabase/supabase-js'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
@@ -32,35 +32,37 @@ type UserProfile = {
   created_at: string
 }
 
-function getUserProfile(user: User): UserProfile {
+function getUserProfile(session: Session): UserProfile {
   return {
-    email: user.email ?? '',
-    created_at: user.created_at,
+    email: session.user.email ?? '',
+    created_at: session.user.created_at,
   }
 }
 
 async function getDashboardData(): Promise<{ documents: Document[]; profile: UserProfile }> {
   const supabase = await createClient()
 
-  // Single getUser call - middleware already validated, this just retrieves from session
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+  // getSession() reads from cookie - ZERO network requests
+  // Middleware already validated session, this just retrieves it
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) {
     redirect('/login')
   }
 
-  const profile = getUserProfile(user)
+  const profile = getUserProfile(session)
+  const userId = session.user.id
 
-  // Parallel database queries
+  // Parallel database queries - only network requests needed
   const [ownedDocsResult, sharedAccessResult] = await Promise.all([
     supabase
       .from('documents')
       .select('id, title, created_at, updated_at')
-      .eq('created_by', user.id)
+      .eq('created_by', userId)
       .order('updated_at', { ascending: false }),
     supabase
       .from('document_access')
       .select('document_id, role, documents(id, title, created_at, updated_at)')
-      .eq('user_id', user.id),
+      .eq('user_id', userId),
   ])
 
   const ownedDocs = ownedDocsResult.data

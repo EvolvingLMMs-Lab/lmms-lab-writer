@@ -32,9 +32,11 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // getSession() reads from cookie only - ZERO network requests
+  // getUser() validates with Supabase server - ~130ms per call
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
 
   const isAuthRoute =
     request.nextUrl.pathname.startsWith('/login') ||
@@ -45,13 +47,13 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/editor') ||
     request.nextUrl.pathname.startsWith('/dashboard')
 
-  if (!user && isProtectedRoute) {
+  if (!session && isProtectedRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  if (user && isAuthRoute) {
+  if (session && isAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)

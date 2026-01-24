@@ -8,12 +8,13 @@ type UserProfile = {
 
 async function getUser(): Promise<UserProfile | null> {
   const supabase = await createClient()
+  // getSession() reads from cookie - ZERO network requests
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return null
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session) return null
   return {
-    email: user.email ?? '',
+    email: session.user.email ?? '',
   }
 }
 
