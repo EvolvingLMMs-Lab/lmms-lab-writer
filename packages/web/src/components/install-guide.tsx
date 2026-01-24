@@ -30,7 +30,13 @@ function WindowsIcon({ className }: { className?: string }) {
 
 function CheckIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
     </svg>
   );
@@ -38,8 +44,18 @@ function CheckIcon({ className }: { className?: string }) {
 
 function CopyIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.5}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
+      />
     </svg>
   );
 }
@@ -58,9 +74,9 @@ export function InstallGuide() {
   const [copied, setCopied] = useState(false);
 
   const installCommands: Record<Platform, string> = {
-    macos: `curl -fsSL https://latex-writer.vercel.app/install.sh | bash`,
-    linux: `curl -fsSL https://latex-writer.vercel.app/install.sh | bash`,
-    windows: `irm https://latex-writer.vercel.app/install.ps1 | iex`,
+    macos: `curl -fsSL https://agentic-latex-writer.vercel.app/install.sh | bash`,
+    linux: `curl -fsSL https://agentic-latex-writer.vercel.app/install.sh | bash`,
+    windows: `irm https://agentic-latex-writer.vercel.app/install.ps1 | iex`,
   };
 
   const handleCopy = useCallback(() => {
@@ -69,7 +85,10 @@ export function InstallGuide() {
     setTimeout(() => setCopied(false), 2000);
   }, [platform, installCommands]);
 
-  const platformConfig: Record<Platform, { icon: typeof AppleIcon; label: string }> = {
+  const platformConfig: Record<
+    Platform,
+    { icon: typeof AppleIcon; label: string }
+  > = {
     macos: { icon: AppleIcon, label: "macOS" },
     linux: { icon: LinuxIcon, label: "Linux" },
     windows: { icon: WindowsIcon, label: "Windows" },
@@ -94,9 +113,7 @@ export function InstallGuide() {
               LMMs-Lab Writer
             </span>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">
-            Install
-          </h1>
+          <h1 className="text-3xl font-bold tracking-tight mb-2">Install</h1>
           <p className="text-muted text-sm">
             One command installs everything you need
           </p>
@@ -162,7 +179,9 @@ export function InstallGuide() {
               <span className="text-neutral-500 select-none">
                 {platform === "windows" ? ">" : "$"}
               </span>
-              <code className="break-all text-green-400">{installCommands[platform]}</code>
+              <code className="break-all text-green-400">
+                {installCommands[platform]}
+              </code>
             </div>
           </div>
         </div>
@@ -172,14 +191,23 @@ export function InstallGuide() {
           Installs Node.js, LaTeX, and the CLI automatically
         </p>
 
-        {/* CTA */}
         <div className="mt-8">
           <button
             onClick={() => window.location.reload()}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-black text-white text-sm hover:bg-black/80 active:bg-black/60 active:scale-[0.98] transition-all"
+            className="btn btn-primary"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
             </svg>
             I&apos;ve installed it
           </button>

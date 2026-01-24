@@ -1,120 +1,141 @@
-import { createClient } from '@/lib/supabase/server'
-import type { Session } from '@supabase/supabase-js'
-import Link from 'next/link'
-import { redirect } from 'next/navigation'
+import { MembershipBadgeClient } from "@/components/membership/membership-badge-client";
+import { createClient } from "@/lib/supabase/server";
+import type { Session } from "@supabase/supabase-js";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { DocumentList } from './document-list'
-import { NewDocumentButton } from './new-document-button'
-import { SignOutButton } from './sign-out-button'
+import { DocumentList } from "./document-list";
+import { NewDocumentButton } from "./new-document-button";
+import { SignOutButton } from "./sign-out-button";
 
 type Document = {
-  id: string
-  title: string
-  created_at: string
-  updated_at: string
-  role: 'owner' | 'editor' | 'viewer'
-}
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  role: "owner" | "editor" | "viewer";
+};
 
 type OwnedDoc = {
-  id: string
-  title: string
-  created_at: string
-  updated_at: string
-}
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+};
 
 type SharedAccess = {
-  document_id: string
-  role: string
-  documents: OwnedDoc | null
-}
+  document_id: string;
+  role: string;
+  documents: OwnedDoc | null;
+};
 
 type UserProfile = {
-  email: string
-  created_at: string
-}
+  email: string;
+  created_at: string;
+};
 
 function getUserProfile(session: Session): UserProfile {
   return {
-    email: session.user.email ?? '',
+    email: session.user.email ?? "",
     created_at: session.user.created_at,
-  }
+  };
 }
 
-async function getDashboardData(): Promise<{ documents: Document[]; profile: UserProfile }> {
-  const supabase = await createClient()
+async function getDashboardData(): Promise<{
+  documents: Document[];
+  profile: UserProfile;
+}> {
+  const supabase = await createClient();
 
   // getSession() reads from cookie - ZERO network requests
   // Middleware already validated session, this just retrieves it
-  const { data: { session } } = await supabase.auth.getSession()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session) {
-    redirect('/login')
+    redirect("/login");
   }
 
-  const profile = getUserProfile(session)
-  const userId = session.user.id
+  const profile = getUserProfile(session);
+  const userId = session.user.id;
 
   // Parallel database queries - only network requests needed
   const [ownedDocsResult, sharedAccessResult] = await Promise.all([
     supabase
-      .from('documents')
-      .select('id, title, created_at, updated_at')
-      .eq('created_by', userId)
-      .order('updated_at', { ascending: false }),
+      .from("documents")
+      .select("id, title, created_at, updated_at")
+      .eq("created_by", userId)
+      .order("updated_at", { ascending: false }),
     supabase
-      .from('document_access')
-      .select('document_id, role, documents(id, title, created_at, updated_at)')
-      .eq('user_id', userId),
-  ])
+      .from("document_access")
+      .select("document_id, role, documents(id, title, created_at, updated_at)")
+      .eq("user_id", userId),
+  ]);
 
-  const ownedDocs = ownedDocsResult.data
-  const sharedAccess = sharedAccessResult.data
+  const ownedDocs = ownedDocsResult.data;
+  const sharedAccess = sharedAccessResult.data;
 
   const owned: Document[] = (ownedDocs ?? []).map((doc: OwnedDoc) => ({
     ...doc,
-    role: 'owner' as const,
-  }))
+    role: "owner" as const,
+  }));
 
   const shared: Document[] = ((sharedAccess ?? []) as unknown as SharedAccess[])
     .filter((a) => a.documents)
     .map((a) => ({
       ...a.documents!,
-      role: a.role as 'editor' | 'viewer',
-    }))
+      role: a.role as "editor" | "viewer",
+    }));
 
   const documents = [...owned, ...shared].sort(
-    (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  )
+    (a, b) =>
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+  );
 
-  return { documents, profile }
+  return { documents, profile };
 }
 
 function formatDate(date: string): string {
-  const d = new Date(date)
-  const now = new Date()
-  const diff = now.getTime() - d.getTime()
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Yesterday'
-  if (days < 7) return `${days} days ago`
-  
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const d = new Date(date);
+  const now = new Date();
+  const diff = now.getTime() - d.getTime();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 export default async function DashboardPage() {
-  const { documents, profile } = await getDashboardData()
+  const { documents, profile } = await getDashboardData();
 
   return (
     <div className="min-h-screen">
       <header className="border-b border-border">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold tracking-tight flex items-center gap-3">
+          <Link
+            href="/"
+            className="text-xl font-bold tracking-tight flex items-center gap-3"
+          >
             <div className="logo-bar text-foreground">
-              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
             </div>
             LMMs-Lab Writer
           </Link>
           <div className="flex items-center gap-4">
+            <MembershipBadgeClient />
             <NewDocumentButton />
             <SignOutButton />
           </div>
@@ -127,11 +148,15 @@ export default async function DashboardPage() {
           {profile && (
             <div className="flex items-center gap-3 text-sm">
               <div className="size-8 border border-border flex items-center justify-center bg-border">
-                <span className="font-medium">{profile.email.charAt(0).toUpperCase()}</span>
+                <span className="font-medium">
+                  {profile.email.charAt(0).toUpperCase()}
+                </span>
               </div>
               <div>
                 <p className="font-medium">{profile.email}</p>
-                <p className="text-muted text-xs">Member since {formatDate(profile.created_at)}</p>
+                <p className="text-muted text-xs">
+                  Member since {formatDate(profile.created_at)}
+                </p>
               </div>
             </div>
           )}
@@ -152,7 +177,5 @@ export default async function DashboardPage() {
         )}
       </main>
     </div>
-  )
+  );
 }
-
-

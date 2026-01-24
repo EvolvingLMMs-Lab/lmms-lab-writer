@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import type { FileNode } from "@lmms-lab/writer-shared";
 
 type Props = {
@@ -145,7 +146,16 @@ export function FileTree({
   }
 
   return (
-    <div className={`overflow-auto ${className}`}>
+    <OverlayScrollbarsComponent
+      className={className}
+      options={{
+        scrollbars: {
+          theme: "os-theme-monochrome",
+          autoHide: "leave",
+          autoHideDelay: 400,
+        },
+      }}
+    >
       {files.map((node) => (
         <TreeNode
           key={node.path}
@@ -156,6 +166,6 @@ export function FileTree({
           defaultExpanded
         />
       ))}
-    </div>
+    </OverlayScrollbarsComponent>
   );
 }

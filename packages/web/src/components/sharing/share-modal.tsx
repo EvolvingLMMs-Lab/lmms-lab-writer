@@ -1,161 +1,161 @@
-'use client'
+"use client";
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Collaborator = {
-  user_id: string
-  role: string
-  created_at: string
-}
+  user_id: string;
+  role: string;
+  created_at: string;
+};
 
 type PendingInvite = {
-  id: string
-  email: string
-  role: string
-  expires_at: string
-  created_at: string
-}
+  id: string;
+  email: string;
+  role: string;
+  expires_at: string;
+  created_at: string;
+};
 
 type Props = {
-  documentId: string
-  isOpen: boolean
-  onClose: () => void
-}
+  documentId: string;
+  isOpen: boolean;
+  onClose: () => void;
+};
 
 export function ShareModal({ documentId, isOpen, onClose }: Props) {
-  const [email, setEmail] = useState('')
-  const [role, setRole] = useState<'editor' | 'viewer'>('editor')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-  const [collaborators, setCollaborators] = useState<Collaborator[]>([])
-  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([])
-  const [inviteUrl, setInviteUrl] = useState<string | null>(null)
-  
-  const dialogRef = useRef<HTMLDivElement>(null)
-  const previousActiveElement = useRef<Element | null>(null)
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"editor" | "viewer">("editor");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<Element | null>(null);
 
   const fetchShareData = useCallback(async () => {
-    const res = await fetch(`/api/documents/${documentId}/share`)
+    const res = await fetch(`/api/documents/${documentId}/share`);
     if (res.ok) {
-      const data = await res.json()
-      setCollaborators(data.collaborators)
-      setPendingInvites(data.pendingInvites)
+      const data = await res.json();
+      setCollaborators(data.collaborators);
+      setPendingInvites(data.pendingInvites);
     }
-  }, [documentId])
+  }, [documentId]);
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     function handleEscapeKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === "Escape") onClose();
     }
 
-    document.addEventListener('keydown', handleEscapeKey)
-    return () => document.removeEventListener('keydown', handleEscapeKey)
-  }, [isOpen, onClose])
+    document.addEventListener("keydown", handleEscapeKey);
+    return () => document.removeEventListener("keydown", handleEscapeKey);
+  }, [isOpen, onClose]);
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
-    previousActiveElement.current = document.activeElement
-    dialogRef.current?.focus()
+    previousActiveElement.current = document.activeElement;
+    dialogRef.current?.focus();
 
-    const originalOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
     return () => {
-      document.body.style.overflow = originalOverflow
+      document.body.style.overflow = originalOverflow;
       if (previousActiveElement.current instanceof HTMLElement) {
-        previousActiveElement.current.focus()
+        previousActiveElement.current.focus();
       }
-    }
-  }, [isOpen])
+    };
+  }, [isOpen]);
 
   function handleFocusTrap(e: React.KeyboardEvent) {
-    if (e.key !== 'Tab' || !dialogRef.current) return
+    if (e.key !== "Tab" || !dialogRef.current) return;
 
     const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    )
-    const first = focusable[0]
-    const last = focusable[focusable.length - 1]
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
 
     if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault()
-      last?.focus()
+      e.preventDefault();
+      last?.focus();
     } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault()
-      first?.focus()
+      e.preventDefault();
+      first?.focus();
     }
   }
 
   useEffect(() => {
     if (isOpen) {
-      fetchShareData()
+      fetchShareData();
     }
-  }, [isOpen, fetchShareData])
+  }, [isOpen, fetchShareData]);
 
   async function handleInvite(e: React.FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setSuccess(null)
-    setInviteUrl(null)
-    setLoading(true)
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    setInviteUrl(null);
+    setLoading(true);
 
     const res = await fetch(`/api/documents/${documentId}/share`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, role }),
-    })
+    });
 
-    const data = await res.json()
-    setLoading(false)
+    const data = await res.json();
+    setLoading(false);
 
     if (!res.ok) {
-      setError(data.error)
-      return
+      setError(data.error);
+      return;
     }
 
-    if (data.type === 'direct') {
-      setSuccess(`${email} has been added as ${role}`)
+    if (data.type === "direct") {
+      setSuccess(`${email} has been added as ${role}`);
     } else {
-      setSuccess(`Invite link created for ${email}`)
-      setInviteUrl(data.inviteUrl)
+      setSuccess(`Invite link created for ${email}`);
+      setInviteUrl(data.inviteUrl);
     }
 
-    setEmail('')
-    fetchShareData()
+    setEmail("");
+    fetchShareData();
   }
 
   async function handleRemove(userId?: string, inviteId?: string) {
-    const params = new URLSearchParams()
-    if (userId) params.set('userId', userId)
-    if (inviteId) params.set('inviteId', inviteId)
+    const params = new URLSearchParams();
+    if (userId) params.set("userId", userId);
+    if (inviteId) params.set("inviteId", inviteId);
 
     await fetch(`/api/documents/${documentId}/share?${params}`, {
-      method: 'DELETE',
-    })
-    fetchShareData()
+      method: "DELETE",
+    });
+    fetchShareData();
   }
 
   function copyInviteUrl() {
     if (inviteUrl) {
-      navigator.clipboard.writeText(inviteUrl)
-      setSuccess('Link copied to clipboard')
+      navigator.clipboard.writeText(inviteUrl);
+      setSuccess("Link copied to clipboard");
     }
   }
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div 
-        className="absolute inset-0 bg-black/20 modal-overlay" 
+      <div
+        className="absolute inset-0 bg-black/20 modal-overlay"
         onClick={onClose}
         aria-hidden="true"
       />
-      <div 
+      <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
@@ -165,14 +165,27 @@ export function ShareModal({ documentId, isOpen, onClose }: Props) {
         className="relative bg-white border border-black w-full max-w-lg mx-4 outline-none modal-content"
       >
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 id="share-modal-title" className="text-lg font-medium">Share document</h2>
-          <button 
+          <h2 id="share-modal-title" className="text-lg font-medium">
+            Share document
+          </h2>
+          <button
             onClick={onClose}
             aria-label="Close"
             className="text-muted hover:text-black transition-colors"
           >
-            <svg className="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-5 h-5"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="square"
+                strokeLinejoin="miter"
+                strokeWidth={1.5}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -189,7 +202,7 @@ export function ShareModal({ documentId, isOpen, onClose }: Props) {
             />
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value as 'editor' | 'viewer')}
+              onChange={(e) => setRole(e.target.value as "editor" | "viewer")}
               className="p-2 border border-border focus:border-black focus:outline-none text-sm bg-white"
             >
               <option value="editor">Editor</option>
@@ -198,9 +211,9 @@ export function ShareModal({ documentId, isOpen, onClose }: Props) {
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-black text-white text-sm hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-400"
+              className="btn btn-sm btn-primary"
             >
-              {loading ? '...' : 'Invite'}
+              {loading ? "..." : "Invite"}
             </button>
           </form>
 
@@ -228,7 +241,7 @@ export function ShareModal({ documentId, isOpen, onClose }: Props) {
                 />
                 <button
                   onClick={copyInviteUrl}
-                  className="px-3 py-2 text-xs border border-border hover:border-black"
+                  className="btn btn-sm btn-secondary"
                 >
                   Copy
                 </button>
@@ -239,10 +252,15 @@ export function ShareModal({ documentId, isOpen, onClose }: Props) {
           {(collaborators.length > 0 || pendingInvites.length > 0) && (
             <div className="border border-border divide-y divide-border">
               {collaborators.map((c) => (
-                <div key={c.user_id} className="flex items-center justify-between p-3">
+                <div
+                  key={c.user_id}
+                  className="flex items-center justify-between p-3"
+                >
                   <div>
                     <span className="text-sm">{c.user_id}</span>
-                    <span className="ml-2 text-xs text-muted uppercase">{c.role}</span>
+                    <span className="ml-2 text-xs text-muted uppercase">
+                      {c.role}
+                    </span>
                   </div>
                   <button
                     onClick={() => handleRemove(c.user_id)}
@@ -253,10 +271,15 @@ export function ShareModal({ documentId, isOpen, onClose }: Props) {
                 </div>
               ))}
               {pendingInvites.map((invite) => (
-                <div key={invite.id} className="flex items-center justify-between p-3 bg-neutral-50">
+                <div
+                  key={invite.id}
+                  className="flex items-center justify-between p-3 bg-neutral-50"
+                >
                   <div>
                     <span className="text-sm">{invite.email}</span>
-                    <span className="ml-2 text-xs text-muted uppercase">{invite.role}</span>
+                    <span className="ml-2 text-xs text-muted uppercase">
+                      {invite.role}
+                    </span>
                     <span className="ml-2 text-xs text-muted">(pending)</span>
                   </div>
                   <button
@@ -272,5 +295,5 @@ export function ShareModal({ documentId, isOpen, onClose }: Props) {
         </div>
       </div>
     </div>
-  )
+  );
 }

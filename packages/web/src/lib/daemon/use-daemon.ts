@@ -23,6 +23,11 @@ interface ProjectInfo {
   mainFile: string | null;
 }
 
+interface GitInitResult {
+  success: boolean;
+  error?: string;
+}
+
 interface DaemonState {
   connected: boolean;
   version: string | null;
@@ -33,6 +38,8 @@ interface DaemonState {
   gitStatus: GitStatus | null;
   isCompiling: boolean;
   compileOutput: string;
+  isInitializingGit: boolean;
+  gitInitResult: GitInitResult | null;
 }
 
 export function useDaemon(wsUrl = "ws://localhost:3001") {
@@ -49,6 +56,8 @@ export function useDaemon(wsUrl = "ws://localhost:3001") {
     gitStatus: null,
     isCompiling: false,
     compileOutput: "",
+    isInitializingGit: false,
+    gitInitResult: null,
   });
 
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
@@ -109,6 +118,14 @@ export function useDaemon(wsUrl = "ws://localhost:3001") {
 
           case "compile-result":
             setState((s) => ({ ...s, isCompiling: false }));
+            break;
+
+          case "git-init-result":
+            setState((s) => ({
+              ...s,
+              isInitializingGit: false,
+              gitInitResult: { success: msg.success, error: msg.error },
+            }));
             break;
 
           case "error":
@@ -207,7 +224,12 @@ export function useDaemon(wsUrl = "ws://localhost:3001") {
   }, []);
 
   const gitInit = useCallback(() => {
+    setState((s) => ({ ...s, isInitializingGit: true, gitInitResult: null }));
     wsRef.current?.send(JSON.stringify({ type: "git-init" }));
+  }, []);
+
+  const clearGitInitResult = useCallback(() => {
+    setState((s) => ({ ...s, gitInitResult: null }));
   }, []);
 
   const refreshGitStatus = useCallback(() => {
@@ -231,6 +253,7 @@ export function useDaemon(wsUrl = "ws://localhost:3001") {
     gitPush,
     gitPull,
     gitInit,
+    clearGitInitResult,
     refreshGitStatus,
   };
 }

@@ -1,17 +1,17 @@
-'use client'
+"use client";
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef } from "react";
 
 type AlertDialogProps = {
-  isOpen: boolean
-  onClose: () => void
-  onConfirm: () => void
-  title: string
-  description: string
-  confirmLabel?: string
-  cancelLabel?: string
-  destructive?: boolean
-}
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  destructive?: boolean;
+};
 
 export function AlertDialog({
   isOpen,
@@ -19,70 +19,70 @@ export function AlertDialog({
   onConfirm,
   title,
   description,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
   destructive = false,
 }: AlertDialogProps) {
-  const dialogRef = useRef<HTMLDivElement>(null)
-  const previousActiveElement = useRef<Element | null>(null)
-  const cancelButtonRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<Element | null>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     function handleEscapeKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === "Escape") onClose();
     }
 
-    document.addEventListener('keydown', handleEscapeKey)
-    return () => document.removeEventListener('keydown', handleEscapeKey)
-  }, [isOpen, onClose])
+    document.addEventListener("keydown", handleEscapeKey);
+    return () => document.removeEventListener("keydown", handleEscapeKey);
+  }, [isOpen, onClose]);
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
-    previousActiveElement.current = document.activeElement
-    cancelButtonRef.current?.focus()
+    previousActiveElement.current = document.activeElement;
+    cancelButtonRef.current?.focus();
 
-    const originalOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
     return () => {
-      document.body.style.overflow = originalOverflow
+      document.body.style.overflow = originalOverflow;
       if (previousActiveElement.current instanceof HTMLElement) {
-        previousActiveElement.current.focus()
+        previousActiveElement.current.focus();
       }
-    }
-  }, [isOpen])
+    };
+  }, [isOpen]);
 
   function handleFocusTrap(e: React.KeyboardEvent) {
-    if (e.key !== 'Tab' || !dialogRef.current) return
+    if (e.key !== "Tab" || !dialogRef.current) return;
 
     const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    )
-    const first = focusable[0]
-    const last = focusable[focusable.length - 1]
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
 
     if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault()
-      last?.focus()
+      e.preventDefault();
+      last?.focus();
     } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault()
-      first?.focus()
+      e.preventDefault();
+      first?.focus();
     }
   }
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div 
-        className="absolute inset-0 bg-black/20 modal-overlay" 
+      <div
+        className="absolute inset-0 bg-black/20 modal-overlay"
         onClick={onClose}
         aria-hidden="true"
       />
-      <div 
+      <div
         ref={dialogRef}
         role="alertdialog"
         aria-modal="true"
@@ -102,25 +102,21 @@ export function AlertDialog({
           <button
             ref={cancelButtonRef}
             onClick={onClose}
-            className="px-4 py-2 text-sm border border-border hover:border-black transition-colors"
+            className="btn btn-sm btn-secondary"
           >
             {cancelLabel}
           </button>
           <button
             onClick={() => {
-              onConfirm()
-              onClose()
+              onConfirm();
+              onClose();
             }}
-            className={`px-4 py-2 text-sm text-white transition-colors ${
-              destructive 
-                ? 'bg-black hover:bg-neutral-800' 
-                : 'bg-black hover:bg-neutral-800'
-            }`}
+            className="btn btn-sm btn-primary"
           >
             {confirmLabel}
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }

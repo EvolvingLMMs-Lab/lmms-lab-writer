@@ -5,6 +5,7 @@ import { FileTree } from "@/components/editor/file-tree";
 import { InstallGuide } from "@/components/install-guide";
 import { ShareModal } from "@/components/sharing/share-modal";
 import { AlertDialog } from "@/components/ui/alert-dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDaemon } from "@/lib/daemon";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -36,14 +37,26 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string>();
   const [fileContent, setFileContent] = useState<string>("");
+  const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [showSidebar, setShowSidebar] = useState(true);
   const [showPdf, setShowPdf] = useState(false);
   const [pdfUrl] = useState<string | null>(null);
-  const [sidebarWidth, setSidebarWidth] = useState(224);
-  const [rightPanelWidth, setRightPanelWidth] = useState(400);
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    if (typeof window === "undefined") return 224;
+    const saved = localStorage.getItem("alw-sidebar-width");
+    return saved ? Number(saved) : 224;
+  });
+  const [rightPanelWidth, setRightPanelWidth] = useState(() => {
+    if (typeof window === "undefined") return 400;
+    const saved = localStorage.getItem("alw-right-panel-width");
+    return saved ? Number(saved) : 400;
+  });
   const [resizing, setResizing] = useState<"sidebar" | "right" | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"files" | "git">("files");
   const [rightTab, setRightTab] = useState<"compile" | "terminal">("compile");
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showQuickOpen, setShowQuickOpen] = useState(false);
+  const [quickOpenQuery, setQuickOpenQuery] = useState("");
 
   // Git state from daemon
   const gitStatus = daemon.gitStatus;
@@ -104,15 +117,37 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
     };
   }, [saveTitleToDb]);
 
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (selectedFile && fileContent) {
+        e.preventDefault();
+        return "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [selectedFile, fileContent]);
+
   // Auto-connect to saved project path for this document
   useEffect(() => {
     if (!daemon.connected || daemon.projectPath) return;
 
-    const savedPath = localStorage.getItem(`latex-writer-doc-path-${document.id}`);
+    const savedPath = localStorage.getItem(`alw-doc-path-${document.id}`);
     if (savedPath) {
       daemon.setProject(savedPath);
     }
   }, [daemon.connected, daemon.projectPath, daemon, document.id]);
+
+  const prevResizingRef = useRef<"sidebar" | "right" | null>(null);
+
+  useEffect(() => {
+    if (prevResizingRef.current === "sidebar" && resizing === null) {
+      localStorage.setItem("alw-sidebar-width", String(sidebarWidth));
+    } else if (prevResizingRef.current === "right" && resizing === null) {
+      localStorage.setItem("alw-right-panel-width", String(rightPanelWidth));
+    }
+    prevResizingRef.current = resizing;
+  }, [resizing, sidebarWidth, rightPanelWidth]);
 
   useEffect(() => {
     if (!resizing) return;
@@ -139,6 +174,11 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
 
   const handleFileSelect = useCallback(
     async (path: string) => {
+      // Add to tabs first, then set as selected
+      setOpenTabs((prev) => {
+        if (prev.includes(path)) return prev;
+        return [...prev, path];
+      });
       setSelectedFile(path);
       const content = await daemon.readFile(path);
       if (content !== null) {
@@ -146,6 +186,35 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
       }
     },
     [daemon],
+  );
+
+  // Safety: ensure selectedFile is always in openTabs
+  useEffect(() => {
+    if (selectedFile && !openTabs.includes(selectedFile)) {
+      setOpenTabs((prev) => [...prev, selectedFile]);
+    }
+  }, [selectedFile, openTabs]);
+
+  const handleCloseTab = useCallback(
+    (path: string, e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      setOpenTabs((prev) => {
+        const newTabs = prev.filter((p) => p !== path);
+        // If closing the selected file, switch to another tab
+        if (selectedFile === path) {
+          const idx = prev.indexOf(path);
+          const newSelected = newTabs[Math.min(idx, newTabs.length - 1)];
+          if (newSelected) {
+            handleFileSelect(newSelected);
+          } else {
+            setSelectedFile(undefined);
+            setFileContent("");
+          }
+        }
+        return newTabs;
+      });
+    },
+    [selectedFile, handleFileSelect],
   );
 
   const handleContentChange = useCallback(
@@ -181,13 +250,19 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
     }
 
     try {
-      const handle = await (window as unknown as { showDirectoryPicker: (opts: { mode: string }) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker({ mode: "readwrite" });
+      const handle = await (
+        window as unknown as {
+          showDirectoryPicker: (opts: {
+            mode: string;
+          }) => Promise<FileSystemDirectoryHandle>;
+        }
+      ).showDirectoryPicker({ mode: "readwrite" });
       // Get the path - this is a bit hacky but works
       const path = await getDirectoryPath(handle);
       if (path) {
         daemon.setProject(path);
         // Save path association for this document
-        localStorage.setItem(`latex-writer-doc-path-${document.id}`, path);
+        localStorage.setItem(`alw-doc-path-${document.id}`, path);
       }
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
@@ -197,17 +272,21 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
   }, [daemon, document.id]);
 
   // Helper to get directory path (works via daemon)
-  const getDirectoryPath = async (handle: FileSystemDirectoryHandle): Promise<string | null> => {
+  const getDirectoryPath = async (
+    handle: FileSystemDirectoryHandle,
+  ): Promise<string | null> => {
     // For security reasons, browsers don't expose the full path
     // We'll use the directory name and let the user confirm
     const name = handle.name;
 
     // Try to get last used base path from localStorage
-    const lastBasePath = localStorage.getItem('latex-writer-base-path') || '~/Github';
+    const lastBasePath = localStorage.getItem("alw-base-path") || "~/Github";
     const guessedPath = `${lastBasePath}/${name}`;
 
     // Ask user to confirm the path
-    const confirmed = confirm(`Open folder at:\n\n${guessedPath}\n\nClick OK to confirm, or Cancel to enter a different path.`);
+    const confirmed = confirm(
+      `Open folder at:\n\n${guessedPath}\n\nClick OK to confirm, or Cancel to enter a different path.`,
+    );
 
     if (confirmed) {
       return guessedPath;
@@ -218,9 +297,9 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
 
     // Save the base path for next time
     if (customPath) {
-      const basePath = customPath.substring(0, customPath.lastIndexOf('/'));
+      const basePath = customPath.substring(0, customPath.lastIndexOf("/"));
       if (basePath) {
-        localStorage.setItem('latex-writer-base-path', basePath);
+        localStorage.setItem("alw-base-path", basePath);
       }
     }
 
@@ -248,49 +327,65 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
     setShowCommitInput(false);
   }, [commitMessage, daemon]);
 
-  // VSCode/Cursor style keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMod = e.metaKey || e.ctrlKey;
+      const key = e.key.toLowerCase();
 
-      // Cmd+S - Save (auto-saved, just prevent default)
-      if (isMod && e.key === "s" && !e.shiftKey) {
+      if (isMod) {
+        const editorCommands = [
+          "z",
+          "x",
+          "c",
+          "v",
+          "a",
+          "f",
+          "d",
+          "y",
+          "/",
+          "l",
+          "g",
+          "[",
+          "]",
+        ];
+        if (editorCommands.includes(key) && !e.shiftKey && key !== "g") return;
+        if (key === "z" && e.shiftKey) return;
+        if (e.shiftKey && ["k", "d", "l"].includes(key)) return;
+        if (e.altKey && ["ArrowUp", "ArrowDown"].includes(e.key)) return;
+      }
+
+      if (isMod && key === "s" && !e.shiftKey) {
         e.preventDefault();
         return;
       }
 
-      // Cmd+B - Toggle sidebar
-      if (isMod && e.key === "b" && !e.shiftKey) {
+      if (isMod && key === "b" && !e.shiftKey) {
         e.preventDefault();
         setShowSidebar((v) => !v);
         return;
       }
 
-      // Cmd+\ - Toggle PDF/Output panel
       if (isMod && e.key === "\\") {
         e.preventDefault();
         setShowPdf((v) => !v);
         return;
       }
 
-      // Cmd+Shift+E - Focus file explorer
-      if (isMod && e.shiftKey && e.key === "e") {
+      if (isMod && e.shiftKey && key === "e") {
         e.preventDefault();
         setShowSidebar(true);
         setSidebarTab("files");
         return;
       }
 
-      // Cmd+Shift+G - Focus git panel
-      if (isMod && e.shiftKey && e.key === "g") {
+      if (isMod && e.shiftKey && key === "g") {
         e.preventDefault();
         setShowSidebar(true);
         setSidebarTab("git");
         return;
       }
 
-      // Cmd+Shift+B - Compile (Build)
-      if (isMod && e.shiftKey && e.key === "b") {
+      if (isMod && e.shiftKey && key === "b") {
         e.preventDefault();
         if (daemon.projectPath && !daemon.isCompiling) {
           daemon.compile();
@@ -298,25 +393,60 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
         return;
       }
 
-      // Cmd+O - Open folder
-      if (isMod && e.key === "o" && !e.shiftKey) {
+      if (isMod && key === "o" && !e.shiftKey) {
         e.preventDefault();
         handleOpenFolder();
         return;
       }
 
-      // Cmd+W - Close current file
-      if (isMod && e.key === "w" && !e.shiftKey) {
+      if (isMod && key === "p" && !e.shiftKey) {
         e.preventDefault();
-        setSelectedFile(undefined);
-        setFileContent("");
+        setShowQuickOpen(true);
+        setQuickOpenQuery("");
         return;
+      }
+
+      if (isMod && key === "k" && !e.shiftKey) {
+        e.preventDefault();
+        setShowShortcuts(true);
+        return;
+      }
+
+      if (e.key === "Escape") {
+        if (showShortcuts) {
+          setShowShortcuts(false);
+          e.preventDefault();
+          return;
+        }
+        if (showQuickOpen) {
+          setShowQuickOpen(false);
+          e.preventDefault();
+          return;
+        }
+      }
+
+      if (isMod && key === "w" && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        if (selectedFile) {
+          handleCloseTab(selectedFile);
+        }
+        return false;
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [daemon, handleOpenFolder]);
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+  }, [
+    daemon,
+    handleOpenFolder,
+    selectedFile,
+    showShortcuts,
+    showQuickOpen,
+    handleCloseTab,
+  ]);
 
   const userColors = [
     "#000000",
@@ -342,15 +472,15 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
   return (
     <div className="h-dvh flex flex-col">
       <header className="border-b border-border flex-shrink-0">
-        <div className="px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <Link
               href="/dashboard"
               aria-label="Back to dashboard"
-              className="text-muted hover:text-black transition-colors"
+              className="text-muted hover:text-black"
             >
               <svg
-                className="w-5 h-5"
+                className="size-5"
                 aria-hidden="true"
                 fill="none"
                 stroke="currentColor"
@@ -380,7 +510,12 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                   stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                  />
                 </svg>
               )}
             </div>
@@ -388,25 +523,58 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Compile button */}
             <button
               onClick={handleCompile}
               disabled={daemon.isCompiling || !daemon.projectPath}
-              className="flex items-center gap-2 px-3 py-1.5 bg-black text-white text-sm hover:bg-black/80 active:bg-black/60 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-mono bg-white border border-neutral-300 text-neutral-700 hover:border-neutral-400 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                boxShadow:
+                  "0 1px 0 1px rgba(0,0,0,0.04), 0 2px 0 rgba(0,0,0,0.06), inset 0 -1px 0 rgba(0,0,0,0.04)",
+              }}
             >
               {daemon.isCompiling ? (
                 <>
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  <svg
+                    className="w-4 h-4 animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
                   </svg>
                   Compiling...
                 </>
               ) : (
                 <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                   Compile
                 </>
@@ -415,20 +583,42 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
 
             <button
               onClick={() => setShowSidebar((v) => !v)}
-              className={`p-1 transition-colors ${showSidebar ? "text-black" : "text-muted hover:text-black"}`}
-              title={showSidebar ? "Hide sidebar" : "Show sidebar"}
+              aria-label={showSidebar ? "Hide sidebar" : "Show sidebar"}
+              className={`p-1 ${showSidebar ? "text-black" : "text-muted hover:text-black"}`}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h7" />
+              <svg
+                className="size-5"
+                aria-hidden="true"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="square"
+                  strokeLinejoin="miter"
+                  strokeWidth={1.5}
+                  d="M4 6h16M4 12h16M4 18h7"
+                />
               </svg>
             </button>
             <button
               onClick={() => setShowPdf((v) => !v)}
-              className={`p-1 transition-colors ${showPdf ? "text-black" : "text-muted hover:text-black"}`}
-              title={showPdf ? "Hide PDF" : "Show PDF"}
+              aria-label={showPdf ? "Hide PDF preview" : "Show PDF preview"}
+              className={`p-1 ${showPdf ? "text-black" : "text-muted hover:text-black"}`}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              <svg
+                className="size-5"
+                aria-hidden="true"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="square"
+                  strokeLinejoin="miter"
+                  strokeWidth={1.5}
+                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                />
               </svg>
             </button>
 
@@ -442,18 +632,36 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
 
             {/* Feedback link */}
             <a
-              href="https://github.com/Luodian/latex-writer/issues/new"
+              href="https://github.com/EvolvingLMMs-Lab/agentic-latex-writer/issues/new"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-muted hover:text-black transition-colors"
-              title="Send feedback"
+              aria-label="Send feedback"
+              className="flex items-center gap-1 text-xs text-muted hover:text-black"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              <svg
+                className="size-4"
+                aria-hidden="true"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
               </svg>
               Feedback
             </a>
 
+            <button
+              onClick={() => setShowShortcuts(true)}
+              className="hover:opacity-70 transition-opacity"
+              title="Keyboard Shortcuts (⌘K)"
+            >
+              <kbd>⌘ K</kbd>
+            </button>
             {role !== "owner" && (
               <span className="text-xs uppercase tracking-wider text-muted border border-border px-2 py-1">
                 {role}
@@ -465,8 +673,18 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                   onClick={() => setIsShareOpen(true)}
                   className="text-sm text-muted hover:text-black active:text-black/70 transition-colors flex items-center gap-1"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
+                      strokeWidth={1.5}
+                      d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                    />
                   </svg>
                   Share
                 </button>
@@ -523,7 +741,10 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                 <>
                   {daemon.projectPath ? (
                     <>
-                      <div className="px-3 py-2 border-b border-border text-xs text-muted truncate" title={daemon.projectPath}>
+                      <div
+                        className="px-3 py-2 border-b border-border text-xs text-muted truncate"
+                        title={daemon.projectPath}
+                      >
                         {daemon.projectPath.split("/").pop()}
                       </div>
                       <FileTree
@@ -535,8 +756,18 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                     </>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
-                      <svg className="w-8 h-8 mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                      <svg
+                        className="w-8 h-8 mb-2 opacity-30"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                        />
                       </svg>
                       <p className="text-xs">No folder open</p>
                     </div>
@@ -549,56 +780,139 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                 <div className="flex-1 flex flex-col overflow-hidden">
                   {!daemon.projectPath ? (
                     <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
-                      <svg className="w-8 h-8 mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                      <svg
+                        className="w-8 h-8 mb-2 opacity-30"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                        />
                       </svg>
                       <p className="text-xs">No folder open</p>
                     </div>
                   ) : !gitStatus?.isRepo ? (
                     <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
-                      <svg className="w-8 h-8 mb-3 text-muted opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      <svg
+                        className="w-8 h-8 mb-3 text-muted opacity-50"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M13 10V3L4 14h7v7l9-11h-7z"
+                        />
                       </svg>
-                      <p className="text-xs text-muted mb-3">Not a git repository</p>
+                      <p className="text-xs font-medium mb-1">
+                        Not a git repository
+                      </p>
+                      <p className="text-xs text-muted mb-3 max-w-[200px]">
+                        Initialize git to track local version history
+                      </p>
+                      {daemon.gitInitResult?.error && (
+                        <p className="text-xs text-red-600 mb-3 max-w-[200px]">
+                          {daemon.gitInitResult.error}
+                        </p>
+                      )}
                       <button
                         onClick={() => daemon.gitInit()}
-                        className="px-3 py-1.5 bg-black text-white text-xs hover:bg-black/80 active:bg-black/60 transition-colors"
+                        disabled={daemon.isInitializingGit}
+                        className="px-3 py-1.5 bg-black text-white text-xs hover:bg-black/80 active:bg-black/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
-                        Initialize Git
+                        {daemon.isInitializingGit ? (
+                          <>
+                            <svg
+                              className="w-3 h-3 animate-spin"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              />
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                              />
+                            </svg>
+                            Initializing...
+                          </>
+                        ) : (
+                          "Initialize Git"
+                        )}
                       </button>
+                      <p className="text-xs text-muted mt-4 max-w-[200px] leading-relaxed">
+                        Push to GitHub for multi-device sync and collaboration
+                      </p>
                     </div>
                   ) : (
                     <>
                       {/* Branch info */}
                       <div className="px-3 py-2 border-b border-border bg-neutral-50">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm">{gitStatus.branch}</span>
+                          <span className="font-medium text-sm">
+                            {gitStatus.branch}
+                          </span>
                           <button
                             onClick={() => daemon.refreshGitStatus()}
                             className="text-muted hover:text-black"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={1.5}
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                              />
                             </svg>
                           </button>
                         </div>
                         {(gitStatus.ahead > 0 || gitStatus.behind > 0) && (
                           <div className="flex items-center gap-3 mt-1 text-xs text-muted">
-                            {gitStatus.ahead > 0 && <span>{gitStatus.ahead} ahead</span>}
-                            {gitStatus.behind > 0 && <span>{gitStatus.behind} behind</span>}
+                            {gitStatus.ahead > 0 && (
+                              <span>{gitStatus.ahead} ahead</span>
+                            )}
+                            {gitStatus.behind > 0 && (
+                              <span>{gitStatus.behind} behind</span>
+                            )}
                           </div>
+                        )}
+                        {!gitStatus.remote && (
+                          <p className="text-xs text-muted mt-1">
+                            Local only - push to GitHub for sync
+                          </p>
                         )}
                       </div>
 
                       {/* Changes */}
-                      <div className="flex-1 overflow-auto">
+                      <ScrollArea className="flex-1">
                         {stagedChanges.length > 0 && (
                           <div className="border-b border-border">
                             <div className="px-3 py-1 bg-neutral-50 text-xs font-medium uppercase tracking-wider text-muted">
                               Staged ({stagedChanges.length})
                             </div>
                             {stagedChanges.map((c) => (
-                              <div key={c.path} className="px-3 py-1 text-sm flex items-center gap-2">
+                              <div
+                                key={c.path}
+                                className="px-3 py-1 text-sm flex items-center gap-2"
+                              >
                                 <span className="font-mono text-xs text-green-700">
                                   {c.status[0]?.toUpperCase()}
                                 </span>
@@ -611,16 +925,24 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                           <div className="border-b border-border">
                             <div className="px-3 py-1 bg-neutral-50 text-xs font-medium uppercase tracking-wider text-muted flex justify-between">
                               <span>Changes ({unstagedChanges.length})</span>
-                              <button onClick={handleStageAll} className="text-black hover:underline normal-case tracking-normal font-normal">
+                              <button
+                                onClick={handleStageAll}
+                                className="text-black hover:underline normal-case tracking-normal font-normal"
+                              >
                                 Stage all
                               </button>
                             </div>
                             {unstagedChanges.map((c) => (
-                              <div key={c.path} className="px-3 py-1 text-sm flex items-center gap-2 group">
+                              <div
+                                key={c.path}
+                                className="px-3 py-1 text-sm flex items-center gap-2 group"
+                              >
                                 <span className="font-mono text-xs text-muted">
                                   {c.status[0]?.toUpperCase()}
                                 </span>
-                                <span className="truncate flex-1">{c.path}</span>
+                                <span className="truncate flex-1">
+                                  {c.path}
+                                </span>
                                 <button
                                   onClick={() => daemon.gitAdd([c.path])}
                                   className="opacity-0 group-hover:opacity-100 text-xs"
@@ -636,7 +958,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                             No changes
                           </div>
                         )}
-                      </div>
+                      </ScrollArea>
 
                       {/* Commit input */}
                       {showCommitInput && stagedChanges.length > 0 && (
@@ -648,13 +970,19 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                             className="w-full px-2 py-1 text-sm border border-border resize-none focus:outline-none focus:border-black"
                             rows={2}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                              if (
+                                e.key === "Enter" &&
+                                (e.metaKey || e.ctrlKey)
+                              ) {
                                 handleCommit();
                               }
                             }}
                           />
                           <div className="flex justify-between">
-                            <button onClick={() => setShowCommitInput(false)} className="text-xs text-muted">
+                            <button
+                              onClick={() => setShowCommitInput(false)}
+                              className="text-xs text-muted"
+                            >
                               Cancel
                             </button>
                             <button
@@ -675,7 +1003,11 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                             onClick={() => setShowCommitInput(true)}
                             className="flex-1 px-3 py-1.5 bg-black text-white text-xs hover:bg-black/80 active:bg-black/60 transition-colors"
                           >
-                            Commit (<span className="tabular-nums">{stagedChanges.length}</span>)
+                            Commit (
+                            <span className="tabular-nums">
+                              {stagedChanges.length}
+                            </span>
+                            )
                           </button>
                         )}
                         {gitStatus.ahead > 0 && (
@@ -683,7 +1015,11 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                             onClick={() => daemon.gitPush()}
                             className="flex-1 px-3 py-1.5 border border-border text-xs hover:border-black active:bg-neutral-100 transition-colors"
                           >
-                            Push (<span className="tabular-nums">{gitStatus.ahead}</span>)
+                            Push (
+                            <span className="tabular-nums">
+                              {gitStatus.ahead}
+                            </span>
+                            )
                           </button>
                         )}
                         {gitStatus.behind > 0 && (
@@ -691,7 +1027,11 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                             onClick={() => daemon.gitPull()}
                             className="flex-1 px-3 py-1.5 border border-border text-xs hover:border-black active:bg-neutral-100 transition-colors"
                           >
-                            Pull (<span className="tabular-nums">{gitStatus.behind}</span>)
+                            Pull (
+                            <span className="tabular-nums">
+                              {gitStatus.behind}
+                            </span>
+                            )
                           </button>
                         )}
                       </div>
@@ -708,6 +1048,51 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
         )}
 
         <div className="flex-1 min-w-0 flex flex-col">
+          {/* File tabs */}
+          {openTabs.length > 0 && (
+            <div className="flex items-center border-b border-border bg-neutral-50 overflow-x-auto">
+              {openTabs.map((tab) => {
+                const fileName = tab.split("/").pop() || tab;
+                const isActive = tab === selectedFile;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => handleFileSelect(tab)}
+                    className={`group flex items-center gap-2 px-3 py-1.5 text-sm border-r border-border transition-colors ${
+                      isActive
+                        ? "bg-white text-black"
+                        : "text-muted hover:text-black hover:bg-white/50"
+                    }`}
+                    title={tab}
+                  >
+                    <span className="truncate max-w-[120px]">{fileName}</span>
+                    <span
+                      onClick={(e) => handleCloseTab(tab, e)}
+                      className={`w-4 h-4 flex items-center justify-center hover:bg-neutral-200 ${
+                        isActive
+                          ? "opacity-100"
+                          : "opacity-0 group-hover:opacity-100"
+                      }`}
+                    >
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {daemon.projectPath && selectedFile ? (
             <CollaborativeEditorLazy
               documentId={document.id}
@@ -724,8 +1109,18 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
               {daemon.projectPath ? (
                 <div className="text-center">
                   <div className="w-16 h-16 mx-auto mb-6 border-2 border-neutral-200 flex items-center justify-center">
-                    <svg className="w-8 h-8 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <svg
+                      className="w-8 h-8 text-neutral-300"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
                     </svg>
                   </div>
                   <p className="text-muted">Select a file from the sidebar</p>
@@ -733,13 +1128,26 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
               ) : (
                 <div className="text-center max-w-md px-6">
                   <div className="w-20 h-20 mx-auto mb-8 border-2 border-black flex items-center justify-center">
-                    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                    <svg
+                      className="w-10 h-10"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                      />
                     </svg>
                   </div>
-                  <h2 className="text-2xl font-light tracking-tight mb-3">Open a LaTeX Project</h2>
+                  <h2 className="text-2xl font-light tracking-tight mb-3">
+                    Open a LaTeX Project
+                  </h2>
                   <p className="text-muted text-sm mb-8 leading-relaxed">
-                    Select a folder containing your .tex files. Changes sync automatically with your local filesystem.
+                    Select a folder containing your .tex files. Changes sync
+                    automatically with your local filesystem.
                   </p>
                   <button
                     onClick={handleOpenFolder}
@@ -748,12 +1156,22 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                     Open Folder
                   </button>
                   <div className="mt-10 pt-8 border-t border-neutral-200">
-                    <p className="text-xs text-muted uppercase tracking-wider mb-4">Works with</p>
+                    <p className="text-xs text-muted uppercase tracking-wider mb-4">
+                      Works with
+                    </p>
                     <div className="flex items-center justify-center gap-4 text-xs text-muted">
-                      <span className="px-3 py-1.5 border border-neutral-200">Claude Code</span>
-                      <span className="px-3 py-1.5 border border-neutral-200">OpenCode</span>
-                      <span className="px-3 py-1.5 border border-neutral-200">Codex</span>
-                      <span className="px-3 py-1.5 border border-neutral-200">Cursor</span>
+                      <span className="px-3 py-1.5 border border-neutral-200">
+                        Claude Code
+                      </span>
+                      <span className="px-3 py-1.5 border border-neutral-200">
+                        OpenCode
+                      </span>
+                      <span className="px-3 py-1.5 border border-neutral-200">
+                        Codex
+                      </span>
+                      <span className="px-3 py-1.5 border border-neutral-200">
+                        Cursor
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -796,13 +1214,13 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
               </div>
 
               {rightTab === "compile" && (
-                <div className="flex-1 overflow-auto p-3 font-mono text-xs bg-neutral-50">
+                <ScrollArea className="flex-1 p-3 font-mono text-xs bg-neutral-50">
                   {daemon.compileOutput || (
                     <span className="text-muted">
                       Click Compile to build your document
                     </span>
                   )}
-                </div>
+                </ScrollArea>
               )}
 
               {rightTab === "terminal" && (
@@ -843,6 +1261,199 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
         cancelLabel="Cancel"
         destructive
       />
+
+      {showShortcuts && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          onClick={() => setShowShortcuts(false)}
+        >
+          <div className="absolute inset-0 bg-neutral-500/30" />
+          <div
+            className="relative bg-white border-2 border-black w-[560px] max-h-[80vh] overflow-hidden shadow-[6px_6px_0_0_rgba(0,0,0,1)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b-2 border-black">
+              <h2 className="font-medium">Keyboard Shortcuts</h2>
+              <kbd>ESC</kbd>
+            </div>
+            <ScrollArea className="max-h-[65vh]">
+              <div className="p-5 space-y-6 text-sm">
+                <div>
+                  <div className="text-xs font-medium text-muted uppercase tracking-wider mb-3">
+                    General
+                  </div>
+                  <div className="space-y-2">
+                    {[
+                      ["Show shortcuts", "⌘ ?"],
+                      ["Quick open", "⌘ P"],
+                      ["Save", "⌘ S"],
+                      ["Open folder", "⌘ O"],
+                      ["Close tab", "⌘ W"],
+                    ].map(([label, key]) => (
+                      <div
+                        key={label}
+                        className="flex items-center justify-between"
+                      >
+                        <span>{label}</span>
+                        <kbd>{key}</kbd>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted uppercase tracking-wider mb-3">
+                    Editing
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+                    {[
+                      ["Undo", "⌘ Z"],
+                      ["Redo", "⇧ ⌘ Z"],
+                      ["Cut", "⌘ X"],
+                      ["Copy", "⌘ C"],
+                      ["Paste", "⌘ V"],
+                      ["Select all", "⌘ A"],
+                      ["Find", "⌘ F"],
+                      ["Comment", "⌘ /"],
+                    ].map(([label, key]) => (
+                      <div
+                        key={label}
+                        className="flex items-center justify-between"
+                      >
+                        <span>{label}</span>
+                        <kbd>{key}</kbd>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted uppercase tracking-wider mb-3">
+                    View
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+                    {[
+                      ["Sidebar", "⌘ B"],
+                      ["PDF preview", "⌘ \\"],
+                      ["Files", "⇧ ⌘ E"],
+                      ["Git", "⇧ ⌘ G"],
+                    ].map(([label, key]) => (
+                      <div
+                        key={label}
+                        className="flex items-center justify-between"
+                      >
+                        <span>{label}</span>
+                        <kbd>{key}</kbd>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted uppercase tracking-wider mb-3">
+                    Build
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Compile LaTeX</span>
+                    <kbd>⇧ ⌘ B</kbd>
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Open (Cmd+K) */}
+      {showQuickOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
+          onClick={() => setShowQuickOpen(false)}
+        >
+          <div className="absolute inset-0 bg-black/20" />
+          <div
+            className="relative bg-white border-2 border-black w-[560px] max-h-[60vh] overflow-hidden shadow-[4px_4px_0_0_rgba(0,0,0,1)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center border-b-2 border-black">
+              <svg
+                className="size-4 ml-4 text-muted"
+                aria-hidden="true"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+              <input
+                type="text"
+                value={quickOpenQuery}
+                onChange={(e) => setQuickOpenQuery(e.target.value)}
+                placeholder="Search files..."
+                className="flex-1 px-3 py-3 border-0 focus:outline-none focus:ring-0 text-sm font-mono"
+                autoFocus
+              />
+              <kbd className="mr-3 px-1.5 py-0.5 text-xs font-mono border border-border text-muted">
+                ESC
+              </kbd>
+            </div>
+            <ScrollArea className="max-h-[300px]">
+              {daemon.files
+                .filter((f) => f.type === "file")
+                .filter((f) =>
+                  quickOpenQuery
+                    ? f.name
+                        .toLowerCase()
+                        .includes(quickOpenQuery.toLowerCase()) ||
+                      f.path
+                        .toLowerCase()
+                        .includes(quickOpenQuery.toLowerCase())
+                    : true,
+                )
+                .slice(0, 10)
+                .map((file) => (
+                  <button
+                    key={file.path}
+                    onClick={() => {
+                      handleFileSelect(file.path);
+                      setShowQuickOpen(false);
+                      setQuickOpenQuery("");
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm font-mono hover:bg-black hover:text-white flex items-center gap-3"
+                  >
+                    <svg
+                      className="size-4 flex-shrink-0"
+                      aria-hidden="true"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="square"
+                        strokeWidth={1.5}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    <span className="truncate">{file.name}</span>
+                    <span className="text-muted text-xs ml-auto truncate max-w-[200px]">
+                      {file.path}
+                    </span>
+                  </button>
+                ))}
+              {daemon.files.filter((f) => f.type === "file").length === 0 && (
+                <div className="px-4 py-8 text-center text-muted text-sm">
+                  No files. Open a folder first.
+                  <kbd className="ml-2 px-1.5 py-0.5 text-xs font-mono border border-border">
+                    ⌘O
+                  </kbd>
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
