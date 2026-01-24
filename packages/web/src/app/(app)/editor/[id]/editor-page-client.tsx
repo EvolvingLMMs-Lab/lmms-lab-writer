@@ -192,22 +192,27 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
 
     // Try to get last used base path from localStorage
     const lastBasePath = localStorage.getItem('latex-writer-base-path') || '~/Github';
+    const guessedPath = `${lastBasePath}/${name}`;
 
-    // Prompt user to enter the path since browsers don't expose full paths
-    const userPath = prompt(
-      `Enter the full path to "${name}":\n\nCommon locations:\n  ~/Github/${name}\n  ~/Documents/${name}\n  ~/Projects/${name}\n\nUse ~ for home directory.`,
-      `${lastBasePath}/${name}`
-    );
+    // Ask user to confirm the path
+    const confirmed = confirm(`Open folder at:\n\n${guessedPath}\n\nClick OK to confirm, or Cancel to enter a different path.`);
+
+    if (confirmed) {
+      return guessedPath;
+    }
+
+    // If not confirmed, let user enter custom path
+    const customPath = prompt(`Enter the full path to "${name}":`, guessedPath);
 
     // Save the base path for next time
-    if (userPath) {
-      const basePath = userPath.substring(0, userPath.lastIndexOf('/'));
+    if (customPath) {
+      const basePath = customPath.substring(0, customPath.lastIndexOf('/'));
       if (basePath) {
         localStorage.setItem('latex-writer-base-path', basePath);
       }
     }
 
-    return userPath;
+    return customPath;
   };
 
   const handleCompile = useCallback(() => {
