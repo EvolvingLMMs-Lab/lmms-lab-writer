@@ -20,11 +20,13 @@ export async function GET(request: Request) {
       const session = data.session;
       const user = session.user;
 
-      // Check if this is a GitHub OAuth login
-      const isGitHubProvider = user.app_metadata?.provider === "github";
+      // Check if we have a provider token (could be GitHub link or login)
       const providerToken = session.provider_token;
 
-      if (isGitHubProvider && providerToken) {
+      // Try to use the token with GitHub API - works for both:
+      // 1. GitHub as primary auth provider
+      // 2. GitHub linked to existing email account
+      if (providerToken) {
         try {
           // Fetch GitHub user info
           const githubUser = await getGitHubUser(providerToken);

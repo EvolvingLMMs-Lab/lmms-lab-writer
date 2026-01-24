@@ -11,7 +11,6 @@ type UserProfile = {
   avatarUrl: string | null;
   tier: "free" | "supporter";
   daysRemaining: number | null;
-  documentsCount: number;
 };
 
 async function getUser(): Promise<UserProfile | null> {
@@ -23,19 +22,12 @@ async function getUser(): Promise<UserProfile | null> {
 
   const metadata = session.user.user_metadata || {};
 
-  const [membershipResult, docsCountResult] = await Promise.all([
-    supabase
-      .from("user_memberships")
-      .select("tier, expires_at")
-      .eq("user_id", session.user.id)
-      .single(),
-    supabase
-      .from("documents")
-      .select("id", { count: "exact", head: true })
-      .eq("created_by", session.user.id),
-  ]);
+  const { data: membership } = await supabase
+    .from("user_memberships")
+    .select("tier, expires_at")
+    .eq("user_id", session.user.id)
+    .single();
 
-  const membership = membershipResult.data;
   const expiresAt = membership?.expires_at
     ? new Date(membership.expires_at)
     : null;
@@ -46,7 +38,6 @@ async function getUser(): Promise<UserProfile | null> {
     avatarUrl: metadata.avatar_url || metadata.picture || null,
     tier: (membership?.tier as "free" | "supporter") || "free",
     daysRemaining: getDaysRemaining(expiresAt),
-    documentsCount: docsCountResult.count ?? 0,
   };
 }
 
@@ -80,7 +71,6 @@ export async function Header() {
               avatarUrl={user.avatarUrl}
               tier={user.tier}
               daysRemaining={user.daysRemaining}
-              documentsCount={user.documentsCount}
             />
           </div>
         ) : (

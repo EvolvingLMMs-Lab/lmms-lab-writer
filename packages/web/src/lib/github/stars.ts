@@ -1,4 +1,4 @@
-import { GITHUB_CONFIG, calculateMembership, type StarredRepo } from "./config";
+import { GITHUB_CONFIG, calculateMembership, getTopRepos, type StarredRepo } from "./config";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const GITHUB_API_BASE = "https://api.github.com";
@@ -91,19 +91,21 @@ async function getRepoStarredAt(
 export async function checkStarredRepos(
   accessToken: string,
 ): Promise<StarredRepo[]> {
+  // Fetch top repos from GitHub API
+  const topRepos = await getTopRepos();
   const starredRepos: StarredRepo[] = [];
 
-  // Check each eligible repo in parallel
-  const checks = GITHUB_CONFIG.ELIGIBLE_REPOS.map(async (repo) => {
+  // Check each top repo in parallel
+  const checks = topRepos.map(async (repo) => {
     const starredAt = await getRepoStarredAt(
       accessToken,
       GITHUB_CONFIG.ORG,
-      repo,
+      repo.name,
     );
 
     if (starredAt) {
       return {
-        repo: `${GITHUB_CONFIG.ORG}/${repo}`,
+        repo: repo.name,
         starred_at: starredAt,
       };
     }

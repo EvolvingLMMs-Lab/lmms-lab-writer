@@ -13,7 +13,6 @@ type Props = {
   avatarUrl?: string | null;
   tier?: MembershipTier;
   daysRemaining?: number | null;
-  documentsCount?: number;
 };
 
 export function UserDropdown({
@@ -22,7 +21,6 @@ export function UserDropdown({
   avatarUrl,
   tier = "free",
   daysRemaining,
-  documentsCount = 0,
 }: Props) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -90,28 +88,41 @@ export function UserDropdown({
       {/* Dropdown */}
       {isOpen && (
         <div className="absolute right-0 top-full mt-2 w-80 bg-white border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] z-50">
-          {/* User Info */}
-          <div className="p-5 border-b border-border">
-            <div className="flex items-center gap-4">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={displayName}
-                  className="size-12 border border-neutral-300"
-                />
-              ) : (
-                <div className="size-12 border border-neutral-300 flex items-center justify-center">
-                  <span className="text-lg font-medium text-neutral-600">{initial}</span>
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                {name && (
-                  <p className="font-medium truncate">{name}</p>
-                )}
-                <p className="text-sm text-muted truncate">{email}</p>
+          {/* User Info - Clickable to Profile */}
+          <Link
+            href="/profile"
+            onClick={() => setIsOpen(false)}
+            className="p-5 border-b border-border flex items-center gap-4 hover:bg-neutral-50 transition-colors group"
+          >
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className="size-12 border border-neutral-300"
+              />
+            ) : (
+              <div className="size-12 border border-neutral-300 flex items-center justify-center">
+                <span className="text-lg font-medium text-neutral-600">{initial}</span>
               </div>
+            )}
+            <div className="min-w-0 flex-1">
+              {name && (
+                <p className="font-medium truncate">{name}</p>
+              )}
+              <p className="text-sm text-muted truncate">{email}</p>
             </div>
-          </div>
+            <svg
+              className="size-4 text-muted group-hover:text-black transition-colors flex-shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </Link>
 
           {/* Membership Status */}
           <div className="px-5 py-4 border-b border-border">
@@ -139,7 +150,7 @@ export function UserDropdown({
                   {daysRemaining > 0 ? `${daysRemaining} days left` : "Expired"}
                 </span>
                 <Link
-                  href="/dashboard/profile"
+                  href="/profile"
                   onClick={() => setIsOpen(false)}
                   className="text-xs text-muted hover:text-black transition-colors"
                 >
@@ -148,7 +159,7 @@ export function UserDropdown({
               </div>
             ) : (
               <Link
-                href="/dashboard/profile"
+                href="/profile"
                 onClick={() => setIsOpen(false)}
                 className="flex items-center justify-between group"
               >
@@ -171,25 +182,8 @@ export function UserDropdown({
             )}
           </div>
 
-          {/* Quick Stats */}
-          <div className="px-5 py-4 border-b border-border">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted uppercase tracking-wider">
-                Documents
-              </span>
-              <span className="text-sm font-mono tabular-nums">{documentsCount}</span>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="px-5 py-3 flex items-center justify-between">
-            <Link
-              href="/dashboard/profile"
-              onClick={() => setIsOpen(false)}
-              className="text-sm hover:text-black text-muted transition-colors"
-            >
-              Profile
-            </Link>
+          {/* Sign Out */}
+          <div className="px-5 py-3">
             <button
               onClick={handleSignOut}
               disabled={isSigningOut}

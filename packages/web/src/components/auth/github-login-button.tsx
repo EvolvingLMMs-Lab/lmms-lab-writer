@@ -14,7 +14,7 @@ export function GitHubLoginButton() {
         provider: "github",
         options: {
           scopes: "read:user",
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback?next=/profile`,
         },
       });
     } catch (error) {
