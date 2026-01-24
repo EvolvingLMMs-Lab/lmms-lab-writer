@@ -409,16 +409,11 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                       />
                     </>
                   ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
-                      <button
-                        onClick={handleOpenFolder}
-                        className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 active:bg-black/60 transition-colors"
-                      >
-                        Open Folder
-                      </button>
-                      <p className="mt-3 text-xs text-muted max-w-[180px]">
-                        Select your LaTeX project folder to start editing
-                      </p>
+                    <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
+                      <svg className="w-8 h-8 mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                      </svg>
+                      <p className="text-xs">No folder open</p>
                     </div>
                   )}
                 </>
@@ -428,15 +423,21 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
               {sidebarTab === "git" && (
                 <div className="flex-1 flex flex-col overflow-hidden">
                   {!daemon.projectPath ? (
-                    <div className="flex-1 flex items-center justify-center text-sm text-muted p-4 text-center">
-                      Open a folder first
+                    <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
+                      <svg className="w-8 h-8 mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                      </svg>
+                      <p className="text-xs">No folder open</p>
                     </div>
                   ) : !gitStatus?.isRepo ? (
                     <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
-                      <p className="text-sm text-muted mb-4">Not a git repository</p>
+                      <svg className="w-8 h-8 mb-3 text-muted opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <p className="text-xs text-muted mb-3">Not a git repository</p>
                       <button
                         onClick={() => daemon.gitInit()}
-                        className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 active:bg-black/60 transition-colors"
+                        className="px-3 py-1.5 bg-black text-white text-xs hover:bg-black/80 active:bg-black/60 transition-colors"
                       >
                         Initialize Git
                       </button>
@@ -594,22 +595,42 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
               className="flex-1"
             />
           ) : (
-            <div className="flex-1 flex items-center justify-center text-muted">
+            <div className="flex-1 flex items-center justify-center">
               {daemon.projectPath ? (
-                <p>Select a file to edit</p>
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto mb-6 border-2 border-neutral-200 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <p className="text-muted">Select a file from the sidebar</p>
+                </div>
               ) : (
-                <div className="text-center space-y-4">
-                  <p>Open a folder to start editing</p>
+                <div className="text-center max-w-md px-6">
+                  <div className="w-20 h-20 mx-auto mb-8 border-2 border-black flex items-center justify-center">
+                    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                    </svg>
+                  </div>
+                  <h2 className="text-2xl font-light tracking-tight mb-3">Open a LaTeX Project</h2>
+                  <p className="text-muted text-sm mb-8 leading-relaxed">
+                    Select a folder containing your .tex files. Changes sync automatically with your local filesystem.
+                  </p>
                   <button
                     onClick={handleOpenFolder}
-                    className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 active:bg-black/60 transition-colors"
+                    className="px-6 py-3 bg-black text-white hover:bg-black/80 active:bg-black/60 transition-colors"
                   >
                     Open Folder
                   </button>
-                  <p className="text-xs max-w-md">
-                    Works with Claude Code, OpenCode, Codex, and any AI coding
-                    assistant that can edit files directly.
-                  </p>
+                  <div className="mt-10 pt-8 border-t border-neutral-200">
+                    <p className="text-xs text-muted uppercase tracking-wider mb-4">Works with</p>
+                    <div className="flex items-center justify-center gap-4 text-xs text-muted">
+                      <span className="px-3 py-1.5 border border-neutral-200">Claude Code</span>
+                      <span className="px-3 py-1.5 border border-neutral-200">OpenCode</span>
+                      <span className="px-3 py-1.5 border border-neutral-200">Codex</span>
+                      <span className="px-3 py-1.5 border border-neutral-200">Cursor</span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
