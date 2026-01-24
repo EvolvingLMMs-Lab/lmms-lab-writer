@@ -107,7 +107,7 @@ export default async function Home() {
                 <div className="w-12 h-12 mx-auto mb-4 border-2 border-black flex items-center justify-center text-xl font-bold">3</div>
                 <h3 className="font-bold mb-2">Write & Compile</h3>
                 <p className="text-sm text-muted">
-                  AI helps, you control
+                  Agentic writing. Compile locally.
                 </p>
               </div>
             </div>
