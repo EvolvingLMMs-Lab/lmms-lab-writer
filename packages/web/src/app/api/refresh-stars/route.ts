@@ -33,25 +33,36 @@ export async function POST() {
   if (!accessToken) {
     return NextResponse.json(
       { error: "No GitHub token available" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   try {
     // Check starred repos
+    console.log("[refresh-stars] Checking starred repos for user:", userId);
     const starredRepos = await checkStarredRepos(accessToken);
+    console.log(
+      "[refresh-stars] Found starred repos:",
+      starredRepos.length,
+      starredRepos.map((r) => r.repo),
+    );
 
     // Update membership
     const result = await updateMembershipFromStars(
       supabase,
       userId,
-      starredRepos
+      starredRepos,
     );
 
     if (result.error) {
+      console.error("[refresh-stars] Membership update error:", result.error);
       return NextResponse.json({ error: result.error }, { status: 500 });
     }
 
+    console.log("[refresh-stars] Success:", {
+      starCount: starredRepos.length,
+      tier: result.tier,
+    });
     return NextResponse.json({
       success: true,
       starCount: starredRepos.length,
@@ -59,10 +70,15 @@ export async function POST() {
       daysGranted: result.daysGranted,
     });
   } catch (error) {
-    console.error("Failed to refresh stars:", error);
+    console.error("[refresh-stars] Error:", error);
     return NextResponse.json(
-      { error: "Failed to check GitHub stars" },
-      { status: 500 }
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to check GitHub stars",
+      },
+      { status: 500 },
     );
   }
 }
