@@ -40,7 +40,14 @@ type Props = {
 export function EditorPageClient({ document, userId, userName, role }: Props) {
   const router = useRouter();
   const daemon = useDaemon();
-  const openCodeStatus = useOpenCodeDetection({ enabled: true });
+
+  const openCodeBaseUrl = daemon.connected
+    ? "http://localhost:3002/opencode"
+    : undefined;
+  const openCodeStatus = useOpenCodeDetection({
+    enabled: true,
+    baseUrl: openCodeBaseUrl,
+  });
 
   const [title, setTitle] = useState(document.title);
   const [isSaving, setIsSaving] = useState(false);
@@ -1437,6 +1444,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
               {rightTab === "opencode" && (
                 <OpenCodePanelLazy
                   className="flex-1 min-h-0 overflow-hidden"
+                  baseUrl={openCodeBaseUrl}
                   directory={daemon.projectPath ?? undefined}
                   autoConnect={openCodeStatus.available}
                   daemonStatus={daemon.opencodeStatus}

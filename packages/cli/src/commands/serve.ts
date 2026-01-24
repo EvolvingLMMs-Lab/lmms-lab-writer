@@ -480,6 +480,30 @@ function findMainTexFile(cwd: string, currentFile?: string): string | null {
   }
 }
 
+const ALLOWED_ORIGINS = [
+  "https://writer.lmms-lab.com",
+  "http://localhost:3000",
+  "http://localhost:4355",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:4355",
+] as const;
+
+const DEFAULT_ORIGIN = "https://writer.lmms-lab.com";
+
+function getCorsHeaders(origin: string | undefined): Record<string, string> {
+  const allowedOrigin =
+    origin && (ALLOWED_ORIGINS as readonly string[]).includes(origin)
+      ? origin
+      : DEFAULT_ORIGIN;
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers":
+      "Content-Type, Accept, x-opencode-directory",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
+
 const MIME_TYPES: Record<string, string> = {
   ".html": "text/html",
   ".css": "text/css",
@@ -679,13 +703,144 @@ function handleStaticFile(req: IncomingMessage, res: ServerResponse): void {
   }
 }
 
+async function handleOpenCodeProxy(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  const origin = req.headers.origin;
+  const corsHeaders = getCorsHeaders(origin);
+
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, corsHeaders);
+    res.end();
+    return;
+  }
+
+  const targetPath = req.url?.replace(/^\/opencode/, "") || "/";
+  const targetUrl = `http://127.0.0.1:${OPENCODE_PORT}${targetPath}`;
+
+  const headers: Record<string, string> = {
+    "Content-Type": req.headers["content-type"] || "application/json",
+    Accept: req.headers.accept || "application/json",
+  };
+
+  const opencodeDir = req.headers["x-opencode-directory"];
+  if (opencodeDir && typeof opencodeDir === "string") {
+    headers["x-opencode-directory"] = opencodeDir;
+  }
+
+  let body: string | undefined;
+  if (req.method === "POST" || req.method === "DELETE") {
+    body = await new Promise<string>((resolve) => {
+      const chunks: Buffer[] = [];
+      req.on("data", (chunk: Buffer) => chunks.push(chunk));
+      req.on("end", () => resolve(Buffer.concat(chunks).toString()));
+    });
+  }
+
+  try {
+    const controller = new AbortController();
+    const isSSE = targetPath === "/event" || targetPath.startsWith("/event?");
+
+    req.on("close", () => {
+      if (!res.writableEnded) {
+        controller.abort();
+      }
+    });
+
+    const fetchOptions: RequestInit = {
+      method: req.method,
+      headers,
+      signal: controller.signal,
+    };
+    if (body) {
+      fetchOptions.body = body;
+    }
+
+    const upstream = await fetch(targetUrl, fetchOptions);
+
+    const responseHeaders: Record<string, string> = {
+      ...corsHeaders,
+    };
+
+    if (isSSE) {
+      responseHeaders["Content-Type"] = "text/event-stream";
+      responseHeaders["Cache-Control"] = "no-cache";
+      responseHeaders["Connection"] = "keep-alive";
+    } else {
+      const contentType = upstream.headers.get("content-type");
+      if (contentType) {
+        responseHeaders["Content-Type"] = contentType;
+      }
+    }
+
+    res.writeHead(upstream.status, responseHeaders);
+
+    if (!upstream.body) {
+      res.end();
+      return;
+    }
+
+    const reader = upstream.body.getReader();
+    const pump = async (): Promise<void> => {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (!res.writableEnded) {
+            res.write(value);
+          }
+        }
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          console.error(chalk.red("OpenCode proxy stream error:"), err);
+        }
+      } finally {
+        if (!res.writableEnded) {
+          res.end();
+        }
+      }
+    };
+    await pump();
+  } catch (err) {
+    if ((err as Error).name === "AbortError") {
+      return;
+    }
+    console.error(chalk.red("OpenCode proxy error:"), err);
+    if (!res.headersSent) {
+      res.writeHead(502, {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+      });
+      res.end(JSON.stringify({ error: "OpenCode proxy error" }));
+    }
+  }
+}
+
+function handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
+  const url = req.url || "/";
+
+  if (url.startsWith("/opencode")) {
+    handleOpenCodeProxy(req, res).catch((err) => {
+      console.error(chalk.red("OpenCode proxy unhandled error:"), err);
+      if (!res.headersSent) {
+        res.writeHead(500, { "Content-Type": "text/plain" });
+        res.end("Internal server error");
+      }
+    });
+    return;
+  }
+
+  handleStaticFile(req, res);
+}
+
 export async function serve(options: ServeOptions): Promise<void> {
   const port = options.port;
   const httpPort = port + 1;
   const shell = getDefaultShell();
 
   const wss = new WebSocketServer({ port });
-  const httpServer = createServer(handleStaticFile);
+  const httpServer = createServer(handleHttpRequest);
   httpServer.listen(httpPort);
 
   const broadcast = (msg: object) => {
@@ -699,8 +854,13 @@ export async function serve(options: ServeOptions): Promise<void> {
 
   console.log(chalk.green(`\nLMMs-Lab Writer daemon started`));
   console.log(chalk.gray(`  WebSocket: ws://localhost:${port}`));
-  console.log(chalk.gray(`  Files HTTP: http://localhost:${httpPort}`));
-  console.log(chalk.gray(`  OpenCode: http://localhost:${OPENCODE_PORT}`));
+  console.log(chalk.gray(`  HTTP: http://localhost:${httpPort}`));
+  console.log(
+    chalk.gray(`  OpenCode proxy: http://localhost:${httpPort}/opencode`),
+  );
+  console.log(
+    chalk.gray(`  OpenCode direct: http://localhost:${OPENCODE_PORT}`),
+  );
   console.log(
     chalk.gray(`  Mode: Background service (no project directory required)`),
   );
