@@ -34,7 +34,7 @@ export default async function Home() {
             <div className="flex items-center gap-6">
               <Link
                 href="/dashboard"
-                className="text-sm uppercase tracking-wide hover:text-accent transition-colors duration-75 hidden sm:block"
+                className="text-sm uppercase tracking-wide hover:text-accent active:text-accent/70 transition-colors duration-75 hidden sm:block"
               >
                 Dashboard
               </Link>
@@ -51,7 +51,7 @@ export default async function Home() {
             <div className="flex items-center gap-6">
               <Link
                 href="/login"
-                className="text-sm uppercase tracking-wide hover:text-accent transition-colors duration-75 hidden sm:block"
+                className="text-sm uppercase tracking-wide hover:text-accent active:text-accent/70 transition-colors duration-75 hidden sm:block"
               >
                 Login
               </Link>
@@ -233,10 +233,10 @@ export default async function Home() {
           </div>
 
           <div className="flex gap-8">
-            <Link href="https://github.com/Luodian/latex-writer" className="uppercase tracking-widest text-sm hover:text-accent transition-colors duration-75">
+            <Link href="https://github.com/Luodian/latex-writer" className="uppercase tracking-widest text-sm hover:text-accent active:text-accent/70 transition-colors duration-75">
               GitHub
             </Link>
-            <Link href="/docs" className="uppercase tracking-widest text-sm hover:text-accent transition-colors duration-75">
+            <Link href="/docs" className="uppercase tracking-widest text-sm hover:text-accent active:text-accent/70 transition-colors duration-75">
               Docs
             </Link>
           </div>

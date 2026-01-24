@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import type { User } from '@supabase/supabase-js'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
@@ -31,34 +32,39 @@ type UserProfile = {
   created_at: string
 }
 
-async function getUserProfile(): Promise<UserProfile | null> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+function getUserProfile(user: User): UserProfile {
   return {
     email: user.email ?? '',
     created_at: user.created_at,
   }
 }
 
-async function getDocuments(): Promise<Document[]> {
+async function getDashboardData(): Promise<{ documents: Document[]; profile: UserProfile }> {
   const supabase = await createClient()
-  
+
+  // Single getUser call - middleware already validated, this just retrieves from session
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     redirect('/login')
   }
 
-  const { data: ownedDocs } = await supabase
-    .from('documents')
-    .select('id, title, created_at, updated_at')
-    .eq('created_by', user.id)
-    .order('updated_at', { ascending: false })
+  const profile = getUserProfile(user)
 
-  const { data: sharedAccess } = await supabase
-    .from('document_access')
-    .select('document_id, role, documents(id, title, created_at, updated_at)')
-    .eq('user_id', user.id)
+  // Parallel database queries
+  const [ownedDocsResult, sharedAccessResult] = await Promise.all([
+    supabase
+      .from('documents')
+      .select('id, title, created_at, updated_at')
+      .eq('created_by', user.id)
+      .order('updated_at', { ascending: false }),
+    supabase
+      .from('document_access')
+      .select('document_id, role, documents(id, title, created_at, updated_at)')
+      .eq('user_id', user.id),
+  ])
+
+  const ownedDocs = ownedDocsResult.data
+  const sharedAccess = sharedAccessResult.data
 
   const owned: Document[] = (ownedDocs ?? []).map((doc: OwnedDoc) => ({
     ...doc,
@@ -72,9 +78,11 @@ async function getDocuments(): Promise<Document[]> {
       role: a.role as 'editor' | 'viewer',
     }))
 
-  return [...owned, ...shared].sort(
+  const documents = [...owned, ...shared].sort(
     (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   )
+
+  return { documents, profile }
 }
 
 function formatDate(date: string): string {
@@ -91,10 +99,7 @@ function formatDate(date: string): string {
 }
 
 export default async function DashboardPage() {
-  const [documents, profile] = await Promise.all([
-    getDocuments(),
-    getUserProfile(),
-  ])
+  const { documents, profile } = await getDashboardData()
 
   return (
     <div className="min-h-screen">

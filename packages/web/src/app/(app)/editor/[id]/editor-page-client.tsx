@@ -1,6 +1,6 @@
 "use client";
 
-import { CollaborativeEditor } from "@/components/editor/collaborative-editor";
+import { CollaborativeEditorLazy } from "@/components/editor/collaborative-editor-loader";
 import { FileTree } from "@/components/editor/file-tree";
 import { InstallGuide } from "@/components/install-guide";
 import { ShareModal } from "@/components/sharing/share-modal";
@@ -38,7 +38,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
   const [fileContent, setFileContent] = useState<string>("");
   const [showSidebar, setShowSidebar] = useState(true);
   const [showPdf, setShowPdf] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfUrl] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(224);
   const [rightPanelWidth, setRightPanelWidth] = useState(400);
   const [resizing, setResizing] = useState<"sidebar" | "right" | null>(null);
@@ -47,7 +47,6 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
 
   // Git state from daemon
   const gitStatus = daemon.gitStatus;
-  const gitInfo = daemon.gitInfo;
 
   // Commit state
   const [commitMessage, setCommitMessage] = useState("");
@@ -339,7 +338,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
               <>
                 <button
                   onClick={() => setIsShareOpen(true)}
-                  className="text-sm text-muted hover:text-black transition-colors flex items-center gap-1"
+                  className="text-sm text-muted hover:text-black active:text-black/70 transition-colors flex items-center gap-1"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -387,7 +386,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                 >
                   Git
                   {gitStatus && gitStatus.changes.length > 0 && (
-                    <span className="ml-1 text-xs bg-neutral-200 px-1">
+                    <span className="ml-1 text-xs bg-neutral-200 px-1 tabular-nums">
                       {gitStatus.changes.length}
                     </span>
                   )}
@@ -413,7 +412,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                     <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
                       <button
                         onClick={handleOpenFolder}
-                        className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 transition-colors"
+                        className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 active:bg-black/60 transition-colors"
                       >
                         Open Folder
                       </button>
@@ -437,7 +436,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                       <p className="text-sm text-muted mb-4">Not a git repository</p>
                       <button
                         onClick={() => daemon.gitInit()}
-                        className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 transition-colors"
+                        className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 active:bg-black/60 transition-colors"
                       >
                         Initialize Git
                       </button>
@@ -535,7 +534,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                             <button
                               onClick={handleCommit}
                               disabled={!commitMessage.trim()}
-                              className="px-3 py-1 bg-black text-white text-xs disabled:opacity-50"
+                              className="px-3 py-1 bg-black text-white text-xs hover:bg-black/80 active:bg-black/60 transition-colors disabled:opacity-50"
                             >
                               Commit
                             </button>
@@ -548,25 +547,25 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                         {stagedChanges.length > 0 && !showCommitInput && (
                           <button
                             onClick={() => setShowCommitInput(true)}
-                            className="flex-1 px-3 py-1.5 bg-black text-white text-xs"
+                            className="flex-1 px-3 py-1.5 bg-black text-white text-xs hover:bg-black/80 active:bg-black/60 transition-colors"
                           >
-                            Commit ({stagedChanges.length})
+                            Commit (<span className="tabular-nums">{stagedChanges.length}</span>)
                           </button>
                         )}
                         {gitStatus.ahead > 0 && (
                           <button
                             onClick={() => daemon.gitPush()}
-                            className="flex-1 px-3 py-1.5 border border-border text-xs"
+                            className="flex-1 px-3 py-1.5 border border-border text-xs hover:border-black active:bg-neutral-100 transition-colors"
                           >
-                            Push ({gitStatus.ahead})
+                            Push (<span className="tabular-nums">{gitStatus.ahead}</span>)
                           </button>
                         )}
                         {gitStatus.behind > 0 && (
                           <button
                             onClick={() => daemon.gitPull()}
-                            className="flex-1 px-3 py-1.5 border border-border text-xs"
+                            className="flex-1 px-3 py-1.5 border border-border text-xs hover:border-black active:bg-neutral-100 transition-colors"
                           >
-                            Pull ({gitStatus.behind})
+                            Pull (<span className="tabular-nums">{gitStatus.behind}</span>)
                           </button>
                         )}
                       </div>
@@ -584,7 +583,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
 
         <div className="flex-1 min-w-0 flex flex-col">
           {daemon.projectPath && selectedFile ? (
-            <CollaborativeEditor
+            <CollaborativeEditorLazy
               documentId={document.id}
               userId={userId}
               userName={userName}
@@ -603,7 +602,7 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
                   <p>Open a folder to start editing</p>
                   <button
                     onClick={handleOpenFolder}
-                    className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 transition-colors"
+                    className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 active:bg-black/60 transition-colors"
                   >
                     Open Folder
                   </button>

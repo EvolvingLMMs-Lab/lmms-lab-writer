@@ -49,8 +49,7 @@ function FileIcon({
     );
   }
 
-  // File icon based on extension
-  const ext = type === "file" ? getExtension(type) : "";
+  // File icon
   return (
     <svg
       className="w-4 h-4 flex-shrink-0"
@@ -66,11 +65,6 @@ function FileIcon({
       />
     </svg>
   );
-}
-
-function getExtension(filename: string): string {
-  const idx = filename.lastIndexOf(".");
-  return idx > 0 ? filename.slice(idx) : "";
 }
 
 function TreeNode({
@@ -102,8 +96,8 @@ function TreeNode({
     <div>
       <button
         onClick={handleClick}
-        className={`w-full flex items-center gap-2 px-2 py-1 text-left text-sm hover:bg-accent-hover transition-colors ${
-          isSelected ? "bg-black text-white" : ""
+        className={`w-full flex items-center gap-2 px-2 py-1 text-left text-sm hover:bg-accent-hover active:bg-neutral-200 transition-colors ${
+          isSelected ? "bg-black text-white hover:bg-black/90 active:bg-black/80" : ""
         }`}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
       >

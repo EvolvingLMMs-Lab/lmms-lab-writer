@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection, rectangularSelection } from '@codemirror/view'
 import { EditorState, Compartment } from '@codemirror/state'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
@@ -240,9 +240,34 @@ export function CollaborativeEditor({
 
   if (!mounted) {
     return (
-      <div className={`bg-white border border-border ${className}`}>
-        <div className="h-full flex items-center justify-center text-muted">
-          Loading editor...
+      <div className={`flex flex-col ${className}`}>
+        {/* Skeleton header */}
+        <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background">
+          <div className="h-4 w-24 bg-neutral-200 animate-pulse rounded" />
+          <div className="h-4 w-32 bg-neutral-200 animate-pulse rounded" />
+        </div>
+        {/* Skeleton editor lines */}
+        <div className="flex-1 bg-white p-4 space-y-2">
+          <div className="flex gap-4">
+            <div className="w-8 h-4 bg-neutral-100 animate-pulse rounded" />
+            <div className="flex-1 h-4 bg-neutral-100 animate-pulse rounded" style={{ width: '70%' }} />
+          </div>
+          <div className="flex gap-4">
+            <div className="w-8 h-4 bg-neutral-100 animate-pulse rounded" />
+            <div className="flex-1 h-4 bg-neutral-100 animate-pulse rounded" style={{ width: '45%' }} />
+          </div>
+          <div className="flex gap-4">
+            <div className="w-8 h-4 bg-neutral-100 animate-pulse rounded" />
+            <div className="flex-1 h-4 bg-neutral-100 animate-pulse rounded" style={{ width: '60%' }} />
+          </div>
+          <div className="flex gap-4">
+            <div className="w-8 h-4 bg-neutral-100 animate-pulse rounded" />
+            <div className="flex-1 h-4 bg-neutral-100 animate-pulse rounded" style={{ width: '80%' }} />
+          </div>
+          <div className="flex gap-4">
+            <div className="w-8 h-4 bg-neutral-100 animate-pulse rounded" />
+            <div className="flex-1 h-4 bg-neutral-100 animate-pulse rounded" style={{ width: '35%' }} />
+          </div>
         </div>
       </div>
     )

@@ -27,15 +27,25 @@ body {
 }
 
 .btn {
-  @apply px-6 py-3 font-mono text-sm uppercase tracking-wider transition-colors duration-200 flex items-center justify-center gap-2;
+  @apply px-6 py-3 font-mono text-sm uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2;
+  /* Prevent font-weight changes from causing layout shift */
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  /* Subtle press feedback */
+  @apply active:scale-[0.98];
 }
 
 .btn-primary {
-  @apply bg-accent text-white hover:bg-accent-muted disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply bg-accent text-white hover:bg-accent-muted active:bg-accent-dark disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
 .btn-secondary {
-  @apply bg-foreground text-white hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply bg-foreground text-white hover:bg-muted active:bg-surface disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* Ensure consistent number widths in UI */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
 .badge {
@@ -79,6 +89,11 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .modal-overlay,
   .modal-content {
+    animation: none;
+  }
+
+  /* Disable skeleton pulse animation for users who prefer reduced motion */
+  .animate-pulse {
     animation: none;
   }
 }
