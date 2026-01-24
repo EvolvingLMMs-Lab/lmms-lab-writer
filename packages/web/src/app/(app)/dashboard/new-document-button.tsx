@@ -11,7 +11,7 @@ export function NewDocumentButton({ variant = 'default' }: Props) {
   const router = useRouter()
   const [isCreating, setIsCreating] = useState(false)
 
-  const baseClasses = 'btn flex items-center gap-2'
+  const baseClasses = 'btn btn-sm flex items-center gap-2'
   const variantClasses = variant === 'primary' ? 'btn-primary' : 'btn-secondary'
 
   const handleCreate = async () => {
