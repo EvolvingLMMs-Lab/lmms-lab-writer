@@ -485,7 +485,12 @@ export async function serve(options: ServeOptions): Promise<void> {
 
         switch (msg.type) {
           case 'set-project': {
-            const projectPath = resolve(msg.path)
+            // Expand ~ to home directory
+            let inputPath = msg.path as string
+            if (inputPath.startsWith('~')) {
+              inputPath = inputPath.replace(/^~/, homedir())
+            }
+            const projectPath = resolve(inputPath)
             if (!existsSync(projectPath)) {
               ws.send(JSON.stringify({ type: 'error', message: `Directory not found: ${projectPath}` }))
               break

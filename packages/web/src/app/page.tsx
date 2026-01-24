@@ -67,7 +67,7 @@ export default async function Home() {
               Local-First
             </div>
             <h1 className="animate-fade-in-up delay-100 text-4xl md:text-6xl font-bold tracking-tight leading-tight mb-6">
-              LaTeX Editor for<br />AI-Assisted Writing
+              Simple Agentic Writing
             </h1>
             <p className="animate-fade-in-up delay-200 text-lg text-muted mb-10 max-w-xl mx-auto">
               Your files stay on your machine. Claude Code, Cursor, and other AI tools edit directly. You compile and commit locally.
@@ -126,26 +126,6 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Requirements - Minimal inline */}
-        <section className="border-t border-neutral-200 py-12 px-6">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex flex-col md:flex-row md:items-center justify-center gap-6 md:gap-12 text-sm text-center">
-              <div>
-                <span className="text-muted">Requires:</span>{' '}
-                <a href="https://nodejs.org" target="_blank" rel="noopener noreferrer" className="underline hover:text-black">Node.js 20+</a>
-                {' + '}
-                <span className="text-muted">LaTeX</span>{' '}
-                <span className="text-muted">(</span>
-                <code className="text-xs bg-neutral-100 px-1">mactex</code>
-                <span className="text-muted">/</span>
-                <code className="text-xs bg-neutral-100 px-1">texlive</code>
-                <span className="text-muted">/</span>
-                <a href="https://miktex.org" target="_blank" rel="noopener noreferrer" className="underline hover:text-black">MiKTeX</a>
-                <span className="text-muted">)</span>
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
 
       {/* Footer - Minimal */}

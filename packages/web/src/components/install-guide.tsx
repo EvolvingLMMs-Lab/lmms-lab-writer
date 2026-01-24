@@ -4,7 +4,6 @@ import { useState, useCallback } from "react";
 
 type Platform = "macos" | "linux" | "windows";
 
-// Platform icons as inline SVGs
 function AppleIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -78,10 +77,10 @@ export function InstallGuide() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-background">
-      <div className="max-w-2xl w-full">
+      <div className="max-w-lg w-full text-center">
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-3 mb-6">
+        <div className="mb-8">
+          <div className="inline-flex items-center gap-3 mb-4">
             <div className="logo-bar text-foreground">
               <span></span>
               <span></span>
@@ -91,20 +90,20 @@ export function InstallGuide() {
               <span></span>
               <span></span>
             </div>
-            <span className="text-xl font-bold tracking-tight uppercase">
+            <span className="text-lg font-bold tracking-tight uppercase">
               LMMs-Lab Writer
             </span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tighter mb-4">
-            One-Time Setup
+          <h1 className="text-3xl font-bold tracking-tight mb-2">
+            Install
           </h1>
-          <p className="text-muted text-base md:text-lg max-w-md mx-auto">
-            Install the background service to enable local editing and compilation
+          <p className="text-muted text-sm">
+            One command installs everything you need
           </p>
         </div>
 
-        {/* Platform selector with icons */}
-        <div className="flex justify-center mb-8">
+        {/* Platform selector */}
+        <div className="flex justify-center mb-6">
           <div className="inline-flex border border-border">
             {(["macos", "linux", "windows"] as Platform[]).map((p) => {
               const Icon = platformConfig[p].icon;
@@ -113,7 +112,7 @@ export function InstallGuide() {
                 <button
                   key={p}
                   onClick={() => setPlatform(p)}
-                  className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium transition-all cursor-pointer ${
+                  className={`flex items-center gap-2 px-4 py-2 text-sm transition-all cursor-pointer ${
                     isActive
                       ? "bg-black text-white"
                       : "bg-white hover:bg-neutral-50 active:bg-neutral-100"
@@ -127,65 +126,8 @@ export function InstallGuide() {
           </div>
         </div>
 
-        {/* Prerequisites - cleaner card design */}
-        <div className="border border-border bg-white mb-6">
-          <div className="px-5 py-3 border-b border-border bg-neutral-50">
-            <h2 className="font-bold uppercase tracking-wider text-xs text-muted">
-              Prerequisites
-            </h2>
-          </div>
-          <div className="p-5 space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="w-7 h-7 border-2 border-black flex items-center justify-center text-xs font-bold flex-shrink-0">
-                1
-              </div>
-              <div className="flex-1 flex items-center justify-between">
-                <span className="font-medium">Node.js 20+</span>
-                <a
-                  href="https://nodejs.org"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-muted hover:text-black active:text-black/70 underline underline-offset-2 transition-colors"
-                >
-                  nodejs.org
-                </a>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="w-7 h-7 border-2 border-black flex items-center justify-center text-xs font-bold flex-shrink-0">
-                2
-              </div>
-              <div className="flex-1 flex items-center justify-between gap-4">
-                <span className="font-medium">LaTeX Distribution</span>
-                <span className="text-sm">
-                  {platform === "macos" && (
-                    <code className="bg-neutral-100 px-2 py-0.5 text-xs font-mono">
-                      brew install --cask mactex
-                    </code>
-                  )}
-                  {platform === "linux" && (
-                    <code className="bg-neutral-100 px-2 py-0.5 text-xs font-mono">
-                      apt install texlive-full
-                    </code>
-                  )}
-                  {platform === "windows" && (
-                    <a
-                      href="https://miktex.org"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-muted hover:text-black active:text-black/70 underline underline-offset-2 transition-colors"
-                    >
-                      MiKTeX
-                    </a>
-                  )}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Install command - improved terminal look */}
-        <div className="bg-neutral-900 text-white overflow-hidden">
+        {/* Install command */}
+        <div className="bg-neutral-900 text-white overflow-hidden text-left">
           <div className="flex items-center justify-between px-4 py-2 bg-neutral-800 border-b border-neutral-700">
             <div className="flex items-center gap-2">
               <div className="flex gap-1.5">
@@ -193,9 +135,6 @@ export function InstallGuide() {
                 <span className="w-3 h-3 rounded-full bg-neutral-600" />
                 <span className="w-3 h-3 rounded-full bg-neutral-600" />
               </div>
-              <span className="text-xs text-neutral-400 ml-2 uppercase tracking-wider">
-                {platform === "windows" ? "PowerShell" : "Terminal"}
-              </span>
             </div>
             <button
               onClick={handleCopy}
@@ -208,7 +147,7 @@ export function InstallGuide() {
               {copied ? (
                 <>
                   <CheckIcon className="w-3.5 h-3.5" />
-                  <span>Copied!</span>
+                  <span>Copied</span>
                 </>
               ) : (
                 <>
@@ -221,53 +160,29 @@ export function InstallGuide() {
           <div className="p-4 font-mono text-sm">
             <div className="flex items-start gap-3">
               <span className="text-neutral-500 select-none">
-                {platform === "windows" ? "PS>" : "$"}
+                {platform === "windows" ? ">" : "$"}
               </span>
               <code className="break-all text-green-400">{installCommands[platform]}</code>
             </div>
           </div>
         </div>
 
-        {/* What this does - with check marks */}
-        <div className="mt-8 border border-border bg-white p-5">
-          <p className="text-sm font-medium mb-4">This will:</p>
-          <ul className="space-y-2.5">
-            {[
-              "Install the LMMs-Lab Writer CLI",
-              "Set up a background service that starts automatically",
-              "Enable local file editing, Git, and LaTeX compilation",
-            ].map((item, i) => (
-              <li key={i} className="flex items-center gap-3 text-sm text-muted">
-                <span className="w-5 h-5 border border-border flex items-center justify-center flex-shrink-0">
-                  <CheckIcon className="w-3 h-3 text-black" />
-                </span>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
+        {/* What it does - simplified */}
+        <p className="mt-6 text-sm text-muted">
+          Installs Node.js, LaTeX, and the CLI automatically
+        </p>
 
-        {/* CTA button - more prominent */}
-        <div className="mt-8 text-center">
+        {/* CTA */}
+        <div className="mt-8">
           <button
             onClick={() => window.location.reload()}
-            className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-black text-white font-medium hover:bg-black/80 active:bg-black/60 active:scale-[0.98] transition-all"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-black text-white text-sm hover:bg-black/80 active:bg-black/60 active:scale-[0.98] transition-all"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            I&apos;ve installed it - Refresh
+            I&apos;ve installed it
           </button>
-        </div>
-
-        {/* Manual alternative */}
-        <div className="mt-8 pt-8 border-t border-border text-center">
-          <p className="text-sm text-muted">
-            Or install manually:{" "}
-            <code className="bg-neutral-100 px-2 py-0.5 text-xs font-mono text-black">
-              npm install -g @lmms-lab/writer-cli && llw
-            </code>
-          </p>
         </div>
       </div>
     </div>
