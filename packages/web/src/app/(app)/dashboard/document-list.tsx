@@ -10,7 +10,6 @@ type Document = {
   created_at: string;
   updated_at: string;
   role: "owner" | "editor" | "viewer";
-  sort_order?: number;
 };
 
 type Props = {
@@ -66,58 +65,6 @@ export function DocumentList({ documents: initialDocuments }: Props) {
     []
   );
 
-  const handleMoveUp = useCallback(
-    async (index: number, e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (index === 0) return;
-
-      const newDocs = [...documents];
-      [newDocs[index - 1], newDocs[index]] = [newDocs[index], newDocs[index - 1]];
-      setDocuments(newDocs);
-      setActiveMenu(null);
-
-      // Update sort order in database
-      const supabase = createClient();
-      await Promise.all(
-        newDocs.map((doc, i) =>
-          supabase
-            .from("documents")
-            .update({ sort_order: i })
-            .eq("id", doc.id)
-        )
-      );
-    },
-    [documents]
-  );
-
-  const handleMoveDown = useCallback(
-    async (index: number, e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (index === documents.length - 1) return;
-
-      const newDocs = [...documents];
-      [newDocs[index], newDocs[index + 1]] = [newDocs[index + 1], newDocs[index]];
-      setDocuments(newDocs);
-      setActiveMenu(null);
-
-      // Update sort order in database
-      const supabase = createClient();
-      await Promise.all(
-        newDocs.map((doc, i) =>
-          supabase
-            .from("documents")
-            .update({ sort_order: i })
-            .eq("id", doc.id)
-        )
-      );
-    },
-    [documents]
-  );
-
   const toggleMenu = useCallback((docId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -138,7 +85,7 @@ export function DocumentList({ documents: initialDocuments }: Props) {
       className="border border-border divide-y divide-border"
       onClick={handleClickOutside}
     >
-      {documents.map((doc, index) => (
+      {documents.map((doc) => (
         <div
           key={doc.id}
           className={`flex items-center justify-between p-4 hover:bg-accent-hover transition-colors group relative ${
@@ -203,48 +150,7 @@ export function DocumentList({ documents: initialDocuments }: Props) {
 
                 {/* Dropdown menu */}
                 {activeMenu === doc.id && (
-                  <div className="absolute right-0 top-full mt-2 bg-white border border-border shadow-lg z-10 min-w-[140px]">
-                    <button
-                      onClick={(e) => handleMoveUp(index, e)}
-                      disabled={index === 0}
-                      className="w-full px-4 py-2 text-left text-sm hover:bg-neutral-50 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 15l7-7 7 7"
-                        />
-                      </svg>
-                      Move up
-                    </button>
-                    <button
-                      onClick={(e) => handleMoveDown(index, e)}
-                      disabled={index === documents.length - 1}
-                      className="w-full px-4 py-2 text-left text-sm hover:bg-neutral-50 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                      Move down
-                    </button>
-                    <div className="border-t border-border" />
+                  <div className="absolute right-0 top-full mt-2 bg-white border border-border shadow-lg z-10 min-w-[120px]">
                     <button
                       onClick={(e) => handleDelete(doc.id, e)}
                       className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
@@ -268,25 +174,6 @@ export function DocumentList({ documents: initialDocuments }: Props) {
                 )}
               </div>
             )}
-
-            <Link
-              href={`/editor/${doc.id}`}
-              className="p-2 text-muted group-hover:text-black transition-colors"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="square"
-                  strokeLinejoin="miter"
-                  strokeWidth={1.5}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </Link>
           </div>
         </div>
       ))}
