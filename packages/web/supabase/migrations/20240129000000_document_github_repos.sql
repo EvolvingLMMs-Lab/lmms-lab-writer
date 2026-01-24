@@ -1,6 +1,15 @@
 -- Document-GitHub Repository Linking
 -- Links documents to GitHub repositories for git versioning
 
+-- Ensure update_updated_at_column function exists (may already exist from initial schema)
+create or replace function update_updated_at_column()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
 -- Table to track which GitHub repo a document is linked to
 create table if not exists document_github_repos (
   id uuid primary key default gen_random_uuid(),
