@@ -104,18 +104,6 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
     };
   }, [saveTitleToDb]);
 
-  // Intercept Cmd/Ctrl+S globally to prevent browser save dialog
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault();
-        // Content is auto-saved, no action needed
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
   useEffect(() => {
     if (!resizing) return;
 
@@ -242,6 +230,76 @@ export function EditorPageClient({ document, userId, userName, role }: Props) {
     setCommitMessage("");
     setShowCommitInput(false);
   }, [commitMessage, daemon]);
+
+  // VSCode/Cursor style keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMod = e.metaKey || e.ctrlKey;
+
+      // Cmd+S - Save (auto-saved, just prevent default)
+      if (isMod && e.key === "s" && !e.shiftKey) {
+        e.preventDefault();
+        return;
+      }
+
+      // Cmd+B - Toggle sidebar
+      if (isMod && e.key === "b" && !e.shiftKey) {
+        e.preventDefault();
+        setShowSidebar((v) => !v);
+        return;
+      }
+
+      // Cmd+\ - Toggle PDF/Output panel
+      if (isMod && e.key === "\\") {
+        e.preventDefault();
+        setShowPdf((v) => !v);
+        return;
+      }
+
+      // Cmd+Shift+E - Focus file explorer
+      if (isMod && e.shiftKey && e.key === "e") {
+        e.preventDefault();
+        setShowSidebar(true);
+        setSidebarTab("files");
+        return;
+      }
+
+      // Cmd+Shift+G - Focus git panel
+      if (isMod && e.shiftKey && e.key === "g") {
+        e.preventDefault();
+        setShowSidebar(true);
+        setSidebarTab("git");
+        return;
+      }
+
+      // Cmd+Shift+B - Compile (Build)
+      if (isMod && e.shiftKey && e.key === "b") {
+        e.preventDefault();
+        if (daemon.projectPath && !daemon.isCompiling) {
+          daemon.compile();
+        }
+        return;
+      }
+
+      // Cmd+O - Open folder
+      if (isMod && e.key === "o" && !e.shiftKey) {
+        e.preventDefault();
+        handleOpenFolder();
+        return;
+      }
+
+      // Cmd+W - Close current file
+      if (isMod && e.key === "w" && !e.shiftKey) {
+        e.preventDefault();
+        setSelectedFile(undefined);
+        setFileContent("");
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [daemon, handleOpenFolder]);
 
   const userColors = [
     "#000000",

@@ -189,9 +189,25 @@ export function CollaborativeEditor({
         monochromTheme,
         readOnlyCompartment.of(EditorState.readOnly.of(readOnly)),
         keymap.of([
-          // Intercept Cmd/Ctrl+S to prevent browser save dialog
-          { key: 'Mod-s', run: () => {
-            // Content is auto-saved, so just prevent default
+          // Intercept Cmd/Ctrl+S - auto-saved
+          { key: 'Mod-s', run: () => true },
+          // Cmd+/ - Toggle comment (LaTeX %)
+          { key: 'Mod-/', run: (view) => {
+            const { state } = view
+            const changes: { from: number; to: number; insert: string }[] = []
+            for (const range of state.selection.ranges) {
+              const line = state.doc.lineAt(range.from)
+              const lineText = line.text
+              if (lineText.trimStart().startsWith('%')) {
+                // Remove comment
+                const commentIndex = lineText.indexOf('%')
+                changes.push({ from: line.from + commentIndex, to: line.from + commentIndex + (lineText[commentIndex + 1] === ' ' ? 2 : 1), insert: '' })
+              } else {
+                // Add comment
+                changes.push({ from: line.from, to: line.from, insert: '% ' })
+              }
+            }
+            view.dispatch({ changes })
             return true
           }},
           ...defaultKeymap,
