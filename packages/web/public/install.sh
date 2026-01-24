@@ -55,7 +55,7 @@ fi
 # Install the package globally
 echo ""
 echo "Installing @lmms-lab/writer-cli..."
-npm install -g @lmms-lab/writer-cli
+npm install -g @lmms-lab/writer-cli@latest
 
 # Get the path to the installed CLI
 CLI_PATH=$(which llw)

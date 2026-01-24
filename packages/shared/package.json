@@ -1,7 +1,6 @@
 {
   "name": "@lmms-lab/writer-shared",
   "version": "0.1.0",
-  "private": true,
   "description": "Shared types and utilities for LaTeX Writer",
   "type": "module",
   "main": "./dist/index.js",
@@ -12,6 +11,9 @@
       "types": "./dist/index.d.ts"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

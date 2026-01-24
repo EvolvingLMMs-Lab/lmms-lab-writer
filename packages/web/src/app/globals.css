@@ -127,3 +127,162 @@ body {
 .logo-bar span:nth-child(5) { animation-delay: 0.4s; }
 .logo-bar span:nth-child(6) { animation-delay: 0.5s; }
 .logo-bar span:nth-child(7) { animation-delay: 0.6s; }
+
+/* Marquee animation for feature strip */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-container {
+  overflow: hidden;
+  position: relative;
+}
+
+.marquee-container::before,
+.marquee-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 60px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.marquee-container::before {
+  left: 0;
+  background: linear-gradient(to right, var(--background), transparent);
+}
+
+.marquee-container::after {
+  right: 0;
+  background: linear-gradient(to left, var(--background), transparent);
+}
+
+.marquee-track {
+  display: flex;
+  width: fit-content;
+  animation: marquee 30s linear infinite;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* Hero entrance animations */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+/* Staggered animation delays */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* Feature card hover lift effect */
+.feature-card {
+  transition: all 0.2s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Step number pulse on hover */
+.step-number {
+  transition: all 0.2s ease;
+}
+
+.step-card:hover .step-number {
+  background-color: var(--foreground);
+  color: white;
+  transform: scale(1.05);
+}
+
+/* Underline animation for links */
+.link-underline {
+  position: relative;
+}
+
+.link-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background-color: currentColor;
+  transition: width 0.2s ease;
+}
+
+.link-underline:hover::after {
+  width: 100%;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+
+  .animate-fade-in-up,
+  .animate-fade-in,
+  .animate-slide-in-left {
+    animation: none;
+    opacity: 1;
+  }
+
+  .feature-card:hover {
+    transform: none;
+  }
+
+  .step-card:hover .step-number {
+    transform: none;
+  }
+}
