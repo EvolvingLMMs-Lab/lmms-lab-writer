@@ -24,8 +24,8 @@ export default async function Home() {
   return (
     <div className="min-h-screen flex flex-col font-mono text-foreground bg-background selection:bg-accent selection:text-white">
       {/* Header */}
-      <header className="border-b border-neutral-200 bg-background sticky top-0 z-50 h-[72px] flex items-center">
-        <nav className="w-full max-w-5xl mx-auto px-6 flex items-center justify-between">
+      <header className="border-b border-border bg-background sticky top-0 z-50 h-[72px] flex items-center">
+        <div className="w-full max-w-5xl mx-auto px-6 flex items-center justify-between">
           <Link
             href="/"
             className="text-lg font-bold tracking-tight uppercase flex items-center gap-3"
@@ -68,7 +68,7 @@ export default async function Home() {
               </Link>
             </div>
           )}
-        </nav>
+        </div>
       </header>
 
       <main className="flex-1">

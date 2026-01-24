@@ -124,7 +124,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border h-[72px] flex items-center">
+      <header className="border-b border-border bg-background sticky top-0 z-50 h-[72px] flex items-center">
         <div className="w-full max-w-5xl mx-auto px-6 flex items-center justify-between">
           <Link
             href="/"
