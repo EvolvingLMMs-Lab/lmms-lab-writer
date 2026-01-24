@@ -162,7 +162,7 @@ export function ShareModal({ documentId, isOpen, onClose }: Props) {
         aria-labelledby="share-modal-title"
         tabIndex={-1}
         onKeyDown={handleFocusTrap}
-        className="relative bg-white border border-black w-full max-w-lg mx-4 outline-none modal-content"
+        className="relative bg-white border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] w-full max-w-lg mx-4 outline-none modal-content"
       >
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 id="share-modal-title" className="text-lg font-medium">

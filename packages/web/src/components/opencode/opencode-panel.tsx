@@ -28,11 +28,35 @@ export function OpenCodePanel({
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const sessionCreatedRef = useRef(false);
+  const lastDirectoryRef = useRef<string | undefined>(undefined);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [opencode.messages, opencode.parts]);
+
+  useEffect(() => {
+    if (lastDirectoryRef.current !== directory) {
+      lastDirectoryRef.current = directory;
+      sessionCreatedRef.current = false;
+    }
+  }, [directory]);
+
+  useEffect(() => {
+    if (
+      opencode.connected &&
+      !opencode.currentSessionId &&
+      !sessionCreatedRef.current &&
+      directory
+    ) {
+      sessionCreatedRef.current = true;
+      opencode.createSession().then((session) => {
+        if (session) {
+          opencode.selectSession(session.id);
+        }
+      });
+    }
+  }, [opencode.connected, opencode.currentSessionId, opencode, directory]);
 
   const handleConnect = useCallback(() => {
     opencode.connect();
@@ -70,16 +94,25 @@ export function OpenCodePanel({
   const isWorking =
     opencode.status.type === "running" || opencode.status.type === "retry";
 
+  const folderName = directory?.split("/").pop();
+
   return (
-    <div className={`flex flex-col h-full bg-white ${className}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-        <div className="flex items-center gap-2 text-sm">
+    <div className={`flex flex-col bg-white min-h-0 ${className}`}>
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border flex-shrink-0">
+        <div className="flex items-center gap-2 text-xs min-w-0">
           <span
-            className={`size-2 ${opencode.connected ? "bg-black" : "bg-muted"}`}
+            className={`size-2 flex-shrink-0 ${opencode.connected ? "bg-black" : "bg-muted"}`}
             title={opencode.connected ? "Connected" : "Disconnected"}
           />
-          <span className="text-muted">OpenCode</span>
+          <span className="text-muted flex-shrink-0">OpenCode</span>
+          {folderName && (
+            <>
+              <span className="text-muted">/</span>
+              <span className="truncate text-muted" title={directory}>
+                {folderName}
+              </span>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {!opencode.connected ? (
@@ -121,9 +154,8 @@ export function OpenCodePanel({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
       {opencode.connected && opencode.currentSessionId && (
-        <div className="border-t border-border p-3">
+        <div className="border-t border-border p-3 flex-shrink-0">
           <div className="flex gap-2">
             <textarea
               ref={inputRef}
@@ -252,7 +284,7 @@ function MessageList({
 }) {
   if (messages.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center text-muted text-sm">
+      <div className="h-full flex items-center justify-center text-muted text-xs">
         <p>Send a message to get started</p>
       </div>
     );
@@ -330,7 +362,7 @@ function MessageTurn({
     <div className="space-y-3">
       {/* User message */}
       <div className="flex gap-2">
-        <div className="size-6 bg-black text-white flex items-center justify-center text-xs flex-shrink-0">
+        <div className="size-6 border border-neutral-300 flex items-center justify-center text-xs flex-shrink-0 text-neutral-600">
           U
         </div>
         <div className="flex-1 min-w-0">
@@ -343,7 +375,7 @@ function MessageTurn({
       {/* Assistant response */}
       {(toolParts.length > 0 || lastTextPart || isWorking) && (
         <div className="flex gap-2">
-          <div className="size-6 bg-muted text-white flex items-center justify-center text-xs flex-shrink-0">
+          <div className="size-6 border border-neutral-300 bg-neutral-100 flex items-center justify-center text-xs flex-shrink-0 text-neutral-500">
             A
           </div>
           <div className="flex-1 min-w-0 space-y-2">

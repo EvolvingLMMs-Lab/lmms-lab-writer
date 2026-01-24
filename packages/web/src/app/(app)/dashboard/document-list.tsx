@@ -203,7 +203,7 @@ export function DocumentList({ documents: initialDocuments }: Props) {
 
                 {/* Dropdown menu */}
                 {activeMenu === doc.id && (
-                  <div className="absolute right-0 top-full mt-1 bg-white border border-border shadow-lg z-10 min-w-[140px]">
+                  <div className="absolute right-0 top-full mt-2 bg-white border border-border shadow-lg z-10 min-w-[140px]">
                     <button
                       onClick={(e) => handleMoveUp(index, e)}
                       disabled={index === 0}

@@ -1,9 +1,10 @@
 export const GITHUB_CONFIG = {
   ORG: "EvolvingLMMs-Lab",
+  // Note: UI sorts by real-time star count from GitHub API
   ELIGIBLE_REPOS: [
-    "agentic-latex-writer",
     "lmms-eval",
     "lmms-finetune",
+    "agentic-latex-writer",
     "lmms-lab.github.io",
   ],
   DAYS_PER_STAR: 7,

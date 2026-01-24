@@ -9,6 +9,59 @@ import {
 } from "@/lib/github/config";
 import { GitHubLoginButton } from "@/components/auth/github-login-button";
 
+type RepoInfo = {
+  name: string;
+  full_name: string;
+  description: string | null;
+  stargazers_count: number;
+  html_url: string;
+};
+
+async function getRepoInfo(): Promise<RepoInfo[]> {
+  try {
+    // Fetch top public repos from org directly (sorted by stars)
+    const response = await fetch(
+      `https://api.github.com/orgs/${GITHUB_CONFIG.ORG}/repos?per_page=20&sort=stars&direction=desc`,
+      {
+        headers: {
+          Accept: "application/vnd.github.v3+json",
+          ...(process.env.GITHUB_TOKEN && {
+            Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+          }),
+        },
+        next: { revalidate: 3600 }, // Cache for 1 hour
+      }
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const repos = await response.json();
+
+    // Filter public repos and take top 5
+    return repos
+      .filter((repo: { private: boolean }) => !repo.private)
+      .slice(0, 5)
+      .map((repo: { name: string; full_name: string; description: string | null; stargazers_count: number; html_url: string }) => ({
+        name: repo.name,
+        full_name: repo.full_name,
+        description: repo.description,
+        stargazers_count: repo.stargazers_count,
+        html_url: repo.html_url,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function formatStarCount(count: number): string {
+  if (count >= 1000) {
+    return `${(count / 1000).toFixed(1)}k`;
+  }
+  return count.toString();
+}
+
 export default async function MembershipPage() {
   const supabase = await createClient();
   const {
@@ -19,11 +72,21 @@ export default async function MembershipPage() {
     redirect("/login");
   }
 
-  const { data: membership } = await supabase
-    .from("user_memberships")
-    .select("*")
-    .eq("user_id", session.user.id)
-    .single();
+  // Fetch repo info and membership data in parallel
+  const [repoInfo, { data: membership }, { data: githubToken }] =
+    await Promise.all([
+      getRepoInfo(),
+      supabase
+        .from("user_memberships")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .single(),
+      supabase
+        .from("user_github_tokens")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .single(),
+    ]);
 
   const tier: MembershipTier = membership?.tier || "free";
   const expiresAt = membership?.expires_at
@@ -33,13 +96,6 @@ export default async function MembershipPage() {
   const starredRepos: StarredRepo[] =
     (membership?.starred_repos as unknown as StarredRepo[]) || [];
   const totalStars = membership?.total_star_count || 0;
-
-  // Check if connected to GitHub
-  const { data: githubToken } = await supabase
-    .from("user_github_tokens")
-    .select("id")
-    .eq("user_id", session.user.id)
-    .single();
 
   const isGitHubConnected = !!githubToken;
   const starredRepoNames = new Set(starredRepos.map((r) => r.repo));
@@ -174,23 +230,22 @@ export default async function MembershipPage() {
               </h2>
 
               <div className="space-y-2">
-                {GITHUB_CONFIG.ELIGIBLE_REPOS.map((repoName) => {
-                  const isStarred = starredRepoNames.has(repoName);
-                  const repoUrl = `https://github.com/${GITHUB_CONFIG.ORG}/${repoName}`;
+                {repoInfo.map((repo) => {
+                  const isStarred = starredRepoNames.has(repo.name);
 
                   return (
                     <div
-                      key={repoName}
+                      key={repo.name}
                       className={`flex items-center justify-between p-4 border transition-colors ${
                         isStarred
                           ? "border-black bg-neutral-50"
                           : "border-neutral-200 hover:border-neutral-400"
                       }`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         {isStarred ? (
                           <svg
-                            className="size-5 text-black"
+                            className="size-5 text-black flex-shrink-0"
                             viewBox="0 0 24 24"
                             fill="currentColor"
                           >
@@ -198,7 +253,7 @@ export default async function MembershipPage() {
                           </svg>
                         ) : (
                           <svg
-                            className="size-5 text-neutral-400"
+                            className="size-5 text-neutral-400 flex-shrink-0"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -207,26 +262,38 @@ export default async function MembershipPage() {
                             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                           </svg>
                         )}
-                        <a
-                          href={repoUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-mono text-sm hover:underline"
-                        >
-                          {repoName}
-                        </a>
+                        <div className="min-w-0 flex-1">
+                          <a
+                            href={repo.html_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-sm hover:underline block truncate"
+                          >
+                            {repo.name}
+                          </a>
+                          {repo.description && (
+                            <p className="text-xs text-muted truncate mt-0.5">
+                              {repo.description}
+                            </p>
+                          )}
+                        </div>
+                        {repo.stargazers_count > 0 && (
+                          <span className="text-xs text-muted font-mono tabular-nums flex-shrink-0">
+                            {formatStarCount(repo.stargazers_count)}
+                          </span>
+                        )}
                       </div>
 
                       {isStarred ? (
-                        <span className="text-xs font-mono uppercase tracking-wider text-muted">
+                        <span className="text-xs font-mono uppercase tracking-wider text-muted ml-4 flex-shrink-0">
                           +7 days
                         </span>
                       ) : (
                         <a
-                          href={repoUrl}
+                          href={repo.html_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-4 py-1.5 bg-black text-white text-xs font-mono uppercase tracking-wider hover:bg-neutral-800 transition-colors"
+                          className="px-4 py-1.5 bg-black text-white text-xs font-mono uppercase tracking-wider hover:bg-neutral-800 transition-colors ml-4 flex-shrink-0"
                         >
                           Star
                         </a>

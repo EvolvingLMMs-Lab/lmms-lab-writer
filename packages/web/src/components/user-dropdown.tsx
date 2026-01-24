@@ -65,11 +65,11 @@ export function UserDropdown({
           <img
             src={avatarUrl}
             alt={displayName}
-            className="size-8 border border-border"
+            className="size-8 border border-neutral-300"
           />
         ) : (
-          <div className="size-8 bg-black text-white flex items-center justify-center">
-            <span className="text-sm font-bold">{initial}</span>
+          <div className="size-8 border border-neutral-300 flex items-center justify-center">
+            <span className="text-sm font-medium text-neutral-600">{initial}</span>
           </div>
         )}
         <svg
@@ -89,7 +89,7 @@ export function UserDropdown({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-3 w-80 bg-white border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] z-50">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-white border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] z-50">
           {/* User Info */}
           <div className="p-5 border-b border-border">
             <div className="flex items-center gap-4">
@@ -97,11 +97,11 @@ export function UserDropdown({
                 <img
                   src={avatarUrl}
                   alt={displayName}
-                  className="size-12 border border-border"
+                  className="size-12 border border-neutral-300"
                 />
               ) : (
-                <div className="size-12 bg-black text-white flex items-center justify-center">
-                  <span className="text-lg font-bold">{initial}</span>
+                <div className="size-12 border border-neutral-300 flex items-center justify-center">
+                  <span className="text-lg font-medium text-neutral-600">{initial}</span>
                 </div>
               )}
               <div className="min-w-0 flex-1">
@@ -114,45 +114,70 @@ export function UserDropdown({
           </div>
 
           {/* Membership Status */}
-          <div className="p-5 border-b border-border bg-neutral-50">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-mono uppercase tracking-wider text-muted">
+          <div className="px-5 py-4 border-b border-border">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted uppercase tracking-wider">
                 Membership
               </span>
               <span
-                className={`text-xs font-mono uppercase px-2 py-0.5 ${
+                className={`text-xs font-mono uppercase tracking-wider px-2 py-0.5 ${
                   tier === "supporter"
                     ? "bg-black text-white"
-                    : "border border-neutral-300 text-muted"
+                    : "text-muted"
                 }`}
               >
                 {tier}
               </span>
             </div>
-            {tier === "supporter" && daysRemaining !== null && daysRemaining !== undefined && (
-              <p className="text-sm text-muted mb-3">
-                {daysRemaining > 0
-                  ? `${daysRemaining} days remaining`
-                  : "Expired"}
-              </p>
+          </div>
+
+          {/* CTA Section */}
+          <div className="px-5 py-4 border-b border-border bg-neutral-50">
+            {tier === "supporter" && daysRemaining !== null && daysRemaining !== undefined ? (
+              <div className="flex items-center justify-between">
+                <span className="text-sm">
+                  {daysRemaining > 0 ? `${daysRemaining} days left` : "Expired"}
+                </span>
+                <Link
+                  href="/dashboard/membership"
+                  onClick={() => setIsOpen(false)}
+                  className="text-xs text-muted hover:text-black transition-colors"
+                >
+                  Manage
+                </Link>
+              </div>
+            ) : (
+              <Link
+                href="/dashboard/membership"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-between group"
+              >
+                <span className="text-sm font-medium">Star repos to unlock</span>
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-black group-hover:underline">
+                  Unlock
+                  <svg
+                    className="size-3"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </span>
+              </Link>
             )}
-            {tier === "free" && (
-              <p className="text-sm text-muted mb-3">Star repos to unlock</p>
-            )}
-            <Link
-              href="/dashboard/membership"
-              onClick={() => setIsOpen(false)}
-              className="inline-block text-sm text-black hover:underline"
-            >
-              {tier === "free" ? "Unlock →" : "Manage →"}
-            </Link>
           </div>
 
           {/* Quick Stats */}
           <div className="px-5 py-4 border-b border-border">
             <div className="flex items-center justify-between">
-              <span className="text-muted">Documents</span>
-              <span className="font-mono tabular-nums">{documentsCount}</span>
+              <span className="text-xs text-muted uppercase tracking-wider">
+                Documents
+              </span>
+              <span className="text-sm font-mono tabular-nums">{documentsCount}</span>
             </div>
           </div>
 

@@ -90,7 +90,7 @@ export function AlertDialog({
         aria-describedby="alert-dialog-description"
         tabIndex={-1}
         onKeyDown={handleFocusTrap}
-        className="relative bg-white border border-black w-full max-w-md mx-4 p-6 outline-none modal-content"
+        className="relative bg-white border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] w-full max-w-md mx-4 p-6 outline-none modal-content"
       >
         <h2 id="alert-dialog-title" className="text-lg font-medium mb-2">
           {title}
