@@ -312,7 +312,7 @@ export default async function ProfilePage() {
 
           {/* Membership */}
           <a
-            href="#star-to-unlock"
+            href="#suggested-repos"
             className="border border-border p-6 hover:border-black transition-colors group block"
           >
             <p className="text-3xl font-light tabular-nums mb-1">
@@ -386,11 +386,11 @@ export default async function ProfilePage() {
           </div>
         </div>
 
-        {/* Star to Unlock Section */}
-        <div id="star-to-unlock" className="border border-border scroll-mt-6">
+        {/* Suggested Repos Section */}
+        <div id="suggested-repos" className="border border-border scroll-mt-6">
           <div className="px-6 py-4 border-b border-border bg-neutral-50 flex items-center justify-between">
             <h2 className="text-sm font-mono uppercase tracking-wider">
-              Star to Unlock
+              Suggested Repos
             </h2>
             {/* Progress + Refresh */}
             <div className="flex items-center gap-4">

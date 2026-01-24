@@ -29,18 +29,22 @@ export async function getTopRepos(): Promise<RepoInfo[]> {
           }),
         },
         cache: "no-store",
-      }
+      },
     );
 
     if (!response.ok) {
+      console.error(
+        `[getTopRepos] GitHub API error: ${response.status} ${response.statusText}`,
+      );
       return [];
     }
 
     const repos = await response.json();
 
     return repos
-      .sort((a: { stargazers_count: number }, b: { stargazers_count: number }) =>
-        b.stargazers_count - a.stargazers_count
+      .sort(
+        (a: { stargazers_count: number }, b: { stargazers_count: number }) =>
+          b.stargazers_count - a.stargazers_count,
       )
       .filter((repo: { private: boolean }) => !repo.private)
       .slice(0, GITHUB_CONFIG.MAX_ELIGIBLE_REPOS)
@@ -57,7 +61,7 @@ export async function getTopRepos(): Promise<RepoInfo[]> {
           description: repo.description,
           stargazers_count: repo.stargazers_count,
           html_url: repo.html_url,
-        })
+        }),
       );
   } catch {
     return [];
