@@ -23,6 +23,11 @@ export async function GET(request: Request) {
       // Check if we have a provider token (could be GitHub link or login)
       const providerToken = session.provider_token;
 
+      // Debug: log session info
+      console.log("[Auth Callback] User:", user.id, "Provider:", user.app_metadata?.provider);
+      console.log("[Auth Callback] Has provider_token:", !!providerToken);
+      console.log("[Auth Callback] Next param:", next);
+
       // Try to use the token with GitHub API - works for both:
       // 1. GitHub as primary auth provider
       // 2. GitHub linked to existing email account
