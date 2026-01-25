@@ -26,6 +26,7 @@ export class OpenCodeClient {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
   private reconnectDelay = 1000;
+  private abortController: AbortController | null = null;
 
   public store: OpenCodeStore = {
     connected: false,
@@ -39,6 +40,7 @@ export class OpenCodeClient {
     this.baseUrl = options.baseUrl.replace(/\/$/, "");
     this.directory = options.directory;
     this.options = options;
+    this.abortController = new AbortController();
   }
 
   private getHeaders(): Record<string, string> {
@@ -55,6 +57,10 @@ export class OpenCodeClient {
   private getQueryParams(): string {
     if (!this.directory) return "";
     return `?directory=${encodeURIComponent(this.directory)}`;
+  }
+
+  private getSignal(): AbortSignal | undefined {
+    return this.abortController?.signal;
   }
 
   connect(): void {
@@ -107,6 +113,12 @@ export class OpenCodeClient {
   }
 
   disconnect(): void {
+    // Abort all pending fetch requests
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
+
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
@@ -198,15 +210,25 @@ export class OpenCodeClient {
   // REST API Methods
 
   async listSessions(): Promise<SessionInfo[]> {
-    const response = await fetch(
-      `${this.baseUrl}/session${this.getQueryParams()}`,
-      {
-        headers: this.getHeaders(),
-      },
-    );
-    if (!response.ok)
-      throw new Error(`Failed to list sessions: ${response.statusText}`);
-    return response.json();
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/session${this.getQueryParams()}`,
+        {
+          headers: this.getHeaders(),
+          signal: this.getSignal(),
+        },
+      );
+      if (!response.ok) {
+        console.error(`Failed to list sessions: ${response.statusText}`);
+        return [];
+      }
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      if ((error as Error).name === "AbortError") return [];
+      console.error("Failed to list sessions:", error);
+      return [];
+    }
   }
 
   async getSession(sessionID: string): Promise<SessionInfo> {
@@ -214,6 +236,7 @@ export class OpenCodeClient {
       `${this.baseUrl}/session/${sessionID}${this.getQueryParams()}`,
       {
         headers: this.getHeaders(),
+        signal: this.getSignal(),
       },
     );
     if (!response.ok)
@@ -228,6 +251,7 @@ export class OpenCodeClient {
         method: "POST",
         headers: this.getHeaders(),
         body: JSON.stringify({}),
+        signal: this.getSignal(),
       },
     );
     if (!response.ok)
@@ -241,6 +265,7 @@ export class OpenCodeClient {
       {
         method: "DELETE",
         headers: this.getHeaders(),
+        signal: this.getSignal(),
       },
     );
     if (!response.ok)
@@ -252,6 +277,7 @@ export class OpenCodeClient {
       `${this.baseUrl}/session/${sessionID}/message${this.getQueryParams()}`,
       {
         headers: this.getHeaders(),
+        signal: this.getSignal(),
       },
     );
     if (!response.ok)
@@ -279,6 +305,7 @@ export class OpenCodeClient {
       `${this.baseUrl}/session/${sessionID}/message/${messageID}/part${this.getQueryParams()}`,
       {
         headers: this.getHeaders(),
+        signal: this.getSignal(),
       },
     );
     if (!response.ok)
@@ -297,7 +324,7 @@ export class OpenCodeClient {
       model?: { providerID: string; modelID: string };
     },
   ): Promise<void> {
-    const body: any = {
+    const body: Record<string, unknown> = {
       parts: [{ type: "text", text: content }],
       agent: options?.agent,
     };
@@ -313,6 +340,7 @@ export class OpenCodeClient {
         method: "POST",
         headers: this.getHeaders(),
         body: JSON.stringify(body),
+        signal: this.getSignal(),
       },
     );
     if (!response.ok)
@@ -325,6 +353,7 @@ export class OpenCodeClient {
       {
         method: "POST",
         headers: this.getHeaders(),
+        signal: this.getSignal(),
       },
     );
     if (!response.ok)
@@ -334,29 +363,53 @@ export class OpenCodeClient {
   async getAgents(): Promise<
     { id: string; name: string; description?: string }[]
   > {
-    const response = await fetch(
-      `${this.baseUrl}/agent${this.getQueryParams()}`,
-      {
-        headers: this.getHeaders(),
-      },
-    );
-    if (!response.ok)
-      throw new Error(`Failed to get agents: ${response.statusText}`);
-    return response.json();
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/agent${this.getQueryParams()}`,
+        {
+          headers: this.getHeaders(),
+          signal: this.getSignal(),
+        },
+      );
+      if (!response.ok) {
+        console.error(`Failed to get agents: ${response.statusText}`);
+        return [];
+      }
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      if ((error as Error).name === "AbortError") return [];
+      console.error("Failed to get agents:", error);
+      return [];
+    }
   }
 
   async getProviders(): Promise<
     { id: string; name: string; models: { id: string; name: string }[] }[]
   > {
-    const response = await fetch(
-      `${this.baseUrl}/provider${this.getQueryParams()}`,
-      {
-        headers: this.getHeaders(),
-      },
-    );
-    if (!response.ok)
-      throw new Error(`Failed to get providers: ${response.statusText}`);
-    return response.json();
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/provider${this.getQueryParams()}`,
+        {
+          headers: this.getHeaders(),
+          signal: this.getSignal(),
+        },
+      );
+      if (!response.ok) {
+        console.error(`Failed to get providers: ${response.statusText}`);
+        return [];
+      }
+      const data = await response.json();
+      if (!Array.isArray(data)) return [];
+      return data.map((provider) => ({
+        ...provider,
+        models: Array.isArray(provider?.models) ? provider.models : [],
+      }));
+    } catch (error) {
+      if ((error as Error).name === "AbortError") return [];
+      console.error("Failed to get providers:", error);
+      return [];
+    }
   }
 }
 

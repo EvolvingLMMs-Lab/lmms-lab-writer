@@ -10,6 +10,13 @@ export type UseOpenCodeOptions = {
   autoConnect?: boolean;
 };
 
+export type Agent = { id: string; name: string; description?: string };
+export type Provider = {
+  id: string;
+  name: string;
+  models: { id: string; name: string }[];
+};
+
 export type UseOpenCodeReturn = {
   connected: boolean;
   connecting: boolean;
@@ -23,6 +30,11 @@ export type UseOpenCodeReturn = {
   parts: Map<string, Part[]>;
   status: SessionStatus;
 
+  agents: Agent[];
+  providers: Provider[];
+  selectedAgent: string | null;
+  selectedModel: { providerId: string; modelId: string } | null;
+
   connect: () => void;
   disconnect: () => void;
   createSession: () => Promise<SessionInfo | null>;
@@ -32,6 +44,10 @@ export type UseOpenCodeReturn = {
   abort: () => Promise<void>;
   getPartsForMessage: (messageId: string) => Part[];
   resetReconnectState: () => void;
+  setSelectedAgent: (agentId: string | null) => void;
+  setSelectedModel: (
+    model: { providerId: string; modelId: string } | null,
+  ) => void;
 };
 
 const DEFAULT_BASE_URL = "http://localhost:4096";
@@ -57,6 +73,14 @@ export function useOpenCode(
   const [messages, setMessages] = useState<Message[]>([]);
   const [parts, setParts] = useState<Map<string, Part[]>>(new Map());
   const [status, setStatus] = useState<SessionStatus>({ type: "idle" });
+
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<{
+    providerId: string;
+    modelId: string;
+  } | null>(null);
 
   const currentSessionIdRef = useRef<string | null>(null);
   currentSessionIdRef.current = currentSessionId;
@@ -156,17 +180,54 @@ export function useOpenCode(
 
     try {
       const sessionList = await client.listSessions();
-      setSessions(sessionList);
+      setSessions(Array.isArray(sessionList) ? sessionList : []);
     } catch (err) {
       console.error("Failed to load sessions:", err);
+      setSessions([]);
     }
   }, [connected]);
+
+  const loadConfig = useCallback(async () => {
+    const client = clientRef.current;
+    if (!client || !connected) return;
+
+    try {
+      const [agentList, providerList] = await Promise.all([
+        client.getAgents(),
+        client.getProviders(),
+      ]);
+      const safeAgents = Array.isArray(agentList) ? agentList : [];
+      const safeProviders = Array.isArray(providerList) ? providerList : [];
+      setAgents(safeAgents);
+      setProviders(safeProviders);
+
+      const firstAgent = safeAgents[0];
+      if (firstAgent && !selectedAgent) {
+        setSelectedAgent(firstAgent.id);
+      }
+      const firstProvider = safeProviders[0];
+      const firstModel = Array.isArray(firstProvider?.models)
+        ? firstProvider.models[0]
+        : undefined;
+      if (firstProvider && firstModel && !selectedModel) {
+        setSelectedModel({
+          providerId: firstProvider.id,
+          modelId: firstModel.id,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to load config:", err);
+      setAgents([]);
+      setProviders([]);
+    }
+  }, [connected, selectedAgent, selectedModel]);
 
   useEffect(() => {
     if (connected) {
       loadSessions();
+      loadConfig();
     }
-  }, [connected, loadSessions]);
+  }, [connected, loadSessions, loadConfig]);
 
   const connect = useCallback(() => {
     const client = clientRef.current;
@@ -268,13 +329,21 @@ export function useOpenCode(
       if (!client || !connected || !currentSessionId) return;
 
       try {
-        await client.chat(currentSessionId, content);
+        await client.chat(currentSessionId, content, {
+          agent: selectedAgent || undefined,
+          model: selectedModel
+            ? {
+                providerID: selectedModel.providerId,
+                modelID: selectedModel.modelId,
+              }
+            : undefined,
+        });
         setTimeout(() => syncFromStore(), 100);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to send message");
       }
     },
-    [connected, currentSessionId, syncFromStore],
+    [connected, currentSessionId, syncFromStore, selectedAgent, selectedModel],
   );
 
   const abort = useCallback(async () => {
@@ -318,6 +387,10 @@ export function useOpenCode(
     messages,
     parts,
     status,
+    agents,
+    providers,
+    selectedAgent,
+    selectedModel,
     connect,
     disconnect,
     createSession,
@@ -327,5 +400,7 @@ export function useOpenCode(
     abort,
     getPartsForMessage,
     resetReconnectState,
+    setSelectedAgent,
+    setSelectedModel,
   };
 }

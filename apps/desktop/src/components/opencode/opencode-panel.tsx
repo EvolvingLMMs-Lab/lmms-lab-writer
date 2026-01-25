@@ -23,6 +23,7 @@ type Props = {
   daemonStatus?: OpenCodeDaemonStatus;
   onRestartOpenCode?: () => void;
   onMaxReconnectFailed?: () => void;
+  onFileClick?: (path: string) => void;
 };
 
 export function OpenCodePanel({
@@ -33,6 +34,7 @@ export function OpenCodePanel({
   daemonStatus,
   onRestartOpenCode,
   onMaxReconnectFailed,
+  onFileClick,
 }: Props) {
   const opencode = useOpenCode({ baseUrl, directory, autoConnect });
   const [input, setInput] = useState("");
@@ -151,6 +153,7 @@ export function OpenCodePanel({
               messages={opencode.messages}
               getPartsForMessage={opencode.getPartsForMessage}
               status={opencode.status}
+              onFileClick={onFileClick}
             />
             <div ref={messagesEndRef} />
           </div>
@@ -161,6 +164,12 @@ export function OpenCodePanel({
             onSend={handleSend}
             onAbort={handleAbort}
             isWorking={isWorking}
+            agents={opencode.agents}
+            providers={opencode.providers}
+            selectedAgent={opencode.selectedAgent}
+            selectedModel={opencode.selectedModel}
+            onSelectAgent={opencode.setSelectedAgent}
+            onSelectModel={opencode.setSelectedModel}
           />
         </>
       ) : (
@@ -518,10 +527,12 @@ function MessageList({
   messages,
   getPartsForMessage,
   status,
+  onFileClick,
 }: {
   messages: Message[];
   getPartsForMessage: (messageId: string) => Part[];
   status: SessionStatus;
+  onFileClick?: (path: string) => void;
 }) {
   if (messages.length === 0) {
     return (
@@ -561,6 +572,7 @@ function MessageList({
           turn={turn}
           isLast={index === turns.length - 1}
           status={status}
+          onFileClick={onFileClick}
         />
       ))}
     </div>
@@ -571,10 +583,12 @@ function MessageTurn({
   turn,
   isLast,
   status,
+  onFileClick,
 }: {
   turn: { user: Message; assistant: Message[]; parts: Part[] };
   isLast: boolean;
   status: SessionStatus;
+  onFileClick?: (path: string) => void;
 }) {
   const seenIds = new Set<string>();
   const dedupedParts = turn.parts.filter((part) => {
@@ -608,9 +622,9 @@ function MessageTurn({
     isLast && (status.type === "running" || status.type === "retry");
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="bg-[#e8f5f2] border border-[#c5e4dd] px-3 py-2">
-        <p className="text-xs whitespace-pre-wrap break-words text-neutral-700">
+        <p className="text-[13px] leading-relaxed whitespace-pre-wrap break-words text-neutral-800">
           {userText?.text || ""}
         </p>
       </div>
@@ -619,7 +633,7 @@ function MessageTurn({
         lastTextPart ||
         isWorking ||
         reasoningParts.length > 0) && (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {isWorking && (
             <div className="flex items-center gap-2 text-xs text-neutral-500">
               <Spinner className="size-3" />
@@ -638,18 +652,25 @@ function MessageTurn({
           {toolParts.length > 0 && (
             <div className="space-y-1">
               {toolParts.map((part) => (
-                <ToolDisplay key={part.id} part={part} />
+                <ToolDisplay
+                  key={part.id}
+                  part={part}
+                  onFileClick={onFileClick}
+                />
               ))}
             </div>
           )}
 
           {lastTextPart && (
             <div>
-              <p className="text-[11px] font-medium text-neutral-400 mb-1">
+              <p className="text-[10px] uppercase tracking-wider font-medium text-neutral-400 mb-1.5">
                 Response
               </p>
-              <div className="text-xs whitespace-pre-wrap break-words max-w-none text-neutral-700">
-                <MarkdownText text={lastTextPart.text} />
+              <div className="text-[13px] leading-relaxed whitespace-pre-wrap break-words max-w-none text-neutral-700">
+                <MarkdownText
+                  text={lastTextPart.text}
+                  onFileClick={onFileClick}
+                />
               </div>
             </div>
           )}
@@ -668,15 +689,28 @@ function getStatusText(toolParts: ToolPart[]): string {
   return "Thinking...";
 }
 
-function ToolDisplay({ part }: { part: ToolPart }) {
+function ToolDisplay({
+  part,
+  onFileClick,
+}: {
+  part: ToolPart;
+  onFileClick?: (path: string) => void;
+}) {
   const info = getToolInfo(part.tool, part.state.input);
   const isComplete = part.state.status === "completed";
   const isError = part.state.status === "error";
   const isRunning = part.state.status === "running";
 
+  const isClickableFile =
+    onFileClick &&
+    info.subtitle &&
+    /\.(tex|bib|cls|sty|txt|md|json|yaml|yml|toml|py|js|ts|tsx|jsx|css|scss|html|xml|sh|bash|zsh|log|aux|toc|lof|lot|out|fls|fdb_latexmk|synctex\.gz|pdf|png|jpg|jpeg|gif|svg)$/i.test(
+      info.subtitle,
+    );
+
   return (
     <div
-      className={`text-xs border border-border p-2 ${isError ? "border-red-200 bg-red-50" : ""}`}
+      className={`text-[11px] border border-border p-2 ${isError ? "border-red-200 bg-red-50" : ""}`}
     >
       <div className="flex items-center gap-2">
         {isRunning && <Spinner className="size-3" />}
@@ -710,10 +744,18 @@ function ToolDisplay({ part }: { part: ToolPart }) {
             />
           </svg>
         )}
-        <span className="font-medium">{info.title}</span>
-        {info.subtitle && (
-          <span className="text-muted truncate">{info.subtitle}</span>
-        )}
+        <span className="font-medium text-neutral-700">{info.title}</span>
+        {info.subtitle &&
+          (isClickableFile ? (
+            <button
+              onClick={() => onFileClick(info.subtitle!)}
+              className="text-neutral-500 hover:text-black hover:underline truncate cursor-pointer transition-colors"
+            >
+              {info.subtitle}
+            </button>
+          ) : (
+            <span className="text-neutral-500 truncate">{info.subtitle}</span>
+          ))}
 
         {isComplete && (part.tool === "edit" || part.tool === "write") && (
           <DiffStats
@@ -817,8 +859,20 @@ function Spinner({ className = "size-4" }: { className?: string }) {
   );
 }
 
-function MarkdownText({ text }: { text: string }) {
+function MarkdownText({
+  text,
+  onFileClick,
+}: {
+  text: string;
+  onFileClick?: (path: string) => void;
+}) {
   const parts = text.split(/(```[\s\S]*?```)/g);
+
+  const isClickableFile = (content: string) =>
+    onFileClick &&
+    /\.(tex|bib|cls|sty|txt|md|json|yaml|yml|toml|py|js|ts|tsx|jsx|css|scss|html|xml|sh|bash|zsh|log|pdf|png|jpg|jpeg|gif|svg)$/i.test(
+      content,
+    );
 
   return (
     <>
@@ -845,12 +899,24 @@ function MarkdownText({ text }: { text: string }) {
           <span key={i}>
             {inlineParts.map((p, j) => {
               if (p.startsWith("`") && p.endsWith("`")) {
+                const content = p.slice(1, -1);
+                if (isClickableFile(content)) {
+                  return (
+                    <button
+                      key={j}
+                      onClick={() => onFileClick!(content)}
+                      className="text-[#006656] font-medium font-mono text-[12px] hover:underline cursor-pointer"
+                    >
+                      {content}
+                    </button>
+                  );
+                }
                 return (
                   <code
                     key={j}
-                    className="text-[#006656] font-medium font-mono text-[11px]"
+                    className="text-[#006656] font-medium font-mono text-[12px]"
                   >
-                    {p.slice(1, -1)}
+                    {content}
                   </code>
                 );
               }
@@ -1050,19 +1116,39 @@ function highlightLine(
   return tokens;
 }
 
+type InputAreaProps = {
+  input: string;
+  setInput: (value: string) => void;
+  onSend: () => void;
+  onAbort: () => void;
+  isWorking: boolean;
+  agents: { id: string; name: string; description?: string }[];
+  providers: {
+    id: string;
+    name: string;
+    models: { id: string; name: string }[];
+  }[];
+  selectedAgent: string | null;
+  selectedModel: { providerId: string; modelId: string } | null;
+  onSelectAgent: (agentId: string | null) => void;
+  onSelectModel: (
+    model: { providerId: string; modelId: string } | null,
+  ) => void;
+};
+
 function InputArea({
   input,
   setInput,
   onSend,
   onAbort,
   isWorking,
-}: {
-  input: string;
-  setInput: (value: string) => void;
-  onSend: () => void;
-  onAbort: () => void;
-  isWorking: boolean;
-}) {
+  agents,
+  providers,
+  selectedAgent,
+  selectedModel,
+  onSelectAgent,
+  onSelectModel,
+}: InputAreaProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -1091,10 +1177,20 @@ function InputArea({
                 Agent
               </label>
               <div className="relative">
-                <select className="w-full text-xs border border-border bg-white pl-2 pr-6 py-1.5 h-8 focus:outline-none focus:border-black appearance-none rounded-none">
-                  <option>Auto</option>
-                  <option>Coder</option>
-                  <option>Architect</option>
+                <select
+                  value={selectedAgent || ""}
+                  onChange={(e) => onSelectAgent(e.target.value || null)}
+                  className="w-full text-xs border border-border bg-white pl-2 pr-6 py-1.5 h-8 focus:outline-none focus:border-black appearance-none rounded-none"
+                >
+                  {!Array.isArray(agents) || agents.length === 0 ? (
+                    <option value="">No agents</option>
+                  ) : (
+                    agents.map((agent) => (
+                      <option key={agent.id} value={agent.id}>
+                        {agent.name}
+                      </option>
+                    ))
+                  )}
                 </select>
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
                   <svg
@@ -1118,10 +1214,38 @@ function InputArea({
                 Model
               </label>
               <div className="relative">
-                <select className="w-full text-xs border border-border bg-white pl-2 pr-6 py-1.5 h-8 focus:outline-none focus:border-black appearance-none rounded-none">
-                  <option>Claude 3.5 Sonnet</option>
-                  <option>GPT-4o</option>
-                  <option>DeepSeek V3</option>
+                <select
+                  value={
+                    selectedModel
+                      ? `${selectedModel.providerId}:${selectedModel.modelId}`
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const [providerId, modelId] = e.target.value.split(":");
+                    if (providerId && modelId) {
+                      onSelectModel({ providerId, modelId });
+                    } else {
+                      onSelectModel(null);
+                    }
+                  }}
+                  className="w-full text-xs border border-border bg-white pl-2 pr-6 py-1.5 h-8 focus:outline-none focus:border-black appearance-none rounded-none"
+                >
+                  {!Array.isArray(providers) || providers.length === 0 ? (
+                    <option value="">No models</option>
+                  ) : (
+                    providers.map((provider) =>
+                      Array.isArray(provider?.models)
+                        ? provider.models.map((model) => (
+                            <option
+                              key={`${provider.id}:${model.id}`}
+                              value={`${provider.id}:${model.id}`}
+                            >
+                              {model.name} ({provider.name})
+                            </option>
+                          ))
+                        : null,
+                    )
+                  )}
                 </select>
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
                   <svg

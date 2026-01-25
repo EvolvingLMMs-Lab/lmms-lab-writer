@@ -38,6 +38,14 @@ const OpenCodeDisconnectedDialog = dynamic(
   { ssr: false },
 );
 
+const OpenCodeErrorBoundary = dynamic(
+  () =>
+    import("@/components/opencode/opencode-error-boundary").then(
+      (mod) => mod.OpenCodeErrorBoundary,
+    ),
+  { ssr: false },
+);
+
 const PANEL_SPRING = {
   type: "spring",
   stiffness: 400,
@@ -910,17 +918,19 @@ export default function EditorPage() {
                 style={{ width: rightPanelWidth }}
                 className="border-l border-border flex flex-col flex-shrink-0 overflow-hidden"
               >
-                <OpenCodePanel
-                  className="h-full"
-                  baseUrl={`http://localhost:${opencodePort}`}
-                  directory={daemon.projectPath ?? undefined}
-                  autoConnect={
-                    opencodeDaemonStatus === "running" && !!daemon.projectPath
-                  }
-                  daemonStatus={opencodeDaemonStatus}
-                  onRestartOpenCode={restartOpencode}
-                  onMaxReconnectFailed={handleMaxReconnectFailed}
-                />
+                <OpenCodeErrorBoundary onReset={restartOpencode}>
+                  <OpenCodePanel
+                    className="h-full"
+                    baseUrl={`http://localhost:${opencodePort}`}
+                    directory={daemon.projectPath ?? undefined}
+                    autoConnect={
+                      opencodeDaemonStatus === "running" && !!daemon.projectPath
+                    }
+                    daemonStatus={opencodeDaemonStatus}
+                    onRestartOpenCode={restartOpencode}
+                    onMaxReconnectFailed={handleMaxReconnectFailed}
+                  />
+                </OpenCodeErrorBoundary>
               </aside>
             </motion.div>
           )}
