@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Github, Download, FileText, CheckCircle2 } from "lucide-react";
+import { Download, FileText, CheckCircle2 } from "lucide-react";
 import { PaperDemo } from "@/components/paper-demo";
-import { AuthButtons } from "@/components/auth/auth-buttons";
+import { Header } from "@/components/header";
 
 const comparisons = [
   {
@@ -35,36 +35,7 @@ const comparisons = [
 export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-border">
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="logo-bar">
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-            <span className="font-mono text-lg tracking-tight font-medium">
-              LMMs-Lab Writer
-            </span>
-          </Link>
-          <nav className="flex items-center gap-6 text-sm">
-            <AuthButtons />
-            <Link
-              href="https://github.com/Luodian/latex-writer/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted/60 hover:text-muted transition-colors flex items-center gap-1.5 text-xs"
-            >
-              <Github className="w-3.5 h-3.5" />
-              Feedback
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <Header />
 
       <main className="flex-1">
         {/* Hero */}

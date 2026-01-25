@@ -30,7 +30,7 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/dashboard");
+    router.push("/profile");
   };
 
   const handleGitHubLogin = async () => {

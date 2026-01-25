@@ -77,12 +77,12 @@ export function AuthButtons() {
             </div>
             <div className="py-1">
               <Link
-                href="/dashboard"
+                href="/profile"
                 onClick={() => setMenuOpen(false)}
                 className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-neutral-100 transition-colors"
               >
                 <User className="w-4 h-4" />
-                Dashboard
+                Profile
               </Link>
               <button
                 onClick={handleSignOut}

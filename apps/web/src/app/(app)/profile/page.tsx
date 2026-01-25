@@ -178,7 +178,7 @@ export default async function ProfilePage() {
             LMMs-Lab Writer
           </Link>
           <Link
-            href="/dashboard"
+            href="/"
             className="text-sm text-muted hover:text-black transition-colors flex items-center gap-1.5"
           >
             <svg
@@ -192,7 +192,7 @@ export default async function ProfilePage() {
             >
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
-            Back to Dashboard
+            Back
           </Link>
         </div>
       </header>
