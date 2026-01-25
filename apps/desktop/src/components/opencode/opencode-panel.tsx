@@ -97,7 +97,7 @@ export function OpenCodePanel({
   if (!opencode.connected) {
     return (
       <div className={`flex flex-col bg-white min-h-0 ${className}`}>
-        <DisconnectedState
+        <OnboardingState
           connecting={opencode.connecting}
           error={opencode.error}
           onConnect={handleConnect}
@@ -112,7 +112,10 @@ export function OpenCodePanel({
     <div className={`flex flex-col bg-white min-h-0 ${className}`}>
       <div className="flex items-center justify-between px-3 py-2 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="size-2 flex-shrink-0 bg-black" title="Connected" />
+          <span
+            className="size-2 flex-shrink-0 bg-green-500"
+            title="Connected"
+          />
           <button
             onClick={() => setShowSessionList(!showSessionList)}
             className="flex items-center gap-1 text-xs hover:bg-neutral-100 px-1 py-0.5 transition-colors min-w-0"
@@ -298,7 +301,7 @@ function formatRelativeTime(date: Date): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function DisconnectedState({
+function OnboardingState({
   connecting,
   error,
   onConnect,
@@ -311,72 +314,230 @@ function DisconnectedState({
   daemonStatus?: OpenCodeDaemonStatus;
   onRestartOpenCode?: () => void;
 }) {
-  const statusMessages: Record<OpenCodeDaemonStatus, string> = {
-    stopped: "OpenCode is not running",
-    starting: "OpenCode is starting...",
-    running: "OpenCode is ready",
-    unavailable: "OpenCode binary not found",
+  const [copiedNpm, setCopiedNpm] = useState(false);
+  const [copiedBrew, setCopiedBrew] = useState(false);
+
+  const copyToClipboard = async (text: string, type: "npm" | "brew") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (type === "npm") {
+        setCopiedNpm(true);
+        setTimeout(() => setCopiedNpm(false), 2000);
+      } else {
+        setCopiedBrew(true);
+        setTimeout(() => setCopiedBrew(false), 2000);
+      }
+    } catch {}
   };
 
+  const steps = [
+    {
+      id: "install",
+      label: "Install OpenCode",
+      status:
+        daemonStatus === "unavailable"
+          ? "current"
+          : daemonStatus
+            ? "complete"
+            : "pending",
+    },
+    {
+      id: "start",
+      label: "Start OpenCode",
+      status:
+        daemonStatus === "unavailable"
+          ? "pending"
+          : daemonStatus === "stopped"
+            ? "current"
+            : daemonStatus === "starting"
+              ? "loading"
+              : daemonStatus === "running"
+                ? "complete"
+                : "pending",
+    },
+    {
+      id: "connect",
+      label: "Connect",
+      status:
+        daemonStatus === "running"
+          ? connecting
+            ? "loading"
+            : "current"
+          : "pending",
+    },
+  ];
+
   return (
-    <div className="flex-1 flex flex-col items-center justify-center text-center p-4 space-y-4">
-      <div className="text-muted">
-        <svg
-          className="w-12 h-12 mx-auto mb-4 opacity-20"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="square"
-            strokeLinejoin="miter"
-            strokeWidth={1.5}
-            d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-          />
-        </svg>
-        <p className="text-sm">Connect to OpenCode</p>
-        {daemonStatus && (
-          <p className="text-xs mt-2 max-w-[200px]">
-            {statusMessages[daemonStatus]}
+    <div className="flex-1 flex flex-col p-4 overflow-y-auto">
+      <div className="flex-1 flex flex-col justify-center max-w-xs mx-auto w-full space-y-6">
+        <div className="text-center">
+          <div className="size-12 mx-auto mb-3 border border-border flex items-center justify-center">
+            <svg
+              className="size-6 text-muted"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="square"
+                strokeLinejoin="miter"
+                strokeWidth={1.5}
+                d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-sm mb-1">Setup Agent Mode</h3>
+          <p className="text-xs text-muted">
+            Connect to OpenCode to use AI features
           </p>
+        </div>
+
+        <div className="space-y-2">
+          {steps.map((step, index) => (
+            <div key={step.id} className="flex items-center gap-3">
+              <div
+                className={`size-5 flex items-center justify-center text-xs border ${
+                  step.status === "complete"
+                    ? "border-black bg-white"
+                    : step.status === "current" || step.status === "loading"
+                      ? "border-black"
+                      : "border-border text-muted"
+                }`}
+              >
+                {step.status === "complete" ? (
+                  <svg
+                    className="size-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                ) : step.status === "loading" ? (
+                  <Spinner className="size-3" />
+                ) : (
+                  index + 1
+                )}
+              </div>
+              <span
+                className={`text-xs ${
+                  step.status === "complete"
+                    ? "text-muted line-through"
+                    : step.status === "current" || step.status === "loading"
+                      ? "text-black"
+                      : "text-muted"
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {error && (
+          <div className="p-2 border border-red-200 bg-red-50 text-xs text-red-600">
+            {error}
+          </div>
         )}
-      </div>
 
-      {error && <p className="text-xs text-red-600 max-w-[200px]">{error}</p>}
+        {daemonStatus === "unavailable" && (
+          <div className="space-y-3">
+            <p className="text-xs text-muted">Choose an installation method:</p>
 
-      <div className="flex gap-2">
-        {daemonStatus === "running" ? (
-          <button
-            onClick={onConnect}
-            disabled={connecting}
-            className="px-4 py-2 border border-border hover:bg-neutral-100 transition-colors text-sm disabled:opacity-50"
-          >
-            {connecting ? "Connecting..." : "Connect"}
-          </button>
-        ) : daemonStatus === "unavailable" ? (
-          <div className="text-xs text-muted space-y-3">
-            <p>Install OpenCode:</p>
-            <code className="bg-neutral-100 px-2 py-1 block">
-              npm i -g opencode-ai@latest
-            </code>
+            <div className="space-y-2">
+              <div className="border border-border p-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-muted">npm</span>
+                  <button
+                    onClick={() =>
+                      copyToClipboard("npm i -g opencode-ai@latest", "npm")
+                    }
+                    className="text-xs text-muted hover:text-black"
+                  >
+                    {copiedNpm ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+                <code className="text-xs block font-mono">
+                  npm i -g opencode-ai@latest
+                </code>
+              </div>
+
+              <div className="border border-border p-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-muted">Homebrew</span>
+                  <button
+                    onClick={() =>
+                      copyToClipboard("brew install sst/tap/opencode", "brew")
+                    }
+                    className="text-xs text-muted hover:text-black"
+                  >
+                    {copiedBrew ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+                <code className="text-xs block font-mono">
+                  brew install sst/tap/opencode
+                </code>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted">
+              After installing, click below to continue.
+            </p>
+
+            {onRestartOpenCode && (
+              <button
+                onClick={onRestartOpenCode}
+                className="w-full px-4 py-2 bg-white text-black text-sm border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+              >
+                I've installed OpenCode
+              </button>
+            )}
           </div>
-        ) : daemonStatus === "starting" ? (
-          <div className="flex items-center gap-2 text-xs text-muted">
-            <Spinner className="size-4" />
-            <span>Starting OpenCode...</span>
-          </div>
-        ) : onRestartOpenCode ? (
+        )}
+
+        {daemonStatus === "stopped" && onRestartOpenCode && (
           <button
             onClick={onRestartOpenCode}
-            className="px-4 py-2 border border-border hover:bg-neutral-100 transition-colors text-sm"
+            className="w-full px-4 py-2 bg-white text-black text-sm border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
           >
             Start OpenCode
           </button>
-        ) : (
+        )}
+
+        {daemonStatus === "starting" && (
+          <div className="flex items-center justify-center gap-2 text-xs text-muted py-2">
+            <Spinner className="size-4" />
+            <span>Starting OpenCode...</span>
+          </div>
+        )}
+
+        {daemonStatus === "running" && (
           <button
             onClick={onConnect}
             disabled={connecting}
-            className="px-4 py-2 border border-border hover:bg-neutral-100 transition-colors text-sm disabled:opacity-50"
+            className="w-full px-4 py-2 bg-white text-black text-sm border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all disabled:opacity-50 disabled:shadow-none"
+          >
+            {connecting ? (
+              <span className="flex items-center justify-center gap-2">
+                <Spinner className="size-4" />
+                Connecting...
+              </span>
+            ) : (
+              "Connect to OpenCode"
+            )}
+          </button>
+        )}
+
+        {!daemonStatus && (
+          <button
+            onClick={onConnect}
+            disabled={connecting}
+            className="w-full px-4 py-2 bg-white text-black text-sm border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all disabled:opacity-50 disabled:shadow-none"
           >
             {connecting ? "Connecting..." : "Connect"}
           </button>

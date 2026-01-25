@@ -302,16 +302,6 @@ export function useTauriDaemon() {
         },
       );
 
-      const unlistenCompile = await listen<string>(
-        "compile-output",
-        (event) => {
-          setCompileState((s) => ({
-            ...s,
-            compileOutput: s.compileOutput + event.payload,
-          }));
-        },
-      );
-
       const unlistenFileChanged = await listen<FileChangeEvent>(
         "file-changed",
         async (event) => {
@@ -344,7 +334,6 @@ export function useTauriDaemon() {
 
       unlisten = () => {
         unlistenFiles();
-        unlistenCompile();
         unlistenFileChanged();
       };
     };
@@ -375,12 +364,6 @@ export function useTauriDaemon() {
       isInitializingGit: gitState.isInitializingGit,
       gitInitResult: gitState.gitInitResult,
 
-      // Compile state
-      isCompiling: compileState.isCompiling,
-      compileOutput: compileState.compileOutput,
-      compileSuccess: compileState.compileSuccess,
-      compilePdfPath: compileState.compilePdfPath,
-
       lastFileChange,
 
       // Actions
@@ -388,8 +371,6 @@ export function useTauriDaemon() {
       refreshFiles,
       readFile,
       writeFile,
-      compile,
-      stopCompile,
       gitAdd,
       gitCommit,
       gitPush,
@@ -402,14 +383,11 @@ export function useTauriDaemon() {
     [
       projectState,
       gitState,
-      compileState,
       lastFileChange,
       setProject,
       refreshFiles,
       readFile,
       writeFile,
-      compile,
-      stopCompile,
       gitAdd,
       gitCommit,
       gitPush,

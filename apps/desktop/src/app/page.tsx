@@ -373,23 +373,6 @@ export default function EditorPage() {
       window.removeEventListener("keydown", handleKeyDown, { capture: true });
   }, [daemon, handleOpenFolder, selectedFile, handleCloseTab]);
 
-  useEffect(() => {
-    if (daemon.compileSuccess && daemon.compilePdfPath && daemon.projectPath) {
-      const relativePath = daemon.compilePdfPath.startsWith(daemon.projectPath)
-        ? daemon.compilePdfPath.slice(daemon.projectPath.length + 1)
-        : daemon.compilePdfPath;
-
-      setHighlightedFile(relativePath);
-      setShowSidebar(true);
-
-      const timer = setTimeout(() => {
-        setHighlightedFile(null);
-      }, 2000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [daemon.compileSuccess, daemon.compilePdfPath, daemon.projectPath]);
-
   return (
     <div className="h-dvh flex flex-col">
       <header className="border-b border-border flex-shrink-0 h-[72px] flex items-center">
