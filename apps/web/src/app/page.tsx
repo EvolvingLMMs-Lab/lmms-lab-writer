@@ -67,7 +67,7 @@ export default function HomePage() {
               Start thinking.
             </h1>
             <p className="text-lg text-muted mb-10 leading-relaxed max-w-2xl mx-auto">
-              Let Claude, Cursor, and Codex write your papers while you focus on
+              Let Claude Code and Codex write your papers while you focus on
               what matters — your research.
             </p>
             <div className="flex items-center justify-center gap-4">
@@ -127,13 +127,7 @@ export default function HomePage() {
               Works with your favorite AI tools
             </h2>
             <div className="flex flex-wrap justify-center gap-3 text-sm font-mono">
-              {[
-                "Claude Code",
-                "Cursor",
-                "Codex CLI",
-                "OpenCode",
-                "Windsurf",
-              ].map((tool) => (
+              {["Claude Code", "Codex CLI", "OpenCode"].map((tool) => (
                 <span
                   key={tool}
                   className="px-4 py-2 border border-border bg-white"
