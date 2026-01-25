@@ -400,11 +400,32 @@ export class OpenCodeClient {
         return [];
       }
       const data = await response.json();
-      if (!Array.isArray(data)) return [];
-      return data.map((provider) => ({
-        ...provider,
-        models: Array.isArray(provider?.models) ? provider.models : [],
-      }));
+      const allProviders = Array.isArray(data?.all) ? data.all : [];
+      const connectedIds = new Set(
+        Array.isArray(data?.connected) ? data.connected : [],
+      );
+      const connectedProviders = allProviders.filter(
+        (p: Record<string, unknown>) => connectedIds.has(String(p?.id || "")),
+      );
+      return connectedProviders.map((provider: Record<string, unknown>) => {
+        const modelsObj = provider?.models;
+        const modelsArray =
+          modelsObj &&
+          typeof modelsObj === "object" &&
+          !Array.isArray(modelsObj)
+            ? Object.values(
+                modelsObj as Record<string, { id: string; name: string }>,
+              )
+            : [];
+        return {
+          id: String(provider?.id || ""),
+          name: String(provider?.name || ""),
+          models: modelsArray.map((m) => ({
+            id: String(m?.id || ""),
+            name: String(m?.name || ""),
+          })),
+        };
+      });
     } catch (error) {
       if ((error as Error).name === "AbortError") return [];
       console.error("Failed to get providers:", error);

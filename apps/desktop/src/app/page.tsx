@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useTauriDaemon } from "@/lib/tauri";
+import { useAuth } from "@/lib/auth";
 import { FileTree } from "@/components/editor/file-tree";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { LoginForm, UserDropdown } from "@/components/auth";
 
 type OpenCodeStatus = {
   running: boolean;
@@ -58,6 +60,7 @@ const INSTANT_TRANSITION = { duration: 0 } as const;
 export default function EditorPage() {
   const daemon = useTauriDaemon();
   const prefersReducedMotion = useReducedMotion();
+  const auth = useAuth();
 
   const [selectedFile, setSelectedFile] = useState<string>();
   const [fileContent, setFileContent] = useState<string>("");
@@ -396,9 +399,13 @@ export default function EditorPage() {
         <div className="w-full px-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <button
-              onClick={handleOpenFolder}
+              onClick={() => {
+                import("@tauri-apps/plugin-shell").then(({ open }) => {
+                  open("https://writer.lmms-lab.com");
+                });
+              }}
               className="logo-bar text-foreground hover:opacity-70 transition-opacity"
-              title="Open Folder (⌘O)"
+              title="Visit writer.lmms-lab.com"
             >
               <span></span>
               <span></span>
@@ -421,16 +428,37 @@ export default function EditorPage() {
             </div>
           </div>
 
-          <button
-            onClick={() => setShowRightPanel((v) => !v)}
-            className={`btn btn-sm border-2 border-black transition-all flex items-center gap-2 bg-white text-black ${
-              showRightPanel
-                ? "shadow-none translate-x-[3px] translate-y-[3px]"
-                : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px]"
-            }`}
-          >
-            Agent Mode
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowRightPanel((v) => !v)}
+              className={`btn btn-sm border-2 border-black transition-all flex items-center gap-2 bg-white text-black ${
+                showRightPanel
+                  ? "shadow-none translate-x-[3px] translate-y-[3px]"
+                  : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px]"
+              }`}
+            >
+              Agent Mode
+            </button>
+
+            {auth.isConfigured && !auth.loading && (
+              <>
+                {auth.profile ? (
+                  <UserDropdown profile={auth.profile} />
+                ) : (
+                  <button
+                    onClick={() => {
+                      import("@tauri-apps/plugin-shell").then(({ open }) => {
+                        open("https://writer.lmms-lab.com/login");
+                      });
+                    }}
+                    className="btn btn-sm border-2 border-black bg-white text-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+                  >
+                    Login
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -847,24 +875,7 @@ export default function EditorPage() {
           ) : (
             <div className="flex-1 flex items-center justify-center">
               {daemon.projectPath ? (
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto mb-6 border-2 border-neutral-200 flex items-center justify-center">
-                    <svg
-                      className="w-8 h-8 text-neutral-300"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-muted">Select a file from the sidebar</p>
-                </div>
+                <div />
               ) : (
                 <div className="flex flex-col items-center justify-center text-center px-6">
                   <h2 className="text-2xl font-bold tracking-tight mb-3 text-black">
@@ -875,10 +886,19 @@ export default function EditorPage() {
                   </p>
                   <button
                     onClick={handleOpenFolder}
-                    className="btn btn-primary"
+                    className="btn btn-primary mb-8"
                   >
                     Open Folder
                   </button>
+
+                  {auth.isConfigured && !auth.loading && !auth.profile && (
+                    <div className="border-t border-border pt-8 w-full max-w-sm">
+                      <p className="text-muted text-xs mb-6 uppercase tracking-wider">
+                        Sign in for cloud features
+                      </p>
+                      <LoginForm />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -929,6 +949,7 @@ export default function EditorPage() {
                     daemonStatus={opencodeDaemonStatus}
                     onRestartOpenCode={restartOpencode}
                     onMaxReconnectFailed={handleMaxReconnectFailed}
+                    onFileClick={handleFileSelect}
                   />
                 </OpenCodeErrorBoundary>
               </aside>

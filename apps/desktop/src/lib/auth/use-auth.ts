@@ -1,0 +1,256 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import type { User, Session } from "@supabase/supabase-js";
+import { getSupabaseClient } from "@/lib/supabase";
+
+export type MembershipTier = "free" | "supporter";
+
+export type UserProfile = {
+  email: string;
+  name: string | null;
+  avatarUrl: string | null;
+  tier: MembershipTier;
+  expiresAt: string | null;
+};
+
+type AuthState = {
+  user: User | null;
+  session: Session | null;
+  profile: UserProfile | null;
+  loading: boolean;
+  error: string | null;
+  isConfigured: boolean;
+};
+
+export function useAuth() {
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    session: null,
+    profile: null,
+    loading: true,
+    error: null,
+    isConfigured: false,
+  });
+
+  const fetchProfile = useCallback(
+    async (session: Session): Promise<UserProfile | null> => {
+      try {
+        const supabase = getSupabaseClient();
+        const metadata = session.user.user_metadata || {};
+
+        const { data: membership } = await supabase
+          .from("user_memberships")
+          .select("tier, expires_at")
+          .eq("user_id", session.user.id)
+          .single();
+
+        return {
+          email: session.user.email ?? "",
+          name:
+            metadata.full_name || metadata.name || metadata.user_name || null,
+          avatarUrl: metadata.avatar_url || metadata.picture || null,
+          tier: (membership?.tier as MembershipTier) || "free",
+          expiresAt: membership?.expires_at ?? null,
+        };
+      } catch {
+        return null;
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    let mounted = true;
+
+    const init = async () => {
+      try {
+        const supabase = getSupabaseClient();
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!mounted) return;
+
+        if (session) {
+          const profile = await fetchProfile(session);
+          setState({
+            user: session.user,
+            session,
+            profile,
+            loading: false,
+            error: null,
+            isConfigured: true,
+          });
+        } else {
+          setState({
+            user: null,
+            session: null,
+            profile: null,
+            loading: false,
+            error: null,
+            isConfigured: true,
+          });
+        }
+
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (!mounted) return;
+
+          if (session) {
+            const profile = await fetchProfile(session);
+            setState({
+              user: session.user,
+              session,
+              profile,
+              loading: false,
+              error: null,
+              isConfigured: true,
+            });
+          } else {
+            setState({
+              user: null,
+              session: null,
+              profile: null,
+              loading: false,
+              error: null,
+              isConfigured: true,
+            });
+          }
+        });
+
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (err) {
+        if (!mounted) return;
+
+        // Supabase not configured - graceful degradation
+        setState({
+          user: null,
+          session: null,
+          profile: null,
+          loading: false,
+          error:
+            err instanceof Error ? err.message : "Auth initialization failed",
+          isConfigured: false,
+        });
+      }
+    };
+
+    init();
+
+    return () => {
+      mounted = false;
+    };
+  }, [fetchProfile]);
+
+  const signInWithGitHub = useCallback(async () => {
+    try {
+      const supabase = getSupabaseClient();
+      const { open } = await import("@tauri-apps/plugin-shell");
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "github",
+        options: {
+          redirectTo: "https://writer.lmms-lab.com/auth/callback",
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) throw error;
+      if (data.url) {
+        await open(data.url);
+      }
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        error: err instanceof Error ? err.message : "GitHub login failed",
+      }));
+    }
+  }, []);
+
+  const signInWithEmail = useCallback(
+    async (email: string, password: string) => {
+      try {
+        setState((prev) => ({ ...prev, loading: true, error: null }));
+        const supabase = getSupabaseClient();
+
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+      } catch (err) {
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: err instanceof Error ? err.message : "Login failed",
+        }));
+      }
+    },
+    [],
+  );
+
+  const signUp = useCallback(async (email: string, password: string) => {
+    try {
+      setState((prev) => ({ ...prev, loading: true, error: null }));
+      const supabase = getSupabaseClient();
+
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: "https://writer.lmms-lab.com/auth/callback",
+        },
+      });
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        message: "Check your email for the confirmation link",
+      };
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: err instanceof Error ? err.message : "Sign up failed",
+      }));
+      return {
+        success: false,
+        message: err instanceof Error ? err.message : "Sign up failed",
+      };
+    }
+  }, []);
+
+  const signOut = useCallback(async () => {
+    try {
+      const supabase = getSupabaseClient();
+      await supabase.auth.signOut();
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        error: err instanceof Error ? err.message : "Sign out failed",
+      }));
+    }
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (!state.session) return;
+    const profile = await fetchProfile(state.session);
+    setState((prev) => ({ ...prev, profile }));
+  }, [state.session, fetchProfile]);
+
+  return {
+    ...state,
+    signInWithGitHub,
+    signInWithEmail,
+    signUp,
+    signOut,
+    refreshProfile,
+  };
+}

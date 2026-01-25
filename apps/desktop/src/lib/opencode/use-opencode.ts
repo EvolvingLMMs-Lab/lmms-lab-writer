@@ -85,6 +85,14 @@ export function useOpenCode(
   const currentSessionIdRef = useRef<string | null>(null);
   currentSessionIdRef.current = currentSessionId;
 
+  const selectedAgentRef = useRef<string | null>(null);
+  selectedAgentRef.current = selectedAgent;
+  const selectedModelRef = useRef<{
+    providerId: string;
+    modelId: string;
+  } | null>(null);
+  selectedModelRef.current = selectedModel;
+
   const syncFromStoreRef = useRef<() => void>(() => {});
   syncFromStoreRef.current = () => {
     const client = clientRef.current;
@@ -230,14 +238,15 @@ export function useOpenCode(
       setProviders(safeProviders);
 
       const firstAgent = safeAgents[0];
-      if (firstAgent && !selectedAgent) {
+      if (firstAgent && !selectedAgentRef.current) {
         setSelectedAgent(firstAgent.id);
       }
+
       const firstProvider = safeProviders[0];
       const firstModel = Array.isArray(firstProvider?.models)
         ? firstProvider.models[0]
         : undefined;
-      if (firstProvider && firstModel && !selectedModel) {
+      if (firstProvider && firstModel && !selectedModelRef.current) {
         setSelectedModel({
           providerId: firstProvider.id,
           modelId: firstModel.id,
@@ -248,7 +257,7 @@ export function useOpenCode(
       setAgents([]);
       setProviders([]);
     }
-  }, [connected, selectedAgent, selectedModel]);
+  }, [connected]);
 
   useEffect(() => {
     if (connected) {
@@ -321,6 +330,24 @@ export function useOpenCode(
           }
         }
         setParts(updatedParts);
+
+        const lastUserMessage = [...msgs]
+          .reverse()
+          .find((m): m is import("./types").UserMessage => m.role === "user");
+        if (lastUserMessage) {
+          if (lastUserMessage.agent) {
+            setSelectedAgent(lastUserMessage.agent);
+          }
+          if (
+            lastUserMessage.model?.providerID &&
+            lastUserMessage.model?.modelID
+          ) {
+            setSelectedModel({
+              providerId: lastUserMessage.model.providerID,
+              modelId: lastUserMessage.model.modelID,
+            });
+          }
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load session");
       }
