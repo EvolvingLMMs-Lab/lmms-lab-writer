@@ -2,8 +2,17 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use tokio::fs;
 use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Command;
-use tauri::{Emitter, AppHandle};
+use tokio::process::{Child, Command};
+use tokio::sync::Mutex;
+use tauri::{Emitter, AppHandle, State};
+
+pub struct CompileProcess(pub Mutex<Option<Child>>);
+
+impl Default for CompileProcess {
+    fn default() -> Self {
+        CompileProcess(Mutex::new(None))
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CompileResult {
@@ -56,6 +65,7 @@ pub async fn find_main_tex(dir: String, current_file: Option<String>) -> Result<
 #[tauri::command]
 pub async fn compile_latex(
     app: AppHandle,
+    compile_process: State<'_, CompileProcess>,
     dir: String,
     #[allow(non_snake_case)]
     mainFile: String,
@@ -84,10 +94,17 @@ pub async fn compile_latex(
         .spawn()
         .map_err(|e| e.to_string())?;
 
+    let stdout = child.stdout.take();
+    
+    {
+        let mut process = compile_process.0.lock().await;
+        *process = Some(child);
+    }
+
     let mut output = String::new();
     let mut output_buffer = Vec::new();
 
-    if let Some(stdout) = child.stdout.take() {
+    if let Some(stdout) = stdout {
         let mut reader = BufReader::new(stdout).lines();
         while let Ok(Some(line)) = reader.next_line().await {
             output.push_str(&line);
@@ -107,7 +124,22 @@ pub async fn compile_latex(
         }
     }
 
-    let status = child.wait().await.map_err(|e| e.to_string())?;
+    let status = {
+        let mut process = compile_process.0.lock().await;
+        if let Some(ref mut child) = *process {
+            let status = child.wait().await.map_err(|e| e.to_string())?;
+            *process = None;
+            status
+        } else {
+            return Ok(CompileResult {
+                success: false,
+                code: None,
+                output,
+                error: Some("Compilation was stopped".to_string()),
+            });
+        }
+    };
+    
     let success = status.success();
     let code = status.code();
 
@@ -121,4 +153,18 @@ pub async fn compile_latex(
     app.emit("compile-result", &result).ok();
 
     Ok(result)
+}
+
+#[tauri::command]
+pub async fn stop_compile(
+    compile_process: State<'_, CompileProcess>,
+) -> Result<bool, String> {
+    let mut process = compile_process.0.lock().await;
+    if let Some(ref mut child) = *process {
+        child.kill().await.map_err(|e| e.to_string())?;
+        *process = None;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
 }

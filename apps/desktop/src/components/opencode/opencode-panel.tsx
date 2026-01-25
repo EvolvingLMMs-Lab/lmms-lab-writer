@@ -262,7 +262,7 @@ function SessionList({
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">
+                <p className="text-sm truncate">
                   {session.title || "Untitled"}
                 </p>
                 {session.summary?.files !== undefined && (
@@ -334,7 +334,7 @@ function DisconnectedState({
             d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
           />
         </svg>
-        <p className="font-medium">Connect to OpenCode</p>
+        <p className="text-sm">Connect to OpenCode</p>
         {daemonStatus && (
           <p className="text-xs mt-2 max-w-[200px]">
             {statusMessages[daemonStatus]}

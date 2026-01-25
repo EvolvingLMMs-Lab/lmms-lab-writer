@@ -1,5 +1,6 @@
 mod commands;
 
+use commands::compile::CompileProcess;
 use commands::fs::WatcherState;
 use commands::opencode::OpenCodeState;
 use commands::terminal::PtyState;
@@ -44,6 +45,7 @@ pub fn run() {
         .manage(PtyState::default())
         .manage(OpenCodeState::default())
         .manage(Mutex::new(WatcherState::default()))
+        .manage(CompileProcess::default())
         .invoke_handler(tauri::generate_handler![
             commands::fs::read_file,
             commands::fs::write_file,
@@ -61,6 +63,7 @@ pub fn run() {
             commands::git::git_clone,
             commands::git::git_add_remote,
             commands::compile::compile_latex,
+            commands::compile::stop_compile,
             commands::compile::find_main_tex,
             commands::terminal::spawn_pty,
             commands::terminal::write_pty,
