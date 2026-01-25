@@ -610,7 +610,14 @@ function MessageTurn({
   isLast: boolean;
   status: SessionStatus;
 }) {
-  const userParts = turn.parts.filter((p) => p.messageID === turn.user.id);
+  const seenIds = new Set<string>();
+  const dedupedParts = turn.parts.filter((part) => {
+    if (seenIds.has(part.id)) return false;
+    seenIds.add(part.id);
+    return true;
+  });
+
+  const userParts = dedupedParts.filter((p) => p.messageID === turn.user.id);
   const userText = userParts.find((p) => p.type === "text") as
     | TextPart
     | undefined;
@@ -619,7 +626,7 @@ function MessageTurn({
   const toolParts: ToolPart[] = [];
   const reasoningParts: ReasoningPart[] = [];
 
-  for (const part of turn.parts) {
+  for (const part of dedupedParts) {
     if (part.messageID === turn.user.id) continue;
     if (part.type === "text" && !(part as TextPart).synthetic) {
       assistantTextParts.push(part as TextPart);
