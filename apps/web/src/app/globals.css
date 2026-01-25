@@ -12,7 +12,7 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -163,11 +163,81 @@ body {
   animation: spin-slow 12s linear infinite;
 }
 
+@keyframes typewriter {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in-line {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.paper-line {
+  animation: fade-in-line 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+.paper-line:nth-child(1) {
+  animation-delay: 0.5s;
+}
+.paper-line:nth-child(2) {
+  animation-delay: 1.5s;
+}
+.paper-line:nth-child(3) {
+  animation-delay: 2.5s;
+}
+.paper-line:nth-child(4) {
+  animation-delay: 3.5s;
+}
+.paper-line:nth-child(5) {
+  animation-delay: 4.5s;
+}
+.paper-line:nth-child(6) {
+  animation-delay: 5.5s;
+}
+.paper-line:nth-child(7) {
+  animation-delay: 6.5s;
+}
+.paper-line:nth-child(8) {
+  animation-delay: 7.5s;
+}
+
+.typing-cursor::after {
+  content: "▋";
+  animation: blink 1s step-end infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-float,
   .animate-float-delayed,
   .animate-spin-slow,
-  .logo-bar span {
+  .logo-bar span,
+  .paper-line {
     animation: none !important;
+    opacity: 1 !important;
+  }
+  .typing-cursor::after {
+    animation: none;
   }
 }

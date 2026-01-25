@@ -51,24 +51,13 @@ export default function HomePage() {
           </Link>
           <nav className="flex items-center gap-6 text-sm">
             <Link
-              href="/docs"
-              className="text-muted hover:text-foreground transition-colors"
-            >
-              Docs
-            </Link>
-            <Link
-              href="/download"
-              className="text-muted hover:text-foreground transition-colors"
-            >
-              Download
-            </Link>
-            <Link
-              href="https://github.com/Luodian/latex-writer"
+              href="https://github.com/Luodian/latex-writer/issues"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted hover:text-foreground transition-colors"
+              className="text-muted hover:text-foreground transition-colors flex items-center gap-1.5"
             >
               <Github className="w-4 h-4" />
+              Feedbacks
             </Link>
           </nav>
         </div>
@@ -161,8 +150,54 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Comparison */}
-        <section className="py-20 px-6">
+        <section className="py-20 px-6 border-t border-border">
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-xl font-medium mb-4 text-center">
+              Watch AI write your paper
+            </h2>
+            <p className="text-sm text-muted mb-10 text-center">
+              Claude Code editing a LaTeX document in real-time
+            </p>
+
+            <div className="max-w-2xl mx-auto border-2 border-foreground bg-white p-8 relative">
+              <div className="absolute -top-3 left-6 bg-white px-2 text-xs text-muted">
+                main.tex
+              </div>
+
+              <div className="space-y-3 text-sm">
+                <div className="paper-line text-muted">
+                  \documentclass&#123;article&#125;
+                </div>
+                <div className="paper-line text-muted">
+                  \title&#123;Attention is All You Need&#125;
+                </div>
+                <div className="paper-line text-muted">
+                  \begin&#123;document&#125;
+                </div>
+                <div className="paper-line">\maketitle</div>
+                <div className="paper-line font-medium">
+                  \section&#123;Abstract&#125;
+                </div>
+                <div className="paper-line">
+                  The dominant sequence transduction models ---
+                </div>
+                <div className="paper-line">
+                  are based on complex recurrent or convolutional ---
+                </div>
+                <div className="paper-line typing-cursor">
+                  We propose a new simple network architecture ---
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-border flex items-center gap-2 text-xs text-muted">
+                <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                Claude Code is writing...
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="py-20 px-6 border-t border-border">
           <div className="max-w-5xl mx-auto">
             <h2 className="text-2xl font-medium mb-10 text-center">
               Why not Overleaf?
