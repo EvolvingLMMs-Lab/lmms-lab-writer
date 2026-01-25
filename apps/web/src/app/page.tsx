@@ -145,18 +145,16 @@ export default function HomePage() {
       </main>
 
       <footer className="border-t border-border">
-        <div className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between text-sm text-muted">
-          <span>
-            <Link
-              href="https://lmms-lab.github.io"
-              className="hover:text-foreground transition-colors"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              LMMs-Lab
-            </Link>
-          </span>
-          <span>Free and open source</span>
+        <div className="max-w-5xl mx-auto px-6 py-6 text-sm text-muted text-center">
+          Built by{" "}
+          <Link
+            href="https://www.lmms-lab.com/"
+            className="hover:text-foreground transition-colors"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            LMMs-Lab
+          </Link>
         </div>
       </footer>
     </div>
