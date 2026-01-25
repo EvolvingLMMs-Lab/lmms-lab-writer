@@ -59,6 +59,10 @@ const DEBOUNCE_MS: u64 = 100;
 
 #[tauri::command]
 pub async fn read_file(path: String) -> Result<String, String> {
+    let metadata = fs::metadata(&path).await.map_err(|e| e.to_string())?;
+    if metadata.is_dir() {
+        return Err("Cannot read directory as file".to_string());
+    }
     fs::read_to_string(&path).await.map_err(|e| e.to_string())
 }
 

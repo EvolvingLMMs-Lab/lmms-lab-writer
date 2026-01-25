@@ -104,16 +104,11 @@ const TreeNode = memo(function TreeNode({
     <div>
       <motion.button
         onClick={handleClick}
-        className={`w-full flex items-center gap-2 px-2 py-1 text-left text-sm ${
-          isSelected ? "bg-black text-white" : ""
+        className={`w-full flex items-center gap-2 px-2 py-1 text-left text-sm transition-colors ${
+          isSelected ? "bg-black text-white" : "hover:bg-black/5"
         }`}
-        style={{ paddingLeft: `${depth * 12 + 8}px`, willChange: "transform" }}
-        whileHover={
-          isSelected
-            ? { scale: 1 }
-            : { x: 2, backgroundColor: "rgba(0,0,0,0.04)" }
-        }
-        whileTap={{ scale: 0.99 }}
+        style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        whileTap={{ scale: 0.98 }}
         transition={ITEM_SPRING}
       >
         {isDirectory && (

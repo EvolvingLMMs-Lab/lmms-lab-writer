@@ -14,6 +14,7 @@ export type UseOpenCodeReturn = {
   connected: boolean;
   connecting: boolean;
   error: string | null;
+  maxReconnectFailed: boolean;
 
   sessions: SessionInfo[];
   currentSession: SessionInfo | null;
@@ -30,6 +31,7 @@ export type UseOpenCodeReturn = {
   sendMessage: (content: string) => Promise<void>;
   abort: () => Promise<void>;
   getPartsForMessage: (messageId: string) => Part[];
+  resetReconnectState: () => void;
 };
 
 const DEFAULT_BASE_URL = "http://localhost:4096";
@@ -47,6 +49,8 @@ export function useOpenCode(
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [maxReconnectFailed, setMaxReconnectFailed] = useState(false);
+  const wasConnectedRef = useRef(false);
 
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -109,6 +113,8 @@ export function useOpenCode(
         setConnected(true);
         setConnecting(false);
         setError(null);
+        setMaxReconnectFailed(false);
+        wasConnectedRef.current = true;
       },
       onDisconnect: () => {
         setConnected(false);
@@ -117,6 +123,9 @@ export function useOpenCode(
       onError: (err) => {
         setError(err.message);
         setConnecting(false);
+        if (err.message.includes("Max reconnection attempts")) {
+          setMaxReconnectFailed(true);
+        }
       },
     });
 
@@ -240,6 +249,12 @@ export function useOpenCode(
     [currentSessionId, parts],
   );
 
+  const resetReconnectState = useCallback(() => {
+    setMaxReconnectFailed(false);
+    setError(null);
+    wasConnectedRef.current = false;
+  }, []);
+
   const currentSession = currentSessionId
     ? sessions.find((s) => s.id === currentSessionId) || null
     : null;
@@ -248,6 +263,7 @@ export function useOpenCode(
     connected,
     connecting,
     error,
+    maxReconnectFailed,
     sessions,
     currentSession,
     currentSessionId,
@@ -262,5 +278,6 @@ export function useOpenCode(
     sendMessage,
     abort,
     getPartsForMessage,
+    resetReconnectState,
   };
 }

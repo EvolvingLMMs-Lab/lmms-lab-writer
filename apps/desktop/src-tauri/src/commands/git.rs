@@ -59,14 +59,32 @@ pub async fn git_status(dir: String) -> Result<GitStatus, String> {
     }
 
     let dir_ref = &dir;
+    
+    // Check if repo has any commits
+    let has_commits = run_git(dir_ref, &["rev-parse", "HEAD"]).await.is_ok();
+    
     let (branch_result, status_result, remote_result, ahead_behind_result) = tokio::join!(
-        run_git(dir_ref, &["rev-parse", "--abbrev-ref", "HEAD"]),
+        async {
+            if has_commits {
+                run_git(dir_ref, &["rev-parse", "--abbrev-ref", "HEAD"]).await
+            } else {
+                // No commits yet - get branch from symbolic-ref or default to "main"
+                run_git(dir_ref, &["symbolic-ref", "--short", "HEAD"]).await
+                    .or_else(|_| Ok("main".to_string()))
+            }
+        },
         run_git(dir_ref, &["status", "--porcelain"]),
         run_git(dir_ref, &["remote"]),
-        run_git(dir_ref, &["rev-list", "--left-right", "--count", "HEAD...@{u}"])
+        async {
+            if has_commits {
+                run_git(dir_ref, &["rev-list", "--left-right", "--count", "HEAD...@{u}"]).await
+            } else {
+                Ok("0\t0".to_string())
+            }
+        }
     );
 
-    let branch = branch_result.unwrap_or_default().trim().to_string();
+    let branch = branch_result.unwrap_or_else(|_| "main".to_string()).trim().to_string();
     let status_output = status_result.unwrap_or_default();
 
     let mut changes = Vec::new();
@@ -142,7 +160,12 @@ pub async fn git_status(dir: String) -> Result<GitStatus, String> {
 pub async fn git_log(dir: String, limit: Option<i32>) -> Result<Vec<GitLogEntry>, String> {
     let limit = limit.unwrap_or(20);
     let format = "%H%n%h%n%s%n%an%n%ci%n---";
-    let output = run_git(&dir, &["log", &format!("-{}", limit), &format!("--format={}", format)]).await?;
+    
+    let output = match run_git(&dir, &["log", &format!("-{}", limit), &format!("--format={}", format)]).await {
+        Ok(out) => out,
+        Err(e) if e.contains("does not have any commits") => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
 
     let mut entries = Vec::new();
     for part in output.split("---\n").filter(|s| !s.is_empty()) {

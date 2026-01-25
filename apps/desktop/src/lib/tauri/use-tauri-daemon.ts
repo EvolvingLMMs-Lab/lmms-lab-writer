@@ -43,17 +43,16 @@ interface FileChangeEvent {
   kind: "create" | "modify" | "remove" | "access" | "other" | "unknown";
 }
 
-// Convert Rust FileNode (with node_type) to shared FileNode (with type)
 function convertFileNode(node: {
   name: string;
   path: string;
-  node_type: string;
+  type: string;
   children?: unknown[];
 }): FileNode {
   return {
     name: node.name,
     path: node.path,
-    type: node.node_type === "directory" ? "directory" : "file",
+    type: node.type === "directory" ? "directory" : "file",
     children: node.children?.map((child) =>
       convertFileNode(child as typeof node),
     ),
@@ -108,13 +107,12 @@ export function useTauriDaemon() {
 
   const readFile = useCallback(
     async (relativePath: string): Promise<string | null> => {
-      if (!projectState.projectPath) return null;
+      if (!projectState.projectPath || !relativePath) return null;
 
+      const fullPath = `${projectState.projectPath}/${relativePath}`;
       try {
-        const fullPath = `${projectState.projectPath}/${relativePath}`;
         return await invoke<string>("read_file", { path: fullPath });
-      } catch (error) {
-        console.error("Failed to read file:", error);
+      } catch {
         return null;
       }
     },

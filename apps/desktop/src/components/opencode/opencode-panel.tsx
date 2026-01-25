@@ -20,6 +20,7 @@ type Props = {
   autoConnect?: boolean;
   daemonStatus?: OpenCodeDaemonStatus;
   onRestartOpenCode?: () => void;
+  onMaxReconnectFailed?: () => void;
 };
 
 export function OpenCodePanel({
@@ -29,6 +30,7 @@ export function OpenCodePanel({
   autoConnect = false,
   daemonStatus,
   onRestartOpenCode,
+  onMaxReconnectFailed,
 }: Props) {
   const opencode = useOpenCode({ baseUrl, directory, autoConnect });
   const [input, setInput] = useState("");
@@ -40,6 +42,12 @@ export function OpenCodePanel({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [opencode.messages, opencode.parts]);
+
+  useEffect(() => {
+    if (opencode.maxReconnectFailed && onMaxReconnectFailed) {
+      onMaxReconnectFailed();
+    }
+  }, [opencode.maxReconnectFailed, onMaxReconnectFailed]);
 
   useEffect(() => {
     if (lastDirectoryRef.current !== directory) {

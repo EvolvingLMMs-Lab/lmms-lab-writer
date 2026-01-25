@@ -35,6 +35,14 @@ const OpenCodePanel = dynamic(
   { ssr: false },
 );
 
+const OpenCodeDisconnectedDialog = dynamic(
+  () =>
+    import("@/components/opencode/opencode-disconnected-dialog").then(
+      (mod) => mod.OpenCodeDisconnectedDialog,
+    ),
+  { ssr: false },
+);
+
 const PANEL_SPRING = {
   type: "spring",
   stiffness: 400,
@@ -67,10 +75,12 @@ export default function EditorPage() {
   const [showCommitInput, setShowCommitInput] = useState(false);
   const [showRemoteInput, setShowRemoteInput] = useState(false);
   const [remoteUrl, setRemoteUrl] = useState("");
+  const [showAgentMenu, setShowAgentMenu] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [opencodeDaemonStatus, setOpencodeDaemonStatus] =
     useState<OpenCodeDaemonStatus>("stopped");
   const [opencodePort, setOpencodePort] = useState(4096);
+  const [showDisconnectedDialog, setShowDisconnectedDialog] = useState(false);
 
   const contentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const opencodeStartedForPathRef = useRef<string | null>(null);
@@ -129,6 +139,19 @@ export default function EditorPage() {
       setOpencodeDaemonStatus("stopped");
     }
   }, [daemon.projectPath]);
+
+  const handleMaxReconnectFailed = useCallback(() => {
+    setShowDisconnectedDialog(true);
+  }, []);
+
+  const handleCloseDisconnectedDialog = useCallback(() => {
+    setShowDisconnectedDialog(false);
+  }, []);
+
+  const handleRestartFromDialog = useCallback(() => {
+    setShowDisconnectedDialog(false);
+    restartOpencode();
+  }, [restartOpencode]);
 
   useEffect(() => {
     if (!daemon.projectPath) {
@@ -216,10 +239,14 @@ export default function EditorPage() {
       setBinaryPreviewUrl(null);
 
       if (fileType === "text") {
-        const content = await daemon.readFile(path);
-        setFileContent(content ?? "");
+        try {
+          const content = await daemon.readFile(path);
+          setFileContent(content ?? "");
+        } catch (err) {
+          console.error("Failed to read file:", err);
+          setFileContent("");
+        }
       } else {
-        // Convert relative path to absolute for binary files
         const fullPath = daemon.projectPath
           ? `${daemon.projectPath}/${path}`
           : path;
@@ -391,17 +418,19 @@ export default function EditorPage() {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="relative group z-50">
+            <div className="relative">
               <button
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-mono bg-white border border-neutral-300 text-neutral-700 hover:border-neutral-400"
-                style={{
-                  boxShadow:
-                    "0 1px 0 1px rgba(0,0,0,0.04), 0 2px 0 rgba(0,0,0,0.06), inset 0 -1px 0 rgba(0,0,0,0.04)",
-                }}
+                onClick={() => setShowAgentMenu((v) => !v)}
+                onBlur={() => setTimeout(() => setShowAgentMenu(false), 150)}
+                className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-mono border transition-colors ${
+                  showAgentMenu
+                    ? "bg-black text-white border-black"
+                    : "bg-white text-neutral-700 border-neutral-300 hover:border-neutral-400"
+                }`}
               >
                 Agent Mode
                 <svg
-                  className="w-3 h-3 text-neutral-400"
+                  className={`w-3 h-3 transition-transform ${showAgentMenu ? "rotate-180" : ""}`}
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -414,64 +443,69 @@ export default function EditorPage() {
                   />
                 </svg>
               </button>
-              <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-black hidden group-hover:block">
-                <div className="flex flex-col py-1">
-                  <button
-                    onClick={handleCompile}
-                    disabled={daemon.isCompiling || !daemon.projectPath}
-                    className="text-left px-4 py-2 text-xs font-mono hover:bg-black hover:text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-neutral-700 flex justify-between items-center w-full transition-colors"
-                  >
-                    <span className="flex items-center gap-2">
-                      {daemon.isCompiling && (
-                        <svg
-                          className="w-3 h-3 animate-spin"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          />
-                        </svg>
-                      )}
-                      Compile LaTeX
-                    </span>
-                    <span className="text-[10px] text-neutral-400 group-hover:text-white/70">
-                      ⇧⌘B
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowRightPanel(true);
-                      setRightTab("opencode");
-                    }}
-                    className="text-left px-4 py-2 text-xs font-mono hover:bg-black hover:text-white w-full transition-colors"
-                  >
-                    OpenCode
-                  </button>
-                  <button
-                    disabled
-                    className="text-left px-4 py-2 text-xs font-mono opacity-50 cursor-not-allowed w-full"
-                  >
-                    Claude
-                  </button>
-                  <button
-                    disabled
-                    className="text-left px-4 py-2 text-xs font-mono opacity-50 cursor-not-allowed w-full"
-                  >
-                    Cursor
-                  </button>
+              {showAgentMenu && (
+                <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-neutral-200 shadow-lg z-50">
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        handleCompile();
+                        setShowAgentMenu(false);
+                      }}
+                      disabled={daemon.isCompiling || !daemon.projectPath}
+                      className="text-left px-3 py-2 text-xs font-mono hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed flex justify-between items-center w-full"
+                    >
+                      <span className="flex items-center gap-2">
+                        {daemon.isCompiling && (
+                          <svg
+                            className="w-3 h-3 animate-spin"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                              fill="none"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
+                          </svg>
+                        )}
+                        Compile LaTeX
+                      </span>
+                      <kbd className="text-[10px] text-neutral-400">⇧⌘B</kbd>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowRightPanel(true);
+                        setRightTab("opencode");
+                        setShowAgentMenu(false);
+                      }}
+                      className="text-left px-3 py-2 text-xs font-mono hover:bg-neutral-100 w-full"
+                    >
+                      OpenCode
+                    </button>
+                    <div className="border-t border-neutral-100 my-1" />
+                    <button
+                      disabled
+                      className="text-left px-3 py-2 text-xs font-mono text-neutral-400 cursor-not-allowed w-full"
+                    >
+                      Claude (coming soon)
+                    </button>
+                    <button
+                      disabled
+                      className="text-left px-3 py-2 text-xs font-mono text-neutral-400 cursor-not-allowed w-full"
+                    >
+                      Cursor (coming soon)
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
             <button
               onClick={handleOpenFolder}
@@ -1118,6 +1152,7 @@ export default function EditorPage() {
                       }
                       daemonStatus={opencodeDaemonStatus}
                       onRestartOpenCode={restartOpencode}
+                      onMaxReconnectFailed={handleMaxReconnectFailed}
                     />
                   )}
                   {rightTab === "compile" && (
@@ -1141,6 +1176,12 @@ export default function EditorPage() {
           )}
         </AnimatePresence>
       </main>
+
+      <OpenCodeDisconnectedDialog
+        open={showDisconnectedDialog}
+        onClose={handleCloseDisconnectedDialog}
+        onRestart={handleRestartFromDialog}
+      />
     </div>
   );
 }

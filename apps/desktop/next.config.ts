@@ -13,8 +13,21 @@ const nextConfig: NextConfig = {
   },
   transpilePackages: ["@lmms-lab/writer-shared"],
   assetPrefix: isProd ? undefined : `http://${internalHost}:3000`,
+  productionBrowserSourceMaps: false,
 
   webpack: (config: Configuration, { isServer }) => {
+    config.module = config.module || { rules: [] };
+    config.module.rules = config.module.rules || [];
+    config.module.rules.push({
+      test: /\.m?js$/,
+      include: /node_modules\/framer-motion/,
+      loader: "string-replace-loader",
+      options: {
+        search: /\/\/# sourceMappingURL=.+\.map/g,
+        replace: "",
+      },
+    });
+
     if (isProd && !isServer) {
       config.optimization = {
         ...config.optimization,
