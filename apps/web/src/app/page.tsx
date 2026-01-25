@@ -60,15 +60,15 @@ export default function HomePage() {
       <main className="flex-1">
         {/* Hero */}
         <section className="py-24 px-6">
-          <div className="max-w-5xl mx-auto">
+          <div className="max-w-5xl mx-auto text-center">
             <h1 className="text-3xl md:text-4xl font-medium tracking-tight mb-6">
               AI-native LaTeX editor
             </h1>
-            <p className="text-muted mb-10 leading-relaxed max-w-2xl">
+            <p className="text-muted mb-10 leading-relaxed max-w-2xl mx-auto">
               Local-first. Works with Claude, Cursor, Codex, or any tool that
               edits files. Your research stays on your machine.
             </p>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center gap-4">
               <Link href="/download" className="btn btn-primary">
                 <Download className="w-4 h-4" />
                 Download
@@ -82,15 +82,17 @@ export default function HomePage() {
         </section>
 
         {/* Comparison */}
-        <section className="py-20 px-6 bg-white">
+        <section className="py-20 px-6">
           <div className="max-w-5xl mx-auto">
-            <h2 className="text-2xl font-medium mb-10">Why not Overleaf?</h2>
-            <div className="border border-border max-w-3xl">
+            <h2 className="text-2xl font-medium mb-10 text-center">
+              Why not Overleaf?
+            </h2>
+            <div className="border border-border max-w-3xl mx-auto">
               <div className="grid grid-cols-3 border-b border-border text-xs font-mono uppercase tracking-wider text-muted">
                 <div className="p-4 border-r border-border">Feature</div>
                 <div className="p-4 border-r border-border">Overleaf</div>
                 <div className="p-4 bg-neutral-50 font-semibold text-foreground">
-                  Writer
+                  LMMs-Lab Writer
                 </div>
               </div>
               {comparisons.map((row, i) => (
@@ -118,11 +120,11 @@ export default function HomePage() {
 
         {/* AI Tools */}
         <section className="py-20 px-6 border-t border-border">
-          <div className="max-w-5xl mx-auto">
+          <div className="max-w-5xl mx-auto text-center">
             <h2 className="text-xl font-medium mb-6">
               Works with your favorite AI tools
             </h2>
-            <div className="flex flex-wrap gap-3 text-sm font-mono">
+            <div className="flex flex-wrap justify-center gap-3 text-sm font-mono">
               {[
                 "Claude Code",
                 "Cursor",
