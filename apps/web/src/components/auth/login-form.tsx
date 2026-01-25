@@ -49,7 +49,7 @@ export function LoginForm() {
       <button
         onClick={handleGitHubLogin}
         disabled={loading}
-        className="btn btn-primary w-full mb-6"
+        className="btn btn-secondary w-full mb-6"
       >
         <Github className="w-4 h-4" />
         Continue with GitHub

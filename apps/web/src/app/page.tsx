@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Github, Download, FileText, CheckCircle2 } from "lucide-react";
 import { PaperDemo } from "@/components/paper-demo";
+import { AuthButtons } from "@/components/auth/auth-buttons";
 
 const comparisons = [
   {
@@ -51,14 +52,15 @@ export default function HomePage() {
             </span>
           </Link>
           <nav className="flex items-center gap-6 text-sm">
+            <AuthButtons />
             <Link
               href="https://github.com/Luodian/latex-writer/issues"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted hover:text-foreground transition-colors flex items-center gap-1.5"
+              className="text-muted/60 hover:text-muted transition-colors flex items-center gap-1.5 text-xs"
             >
-              <Github className="w-4 h-4" />
-              Feedbacks
+              <Github className="w-3.5 h-3.5" />
+              Feedback
             </Link>
           </nav>
         </div>
@@ -69,13 +71,11 @@ export default function HomePage() {
         <section className="py-24 px-6 bg-cream">
           <div className="max-w-5xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
-              Stop writing LaTeX.
-              <br />
-              Start thinking.
+              Think More, Write Easy.
             </h1>
             <p className="text-lg text-muted mb-10 leading-relaxed max-w-2xl mx-auto">
-              Let AI agents write your papers while you focus on what matters —
-              your research.
+              Stop manually writing LaTeX. Let agents handle the syntax while
+              you focus on outlier science.
             </p>
             <div className="flex items-center justify-center gap-4 relative">
               <Link href="/download" className="btn btn-primary">
@@ -92,13 +92,12 @@ export default function HomePage() {
 
         <section className="py-20 px-6 border-t border-border">
           <div className="max-w-5xl mx-auto">
-            <h2 className="text-xl font-medium mb-4 text-center">
-              Watch AI write your paper
+            <h2 className="text-2xl font-medium mb-4 text-center">
+              See it in action.
             </h2>
-            <p className="text-sm text-muted mb-10 text-center">
-              AI agent editing a LaTeX document in real-time
+            <p className="text-lg text-muted mb-10 text-center">
+              Every legendary paper started somewhere. Yours starts here.
             </p>
-
             <PaperDemo />
           </div>
         </section>
@@ -106,7 +105,7 @@ export default function HomePage() {
         <section className="py-20 px-6 border-t border-border">
           <div className="max-w-5xl mx-auto">
             <h2 className="text-2xl font-medium mb-10 text-center">
-              Why not Overleaf?
+              There's a reason you're still frustrated.
             </h2>
             <div className="border border-border max-w-4xl mx-auto">
               <div className="grid grid-cols-3 border-b border-border font-mono text-muted text-xs">
