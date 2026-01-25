@@ -220,7 +220,7 @@ export function PaperDemo() {
   ]);
 
   return (
-    <div className="max-w-4xl mx-auto border-2 border-foreground bg-white relative">
+    <div className="border-2 border-foreground bg-white relative">
       <div className="flex items-center justify-between px-4 py-2 border-b-2 border-foreground bg-neutral-100">
         <span className="text-xs">{currentPaper.filename}</span>
         <div className="flex gap-1.5">
