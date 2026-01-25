@@ -38,7 +38,6 @@ export function OpenCodePanel({
   const [input, setInput] = useState("");
   const [showSessionList, setShowSessionList] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -77,16 +76,6 @@ export function OpenCodePanel({
     setInput("");
     await opencode.sendMessage(content);
   }, [input, opencode]);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        handleSend();
-      }
-    },
-    [handleSend],
-  );
 
   const handleAbort = useCallback(async () => {
     await opencode.abort();
@@ -166,36 +155,13 @@ export function OpenCodePanel({
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="border-t border-border p-3 flex-shrink-0">
-            <div className="flex gap-2">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Message OpenCode..."
-                disabled={isWorking}
-                className="flex-1 min-h-[40px] max-h-[120px] px-3 py-2 border border-border resize-none focus:outline-none focus:ring-1 focus:ring-black disabled:opacity-50 text-sm"
-                rows={1}
-              />
-              {isWorking ? (
-                <button
-                  onClick={handleAbort}
-                  className="px-4 py-2 bg-white text-black text-sm border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
-                >
-                  Stop
-                </button>
-              ) : (
-                <button
-                  onClick={handleSend}
-                  disabled={!input.trim()}
-                  className="px-4 py-2 bg-white text-black text-sm border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all disabled:opacity-50 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
-                >
-                  Send
-                </button>
-              )}
-            </div>
-          </div>
+          <InputArea
+            input={input}
+            setInput={setInput}
+            onSend={handleSend}
+            onAbort={handleAbort}
+            isWorking={isWorking}
+          />
         </>
       ) : (
         <div className="flex-1 flex items-center justify-center p-4">
@@ -648,7 +614,7 @@ function MessageTurn({
           U
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm whitespace-pre-wrap break-words">
+          <p className="text-xs whitespace-pre-wrap break-words">
             {userText?.text || ""}
           </p>
         </div>
@@ -687,7 +653,7 @@ function MessageTurn({
             )}
 
             {lastTextPart && (
-              <div className="text-sm whitespace-pre-wrap break-words prose prose-sm max-w-none">
+              <div className="text-xs whitespace-pre-wrap break-words max-w-none">
                 <MarkdownText text={lastTextPart.text} />
               </div>
             )}
@@ -894,5 +860,201 @@ function MarkdownText({ text }: { text: string }) {
         );
       })}
     </>
+  );
+}
+
+function InputArea({
+  input,
+  setInput,
+  onSend,
+  onAbort,
+  isWorking,
+}: {
+  input: string;
+  setInput: (value: string) => void;
+  onSend: () => void;
+  onAbort: () => void;
+  isWorking: boolean;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      onSend();
+    }
+  };
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height =
+        Math.min(textareaRef.current.scrollHeight, 200) + "px";
+    }
+  }, [input]);
+
+  return (
+    <div className="border-t border-border flex-shrink-0 bg-white relative z-20">
+      {isExpanded && (
+        <div className="px-3 pt-3 pb-2 border-b border-border bg-neutral-50 animate-in slide-in-from-bottom-2 fade-in duration-200">
+          <div className="flex gap-2">
+            <div className="flex-1 space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-muted font-medium">
+                Agent
+              </label>
+              <div className="relative">
+                <select className="w-full text-xs border border-border bg-white pl-2 pr-6 py-1.5 h-8 focus:outline-none focus:border-black appearance-none rounded-none">
+                  <option>Auto</option>
+                  <option>Coder</option>
+                  <option>Architect</option>
+                </select>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg
+                    className="size-3 text-muted"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-muted font-medium">
+                Model
+              </label>
+              <div className="relative">
+                <select className="w-full text-xs border border-border bg-white pl-2 pr-6 py-1.5 h-8 focus:outline-none focus:border-black appearance-none rounded-none">
+                  <option>Claude 3.5 Sonnet</option>
+                  <option>GPT-4o</option>
+                  <option>DeepSeek V3</option>
+                </select>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg
+                    className="size-3 text-muted"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="p-3">
+        <div className="relative border border-border bg-white focus-within:ring-1 focus-within:ring-black transition-all shadow-sm">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask anything..."
+            disabled={isWorking}
+            className="w-full min-h-[40px] max-h-[200px] px-3 py-2 resize-none focus:outline-none text-sm bg-transparent placeholder:text-neutral-400"
+            rows={1}
+          />
+
+          <div className="flex items-center justify-between px-2 pb-2 pt-1 border-t border-transparent">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className={`p-1.5 text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors ${
+                  isExpanded ? "bg-neutral-100 text-black" : ""
+                }`}
+                title={isExpanded ? "Hide Options" : "Show Options"}
+              >
+                <svg
+                  className={`size-4 transition-transform duration-200 ${
+                    isExpanded ? "rotate-180" : ""
+                  }`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
+                    strokeWidth={1.5}
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                  />
+                  <path
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
+                    strokeWidth={1.5}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+              </button>
+
+              <button
+                className="p-1.5 text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors"
+                title="Attach File (Coming Soon)"
+              >
+                <svg
+                  className="size-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
+                    strokeWidth={1.5}
+                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {isWorking ? (
+              <button
+                onClick={onAbort}
+                className="flex items-center justify-center size-8 bg-white text-black border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+                title="Stop"
+              >
+                <div className="size-3 bg-black" />
+              </button>
+            ) : (
+              <button
+                onClick={onSend}
+                disabled={!input.trim()}
+                className="flex items-center justify-center size-8 bg-white text-black border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all disabled:opacity-50 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
+                title="Send"
+              >
+                <svg
+                  className="size-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
+                    strokeWidth={1.5}
+                    d="M5 12h14M12 5l7 7-7 7"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
