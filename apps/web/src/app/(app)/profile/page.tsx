@@ -3,7 +3,6 @@ export const dynamic = "force-dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { Header } from "@/components/header";
 import {
-  getDaysRemaining,
   MembershipTier,
   StarredRepo,
   GITHUB_CONFIG,
@@ -32,7 +31,6 @@ type UserStats = {
 
 type MembershipData = {
   tier: MembershipTier;
-  daysRemaining: number | null;
   expiresAt: Date | null;
   totalStars: number;
   starredRepos: StarredRepo[];
@@ -101,7 +99,6 @@ async function getProfileData(): Promise<{
 
   const membership: MembershipData = {
     tier: (membershipData?.tier as MembershipTier) || "free",
-    daysRemaining: getDaysRemaining(expiresAt),
     expiresAt,
     totalStars: membershipData?.total_star_count || 0,
     starredRepos:

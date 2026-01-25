@@ -42,7 +42,7 @@ export default function HomePage() {
         <section className="py-24 px-6 bg-cream">
           <div className="max-w-5xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
-              Think More, Write Easy.
+              Think Deep, Write Easy.
             </h1>
             <p className="text-lg text-muted mb-10 leading-relaxed max-w-2xl mx-auto">
               Stop manually writing LaTeX. Let agents handle the syntax while
