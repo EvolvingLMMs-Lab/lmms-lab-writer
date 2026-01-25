@@ -13,6 +13,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { GitHubLoginButton } from "@/components/auth/github-login-button";
 import { RefreshStarsButton } from "@/components/auth/refresh-stars-button";
+import {
+  ProfileCard,
+  ProfileSection,
+  ProfileTitle,
+  RepoList,
+  RepoItem,
+} from "@/components/profile-sections";
 
 type UserProfile = {
   id: string;
@@ -162,9 +169,9 @@ export default async function ProfilePage() {
 
       <main className="px-6 py-12">
         <div className="max-w-5xl mx-auto">
-          <h1 className="text-2xl font-light tracking-tight mb-8">Profile</h1>
+          <ProfileTitle>Profile</ProfileTitle>
 
-          <div className="border border-border p-6 mb-8">
+          <ProfileCard delay={0.05} className="border border-border p-6 mb-8">
             <div className="flex items-center gap-6">
               {profile.avatarUrl ? (
                 <img
@@ -188,9 +195,9 @@ export default async function ProfilePage() {
                 </p>
               </div>
             </div>
-          </div>
+          </ProfileCard>
 
-          <div className="border border-border mb-8">
+          <ProfileSection delay={0.1} className="border border-border mb-8">
             <div className="px-6 py-4 border-b border-border bg-neutral-50">
               <h2 className="text-sm font-mono uppercase tracking-wider">
                 Connected Accounts
@@ -242,9 +249,9 @@ export default async function ProfilePage() {
                 )}
               </div>
             </div>
-          </div>
+          </ProfileSection>
 
-          <div className="border border-border p-6 mb-8">
+          <ProfileCard delay={0.15} className="border border-border p-6 mb-8">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-3xl font-light tabular-nums mb-1">
@@ -275,9 +282,9 @@ export default async function ProfilePage() {
                 {membership.tier === "supporter" ? "Extend" : "Unlock"} →
               </a>
             </div>
-          </div>
+          </ProfileCard>
 
-          <div className="border border-border mb-8">
+          <ProfileSection delay={0.2} className="border border-border mb-8">
             <div className="px-6 py-4 border-b border-border bg-neutral-50">
               <h2 className="text-sm font-mono uppercase tracking-wider">
                 Account Details
@@ -319,10 +326,10 @@ export default async function ProfilePage() {
                 </div>
               )}
             </div>
-          </div>
+          </ProfileSection>
 
-          <div
-            id="suggested-repos"
+          <ProfileSection
+            delay={0.25}
             className="border border-border scroll-mt-6"
           >
             <div className="px-6 py-4 border-b border-border bg-neutral-50 flex items-center justify-between">
@@ -364,19 +371,12 @@ export default async function ProfilePage() {
                 </div>
               )}
 
-              <div className="space-y-2 mb-8 max-h-[400px] overflow-y-auto pr-2">
+              <RepoList>
                 {repos.map((repo) => {
                   const isStarred = starredRepoNames.has(repo.name);
 
                   return (
-                    <div
-                      key={repo.name}
-                      className={`flex items-center justify-between p-4 border transition-colors ${
-                        isStarred
-                          ? "border-black bg-neutral-50"
-                          : "border-neutral-200 hover:border-neutral-400"
-                      }`}
-                    >
+                    <RepoItem key={repo.name} isStarred={isStarred}>
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         {isStarred ? (
                           <svg
@@ -433,17 +433,17 @@ export default async function ProfilePage() {
                           Star
                         </a>
                       )}
-                    </div>
+                    </RepoItem>
                   );
                 })}
-              </div>
+              </RepoList>
 
               <p className="text-sm text-muted text-center pt-4 border-t border-border">
                 Star a repo = {GITHUB_CONFIG.DAYS_PER_STAR} days membership |
                 Max {GITHUB_CONFIG.MAX_DAYS} days
               </p>
             </div>
-          </div>
+          </ProfileSection>
         </div>
       </main>
     </div>

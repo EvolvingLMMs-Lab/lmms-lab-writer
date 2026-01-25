@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { Header } from "@/components/header";
+import { DocsContent } from "@/components/docs-sections";
 
 const sections = [
   {
@@ -32,33 +32,7 @@ export default function DocsPage() {
     <div className="min-h-screen flex flex-col">
       <Header />
 
-      <main className="flex-1 py-16 px-6">
-        <div className="max-w-5xl mx-auto">
-          <h1 className="text-2xl font-medium tracking-tight mb-10">
-            Documentation
-          </h1>
-
-          <div className="space-y-10 max-w-2xl">
-            {sections.map((section) => (
-              <div key={section.title}>
-                <h2 className="text-sm font-medium mb-3">{section.title}</h2>
-                <ul className="space-y-2">
-                  {section.items.map((item) => (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        className="text-sm text-muted hover:text-foreground transition-colors"
-                      >
-                        {item.title}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      </main>
+      <DocsContent sections={sections} />
 
       <footer className="border-t border-border px-6">
         <div className="max-w-5xl mx-auto py-6 text-sm text-muted">

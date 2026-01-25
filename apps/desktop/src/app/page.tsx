@@ -6,6 +6,7 @@ import { useTauriDaemon } from "@/lib/tauri";
 import { FileTree } from "@/components/editor/file-tree";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 type OpenCodeStatus = {
   running: boolean;
@@ -34,8 +35,18 @@ const OpenCodePanel = dynamic(
   { ssr: false },
 );
 
+const PANEL_SPRING = {
+  type: "spring",
+  stiffness: 400,
+  damping: 35,
+  mass: 0.8,
+} as const;
+
+const INSTANT_TRANSITION = { duration: 0 } as const;
+
 export default function EditorPage() {
   const daemon = useTauriDaemon();
+  const prefersReducedMotion = useReducedMotion();
 
   const [selectedFile, setSelectedFile] = useState<string>();
   const [fileContent, setFileContent] = useState<string>("");
@@ -486,290 +497,319 @@ export default function EditorPage() {
       </header>
 
       <main className="flex-1 min-h-0 flex">
-        {showSidebar && (
-          <>
-            <aside
-              style={{ width: sidebarWidth }}
-              className="border-r border-border flex flex-col flex-shrink-0 overflow-hidden"
+        <AnimatePresence mode="wait">
+          {showSidebar && (
+            <motion.div
+              key="sidebar-container"
+              initial={
+                prefersReducedMotion
+                  ? { opacity: 1 }
+                  : { x: -sidebarWidth, opacity: 0 }
+              }
+              animate={{ x: 0, opacity: 1 }}
+              exit={
+                prefersReducedMotion
+                  ? { opacity: 0 }
+                  : { x: -sidebarWidth, opacity: 0 }
+              }
+              transition={
+                prefersReducedMotion ? INSTANT_TRANSITION : PANEL_SPRING
+              }
+              className="flex flex-shrink-0"
+              style={{
+                willChange: prefersReducedMotion
+                  ? undefined
+                  : "transform, opacity",
+              }}
             >
-              <div className="flex items-center border-b border-border">
-                <button
-                  onClick={() => setSidebarTab("files")}
-                  className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
-                    sidebarTab === "files"
-                      ? "text-black border-b-2 border-black -mb-px"
-                      : "text-muted hover:text-black"
-                  }`}
-                >
-                  Files
-                </button>
-                <button
-                  onClick={() => setSidebarTab("git")}
-                  className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
-                    sidebarTab === "git"
-                      ? "text-black border-b-2 border-black -mb-px"
-                      : "text-muted hover:text-black"
-                  }`}
-                >
-                  Git
-                  {gitStatus && gitStatus.changes.length > 0 && (
-                    <span className="ml-1 text-xs bg-neutral-200 px-1 tabular-nums">
-                      {gitStatus.changes.length}
-                    </span>
-                  )}
-                </button>
-              </div>
+              <aside
+                style={{ width: sidebarWidth }}
+                className="border-r border-border flex flex-col flex-shrink-0 overflow-hidden"
+              >
+                <div className="flex items-center border-b border-border">
+                  <button
+                    onClick={() => setSidebarTab("files")}
+                    className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
+                      sidebarTab === "files"
+                        ? "text-black border-b-2 border-black -mb-px"
+                        : "text-muted hover:text-black"
+                    }`}
+                  >
+                    Files
+                  </button>
+                  <button
+                    onClick={() => setSidebarTab("git")}
+                    className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
+                      sidebarTab === "git"
+                        ? "text-black border-b-2 border-black -mb-px"
+                        : "text-muted hover:text-black"
+                    }`}
+                  >
+                    Git
+                    {gitStatus && gitStatus.changes.length > 0 && (
+                      <span className="ml-1 text-xs bg-neutral-200 px-1 tabular-nums">
+                        {gitStatus.changes.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
 
-              {sidebarTab === "files" && (
-                <>
-                  {daemon.projectPath ? (
-                    <>
-                      <div
-                        className="px-3 py-2 border-b border-border text-xs text-muted truncate"
-                        title={daemon.projectPath}
-                      >
-                        {daemon.projectPath.split("/").pop()}
-                      </div>
-                      <FileTree
-                        files={daemon.files}
-                        selectedFile={selectedFile}
-                        onFileSelect={handleFileSelect}
-                        className="flex-1 min-h-0 overflow-hidden"
-                      />
-                    </>
-                  ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
-                      <svg
-                        className="w-8 h-8 mb-2 opacity-30"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                        />
-                      </svg>
-                      <p className="text-xs">No folder open</p>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {sidebarTab === "git" && (
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  {!daemon.projectPath ? (
-                    <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
-                      <p className="text-xs">No folder open</p>
-                    </div>
-                  ) : !gitStatus?.isRepo ? (
-                    <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
-                      <p className="text-xs font-medium mb-1">
-                        Not a git repository
-                      </p>
-                      <button
-                        onClick={() => daemon.gitInit()}
-                        disabled={daemon.isInitializingGit}
-                        className="px-3 py-1.5 bg-black text-white text-xs hover:bg-black/80 transition-colors disabled:opacity-50"
-                      >
-                        {daemon.isInitializingGit
-                          ? "Initializing..."
-                          : "Initialize Git"}
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="px-3 py-2 border-b border-border bg-neutral-50">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm">
-                            {gitStatus.branch}
-                          </span>
-                          <button
-                            onClick={() => daemon.refreshGitStatus()}
-                            className="text-muted hover:text-black"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={1.5}
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                              />
-                            </svg>
-                          </button>
+                {sidebarTab === "files" && (
+                  <>
+                    {daemon.projectPath ? (
+                      <>
+                        <div
+                          className="px-3 py-2 border-b border-border text-xs text-muted truncate"
+                          title={daemon.projectPath}
+                        >
+                          {daemon.projectPath.split("/").pop()}
                         </div>
-                        {!gitStatus.remote && (
-                          <div className="mt-2">
-                            {showRemoteInput ? (
-                              <div className="space-y-2">
-                                <input
-                                  type="text"
-                                  value={remoteUrl}
-                                  onChange={(e) => setRemoteUrl(e.target.value)}
-                                  placeholder="https://github.com/user/repo.git"
-                                  className="w-full px-2 py-1 text-xs border border-border focus:outline-none focus:border-black"
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" && remoteUrl.trim()) {
-                                      daemon.gitAddRemote(remoteUrl.trim());
-                                      setRemoteUrl("");
-                                      setShowRemoteInput(false);
-                                    }
-                                    if (e.key === "Escape") {
-                                      setShowRemoteInput(false);
-                                    }
-                                  }}
-                                  autoFocus
-                                />
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => setShowRemoteInput(true)}
-                                className="text-xs text-black hover:underline"
-                              >
-                                + Connect to GitHub
-                              </button>
-                            )}
-                          </div>
-                        )}
+                        <FileTree
+                          files={daemon.files}
+                          selectedFile={selectedFile}
+                          onFileSelect={handleFileSelect}
+                          className="flex-1 min-h-0 overflow-hidden"
+                        />
+                      </>
+                    ) : (
+                      <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
+                        <svg
+                          className="w-8 h-8 mb-2 opacity-30"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                          />
+                        </svg>
+                        <p className="text-xs">No folder open</p>
                       </div>
+                    )}
+                  </>
+                )}
 
-                      <ScrollArea className="flex-1">
-                        {stagedChanges.length > 0 && (
-                          <div className="border-b border-border">
-                            <div className="px-3 py-1 bg-neutral-50 text-xs font-medium uppercase tracking-wider text-muted">
-                              Staged ({stagedChanges.length})
-                            </div>
-                            {stagedChanges.map((c) => (
-                              <div
-                                key={c.path}
-                                className="px-3 py-1 text-sm flex items-center gap-2"
+                {sidebarTab === "git" && (
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                    {!daemon.projectPath ? (
+                      <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
+                        <p className="text-xs">No folder open</p>
+                      </div>
+                    ) : !gitStatus?.isRepo ? (
+                      <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
+                        <p className="text-xs font-medium mb-1">
+                          Not a git repository
+                        </p>
+                        <button
+                          onClick={() => daemon.gitInit()}
+                          disabled={daemon.isInitializingGit}
+                          className="px-3 py-1.5 bg-black text-white text-xs hover:bg-black/80 transition-colors disabled:opacity-50"
+                        >
+                          {daemon.isInitializingGit
+                            ? "Initializing..."
+                            : "Initialize Git"}
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="px-3 py-2 border-b border-border bg-neutral-50">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-sm">
+                              {gitStatus.branch}
+                            </span>
+                            <button
+                              onClick={() => daemon.refreshGitStatus()}
+                              className="text-muted hover:text-black"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
                               >
-                                <span className="font-mono text-xs text-green-700">
-                                  {c.status[0]?.toUpperCase()}
-                                </span>
-                                <span className="truncate">{c.path}</span>
-                              </div>
-                            ))}
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={1.5}
+                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                />
+                              </svg>
+                            </button>
                           </div>
-                        )}
-                        {unstagedChanges.length > 0 && (
-                          <div className="border-b border-border">
-                            <div className="px-3 py-1 bg-neutral-50 text-xs font-medium uppercase tracking-wider text-muted flex justify-between">
-                              <span>Changes ({unstagedChanges.length})</span>
-                              <button
-                                onClick={handleStageAll}
-                                className="text-black hover:underline normal-case tracking-normal font-normal"
-                              >
-                                Stage all
-                              </button>
-                            </div>
-                            {unstagedChanges.map((c) => (
-                              <div
-                                key={c.path}
-                                className="px-3 py-1 text-sm flex items-center gap-2 group"
-                              >
-                                <span className="font-mono text-xs text-muted">
-                                  {c.status[0]?.toUpperCase()}
-                                </span>
-                                <span className="truncate flex-1">
-                                  {c.path}
-                                </span>
+                          {!gitStatus.remote && (
+                            <div className="mt-2">
+                              {showRemoteInput ? (
+                                <div className="space-y-2">
+                                  <input
+                                    type="text"
+                                    value={remoteUrl}
+                                    onChange={(e) =>
+                                      setRemoteUrl(e.target.value)
+                                    }
+                                    placeholder="https://github.com/user/repo.git"
+                                    className="w-full px-2 py-1 text-xs border border-border focus:outline-none focus:border-black"
+                                    onKeyDown={(e) => {
+                                      if (
+                                        e.key === "Enter" &&
+                                        remoteUrl.trim()
+                                      ) {
+                                        daemon.gitAddRemote(remoteUrl.trim());
+                                        setRemoteUrl("");
+                                        setShowRemoteInput(false);
+                                      }
+                                      if (e.key === "Escape") {
+                                        setShowRemoteInput(false);
+                                      }
+                                    }}
+                                    autoFocus
+                                  />
+                                </div>
+                              ) : (
                                 <button
-                                  onClick={() => daemon.gitAdd([c.path])}
-                                  className="opacity-0 group-hover:opacity-100 text-xs"
+                                  onClick={() => setShowRemoteInput(true)}
+                                  className="text-xs text-black hover:underline"
                                 >
-                                  +
+                                  + Connect to GitHub
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <ScrollArea className="flex-1">
+                          {stagedChanges.length > 0 && (
+                            <div className="border-b border-border">
+                              <div className="px-3 py-1 bg-neutral-50 text-xs font-medium uppercase tracking-wider text-muted">
+                                Staged ({stagedChanges.length})
+                              </div>
+                              {stagedChanges.map((c) => (
+                                <div
+                                  key={c.path}
+                                  className="px-3 py-1 text-sm flex items-center gap-2"
+                                >
+                                  <span className="font-mono text-xs text-green-700">
+                                    {c.status[0]?.toUpperCase()}
+                                  </span>
+                                  <span className="truncate">{c.path}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {unstagedChanges.length > 0 && (
+                            <div className="border-b border-border">
+                              <div className="px-3 py-1 bg-neutral-50 text-xs font-medium uppercase tracking-wider text-muted flex justify-between">
+                                <span>Changes ({unstagedChanges.length})</span>
+                                <button
+                                  onClick={handleStageAll}
+                                  className="text-black hover:underline normal-case tracking-normal font-normal"
+                                >
+                                  Stage all
                                 </button>
                               </div>
-                            ))}
-                          </div>
-                        )}
-                        {gitStatus.changes.length === 0 && (
-                          <div className="px-3 py-8 text-center text-muted text-sm">
-                            No changes
-                          </div>
-                        )}
-                      </ScrollArea>
+                              {unstagedChanges.map((c) => (
+                                <div
+                                  key={c.path}
+                                  className="px-3 py-1 text-sm flex items-center gap-2 group"
+                                >
+                                  <span className="font-mono text-xs text-muted">
+                                    {c.status[0]?.toUpperCase()}
+                                  </span>
+                                  <span className="truncate flex-1">
+                                    {c.path}
+                                  </span>
+                                  <button
+                                    onClick={() => daemon.gitAdd([c.path])}
+                                    className="opacity-0 group-hover:opacity-100 text-xs"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {gitStatus.changes.length === 0 && (
+                            <div className="px-3 py-8 text-center text-muted text-sm">
+                              No changes
+                            </div>
+                          )}
+                        </ScrollArea>
 
-                      {showCommitInput && stagedChanges.length > 0 && (
-                        <div className="border-t border-border p-3 space-y-2">
-                          <textarea
-                            value={commitMessage}
-                            onChange={(e) => setCommitMessage(e.target.value)}
-                            placeholder="Commit message..."
-                            className="w-full px-2 py-1 text-sm border border-border resize-none focus:outline-none focus:border-black"
-                            rows={2}
-                            onKeyDown={(e) => {
-                              if (
-                                e.key === "Enter" &&
-                                (e.metaKey || e.ctrlKey)
-                              ) {
-                                handleCommit();
-                              }
-                            }}
-                          />
-                          <div className="flex justify-between">
-                            <button
-                              onClick={() => setShowCommitInput(false)}
-                              className="text-xs text-muted"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={handleCommit}
-                              disabled={!commitMessage.trim()}
-                              className="px-3 py-1 bg-black text-white text-xs hover:bg-black/80 transition-colors disabled:opacity-50"
-                            >
-                              Commit
-                            </button>
+                        {showCommitInput && stagedChanges.length > 0 && (
+                          <div className="border-t border-border p-3 space-y-2">
+                            <textarea
+                              value={commitMessage}
+                              onChange={(e) => setCommitMessage(e.target.value)}
+                              placeholder="Commit message..."
+                              className="w-full px-2 py-1 text-sm border border-border resize-none focus:outline-none focus:border-black"
+                              rows={2}
+                              onKeyDown={(e) => {
+                                if (
+                                  e.key === "Enter" &&
+                                  (e.metaKey || e.ctrlKey)
+                                ) {
+                                  handleCommit();
+                                }
+                              }}
+                            />
+                            <div className="flex justify-between">
+                              <button
+                                onClick={() => setShowCommitInput(false)}
+                                className="text-xs text-muted"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={handleCommit}
+                                disabled={!commitMessage.trim()}
+                                className="px-3 py-1 bg-black text-white text-xs hover:bg-black/80 transition-colors disabled:opacity-50"
+                              >
+                                Commit
+                              </button>
+                            </div>
                           </div>
+                        )}
+
+                        <div className="border-t border-border p-3 flex items-center gap-2">
+                          {stagedChanges.length > 0 && !showCommitInput && (
+                            <button
+                              onClick={() => setShowCommitInput(true)}
+                              className="flex-1 px-3 py-1.5 bg-black text-white text-xs hover:bg-black/80 transition-colors"
+                            >
+                              Commit ({stagedChanges.length})
+                            </button>
+                          )}
+                          {gitStatus.ahead > 0 && (
+                            <button
+                              onClick={() => daemon.gitPush()}
+                              className="flex-1 px-3 py-1.5 border border-border text-xs hover:border-black transition-colors"
+                            >
+                              Push ({gitStatus.ahead})
+                            </button>
+                          )}
+                          {gitStatus.behind > 0 && (
+                            <button
+                              onClick={() => daemon.gitPull()}
+                              className="flex-1 px-3 py-1.5 border border-border text-xs hover:border-black transition-colors"
+                            >
+                              Pull ({gitStatus.behind})
+                            </button>
+                          )}
                         </div>
-                      )}
-
-                      <div className="border-t border-border p-3 flex items-center gap-2">
-                        {stagedChanges.length > 0 && !showCommitInput && (
-                          <button
-                            onClick={() => setShowCommitInput(true)}
-                            className="flex-1 px-3 py-1.5 bg-black text-white text-xs hover:bg-black/80 transition-colors"
-                          >
-                            Commit ({stagedChanges.length})
-                          </button>
-                        )}
-                        {gitStatus.ahead > 0 && (
-                          <button
-                            onClick={() => daemon.gitPush()}
-                            className="flex-1 px-3 py-1.5 border border-border text-xs hover:border-black transition-colors"
-                          >
-                            Push ({gitStatus.ahead})
-                          </button>
-                        )}
-                        {gitStatus.behind > 0 && (
-                          <button
-                            onClick={() => daemon.gitPull()}
-                            className="flex-1 px-3 py-1.5 border border-border text-xs hover:border-black transition-colors"
-                          >
-                            Pull ({gitStatus.behind})
-                          </button>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </aside>
-            <div
-              onMouseDown={() => setResizing("sidebar")}
-              className={`w-1 cursor-col-resize hover:bg-black/20 transition-colors ${resizing === "sidebar" ? "bg-black/20" : ""}`}
-            />
-          </>
-        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </aside>
+              <div
+                onMouseDown={() => setResizing("sidebar")}
+                className={`w-1 cursor-col-resize hover:bg-black/20 transition-colors ${resizing === "sidebar" ? "bg-black/20" : ""}`}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
           {selectedFile && (
@@ -918,26 +958,132 @@ export default function EditorPage() {
           )}
         </div>
 
-        {showRightPanel && (
-          <>
-            <div
-              onMouseDown={() => setResizing("right")}
-              className={`w-1 cursor-col-resize hover:bg-black/20 transition-colors ${resizing === "right" ? "bg-black/20" : ""}`}
-            />
-            <aside
-              style={{ width: rightPanelWidth }}
-              className="border-l border-border flex flex-col flex-shrink-0 overflow-hidden"
+        <AnimatePresence mode="wait">
+          {showRightPanel && (
+            <motion.div
+              key="right-panel-container"
+              initial={
+                prefersReducedMotion
+                  ? { opacity: 1 }
+                  : { x: rightPanelWidth, opacity: 0 }
+              }
+              animate={{ x: 0, opacity: 1 }}
+              exit={
+                prefersReducedMotion
+                  ? { opacity: 0 }
+                  : { x: rightPanelWidth, opacity: 0 }
+              }
+              transition={
+                prefersReducedMotion ? INSTANT_TRANSITION : PANEL_SPRING
+              }
+              className="flex flex-shrink-0"
+              style={{
+                willChange: prefersReducedMotion
+                  ? undefined
+                  : "transform, opacity",
+              }}
             >
-              <div className="flex items-center border-b border-border flex-shrink-0 bg-white">
-                <button
-                  onClick={() => setRightTab("opencode")}
-                  className={`group flex-1 flex items-center justify-center gap-1.5 h-9 px-3 text-[11px] font-mono font-medium transition-colors border-r border-border ${
-                    rightTab === "opencode"
-                      ? "text-black border-b-2 border-black -mb-px"
-                      : "text-muted hover:text-black"
-                  }`}
-                >
-                  <div className="relative flex items-center">
+              <div
+                onMouseDown={() => setResizing("right")}
+                className={`w-1 cursor-col-resize hover:bg-black/20 transition-colors ${resizing === "right" ? "bg-black/20" : ""}`}
+              />
+              <aside
+                style={{ width: rightPanelWidth }}
+                className="border-l border-border flex flex-col flex-shrink-0 overflow-hidden"
+              >
+                <div className="flex items-center border-b border-border flex-shrink-0 bg-white">
+                  <button
+                    onClick={() => setRightTab("opencode")}
+                    className={`group flex-1 flex items-center justify-center gap-1.5 h-9 px-3 text-[11px] font-mono font-medium transition-colors border-r border-border ${
+                      rightTab === "opencode"
+                        ? "text-black border-b-2 border-black -mb-px"
+                        : "text-muted hover:text-black"
+                    }`}
+                  >
+                    <div className="relative flex items-center">
+                      <svg
+                        className="size-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path
+                          strokeLinecap="square"
+                          strokeLinejoin="miter"
+                          d="M12 8V4H8"
+                        />
+                        <rect
+                          width="16"
+                          height="12"
+                          x="4"
+                          y="8"
+                          strokeLinecap="square"
+                          strokeLinejoin="miter"
+                        />
+                        <path
+                          strokeLinecap="square"
+                          strokeLinejoin="miter"
+                          d="M2 14h2"
+                        />
+                        <path
+                          strokeLinecap="square"
+                          strokeLinejoin="miter"
+                          d="M20 14h2"
+                        />
+                        <path
+                          strokeLinecap="square"
+                          strokeLinejoin="miter"
+                          d="M15 13v2"
+                        />
+                        <path
+                          strokeLinecap="square"
+                          strokeLinejoin="miter"
+                          d="M9 13v2"
+                        />
+                      </svg>
+                    </div>
+                    Agent
+                  </button>
+                  <button
+                    onClick={() => setRightTab("compile")}
+                    className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 text-[11px] font-mono font-medium transition-colors border-r border-border ${
+                      rightTab === "compile"
+                        ? "text-black border-b-2 border-black -mb-px"
+                        : "text-muted hover:text-black"
+                    }`}
+                  >
+                    <svg
+                      className="size-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <polyline
+                        points="4 17 10 11 4 5"
+                        strokeLinecap="square"
+                        strokeLinejoin="miter"
+                      />
+                      <line
+                        x1="12"
+                        y1="19"
+                        x2="20"
+                        y2="19"
+                        strokeLinecap="square"
+                        strokeLinejoin="miter"
+                      />
+                    </svg>
+                    Output
+                  </button>
+                  <button
+                    onClick={() => setRightTab("terminal")}
+                    className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 text-[11px] font-mono font-medium transition-colors ${
+                      rightTab === "terminal"
+                        ? "text-black border-b-2 border-black -mb-px"
+                        : "text-muted hover:text-black"
+                    }`}
+                  >
                     <svg
                       className="size-3.5"
                       fill="none"
@@ -946,135 +1092,54 @@ export default function EditorPage() {
                       strokeWidth="2"
                     >
                       <path
-                        strokeLinecap="square"
-                        strokeLinejoin="miter"
-                        d="M12 8V4H8"
-                      />
-                      <rect
-                        width="16"
-                        height="12"
-                        x="4"
-                        y="8"
+                        d="M4 2h10l6 6v14H4V2z"
                         strokeLinecap="square"
                         strokeLinejoin="miter"
                       />
                       <path
+                        d="M14 2v6h6"
                         strokeLinecap="square"
                         strokeLinejoin="miter"
-                        d="M2 14h2"
-                      />
-                      <path
-                        strokeLinecap="square"
-                        strokeLinejoin="miter"
-                        d="M20 14h2"
-                      />
-                      <path
-                        strokeLinecap="square"
-                        strokeLinejoin="miter"
-                        d="M15 13v2"
-                      />
-                      <path
-                        strokeLinecap="square"
-                        strokeLinejoin="miter"
-                        d="M9 13v2"
                       />
                     </svg>
-                  </div>
-                  Agent
-                </button>
-                <button
-                  onClick={() => setRightTab("compile")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 text-[11px] font-mono font-medium transition-colors border-r border-border ${
-                    rightTab === "compile"
-                      ? "text-black border-b-2 border-black -mb-px"
-                      : "text-muted hover:text-black"
-                  }`}
-                >
-                  <svg
-                    className="size-3.5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <polyline
-                      points="4 17 10 11 4 5"
-                      strokeLinecap="square"
-                      strokeLinejoin="miter"
-                    />
-                    <line
-                      x1="12"
-                      y1="19"
-                      x2="20"
-                      y2="19"
-                      strokeLinecap="square"
-                      strokeLinejoin="miter"
-                    />
-                  </svg>
-                  Output
-                </button>
-                <button
-                  onClick={() => setRightTab("terminal")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 text-[11px] font-mono font-medium transition-colors ${
-                    rightTab === "terminal"
-                      ? "text-black border-b-2 border-black -mb-px"
-                      : "text-muted hover:text-black"
-                  }`}
-                >
-                  <svg
-                    className="size-3.5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path
-                      d="M4 2h10l6 6v14H4V2z"
-                      strokeLinecap="square"
-                      strokeLinejoin="miter"
-                    />
-                    <path
-                      d="M14 2v6h6"
-                      strokeLinecap="square"
-                      strokeLinejoin="miter"
-                    />
-                  </svg>
-                  PDF
-                </button>
-              </div>
+                    PDF
+                  </button>
+                </div>
 
-              <div className="flex-1 min-h-0 overflow-hidden">
-                {rightTab === "opencode" && (
-                  <OpenCodePanel
-                    className="h-full"
-                    baseUrl={`http://localhost:${opencodePort}`}
-                    directory={daemon.projectPath ?? undefined}
-                    autoConnect={
-                      opencodeDaemonStatus === "running" && !!daemon.projectPath
-                    }
-                    daemonStatus={opencodeDaemonStatus}
-                    onRestartOpenCode={restartOpencode}
-                  />
-                )}
-                {rightTab === "compile" && (
-                  <ScrollArea className="flex-1 p-3 font-mono text-xs bg-neutral-50">
-                    {daemon.compileOutput || (
-                      <span className="text-muted">
-                        Click Compile to build your document
-                      </span>
-                    )}
-                  </ScrollArea>
-                )}
-                {rightTab === "terminal" && (
-                  <Terminal
-                    projectPath={daemon.projectPath ?? undefined}
-                    className="h-full"
-                  />
-                )}
-              </div>
-            </aside>
-          </>
-        )}
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  {rightTab === "opencode" && (
+                    <OpenCodePanel
+                      className="h-full"
+                      baseUrl={`http://localhost:${opencodePort}`}
+                      directory={daemon.projectPath ?? undefined}
+                      autoConnect={
+                        opencodeDaemonStatus === "running" &&
+                        !!daemon.projectPath
+                      }
+                      daemonStatus={opencodeDaemonStatus}
+                      onRestartOpenCode={restartOpencode}
+                    />
+                  )}
+                  {rightTab === "compile" && (
+                    <ScrollArea className="flex-1 p-3 font-mono text-xs bg-neutral-50">
+                      {daemon.compileOutput || (
+                        <span className="text-muted">
+                          Click Compile to build your document
+                        </span>
+                      )}
+                    </ScrollArea>
+                  )}
+                  {rightTab === "terminal" && (
+                    <Terminal
+                      projectPath={daemon.projectPath ?? undefined}
+                      className="h-full"
+                    />
+                  )}
+                </div>
+              </aside>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
