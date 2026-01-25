@@ -30,6 +30,8 @@ interface GitState {
   gitStatus: GitStatus | null;
   isInitializingGit: boolean;
   gitInitResult: GitInitResult | null;
+  isPushing: boolean;
+  isPulling: boolean;
 }
 
 interface FileChangeEvent {
@@ -66,6 +68,8 @@ export function useTauriDaemon() {
     gitStatus: null,
     isInitializingGit: false,
     gitInitResult: null,
+    isPushing: false,
+    isPulling: false,
   });
 
   const setProject = useCallback(async (path: string) => {
@@ -100,7 +104,8 @@ export function useTauriDaemon() {
       const fullPath = `${projectState.projectPath}/${relativePath}`;
       try {
         return await invoke<string>("read_file", { path: fullPath });
-      } catch {
+      } catch (error) {
+        console.error("Failed to read file:", error);
         return null;
       }
     },
@@ -199,39 +204,60 @@ export function useTauriDaemon() {
   );
 
   const gitCommit = useCallback(
-    async (message: string) => {
-      if (!projectState.projectPath) return;
+    async (message: string): Promise<{ success: boolean; error?: string }> => {
+      if (!projectState.projectPath)
+        return { success: false, error: "No project" };
 
       try {
         await invoke("git_commit", { dir: projectState.projectPath, message });
         await refreshGitStatus();
+        return { success: true };
       } catch (error) {
         console.error("Failed to git commit:", error);
+        return { success: false, error: String(error) };
       }
     },
     [projectState.projectPath, refreshGitStatus],
   );
 
-  const gitPush = useCallback(async () => {
-    if (!projectState.projectPath) return;
+  const gitPush = useCallback(async (): Promise<{
+    success: boolean;
+    error?: string;
+  }> => {
+    if (!projectState.projectPath)
+      return { success: false, error: "No project" };
 
+    setGitState((s) => ({ ...s, isPushing: true }));
     try {
       await invoke("git_push", { dir: projectState.projectPath });
       await refreshGitStatus();
+      return { success: true };
     } catch (error) {
       console.error("Failed to git push:", error);
+      return { success: false, error: String(error) };
+    } finally {
+      setGitState((s) => ({ ...s, isPushing: false }));
     }
   }, [projectState.projectPath, refreshGitStatus]);
 
-  const gitPull = useCallback(async () => {
-    if (!projectState.projectPath) return;
+  const gitPull = useCallback(async (): Promise<{
+    success: boolean;
+    error?: string;
+  }> => {
+    if (!projectState.projectPath)
+      return { success: false, error: "No project" };
 
+    setGitState((s) => ({ ...s, isPulling: true }));
     try {
       await invoke("git_pull", { dir: projectState.projectPath });
       // Parallel refresh after pull
       await Promise.all([refreshGitStatus(), refreshFiles()]);
+      return { success: true };
     } catch (error) {
       console.error("Failed to git pull:", error);
+      return { success: false, error: String(error) };
+    } finally {
+      setGitState((s) => ({ ...s, isPulling: false }));
     }
   }, [projectState.projectPath, refreshGitStatus, refreshFiles]);
 
@@ -317,7 +343,9 @@ export function useTauriDaemon() {
                   convertFileNode(f as Parameters<typeof convertFileNode>[0]),
                 );
                 setProjectState((s) => ({ ...s, files }));
-              } catch {}
+              } catch (error) {
+                console.error("Failed to refresh file tree:", error);
+              }
             }
           }
 
@@ -340,7 +368,9 @@ export function useTauriDaemon() {
 
     return () => {
       unlisten?.();
-      invoke("stop_watch").catch(() => {});
+      invoke("stop_watch").catch((error) =>
+        console.error("Failed to stop watch:", error),
+      );
     };
   }, [projectState.projectPath, refreshGitStatusInternal]);
 
@@ -361,6 +391,8 @@ export function useTauriDaemon() {
       gitStatus: gitState.gitStatus,
       isInitializingGit: gitState.isInitializingGit,
       gitInitResult: gitState.gitInitResult,
+      isPushing: gitState.isPushing,
+      isPulling: gitState.isPulling,
 
       lastFileChange,
 

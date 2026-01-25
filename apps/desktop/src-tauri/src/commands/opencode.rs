@@ -1,12 +1,12 @@
-use std::process::{Child, Stdio};
+use std::process::Stdio;
 use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
-use tokio::process::Command as TokioCommand;
+use tokio::process::{Child as TokioChild, Command as TokioCommand};
 use tokio::time::{sleep, Duration};
 
 pub struct OpenCodeState {
-    pub process: Mutex<Option<Child>>,
+    pub process: Mutex<Option<TokioChild>>,
     pub port: Mutex<u16>,
 }
 
@@ -90,9 +90,8 @@ pub async fn opencode_start(
 ) -> Result<OpenCodeStatus, String> {
     {
         let mut process_guard = state.process.lock().map_err(|e| e.to_string())?;
-        if let Some(mut existing) = process_guard.take() {
-            existing.kill().ok();
-            existing.wait().ok();
+        if let Some(existing) = process_guard.take() {
+            drop(existing);
         }
     }
 
@@ -101,11 +100,12 @@ pub async fn opencode_start(
     let port = port.unwrap_or(4096);
     *state.port.lock().map_err(|e| e.to_string())? = port;
 
-    let mut child = std::process::Command::new(&opencode_path)
+    let mut child = TokioCommand::new(&opencode_path)
         .args(["serve", "--port", &port.to_string()])
         .current_dir(&directory)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
+        .kill_on_drop(true)
         .spawn()
         .map_err(|e| format!("Failed to start OpenCode: {}", e))?;
 
@@ -133,9 +133,8 @@ pub async fn opencode_stop(
 ) -> Result<(), String> {
     let mut process = state.process.lock().map_err(|e| e.to_string())?;
 
-    if let Some(mut child) = process.take() {
-        child.kill().ok();
-        child.wait().ok();
+    if let Some(child) = process.take() {
+        drop(child);
     }
 
     app.emit("opencode-status", "stopped").ok();

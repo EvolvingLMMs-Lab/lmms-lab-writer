@@ -1,11 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useTauriDaemon } from "@/lib/tauri";
 import { useAuth } from "@/lib/auth";
+import { useToast } from "@/components/ui/toast";
 import { FileTree } from "@/components/editor/file-tree";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Spinner } from "@/components/ui/spinner";
+import { EditorSkeleton } from "@/components/editor/editor-skeleton";
+import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { LoginForm, UserDropdown } from "@/components/auth";
@@ -29,7 +33,10 @@ const OpenCodePanel = dynamic(
     import("@/components/opencode/opencode-panel").then(
       (mod) => mod.OpenCodePanel,
     ),
-  { ssr: false },
+  {
+    ssr: false,
+    loading: () => <OpenCodePanelSkeleton />,
+  },
 );
 
 const OpenCodeDisconnectedDialog = dynamic(
@@ -61,6 +68,7 @@ export default function EditorPage() {
   const daemon = useTauriDaemon();
   const prefersReducedMotion = useReducedMotion();
   const auth = useAuth();
+  const { toast } = useToast();
 
   const [selectedFile, setSelectedFile] = useState<string>();
   const [fileContent, setFileContent] = useState<string>("");
@@ -98,10 +106,23 @@ export default function EditorPage() {
 
   const contentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const opencodeStartedForPathRef = useRef<string | null>(null);
+  const savingVisualTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isLoadingFile, setIsLoadingFile] = useState(false);
+
+  // RAF-based resize refs for 60fps performance
+  const sidebarWidthRef = useRef(sidebarWidth);
+  const rightPanelWidthRef = useRef(rightPanelWidth);
+  const rafIdRef = useRef<number | null>(null);
 
   const gitStatus = daemon.gitStatus;
-  const stagedChanges = gitStatus?.changes.filter((c) => c.staged) ?? [];
-  const unstagedChanges = gitStatus?.changes.filter((c) => !c.staged) ?? [];
+  const stagedChanges = useMemo(
+    () => gitStatus?.changes.filter((c) => c.staged) ?? [],
+    [gitStatus?.changes],
+  );
+  const unstagedChanges = useMemo(
+    () => gitStatus?.changes.filter((c) => !c.staged) ?? [],
+    [gitStatus?.changes],
+  );
 
   const checkOpencodeStatus = useCallback(async () => {
     try {
@@ -194,7 +215,9 @@ export default function EditorPage() {
       }
     };
 
-    initOpencode();
+    initOpencode().catch((error) =>
+      console.error("Failed to initialize OpenCode:", error),
+    );
   }, [daemon.projectPath, checkOpencodeStatus, startOpencode]);
 
   useEffect(() => {
@@ -203,31 +226,67 @@ export default function EditorPage() {
     const MIN_PANEL_WIDTH = 200;
     const MAX_SIDEBAR_WIDTH = 480;
 
+    document.documentElement.style.setProperty(
+      "--sidebar-width",
+      `${sidebarWidth}px`,
+    );
+    document.documentElement.style.setProperty(
+      "--right-panel-width",
+      `${rightPanelWidth}px`,
+    );
+
     const handleMouseMove = (e: MouseEvent) => {
-      if (resizing === "sidebar") {
-        setSidebarWidth(
-          Math.min(Math.max(e.clientX, MIN_PANEL_WIDTH), MAX_SIDEBAR_WIDTH),
-        );
-      } else if (resizing === "right") {
-        const maxRightWidth = Math.floor(window.innerWidth / 2);
-        setRightPanelWidth(
-          Math.min(
+      if (rafIdRef.current !== null) return;
+
+      rafIdRef.current = requestAnimationFrame(() => {
+        if (resizing === "sidebar") {
+          const newWidth = Math.min(
+            Math.max(e.clientX, MIN_PANEL_WIDTH),
+            MAX_SIDEBAR_WIDTH,
+          );
+          sidebarWidthRef.current = newWidth;
+          document.documentElement.style.setProperty(
+            "--sidebar-width",
+            `${newWidth}px`,
+          );
+        } else if (resizing === "right") {
+          const maxRightWidth = Math.floor(window.innerWidth / 2);
+          const newWidth = Math.min(
             Math.max(window.innerWidth - e.clientX, MIN_PANEL_WIDTH),
             maxRightWidth,
-          ),
-        );
-      }
+          );
+          rightPanelWidthRef.current = newWidth;
+          document.documentElement.style.setProperty(
+            "--right-panel-width",
+            `${newWidth}px`,
+          );
+        }
+        rafIdRef.current = null;
+      });
     };
 
-    const handleMouseUp = () => setResizing(null);
+    const handleMouseUp = () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      setSidebarWidth(sidebarWidthRef.current);
+      setRightPanelWidth(rightPanelWidthRef.current);
+      document.documentElement.style.removeProperty("--sidebar-width");
+      document.documentElement.style.removeProperty("--right-panel-width");
+      setResizing(null);
+    };
 
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
     };
-  }, [resizing]);
+  }, [resizing, sidebarWidth, rightPanelWidth]);
 
   useEffect(() => {
     const COMPACT_THRESHOLD = 1100;
@@ -268,12 +327,15 @@ export default function EditorPage() {
       setBinaryPreviewUrl(null);
 
       if (fileType === "text") {
+        setIsLoadingFile(true);
         try {
           const content = await daemon.readFile(path);
           setFileContent(content ?? "");
         } catch (err) {
           console.error("Failed to read file:", err);
           setFileContent("");
+        } finally {
+          setIsLoadingFile(false);
         }
       } else {
         const fullPath = daemon.projectPath
@@ -316,17 +378,35 @@ export default function EditorPage() {
   const handleContentChange = useCallback(
     (content: string) => {
       setFileContent(content);
-      setIsSaving(true);
+
+      if (savingVisualTimeoutRef.current) {
+        clearTimeout(savingVisualTimeoutRef.current);
+      }
+
+      savingVisualTimeoutRef.current = setTimeout(() => {
+        setIsSaving(true);
+      }, 300);
 
       if (contentSaveTimeoutRef.current) {
         clearTimeout(contentSaveTimeoutRef.current);
       }
 
+      // Capture the current file at callback creation time to prevent race condition
+      // when user switches files rapidly during debounce window
+      const fileToSave = selectedFile;
       contentSaveTimeoutRef.current = setTimeout(async () => {
-        if (selectedFile) {
-          await daemon.writeFile(selectedFile, content);
-          setIsSaving(false);
+        if (fileToSave) {
+          try {
+            await daemon.writeFile(fileToSave, content);
+          } catch (error) {
+            console.error("Failed to save file:", error);
+          }
         }
+        if (savingVisualTimeoutRef.current) {
+          clearTimeout(savingVisualTimeoutRef.current);
+          savingVisualTimeoutRef.current = null;
+        }
+        setIsSaving(false);
       }, 500);
     },
     [selectedFile, daemon],
@@ -361,12 +441,17 @@ export default function EditorPage() {
     }
   }, [gitStatus, daemon]);
 
-  const handleCommit = useCallback(() => {
+  const handleCommit = useCallback(async () => {
     if (!commitMessage.trim()) return;
-    daemon.gitCommit(commitMessage.trim());
-    setCommitMessage("");
-    setShowCommitInput(false);
-  }, [commitMessage, daemon]);
+    const result = await daemon.gitCommit(commitMessage.trim());
+    if (result.success) {
+      toast("Changes committed", "success");
+      setCommitMessage("");
+      setShowCommitInput(false);
+    } else {
+      toast(result.error || "Failed to commit", "error");
+    }
+  }, [commitMessage, daemon, toast]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -489,7 +574,13 @@ export default function EditorPage() {
               }}
             >
               <aside
-                style={{ width: sidebarWidth }}
+                style={{
+                  width:
+                    resizing === "sidebar"
+                      ? "var(--sidebar-width)"
+                      : sidebarWidth,
+                  willChange: resizing === "sidebar" ? "width" : undefined,
+                }}
                 className="border-r border-border flex flex-col flex-shrink-0 overflow-hidden"
               >
                 <div className="flex items-center border-b border-border">
@@ -530,13 +621,15 @@ export default function EditorPage() {
                         >
                           {daemon.projectPath.split("/").pop()}
                         </div>
-                        <FileTree
-                          files={daemon.files}
-                          selectedFile={selectedFile}
-                          highlightedFile={highlightedFile}
-                          onFileSelect={handleFileSelect}
-                          className="flex-1 min-h-0 overflow-hidden"
-                        />
+                        <EditorErrorBoundary>
+                          <FileTree
+                            files={daemon.files}
+                            selectedFile={selectedFile}
+                            highlightedFile={highlightedFile}
+                            onFileSelect={handleFileSelect}
+                            className="flex-1 min-h-0 overflow-hidden"
+                          />
+                        </EditorErrorBoundary>
                       </>
                     ) : (
                       <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
@@ -774,18 +867,60 @@ export default function EditorPage() {
                           )}
                           {gitStatus.ahead > 0 && (
                             <button
-                              onClick={() => daemon.gitPush()}
-                              className="btn btn-sm btn-secondary flex-1"
+                              onClick={async () => {
+                                const result = await daemon.gitPush();
+                                if (result.success) {
+                                  toast(
+                                    "Changes pushed successfully",
+                                    "success",
+                                  );
+                                } else {
+                                  toast(
+                                    result.error || "Failed to push changes",
+                                    "error",
+                                  );
+                                }
+                              }}
+                              disabled={daemon.isPushing}
+                              className="btn btn-sm btn-secondary flex-1 flex items-center justify-center gap-1.5"
                             >
-                              Push ({gitStatus.ahead})
+                              {daemon.isPushing ? (
+                                <>
+                                  <Spinner className="size-3" />
+                                  <span>Pushing...</span>
+                                </>
+                              ) : (
+                                `Push (${gitStatus.ahead})`
+                              )}
                             </button>
                           )}
                           {gitStatus.behind > 0 && (
                             <button
-                              onClick={() => daemon.gitPull()}
-                              className="btn btn-sm btn-secondary flex-1"
+                              onClick={async () => {
+                                const result = await daemon.gitPull();
+                                if (result.success) {
+                                  toast(
+                                    "Changes pulled successfully",
+                                    "success",
+                                  );
+                                } else {
+                                  toast(
+                                    result.error || "Failed to pull changes",
+                                    "error",
+                                  );
+                                }
+                              }}
+                              disabled={daemon.isPulling}
+                              className="btn btn-sm btn-secondary flex-1 flex items-center justify-center gap-1.5"
                             >
-                              Pull ({gitStatus.behind})
+                              {daemon.isPulling ? (
+                                <>
+                                  <Spinner className="size-3" />
+                                  <span>Pulling...</span>
+                                </>
+                              ) : (
+                                `Pull (${gitStatus.behind})`
+                              )}
                             </button>
                           )}
                         </div>
@@ -864,13 +999,25 @@ export default function EditorPage() {
                   />
                 )}
               </div>
+            ) : isLoadingFile ? (
+              <EditorSkeleton className="flex-1 min-h-0" />
             ) : (
-              <LaTeXEditor
-                content={fileContent}
-                readOnly={false}
-                onContentChange={handleContentChange}
+              <motion.div
+                key={selectedFile}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
                 className="flex-1 min-h-0"
-              />
+              >
+                <EditorErrorBoundary>
+                  <LaTeXEditor
+                    content={fileContent}
+                    readOnly={false}
+                    onContentChange={handleContentChange}
+                    className="h-full"
+                  />
+                </EditorErrorBoundary>
+              </motion.div>
             )
           ) : (
             <div className="flex-1 flex items-center justify-center">
@@ -935,7 +1082,13 @@ export default function EditorPage() {
                 className={`w-1 cursor-col-resize hover:bg-black/20 transition-colors ${resizing === "right" ? "bg-black/20" : ""}`}
               />
               <aside
-                style={{ width: rightPanelWidth }}
+                style={{
+                  width:
+                    resizing === "right"
+                      ? "var(--right-panel-width)"
+                      : rightPanelWidth,
+                  willChange: resizing === "right" ? "width" : undefined,
+                }}
                 className="border-l border-border flex flex-col flex-shrink-0 overflow-hidden"
               >
                 <OpenCodeErrorBoundary onReset={restartOpencode}>
@@ -963,6 +1116,37 @@ export default function EditorPage() {
         onClose={handleCloseDisconnectedDialog}
         onRestart={handleRestartFromDialog}
       />
+    </div>
+  );
+}
+
+function OpenCodePanelSkeleton() {
+  return (
+    <div className="flex flex-col bg-white h-full">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+        <div className="flex items-center gap-2">
+          <div className="size-2 bg-neutral-200 animate-pulse" />
+          <div className="h-4 w-24 bg-neutral-200 animate-pulse" />
+        </div>
+        <div className="h-6 w-12 bg-neutral-200 animate-pulse" />
+      </div>
+      <div className="flex-1 p-3 space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="space-y-2">
+            <div
+              className="h-4 bg-neutral-100 animate-pulse"
+              style={{ width: `${60 + i * 10}%` }}
+            />
+            <div
+              className="h-4 bg-neutral-100 animate-pulse"
+              style={{ width: `${40 + i * 10}%` }}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-border p-3">
+        <div className="h-16 bg-neutral-50 border border-border animate-pulse" />
+      </div>
     </div>
   );
 }
