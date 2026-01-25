@@ -78,7 +78,7 @@ export default async function DocPage({
       <Header />
 
       <main className="py-12 px-6">
-        <article className="max-w-3xl mx-auto">
+        <article className="max-w-5xl mx-auto">
           <Link
             href="/docs"
             className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground mb-8"
@@ -96,8 +96,8 @@ export default async function DocPage({
         </article>
       </main>
 
-      <footer className="py-12 px-6 border-t border-border">
-        <div className="max-w-4xl mx-auto text-center text-sm text-muted">
+      <footer className="border-t border-border px-6">
+        <div className="max-w-5xl mx-auto py-6 text-sm text-muted">
           <Link
             href="https://github.com/Luodian/latex-writer"
             className="hover:text-foreground transition-colors"

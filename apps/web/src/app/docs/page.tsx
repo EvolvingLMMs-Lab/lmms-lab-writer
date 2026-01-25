@@ -32,8 +32,8 @@ export default function DocsPage() {
     <div className="min-h-screen flex flex-col">
       <Header />
 
-      <main className="flex-1 py-16">
-        <div className="max-w-5xl mx-auto px-6">
+      <main className="flex-1 py-16 px-6">
+        <div className="max-w-5xl mx-auto">
           <h1 className="text-2xl font-medium tracking-tight mb-10">
             Documentation
           </h1>
@@ -60,8 +60,8 @@ export default function DocsPage() {
         </div>
       </main>
 
-      <footer className="border-t border-border">
-        <div className="max-w-5xl mx-auto px-6 py-6 text-sm text-muted">
+      <footer className="border-t border-border px-6">
+        <div className="max-w-5xl mx-auto py-6 text-sm text-muted">
           <Link
             href="https://github.com/Luodian/latex-writer"
             className="hover:text-foreground transition-colors"

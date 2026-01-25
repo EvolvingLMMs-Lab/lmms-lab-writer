@@ -40,8 +40,8 @@ export async function Header() {
   const user = await getUser();
 
   return (
-    <header className="border-b border-border bg-background sticky top-0 z-50">
-      <div className="w-full max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+    <header className="border-b border-border bg-background sticky top-0 z-50 px-6">
+      <div className="w-full max-w-5xl mx-auto py-4 flex items-center justify-between">
         <Link
           href="/"
           className="text-lg font-bold tracking-tight flex items-center gap-3"

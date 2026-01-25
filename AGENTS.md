@@ -96,6 +96,33 @@ Monochrome only. No colors, no rounded corners.
 
 See `docs/DESIGN.md` for full design system documentation.
 
+### Layout Alignment (OCD-Level Precision)
+
+All visual elements must align perfectly across the site. Use consistent container patterns:
+
+```
+Standard Pattern (for sections, main content):
+<section className="px-6">           // Padding OUTSIDE
+  <div className="max-w-5xl mx-auto"> // Container INSIDE
+    {content}
+  </div>
+</section>
+
+For full-width elements with border (header, footer):
+<header className="border-b border-border px-6">  // Padding on element
+  <div className="max-w-5xl mx-auto">              // Container without px
+    {content}
+  </div>
+</header>
+```
+
+**Rules:**
+
+- `px-6` goes on the OUTER element, not inside `max-w-5xl`
+- All pages use `max-w-5xl` for main container width
+- Inner content can use `max-w-2xl`, `max-w-sm` etc. for reading width
+- This ensures logo, content, and footer all share the same left/right edge
+
 ## Anti-Patterns
 
 | Pattern                       | Why                                 |
