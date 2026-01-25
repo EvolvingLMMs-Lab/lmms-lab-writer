@@ -11,13 +11,17 @@ AI-native LaTeX editor. Tauri v2 desktop application - let Claude, Cursor, and C
 ```
 lmms-lab-writer/
 ├── apps/
-│   └── desktop/              # Tauri v2 desktop app
-│       ├── src/              # Next.js frontend (static export)
-│       │   ├── app/page.tsx  # Main editor page
-│       │   ├── components/   # React components
-│       │   └── lib/tauri/    # Tauri IPC hooks
-│       └── src-tauri/        # Rust backend
-│           └── src/commands/ # Tauri commands (fs, git, compile, terminal, opencode)
+│   ├── desktop/              # Tauri v2 desktop app
+│   │   ├── src/              # Next.js frontend (static export)
+│   │   │   ├── app/page.tsx  # Main editor page
+│   │   │   ├── components/   # React components
+│   │   │   └── lib/tauri/    # Tauri IPC hooks
+│   │   └── src-tauri/        # Rust backend
+│   │       └── src/commands/ # Tauri commands (fs, git, compile, terminal, opencode)
+│   └── web/                  # Marketing website (Vercel)
+│       ├── src/app/          # Next.js pages (landing, docs, auth)
+│       ├── content/docs/     # MDX documentation
+│       └── src/lib/supabase/ # Supabase auth client
 ├── packages/
 │   └── shared/               # Shared TypeScript types
 ├── turbo.json
@@ -25,6 +29,8 @@ lmms-lab-writer/
 ```
 
 ## Key Files
+
+### Desktop App
 
 | Task             | Location                                              | Notes                                |
 | ---------------- | ----------------------------------------------------- | ------------------------------------ |
@@ -36,18 +42,32 @@ lmms-lab-writer/
 | Rust Commands    | `apps/desktop/src-tauri/src/commands/`                | fs, git, compile, terminal, opencode |
 | Shared Types     | `packages/shared/src/index.ts`                        | FileNode, GitStatus, etc.            |
 
+### Website
+
+| Task          | Location                             | Notes                        |
+| ------------- | ------------------------------------ | ---------------------------- |
+| Landing Page  | `apps/web/src/app/page.tsx`          | Hero, features, CTA          |
+| Download Page | `apps/web/src/app/download/page.tsx` | Platform downloads           |
+| Docs Index    | `apps/web/src/app/docs/page.tsx`     | Documentation navigation     |
+| Auth Pages    | `apps/web/src/app/(auth)/`           | Login, signup                |
+| Supabase      | `apps/web/src/lib/supabase/`         | Auth client (browser/server) |
+| MDX Docs      | `apps/web/content/docs/`             | Documentation content        |
+
 ## Commands
 
 ```bash
 # Development
-pnpm tauri:dev        # Run Tauri app in dev mode
+pnpm tauri:dev                              # Run Tauri desktop app in dev mode
+pnpm --filter @lmms-lab/writer-web dev      # Run website in dev mode
 
 # Build
-pnpm build            # Build all packages
-pnpm tauri:build      # Build .app/.dmg
+pnpm build                                  # Build all packages
+pnpm tauri:build                            # Build desktop .app/.dmg
+pnpm --filter @lmms-lab/writer-web build    # Build website
 
 # Verify
-cd apps/desktop/src-tauri && cargo check   # Check Rust
+cd apps/desktop/src-tauri && cargo check    # Check Rust
+cd apps/web && pnpm tsc --noEmit            # Check website TypeScript
 ```
 
 ## Conventions

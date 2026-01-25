@@ -1,0 +1,121 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import fs from "fs";
+import path from "path";
+import matter from "gray-matter";
+import { MDXRemote } from "next-mdx-remote/rsc";
+import rehypeSlug from "rehype-slug";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import rehypePrettyCode from "rehype-pretty-code";
+
+const contentDir = path.join(process.cwd(), "content/docs");
+
+function getDocBySlug(slug: string) {
+  const filePath = path.join(contentDir, `${slug}.mdx`);
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  const fileContents = fs.readFileSync(filePath, "utf8");
+  const { data, content } = matter(fileContents);
+  return { frontmatter: data, content };
+}
+
+function getAllDocSlugs() {
+  if (!fs.existsSync(contentDir)) {
+    return [];
+  }
+  const files = fs.readdirSync(contentDir);
+  return files
+    .filter((file) => file.endsWith(".mdx"))
+    .map((file) => file.replace(/\.mdx$/, ""));
+}
+
+export async function generateStaticParams() {
+  const slugs = getAllDocSlugs();
+  return slugs.map((slug) => ({ slug }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const doc = getDocBySlug(slug);
+  if (!doc) {
+    return { title: "Not Found" };
+  }
+  return {
+    title: `${doc.frontmatter.title} | LMMs-Lab Writer`,
+    description: doc.frontmatter.description,
+  };
+}
+
+const mdxOptions = {
+  rehypePlugins: [
+    rehypeSlug,
+    [rehypeAutolinkHeadings, { behavior: "wrap" }],
+    [rehypePrettyCode, { theme: "github-dark" }],
+  ],
+};
+
+export default async function DocPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const doc = getDocBySlug(slug);
+
+  if (!doc) {
+    notFound();
+  }
+
+  return (
+    <div className="min-h-screen">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
+        <div className="max-w-4xl mx-auto px-6 h-14 flex items-center">
+          <Link
+            href="/"
+            className="font-mono text-sm font-semibold tracking-tight"
+          >
+            LMMs-Lab Writer
+          </Link>
+        </div>
+      </header>
+
+      <main className="pt-32 pb-20 px-6">
+        <article className="max-w-3xl mx-auto">
+          <Link
+            href="/docs"
+            className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground mb-8"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to docs
+          </Link>
+
+          <div className="prose prose-neutral max-w-none">
+            <MDXRemote
+              source={doc.content}
+              options={{ mdxOptions: mdxOptions as never }}
+            />
+          </div>
+        </article>
+      </main>
+
+      <footer className="py-12 px-6 border-t border-border">
+        <div className="max-w-4xl mx-auto text-center text-sm text-muted">
+          <Link
+            href="https://github.com/LMMs-Lab/lmms-lab-writer"
+            className="hover:text-foreground transition-colors"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Edit on GitHub
+          </Link>
+        </div>
+      </footer>
+    </div>
+  );
+}
