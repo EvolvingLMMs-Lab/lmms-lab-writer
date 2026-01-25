@@ -1,0 +1,202 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #fafafa;
+  --foreground: #0a0a0a;
+  --border: #e5e5e5;
+  --muted: #737373;
+  --surface: #171717;
+  --surface-text: #fafafa;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d4d4d4 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #d4d4d4;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #a3a3a3;
+}
+
+/* Buttons */
+.btn {
+  @apply px-6 py-3 font-mono text-sm uppercase tracking-wider transition-all duration-150 flex items-center justify-center gap-2;
+  @apply border border-black;
+  box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 1);
+}
+
+.btn:hover {
+  box-shadow: 2px 2px 0 0 rgba(0, 0, 0, 1);
+  transform: translate(1px, 1px);
+}
+
+.btn:active {
+  box-shadow: 0 0 0 0 rgba(0, 0, 0, 1);
+  transform: translate(3px, 3px);
+}
+
+.btn-primary {
+  @apply bg-black text-white;
+}
+
+.btn-primary:hover {
+  @apply bg-neutral-800;
+}
+
+.btn-secondary {
+  @apply bg-white text-black;
+}
+
+.btn-secondary:hover {
+  @apply bg-neutral-100;
+}
+
+.btn-sm {
+  @apply px-4 py-2 text-xs;
+  box-shadow: 2px 2px 0 0 rgba(0, 0, 0, 1);
+}
+
+.btn-sm:hover {
+  box-shadow: 1px 1px 0 0 rgba(0, 0, 0, 1);
+  transform: translate(1px, 1px);
+}
+
+/* Input */
+.input {
+  @apply w-full px-4 py-3 border border-border focus:border-foreground focus:outline-none transition-colors bg-white;
+}
+
+/* Badge */
+.badge {
+  @apply inline-flex items-center bg-black text-white px-2 py-0.5 text-xs font-mono uppercase tracking-widest;
+}
+
+/* Animations */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+.delay-100 {
+  animation-delay: 100ms;
+}
+.delay-200 {
+  animation-delay: 200ms;
+}
+.delay-300 {
+  animation-delay: 300ms;
+}
+.delay-400 {
+  animation-delay: 400ms;
+}
+.delay-500 {
+  animation-delay: 500ms;
+}
+
+/* Feature cards */
+.feature-card {
+  transition: all 0.2s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Link underline animation */
+.link-underline {
+  position: relative;
+}
+
+.link-underline::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background-color: currentColor;
+  transition: width 0.2s ease;
+}
+
+.link-underline:hover::after {
+  width: 100%;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-fade-in {
+    animation: none;
+    opacity: 1;
+  }
+
+  .feature-card:hover {
+    transform: none;
+  }
+}
+
+/* Prose overrides for docs */
+.prose pre {
+  @apply border border-border;
+}
+
+.prose code:not(pre code) {
+  @apply bg-neutral-100 px-1.5 py-0.5 text-sm;
+}
+
+.prose a {
+  @apply text-foreground underline underline-offset-2;
+}
+
+.prose a:hover {
+  @apply text-muted;
+}

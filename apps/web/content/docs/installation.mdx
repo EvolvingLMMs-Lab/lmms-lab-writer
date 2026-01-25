@@ -1,0 +1,60 @@
+---
+title: Installation
+description: How to install LMMs-Lab Writer on your machine.
+---
+
+# Installation
+
+LMMs-Lab Writer is available for macOS, Windows, and Linux.
+
+## Download
+
+Visit the [download page](/download) to get the latest version for your platform.
+
+### macOS
+
+1. Download the `.dmg` file for your architecture:
+   - **Apple Silicon** (M1/M2/M3): `LMMs-Lab Writer_x.x.x_aarch64.dmg`
+   - **Intel**: `LMMs-Lab Writer_x.x.x_x64.dmg`
+
+2. Open the `.dmg` file and drag the app to your Applications folder.
+
+3. On first launch, you may need to right-click and select "Open" due to Gatekeeper.
+
+### Windows
+
+1. Download `LMMs-Lab Writer_x.x.x_x64-setup.exe`
+2. Run the installer and follow the prompts
+
+### Linux
+
+1. Download the AppImage or `.deb` package
+2. For AppImage: Make it executable with `chmod +x` and run it
+3. For Debian-based distros: Install with `sudo dpkg -i lmms-lab-writer_x.x.x_amd64.deb`
+
+## Requirements
+
+### LaTeX Distribution
+
+You need a LaTeX distribution installed to compile documents:
+
+- **macOS**: [MacTeX](https://www.tug.org/mactex/)
+- **Windows**: [MiKTeX](https://miktex.org/) or [TeX Live](https://www.tug.org/texlive/)
+- **Linux**: `sudo apt install texlive-full` or equivalent
+
+### Git (Optional)
+
+For version control features, install [Git](https://git-scm.com/downloads).
+
+## Build from Source
+
+LMMs-Lab Writer is open source. To build from source:
+
+```bash
+git clone https://github.com/LMMs-Lab/lmms-lab-writer.git
+cd lmms-lab-writer
+pnpm install
+pnpm tauri:build
+```
+
+The built app will be in `apps/desktop/src-tauri/target/release/bundle/`.
