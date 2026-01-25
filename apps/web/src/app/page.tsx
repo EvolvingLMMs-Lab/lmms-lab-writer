@@ -59,18 +59,79 @@ export default function HomePage() {
 
       <main className="flex-1">
         {/* Hero */}
-        <section className="py-24 px-6">
-          <div className="max-w-5xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
+        <section className="py-24 px-6 bg-cream relative overflow-hidden">
+          <div className="absolute top-16 left-8 md:left-20 text-foreground/15 animate-float hidden md:block">
+            <svg
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+          </div>
+
+          <div className="absolute top-20 right-12 md:right-32 text-foreground/20 animate-float-delayed hidden md:block font-serif text-4xl select-none">
+            ∑
+          </div>
+
+          <div className="absolute bottom-16 left-16 md:left-32 text-foreground/15 animate-float-delayed hidden md:block">
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 18h6" />
+              <path d="M10 22h4" />
+              <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
+            </svg>
+          </div>
+
+          <div className="absolute bottom-20 right-8 md:right-24 text-foreground/15 hidden md:block font-mono text-3xl select-none">
+            {"{ }"}
+          </div>
+
+          <div className="max-w-5xl mx-auto text-center relative z-10">
+            <h1 className="text-4xl md:text-5xl font-semibold tracking-tight mb-6 relative inline-block">
               Stop writing LaTeX.
+              <span className="absolute -top-6 -right-8 text-foreground/25 font-serif text-3xl select-none hidden md:block animate-float">
+                ∫
+              </span>
               <br />
-              Start thinking.
+              <span className="relative inline-block">
+                Start thinking.
+                <svg
+                  className="absolute -bottom-2 left-0 w-full h-3 text-foreground/70"
+                  viewBox="0 0 100 10"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M0 5 Q 25 0 50 5 T 100 5"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    fill="none"
+                  />
+                </svg>
+              </span>
             </h1>
             <p className="text-lg text-muted mb-10 leading-relaxed max-w-2xl mx-auto">
               Let Claude Code and Codex write your papers while you focus on
               what matters — your research.
             </p>
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex items-center justify-center gap-4 relative">
               <Link href="/download" className="btn btn-primary">
                 <Download className="w-4 h-4" />
                 Download
