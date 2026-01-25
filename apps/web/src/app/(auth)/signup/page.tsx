@@ -11,22 +11,24 @@ const SignupForm = dynamic(
 
 export default function SignupPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-sm">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground mb-8"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to home
-        </Link>
+    <div className="min-h-screen flex items-center">
+      <div className="w-full max-w-5xl mx-auto px-6">
+        <div className="w-full max-w-sm">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground mb-8"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to home
+          </Link>
 
-        <h1 className="text-2xl font-semibold mb-2">Create an account</h1>
-        <p className="text-sm text-muted mb-8">
-          Get access to license management and premium features.
-        </p>
+          <h1 className="text-2xl font-semibold mb-2">Create an account</h1>
+          <p className="text-sm text-muted mb-8">
+            Get access to license management and premium features.
+          </p>
 
-        <SignupForm />
+          <SignupForm />
+        </div>
       </div>
     </div>
   );
