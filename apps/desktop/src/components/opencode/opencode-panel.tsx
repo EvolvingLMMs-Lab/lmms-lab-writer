@@ -1549,6 +1549,7 @@ function InputArea({
   onSelectAgent,
   onSelectModel,
 }: InputAreaProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -1581,39 +1582,33 @@ function InputArea({
 
   return (
     <div className="border-t border-border flex-shrink-0 bg-white relative z-20">
-      <div className="p-3">
-        <div className="relative border border-border bg-white focus-within:border-black transition-all">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder='Ask anything... "Help me debug this issue"'
-            disabled={isWorking}
-            className="w-full min-h-[60px] max-h-[200px] px-3 py-2.5 resize-none focus:outline-none text-sm bg-transparent placeholder:text-neutral-400"
-            rows={1}
-          />
-
-          <div className="flex items-center justify-between px-2 pb-2">
-            <div className="flex items-center gap-1">
+      {isExpanded && (
+        <div className="px-3 pt-3 pb-2 border-b border-border bg-neutral-50">
+          <div className="flex gap-2">
+            <div className="flex-1 space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-muted font-medium">
+                Agent
+              </label>
               <div className="relative">
                 <select
                   value={selectedAgent || ""}
                   onChange={(e) => onSelectAgent(e.target.value || null)}
-                  className="text-xs text-neutral-600 bg-transparent pl-1 pr-5 py-1 focus:outline-none appearance-none cursor-pointer hover:text-black transition-colors"
+                  className="w-full text-xs border border-border bg-white pl-2 pr-6 py-1.5 focus:outline-none focus:border-black appearance-none"
                 >
                   {!Array.isArray(agents) || agents.length === 0 ? (
-                    <option value="">Agent</option>
+                    <option value="">No agents</option>
                   ) : (
-                    agents.map((agent) => (
-                      <option key={agent.id} value={agent.id}>
-                        {agent.name}
-                      </option>
-                    ))
+                    agents
+                      .filter((agent) => agent?.id)
+                      .map((agent) => (
+                        <option key={agent.id} value={agent.id}>
+                          {agent.name}
+                        </option>
+                      ))
                   )}
                 </select>
                 <svg
-                  className="size-3 text-neutral-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none"
+                  className="size-3 text-muted absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -1626,9 +1621,11 @@ function InputArea({
                   />
                 </svg>
               </div>
-
-              <ProviderIcon providerId={selectedModel?.providerId} />
-
+            </div>
+            <div className="flex-1 space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-muted font-medium">
+                Model
+              </label>
               <div className="relative">
                 <select
                   value={
@@ -1644,27 +1641,31 @@ function InputArea({
                       onSelectModel(null);
                     }
                   }}
-                  className="text-xs text-neutral-600 bg-transparent pl-1 pr-5 py-1 focus:outline-none appearance-none cursor-pointer hover:text-black transition-colors max-w-[180px] truncate"
+                  className="w-full text-xs border border-border bg-white pl-2 pr-6 py-1.5 focus:outline-none focus:border-black appearance-none"
                 >
                   {!Array.isArray(providers) || providers.length === 0 ? (
-                    <option value="">Model</option>
+                    <option value="">No models</option>
                   ) : (
-                    providers.flatMap((provider) =>
-                      Array.isArray(provider?.models)
-                        ? provider.models.map((model) => (
-                            <option
-                              key={`${provider.id}:${model.id}`}
-                              value={`${provider.id}:${model.id}`}
-                            >
-                              {model.name}
-                            </option>
-                          ))
-                        : [],
-                    )
+                    providers
+                      .filter((provider) => provider?.id)
+                      .flatMap((provider) =>
+                        Array.isArray(provider?.models)
+                          ? provider.models
+                              .filter((model) => model?.id)
+                              .map((model) => (
+                                <option
+                                  key={`${provider.id}:${model.id}`}
+                                  value={`${provider.id}:${model.id}`}
+                                >
+                                  {model.name} ({provider.name})
+                                </option>
+                              ))
+                          : [],
+                      )
                   )}
                 </select>
                 <svg
-                  className="size-3 text-neutral-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none"
+                  className="size-3 text-muted absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -1678,27 +1679,53 @@ function InputArea({
                 </svg>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      <div className="p-3">
+        <div className="relative border border-border bg-white focus-within:border-black transition-all">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder='Ask anything... "Help me debug this issue"'
+            disabled={isWorking}
+            className="w-full min-h-[60px] max-h-[200px] px-3 py-2.5 resize-none focus:outline-none text-sm bg-transparent placeholder:text-neutral-400"
+            rows={1}
+          />
+
+          <div className="flex items-center justify-between px-2 pb-2">
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className={`flex items-center gap-1.5 text-xs px-2 py-1 transition-colors ${
+                isExpanded
+                  ? "text-black bg-neutral-100"
+                  : "text-neutral-500 hover:text-black hover:bg-neutral-50"
+              }`}
+              title={isExpanded ? "Hide Options" : "Show Options"}
+            >
+              <ProviderIcon providerId={selectedModel?.providerId} />
+              <span className="truncate max-w-[120px]">
+                {selectedModelName}
+              </span>
+              <svg
+                className={`size-3 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="square"
+                  strokeLinejoin="miter"
+                  strokeWidth={2}
+                  d="M5 15l7-7 7 7"
+                />
+              </svg>
+            </button>
 
             <div className="flex items-center gap-1">
-              <button
-                className="p-1.5 text-neutral-400 hover:text-neutral-600 transition-colors"
-                title="Attach Image (Coming Soon)"
-              >
-                <svg
-                  className="size-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="square"
-                    strokeLinejoin="miter"
-                    strokeWidth={1.5}
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
-              </button>
-
               {isWorking ? (
                 <button
                   onClick={onAbort}
