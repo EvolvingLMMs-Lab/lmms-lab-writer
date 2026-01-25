@@ -131,16 +131,18 @@ export function useOpenCode(
 
     clientRef.current = client;
 
-    if (autoConnect) {
-      setConnecting(true);
-      client.connect();
-    }
-
     return () => {
       client.disconnect();
       clientRef.current = null;
     };
-  }, [baseUrl, directory, autoConnect, syncFromStore]);
+  }, [baseUrl, directory, syncFromStore]);
+
+  useEffect(() => {
+    if (autoConnect && !connected && !connecting) {
+      setConnecting(true);
+      clientRef.current?.connect();
+    }
+  }, [autoConnect, connected, connecting]);
 
   const connect = useCallback(() => {
     const client = clientRef.current;

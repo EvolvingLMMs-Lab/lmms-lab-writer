@@ -278,24 +278,21 @@ function DisconnectedState({
             <Spinner className="size-4" />
             <span>Starting OpenCode...</span>
           </div>
+        ) : onRestartOpenCode ? (
+          <button
+            onClick={onRestartOpenCode}
+            className="px-4 py-2 border border-border hover:bg-accent transition-colors text-sm"
+          >
+            Start OpenCode
+          </button>
         ) : (
-          <>
-            {onRestartOpenCode && (
-              <button
-                onClick={onRestartOpenCode}
-                className="px-4 py-2 border border-border hover:bg-accent transition-colors text-sm"
-              >
-                Start OpenCode
-              </button>
-            )}
-            <button
-              onClick={onConnect}
-              disabled={connecting}
-              className="px-4 py-2 border border-border hover:bg-accent transition-colors text-sm disabled:opacity-50"
-            >
-              {connecting ? "Connecting..." : "Connect"}
-            </button>
-          </>
+          <button
+            onClick={onConnect}
+            disabled={connecting}
+            className="px-4 py-2 border border-border hover:bg-accent transition-colors text-sm disabled:opacity-50"
+          >
+            {connecting ? "Connecting..." : "Connect"}
+          </button>
         )}
       </div>
     </div>
