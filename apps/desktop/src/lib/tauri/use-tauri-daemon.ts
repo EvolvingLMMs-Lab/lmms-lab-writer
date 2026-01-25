@@ -11,7 +11,6 @@ import type {
 
 interface ProjectInfo {
   path: string;
-  mainFile: string | null;
 }
 
 interface GitInitResult {
@@ -73,9 +72,8 @@ export function useTauriDaemon() {
     setProjectState((s) => ({ ...s, projectPath: path }));
 
     try {
-      const [rawFiles, mainFile] = await Promise.all([
+      const [rawFiles] = await Promise.all([
         invoke<unknown[]>("get_file_tree", { dir: path }),
-        invoke<string | null>("find_main_tex", { dir: path }),
         invoke("watch_directory", { path }),
       ]);
 
@@ -86,7 +84,7 @@ export function useTauriDaemon() {
       setProjectState((s) => ({
         ...s,
         files,
-        projectInfo: { path, mainFile },
+        projectInfo: { path },
       }));
 
       refreshGitStatusInternal(path);

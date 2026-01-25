@@ -102,7 +102,7 @@ pub async fn opencode_start(
     *state.port.lock().map_err(|e| e.to_string())? = port;
 
     let mut child = std::process::Command::new(&opencode_path)
-        .args(["web", "--port", &port.to_string()])
+        .args(["serve", "--port", &port.to_string()])
         .current_dir(&directory)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
