@@ -54,6 +54,8 @@ export function AuthButtons() {
     const initial = user.email?.charAt(0).toUpperCase() ?? "U";
     const displayName =
       user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "User";
+    const avatarUrl =
+      user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
 
     return (
       <div className="relative" ref={menuRef}>
@@ -61,9 +63,17 @@ export function AuthButtons() {
           onClick={() => setMenuOpen(!menuOpen)}
           className="flex items-center gap-2 text-sm hover:text-foreground transition-colors"
         >
-          <span className="w-7 h-7 bg-foreground text-background flex items-center justify-center text-xs font-medium">
-            {initial}
-          </span>
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={displayName}
+              className="w-7 h-7 border border-border"
+            />
+          ) : (
+            <span className="w-7 h-7 bg-foreground text-background flex items-center justify-center text-xs font-medium">
+              {initial}
+            </span>
+          )}
           <ChevronDown
             className={`w-3 h-3 transition-transform ${menuOpen ? "rotate-180" : ""}`}
           />
