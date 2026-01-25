@@ -142,11 +142,11 @@ body {
 }
 
 .prose pre {
-  @apply border border-border;
+  @apply border border-border bg-neutral-100;
 }
 
 .prose code:not(pre code) {
-  @apply bg-neutral-100 px-1.5 py-0.5 text-sm;
+  @apply bg-neutral-200 px-1.5 py-0.5 text-sm;
 }
 
 .prose a {

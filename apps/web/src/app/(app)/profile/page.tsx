@@ -164,7 +164,7 @@ export default async function ProfilePage() {
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link
             href="/"
-            className="text-lg font-bold tracking-tight uppercase flex items-center gap-3"
+            className="text-lg font-bold tracking-tight flex items-center gap-3"
           >
             <div className="logo-bar text-foreground">
               <span></span>
