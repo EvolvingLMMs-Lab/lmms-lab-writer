@@ -40,11 +40,11 @@ export async function Header() {
   const user = await getUser();
 
   return (
-    <header className="border-b border-border bg-background sticky top-0 z-50 px-6">
-      <div className="w-full max-w-5xl mx-auto py-4 flex items-center justify-between">
+    <header className="border-b border-border bg-background sticky top-0 z-50 px-4 sm:px-6">
+      <div className="w-full max-w-5xl mx-auto py-3 sm:py-4 flex items-center justify-between">
         <Link
           href="/"
-          className="text-lg font-bold tracking-tight flex items-center gap-3"
+          className="text-base sm:text-lg font-bold tracking-tight flex items-center gap-2 sm:gap-3"
         >
           <div className="logo-bar text-foreground">
             <span></span>
@@ -55,9 +55,10 @@ export async function Header() {
             <span></span>
             <span></span>
           </div>
-          LMMs-Lab Writer
+          <span className="hidden sm:inline">LMMs-Lab Writer</span>
+          <span className="sm:hidden">Writer</span>
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           {user ? (
             <UserDropdown
               email={user.email}
@@ -76,7 +77,7 @@ export async function Header() {
               </Link>
               <Link
                 href="/signup"
-                className="px-4 py-2 bg-white text-black text-sm border-2 border-black hover:bg-neutral-100 active:bg-neutral-200 transition-colors"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white text-black text-xs sm:text-sm border-2 border-black hover:bg-neutral-100 active:bg-neutral-200 transition-colors whitespace-nowrap"
               >
                 Get Started
               </Link>
@@ -86,10 +87,10 @@ export async function Header() {
             href="https://github.com/Luodian/latex-writer/issues"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-muted/60 hover:text-muted transition-colors flex items-center gap-1.5 text-xs"
+            className="text-muted/60 hover:text-muted transition-colors flex items-center gap-1 sm:gap-1.5 text-xs"
           >
             <Github className="w-3.5 h-3.5" />
-            Feedback
+            <span className="hidden sm:inline">Feedback</span>
           </Link>
         </div>
       </div>

@@ -39,21 +39,24 @@ export default function HomePage() {
 
       <main className="flex-1">
         {/* Hero */}
-        <section className="py-24 px-6 bg-cream">
+        <section className="py-16 md:py-24 px-6 bg-cream">
           <div className="max-w-5xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
+            <h1 className="text-3xl md:text-5xl font-semibold tracking-tight mb-6">
               Think Deep, Write Easy.
             </h1>
-            <p className="text-lg text-muted mb-10 leading-relaxed max-w-2xl mx-auto">
+            <p className="text-base md:text-lg text-muted mb-8 md:mb-10 leading-relaxed max-w-2xl mx-auto">
               Stop manually writing LaTeX. Let agents handle the syntax while
               you focus on outlier science.
             </p>
-            <div className="flex items-center justify-center gap-4 relative">
-              <Link href="/download" className="btn btn-primary">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+              <Link
+                href="/download"
+                className="btn btn-primary w-full sm:w-auto"
+              >
                 <Download className="w-4 h-4" />
                 Download
               </Link>
-              <Link href="/docs" className="btn btn-secondary">
+              <Link href="/docs" className="btn btn-secondary w-full sm:w-auto">
                 <FileText className="w-4 h-4" />
                 Documentation
               </Link>
@@ -61,24 +64,25 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="py-20 px-6 border-t border-border">
+        <section className="py-12 md:py-20 px-6 border-t border-border">
           <div className="max-w-5xl mx-auto">
-            <h2 className="text-2xl font-medium mb-4 text-center">
+            <h2 className="text-xl md:text-2xl font-medium mb-4 text-center">
               See it in action.
             </h2>
-            <p className="text-lg text-muted mb-10 text-center">
+            <p className="text-base md:text-lg text-muted mb-8 md:mb-10 text-center">
               Every legendary paper started somewhere. Yours starts here.
             </p>
             <PaperDemo />
           </div>
         </section>
 
-        <section className="py-20 px-6 border-t border-border">
+        <section className="py-12 md:py-20 px-6 border-t border-border">
           <div className="max-w-5xl mx-auto">
-            <h2 className="text-2xl font-medium mb-10 text-center">
+            <h2 className="text-2xl font-medium mb-8 md:mb-10 text-center">
               There's a reason you're still frustrated.
             </h2>
-            <div className="border border-border">
+            {/* Desktop: Table layout */}
+            <div className="hidden md:block border border-border">
               <div className="grid grid-cols-3 border-b border-border font-mono text-muted text-xs">
                 <div className="p-4 border-r border-border uppercase tracking-wider">
                   Feature
@@ -106,6 +110,33 @@ export default function HomePage() {
                   <div className="p-4 flex items-start gap-2 bg-neutral-50 font-medium">
                     <CheckCircle2 className="w-4 h-4 shrink-0 text-foreground mt-0.5" />
                     {row.writer}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Mobile: Card layout */}
+            <div className="md:hidden space-y-4">
+              {comparisons.map((row) => (
+                <div key={row.feature} className="border border-border">
+                  <div className="px-4 py-3 border-b border-border bg-neutral-50 font-medium text-sm">
+                    {row.feature}
+                  </div>
+                  <div className="grid grid-cols-2 text-sm">
+                    <div className="p-4 border-r border-border">
+                      <div className="text-xs text-muted uppercase tracking-wider mb-1">
+                        Overleaf
+                      </div>
+                      <div className="text-muted">{row.overleaf}</div>
+                    </div>
+                    <div className="p-4 bg-neutral-50">
+                      <div className="text-xs text-muted uppercase tracking-wider mb-1">
+                        Writer
+                      </div>
+                      <div className="flex items-start gap-2 font-medium">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 text-foreground mt-0.5" />
+                        {row.writer}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
