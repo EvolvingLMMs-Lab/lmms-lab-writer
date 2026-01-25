@@ -12,9 +12,8 @@ const sections = [
   {
     title: "AI Integration",
     items: [
-      { title: "Claude Code", href: "/docs/ai-tools/claude-code" },
-      { title: "Cursor", href: "/docs/ai-tools/cursor" },
       { title: "OpenCode", href: "/docs/ai-tools/opencode" },
+      { title: "Other AI Agents", href: "/docs/ai-tools/agents" },
     ],
   },
   {

@@ -6,13 +6,13 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "LMMs-Lab Writer",
   description:
-    "AI-native LaTeX editor. Let Claude, Cursor, and Codex write your papers while you focus on research.",
+    "AI-native LaTeX editor. Let AI agents write your papers while you focus on research.",
   keywords: [
     "LaTeX",
     "editor",
     "AI",
-    "Claude",
-    "Cursor",
+    "OpenCode",
+    "AI agents",
     "research",
     "academic writing",
   ],
@@ -23,8 +23,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "LMMs-Lab Writer",
-    description:
-      "AI-native LaTeX editor. Let Claude, Cursor, and Codex write your papers.",
+    description: "AI-native LaTeX editor. Let AI agents write your papers.",
     url: "https://writer.lmms-lab.com",
     siteName: "LMMs-Lab Writer",
     type: "website",

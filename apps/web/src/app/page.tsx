@@ -11,7 +11,7 @@ const comparisons = [
   {
     feature: "AI editing",
     overleaf: "Built-in grammar help",
-    writer: "Claude Code, Codex, OpenCode",
+    writer: "OpenCode & More AI Agents",
   },
   {
     feature: "Compilation",
@@ -21,14 +21,14 @@ const comparisons = [
   {
     feature: "Git integration",
     overleaf: "Paid plans only",
-    writer: "First-class, free",
+    writer: "First-class",
   },
   {
     feature: "Offline work",
     overleaf: "Not available",
     writer: "Full support",
   },
-  { feature: "Price", overleaf: "$21-42/month", writer: "Free & open source" },
+  { feature: "Price", overleaf: "$21-42/month", writer: "Free & Very Cheap" },
 ];
 
 export default function HomePage() {
@@ -74,8 +74,8 @@ export default function HomePage() {
               Start thinking.
             </h1>
             <p className="text-lg text-muted mb-10 leading-relaxed max-w-2xl mx-auto">
-              Let Claude Code and Codex write your papers while you focus on
-              what matters — your research.
+              Let AI agents write your papers while you focus on what matters —
+              your research.
             </p>
             <div className="flex items-center justify-center gap-4 relative">
               <Link href="/download" className="btn btn-primary">
@@ -96,7 +96,7 @@ export default function HomePage() {
               Watch AI write your paper
             </h2>
             <p className="text-sm text-muted mb-10 text-center">
-              Claude Code editing a LaTeX document in real-time
+              AI agent editing a LaTeX document in real-time
             </p>
 
             <PaperDemo />
