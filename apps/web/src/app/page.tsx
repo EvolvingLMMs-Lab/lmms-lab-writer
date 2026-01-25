@@ -78,7 +78,7 @@ export default function HomePage() {
             <h2 className="text-2xl font-medium mb-10 text-center">
               There's a reason you're still frustrated.
             </h2>
-            <div className="border border-border max-w-4xl mx-auto">
+            <div className="border border-border">
               <div className="grid grid-cols-3 border-b border-border font-mono text-muted text-xs">
                 <div className="p-4 border-r border-border uppercase tracking-wider">
                   Feature

@@ -246,32 +246,37 @@ export default async function ProfilePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <a
-            href="#suggested-repos"
-            className="border border-border p-6 hover:border-black transition-colors group block"
-          >
-            <p className="text-3xl font-light tabular-nums mb-1">
-              {membership.totalStars}
-              <span className="text-sm text-muted font-normal">
-                /{maxStars}
-              </span>
-            </p>
-            <p className="text-sm text-muted group-hover:text-black transition-colors">
-              <span
-                className={`font-mono uppercase px-1.5 py-0.5 mr-1.5 ${
-                  membership.tier === "supporter"
-                    ? "bg-black text-white"
-                    : "border border-neutral-300"
-                }`}
-              >
-                {membership.tier}
-              </span>
-              {membership.tier === "supporter" && membership.daysRemaining
-                ? `${membership.daysRemaining}d left`
-                : "Stars"}
-            </p>
-          </a>
+        <div className="border border-border p-6 mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-3xl font-light tabular-nums mb-1">
+                {membership.totalStars}
+                <span className="text-sm text-muted font-normal">
+                  /{maxStars} stars
+                </span>
+              </p>
+              {membership.tier === "supporter" && membership.expiresAt ? (
+                <p className="text-sm text-muted">
+                  Expires{" "}
+                  {membership.expiresAt.toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </p>
+              ) : (
+                <p className="text-sm text-muted">
+                  Star repos to unlock membership
+                </p>
+              )}
+            </div>
+            <a
+              href="#suggested-repos"
+              className="text-sm text-muted hover:text-black transition-colors"
+            >
+              {membership.tier === "supporter" ? "Extend" : "Unlock"} →
+            </a>
+          </div>
         </div>
 
         <div className="border border-border mb-8">
@@ -304,11 +309,6 @@ export default async function ProfilePage() {
                     month: "long",
                     day: "numeric",
                   })}
-                  {membership.daysRemaining !== null && (
-                    <span className="text-muted ml-2">
-                      ({membership.daysRemaining}d left)
-                    </span>
-                  )}
                 </span>
               </div>
             )}
