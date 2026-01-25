@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, memo } from "react";
+import { useState, useCallback, memo, useRef, useEffect } from "react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { FileNode } from "@lmms-lab/writer-shared";
@@ -16,8 +16,14 @@ type Props = {
   files: FileNode[];
   onFileSelect?: (path: string) => void;
   selectedFile?: string;
+  highlightedFile?: string | null;
   className?: string;
 };
+
+// Helper to check if a path is an ancestor of another
+function isAncestorPath(ancestor: string, descendant: string): boolean {
+  return descendant.startsWith(ancestor + "/");
+}
 
 function FileIcon({
   type,
@@ -80,17 +86,43 @@ const TreeNode = memo(function TreeNode({
   depth,
   onFileSelect,
   selectedFile,
+  highlightedFile,
   defaultExpanded = false,
 }: {
   node: FileNode;
   depth: number;
   onFileSelect?: (path: string) => void;
   selectedFile?: string;
+  highlightedFile?: string | null;
   defaultExpanded?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(defaultExpanded || depth === 0);
-  const isSelected = selectedFile === node.path;
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const isDirectory = node.type === "directory";
+  const isHighlighted = highlightedFile === node.path;
+  const shouldAutoExpand =
+    isDirectory &&
+    !!highlightedFile &&
+    isAncestorPath(node.path, highlightedFile);
+
+  const [expanded, setExpanded] = useState<boolean>(
+    defaultExpanded || depth === 0 || shouldAutoExpand,
+  );
+  const isSelected = selectedFile === node.path;
+
+  useEffect(() => {
+    if (shouldAutoExpand && !expanded) {
+      setExpanded(true);
+    }
+  }, [shouldAutoExpand, expanded]);
+
+  useEffect(() => {
+    if (isHighlighted && buttonRef.current) {
+      buttonRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [isHighlighted]);
 
   const handleClick = useCallback(() => {
     if (isDirectory) {
@@ -103,13 +135,28 @@ const TreeNode = memo(function TreeNode({
   return (
     <div>
       <motion.button
+        ref={buttonRef}
         onClick={handleClick}
         className={`w-full flex items-center gap-2 px-2 py-1 text-left text-sm transition-colors ${
           isSelected ? "bg-black text-white" : "hover:bg-black/5"
         }`}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
         whileTap={{ scale: 0.98 }}
-        transition={ITEM_SPRING}
+        initial={false}
+        animate={
+          isHighlighted && !isSelected
+            ? {
+                backgroundColor: [
+                  "rgba(0, 0, 0, 0)",
+                  "rgba(0, 0, 0, 0.15)",
+                  "rgba(0, 0, 0, 0)",
+                  "rgba(0, 0, 0, 0.15)",
+                  "rgba(0, 0, 0, 0)",
+                ],
+                transition: { duration: 1.5, ease: "easeInOut" },
+              }
+            : {}
+        }
       >
         {isDirectory && (
           <motion.div
@@ -144,6 +191,7 @@ const TreeNode = memo(function TreeNode({
                 depth={depth + 1}
                 onFileSelect={onFileSelect}
                 selectedFile={selectedFile}
+                highlightedFile={highlightedFile}
               />
             ))}
           </motion.div>
@@ -157,6 +205,7 @@ export const FileTree = memo(function FileTree({
   files,
   onFileSelect,
   selectedFile,
+  highlightedFile,
   className = "",
 }: Props) {
   if (files.length === 0) {
@@ -183,6 +232,7 @@ export const FileTree = memo(function FileTree({
           depth={0}
           onFileSelect={onFileSelect}
           selectedFile={selectedFile}
+          highlightedFile={highlightedFile}
           defaultExpanded
         />
       ))}

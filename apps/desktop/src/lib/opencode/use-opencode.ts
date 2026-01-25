@@ -58,28 +58,34 @@ export function useOpenCode(
   const [parts, setParts] = useState<Map<string, Part[]>>(new Map());
   const [status, setStatus] = useState<SessionStatus>({ type: "idle" });
 
-  const syncFromStore = useCallback(() => {
+  const currentSessionIdRef = useRef<string | null>(null);
+  currentSessionIdRef.current = currentSessionId;
+
+  const syncFromStoreRef = useRef<() => void>(() => {});
+  syncFromStoreRef.current = () => {
     const client = clientRef.current;
     if (!client) return;
 
     setSessions(Array.from(client.store.sessions.values()));
 
-    if (currentSessionId) {
-      setMessages(client.store.messages.get(currentSessionId) || []);
-      setStatus(client.store.status.get(currentSessionId) || { type: "idle" });
+    const sessionId = currentSessionIdRef.current;
+    if (sessionId) {
+      setMessages(client.store.messages.get(sessionId) || []);
+      setStatus(client.store.status.get(sessionId) || { type: "idle" });
 
       const sessionParts = new Map<string, Part[]>();
       for (const [key, value] of client.store.parts.entries()) {
-        if (key.startsWith(`${currentSessionId}:`)) {
+        if (key.startsWith(`${sessionId}:`)) {
           sessionParts.set(key, value);
         }
       }
       setParts(sessionParts);
     }
-  }, [currentSessionId]);
+  };
 
-  const currentSessionIdRef = useRef<string | null>(null);
-  currentSessionIdRef.current = currentSessionId;
+  const syncFromStore = useCallback(() => {
+    syncFromStoreRef.current();
+  }, []);
 
   const handleEventRef = useRef<(event: Event) => void>(() => {});
   handleEventRef.current = (event: Event) => {
@@ -94,12 +100,12 @@ export function useOpenCode(
         event.type === "session.updated" ||
         event.type === "session.deleted"
       ) {
-        syncFromStore();
+        syncFromStoreRef.current();
         return;
       }
 
       if (eventSessionId && eventSessionId === currentSessionIdRef.current) {
-        syncFromStore();
+        syncFromStoreRef.current();
       }
     }
   };
@@ -135,7 +141,7 @@ export function useOpenCode(
       client.disconnect();
       clientRef.current = null;
     };
-  }, [baseUrl, directory, syncFromStore]);
+  }, [baseUrl, directory]);
 
   useEffect(() => {
     if (autoConnect && !connected && !connecting) {

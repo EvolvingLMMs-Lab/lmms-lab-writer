@@ -94,6 +94,13 @@ Monochrome only. No colors, no rounded corners.
 | border     | `#e5e5e5` |
 | muted      | `#666666` |
 
+**Button Style (Neo-Brutalism)**:
+
+- Primary: WHITE background, BLACK text, black border, offset shadow
+- Secondary: Same as primary (white bg, black text)
+- NEVER use black background with white text for buttons
+- Use `btn btn-sm` classes with box-shadow offset effect
+
 See `docs/DESIGN.md` for full design system documentation.
 
 ### Layout Alignment (OCD-Level Precision)

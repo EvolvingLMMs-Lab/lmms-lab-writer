@@ -22,11 +22,23 @@
   --error: #000000;
 }
 
+html,
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: var(--font-geist-mono), monospace;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  height: 100%;
+  min-height: 100%;
 }
 
 * {
@@ -53,6 +65,17 @@ body {
 
 *::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
+html,
+body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .scrollbar-sharp {
@@ -158,19 +181,11 @@ kbd {
 }
 
 .btn-primary {
-  @apply bg-black text-white;
+  @apply bg-white text-black;
 }
 
 .btn-primary:hover {
-  @apply bg-neutral-700;
-}
-
-.btn-soft {
-  @apply bg-neutral-900 text-white;
-}
-
-.btn-soft:hover {
-  @apply bg-neutral-700;
+  @apply bg-neutral-100;
 }
 
 .btn-secondary {

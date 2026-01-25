@@ -341,18 +341,6 @@ export default function EditorPage() {
       const isMod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
 
-      if (isMod && key === "b" && !e.shiftKey) {
-        e.preventDefault();
-        setShowSidebar((v) => !v);
-        return;
-      }
-
-      if (isMod && e.key === "\\") {
-        e.preventDefault();
-        setShowRightPanel((v) => !v);
-        return;
-      }
-
       if (isMod && key === "o" && !e.shiftKey) {
         e.preventDefault();
         handleOpenFolder();
@@ -490,47 +478,6 @@ export default function EditorPage() {
                   </button>
                 </div>
               )}
-            </div>
-
-            <div className="flex items-center gap-1 pl-6 border-l border-border">
-              <button
-                onClick={() => setShowSidebar((v) => !v)}
-                className={`p-2 transition-all border border-transparent hover:border-black ${showSidebar ? "bg-black text-white" : "text-muted hover:text-black"}`}
-                title="Toggle Sidebar (⌘B)"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                >
-                  <path
-                    strokeLinecap="square"
-                    strokeLinejoin="miter"
-                    d="M3 3h7v18H3V3zM10 3h11v18H10"
-                  />
-                </svg>
-              </button>
-              <button
-                onClick={() => setShowRightPanel((v) => !v)}
-                className={`p-2 transition-all border border-transparent hover:border-black ${showRightPanel ? "bg-black text-white" : "text-muted hover:text-black"}`}
-                title="Toggle Right Panel (⌘\)"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                >
-                  <path
-                    strokeLinecap="square"
-                    strokeLinejoin="miter"
-                    d="M14 3h7v18h-7V3zM3 3h11v18H3"
-                  />
-                </svg>
-              </button>
             </div>
           </div>
         </div>
@@ -1105,6 +1052,24 @@ export default function EditorPage() {
                     </svg>
                     Output
                   </button>
+                  <button
+                    onClick={() => setShowRightPanel(false)}
+                    className="w-9 h-9 flex items-center justify-center border-l border-border text-muted hover:text-black hover:bg-neutral-100 transition-colors"
+                  >
+                    <svg
+                      className="size-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="square"
+                        strokeLinejoin="miter"
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </button>
                 </div>
 
                 <div className="flex-1 min-h-0 overflow-hidden">
@@ -1136,6 +1101,17 @@ export default function EditorPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {!showRightPanel && (
+          <button
+            onClick={() => setShowRightPanel(true)}
+            className="flex-shrink-0 w-6 border-l border-border hover:bg-neutral-100 transition-colors flex items-center justify-center"
+          >
+            <span className="text-[10px] font-mono uppercase tracking-widest text-muted [writing-mode:vertical-rl] rotate-180">
+              Panel
+            </span>
+          </button>
+        )}
       </main>
 
       <OpenCodeDisconnectedDialog

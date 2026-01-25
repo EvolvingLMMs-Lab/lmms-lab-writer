@@ -36,6 +36,8 @@ interface GitState {
 interface CompileState {
   isCompiling: boolean;
   compileOutput: string;
+  compileSuccess: boolean | null;
+  compilePdfPath: string | null;
 }
 
 interface FileChangeEvent {
@@ -77,6 +79,8 @@ export function useTauriDaemon() {
   const [compileState, setCompileState] = useState<CompileState>({
     isCompiling: false,
     compileOutput: "",
+    compileSuccess: null,
+    compilePdfPath: null,
   });
 
   const setProject = useCallback(async (path: string) => {
@@ -305,7 +309,12 @@ export function useTauriDaemon() {
         return;
       }
 
-      setCompileState({ isCompiling: true, compileOutput: "" });
+      setCompileState({
+        isCompiling: true,
+        compileOutput: "",
+        compileSuccess: null,
+        compilePdfPath: null,
+      });
 
       try {
         const result = await invoke<{
@@ -321,11 +330,15 @@ export function useTauriDaemon() {
         setCompileState({
           isCompiling: false,
           compileOutput: result.output,
+          compileSuccess: result.success,
+          compilePdfPath: result.pdf_path ?? null,
         });
       } catch (error) {
         setCompileState({
           isCompiling: false,
           compileOutput: `Compilation failed: ${error}`,
+          compileSuccess: false,
+          compilePdfPath: null,
         });
       }
     },
@@ -425,6 +438,8 @@ export function useTauriDaemon() {
       // Compile state
       isCompiling: compileState.isCompiling,
       compileOutput: compileState.compileOutput,
+      compileSuccess: compileState.compileSuccess,
+      compilePdfPath: compileState.compilePdfPath,
 
       lastFileChange,
 
