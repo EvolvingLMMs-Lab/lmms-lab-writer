@@ -608,56 +608,51 @@ function MessageTurn({
     isLast && (status.type === "running" || status.type === "retry");
 
   return (
-    <div className="space-y-3">
-      <div className="flex gap-2">
-        <div className="size-6 border border-neutral-300 flex items-center justify-center text-xs flex-shrink-0 text-neutral-600">
-          U
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs whitespace-pre-wrap break-words">
-            {userText?.text || ""}
-          </p>
-        </div>
+    <div className="space-y-4">
+      <div className="bg-[#e8f5f2] border border-[#c5e4dd] px-3 py-2">
+        <p className="text-xs whitespace-pre-wrap break-words text-neutral-700">
+          {userText?.text || ""}
+        </p>
       </div>
 
       {(toolParts.length > 0 ||
         lastTextPart ||
         isWorking ||
         reasoningParts.length > 0) && (
-        <div className="flex gap-2">
-          <div className="size-6 border border-neutral-300 bg-neutral-100 flex items-center justify-center text-xs flex-shrink-0 text-neutral-500">
-            A
-          </div>
-          <div className="flex-1 min-w-0 space-y-2">
-            {isWorking && (
-              <div className="flex items-center gap-2 text-xs text-muted">
-                <Spinner />
-                <span>
-                  {status.type === "retry"
-                    ? `Retrying... (${(status as { attempt: number }).attempt})`
-                    : getStatusText(toolParts)}
-                </span>
-              </div>
-            )}
+        <div className="space-y-3">
+          {isWorking && (
+            <div className="flex items-center gap-2 text-xs text-neutral-500">
+              <Spinner className="size-3" />
+              <span>
+                {status.type === "retry"
+                  ? `Retrying... (${(status as { attempt: number }).attempt})`
+                  : getStatusText(toolParts)}
+              </span>
+            </div>
+          )}
 
-            {reasoningParts.length > 0 && (
-              <ReasoningDisplay parts={reasoningParts} />
-            )}
+          {reasoningParts.length > 0 && (
+            <ReasoningDisplay parts={reasoningParts} />
+          )}
 
-            {toolParts.length > 0 && (
-              <div className="space-y-1">
-                {toolParts.map((part) => (
-                  <ToolDisplay key={part.id} part={part} />
-                ))}
-              </div>
-            )}
+          {toolParts.length > 0 && (
+            <div className="space-y-1">
+              {toolParts.map((part) => (
+                <ToolDisplay key={part.id} part={part} />
+              ))}
+            </div>
+          )}
 
-            {lastTextPart && (
-              <div className="text-xs whitespace-pre-wrap break-words max-w-none">
+          {lastTextPart && (
+            <div>
+              <p className="text-[11px] font-medium text-neutral-400 mb-1">
+                Response
+              </p>
+              <div className="text-xs whitespace-pre-wrap break-words max-w-none text-neutral-700">
                 <MarkdownText text={lastTextPart.text} />
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -831,13 +826,15 @@ function MarkdownText({ text }: { text: string }) {
         if (part.startsWith("```")) {
           const match = part.match(/```(\w+)?\n?([\s\S]*?)```/);
           if (match) {
-            const [, , code] = match;
+            const [, lang, code] = match;
             return (
               <pre
                 key={i}
-                className="bg-neutral-100 p-2 overflow-x-auto text-xs my-2"
+                className="bg-neutral-50 border border-neutral-200 p-3 overflow-x-auto text-[11px] my-3 font-mono leading-relaxed"
               >
-                <code>{code?.trim()}</code>
+                <code>
+                  <SyntaxHighlight code={code?.trim() || ""} lang={lang} />
+                </code>
               </pre>
             );
           }
@@ -849,7 +846,10 @@ function MarkdownText({ text }: { text: string }) {
             {inlineParts.map((p, j) => {
               if (p.startsWith("`") && p.endsWith("`")) {
                 return (
-                  <code key={j} className="bg-neutral-100 px-1 text-xs">
+                  <code
+                    key={j}
+                    className="text-[#006656] font-medium font-mono text-[11px]"
+                  >
                     {p.slice(1, -1)}
                   </code>
                 );
@@ -861,6 +861,193 @@ function MarkdownText({ text }: { text: string }) {
       })}
     </>
   );
+}
+
+function SyntaxHighlight({
+  code,
+  lang: _lang,
+}: {
+  code: string;
+  lang?: string;
+}) {
+  const keywords = new Set([
+    "const",
+    "let",
+    "var",
+    "function",
+    "return",
+    "if",
+    "else",
+    "for",
+    "while",
+    "class",
+    "import",
+    "export",
+    "from",
+    "default",
+    "async",
+    "await",
+    "try",
+    "catch",
+    "throw",
+    "new",
+    "this",
+    "extends",
+    "implements",
+    "interface",
+    "type",
+    "enum",
+    "public",
+    "private",
+    "protected",
+    "static",
+    "readonly",
+    "def",
+    "elif",
+    "except",
+    "finally",
+    "with",
+    "as",
+    "lambda",
+    "yield",
+    "None",
+    "True",
+    "False",
+    "fn",
+    "pub",
+    "mut",
+    "impl",
+    "struct",
+    "trait",
+    "use",
+    "mod",
+    "crate",
+    "where",
+    "match",
+    "loop",
+    "break",
+    "continue",
+  ]);
+
+  const builtins = new Set([
+    "console",
+    "window",
+    "document",
+    "Array",
+    "Object",
+    "String",
+    "Number",
+    "Boolean",
+    "Promise",
+    "Map",
+    "Set",
+    "null",
+    "undefined",
+    "true",
+    "false",
+    "print",
+    "len",
+    "range",
+    "str",
+    "int",
+    "float",
+    "list",
+    "dict",
+    "self",
+    "Self",
+    "Ok",
+    "Err",
+    "Some",
+    "Vec",
+    "Box",
+    "Rc",
+    "Arc",
+  ]);
+
+  const lines = code.split("\n");
+
+  return (
+    <>
+      {lines.map((line, lineIdx) => (
+        <span key={lineIdx}>
+          {highlightLine(line, keywords, builtins)}
+          {lineIdx < lines.length - 1 && "\n"}
+        </span>
+      ))}
+    </>
+  );
+}
+
+function highlightLine(
+  line: string,
+  keywords: Set<string>,
+  builtins: Set<string>,
+): React.ReactNode[] {
+  const tokens: React.ReactNode[] = [];
+  let remaining = line;
+  let key = 0;
+
+  while (remaining.length > 0) {
+    const stringMatch = remaining.match(/^(["'`])(?:[^\\]|\\.)*?\1/);
+    if (stringMatch) {
+      tokens.push(
+        <span key={key++} className="text-[#006656]">
+          {stringMatch[0]}
+        </span>,
+      );
+      remaining = remaining.slice(stringMatch[0].length);
+      continue;
+    }
+
+    const commentMatch = remaining.match(/^(\/\/.*|#.*)/);
+    if (commentMatch) {
+      tokens.push(
+        <span key={key++} className="text-neutral-400 italic">
+          {commentMatch[0]}
+        </span>,
+      );
+      remaining = remaining.slice(commentMatch[0].length);
+      continue;
+    }
+
+    const numberMatch = remaining.match(/^\b\d+\.?\d*\b/);
+    if (numberMatch) {
+      tokens.push(
+        <span key={key++} className="text-[#fb4804]">
+          {numberMatch[0]}
+        </span>,
+      );
+      remaining = remaining.slice(numberMatch[0].length);
+      continue;
+    }
+
+    const wordMatch = remaining.match(/^\b[a-zA-Z_]\w*\b/);
+    if (wordMatch) {
+      const word = wordMatch[0];
+      if (keywords.has(word)) {
+        tokens.push(
+          <span key={key++} className="text-neutral-500">
+            {word}
+          </span>,
+        );
+      } else if (builtins.has(word)) {
+        tokens.push(
+          <span key={key++} className="text-[#007b80]">
+            {word}
+          </span>,
+        );
+      } else {
+        tokens.push(<span key={key++}>{word}</span>);
+      }
+      remaining = remaining.slice(word.length);
+      continue;
+    }
+
+    tokens.push(<span key={key++}>{remaining[0]}</span>);
+    remaining = remaining.slice(1);
+  }
+
+  return tokens;
 }
 
 function InputArea({

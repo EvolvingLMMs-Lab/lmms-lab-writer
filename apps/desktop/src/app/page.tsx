@@ -190,18 +190,19 @@ export default function EditorPage() {
     if (!resizing) return;
 
     const MIN_PANEL_WIDTH = 200;
-    const MAX_PANEL_WIDTH = 480;
+    const MAX_SIDEBAR_WIDTH = 480;
 
     const handleMouseMove = (e: MouseEvent) => {
       if (resizing === "sidebar") {
         setSidebarWidth(
-          Math.min(Math.max(e.clientX, MIN_PANEL_WIDTH), MAX_PANEL_WIDTH),
+          Math.min(Math.max(e.clientX, MIN_PANEL_WIDTH), MAX_SIDEBAR_WIDTH),
         );
       } else if (resizing === "right") {
+        const maxRightWidth = Math.floor(window.innerWidth / 2);
         setRightPanelWidth(
           Math.min(
             Math.max(window.innerWidth - e.clientX, MIN_PANEL_WIDTH),
-            MAX_PANEL_WIDTH,
+            maxRightWidth,
           ),
         );
       }
