@@ -180,7 +180,35 @@ export function useOpenCode(
 
     try {
       const sessionList = await client.listSessions();
-      setSessions(Array.isArray(sessionList) ? sessionList : []);
+      const safeSessions = Array.isArray(sessionList) ? sessionList : [];
+      setSessions(safeSessions);
+
+      if (safeSessions.length > 0 && !currentSessionIdRef.current) {
+        const sorted = [...safeSessions].sort(
+          (a, b) => b.time.updated - a.time.updated,
+        );
+        const firstSession = sorted[0];
+        if (firstSession) {
+          currentSessionIdRef.current = firstSession.id;
+          setCurrentSessionId(firstSession.id);
+          const msgs = await client.getMessages(firstSession.id);
+          setMessages(msgs);
+          setStatus(
+            client.store.status.get(firstSession.id) || { type: "idle" },
+          );
+
+          for (const msg of msgs) {
+            await client.getParts(firstSession.id, msg.id);
+          }
+          const sessionParts = new Map<string, Part[]>();
+          for (const [key, value] of client.store.parts.entries()) {
+            if (key.startsWith(`${firstSession.id}:`)) {
+              sessionParts.set(key, value);
+            }
+          }
+          setParts(sessionParts);
+        }
+      }
     } catch (err) {
       console.error("Failed to load sessions:", err);
       setSessions([]);
