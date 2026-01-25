@@ -11,8 +11,8 @@ const SignupForm = dynamic(
 
 export default function SignupPage() {
   return (
-    <div className="min-h-screen flex items-center">
-      <div className="w-full max-w-5xl mx-auto px-6">
+    <div className="min-h-screen flex items-center px-6">
+      <div className="w-full max-w-5xl mx-auto">
         <div className="w-full max-w-sm">
           <Link
             href="/"
