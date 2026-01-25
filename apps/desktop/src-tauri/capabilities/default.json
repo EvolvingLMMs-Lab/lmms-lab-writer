@@ -1,0 +1,49 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capability for the main window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "git",
+          "cmd": "git",
+          "args": true,
+          "sidecar": false
+        },
+        {
+          "name": "latexmk",
+          "cmd": "latexmk",
+          "args": true,
+          "sidecar": false
+        },
+        {
+          "name": "opencode",
+          "cmd": "opencode",
+          "args": true,
+          "sidecar": false
+        },
+        {
+          "name": "exec-sh",
+          "cmd": "sh",
+          "args": ["-c", { "validator": ".*" }],
+          "sidecar": false
+        }
+      ]
+    },
+    "shell:allow-spawn",
+    "shell:allow-stdin-write",
+    "shell:allow-kill",
+    "fs:default",
+    "fs:allow-read",
+    "fs:allow-write",
+    "dialog:default",
+    "notification:default",
+    "os:default",
+    "process:default"
+  ]
+}

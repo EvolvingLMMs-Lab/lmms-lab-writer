@@ -1,9 +1,9 @@
 {
-  "name": "agentic-latex-writer",
+  "name": "lmms-lab-writer",
   "version": "0.1.0",
   "private": true,
-  "description": "AI-native LaTeX editor - let Claude, Cursor, and Codex write your papers while you focus on research",
-  "author": "EvolvingLMMs Lab",
+  "description": "AI-native LaTeX editor - Tauri desktop application",
+  "author": "LMMs Lab",
   "license": "MIT",
   "packageManager": "pnpm@9.15.0",
   "engines": {
@@ -12,10 +12,10 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
-    "lint": "turbo lint",
-    "typecheck": "turbo typecheck",
     "clean": "turbo clean && rm -rf node_modules",
-    "format": "prettier --write \"**/*.{ts,tsx,md,json}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "tauri:dev": "pnpm --filter @lmms-lab/writer-desktop tauri:dev",
+    "tauri:build": "pnpm --filter @lmms-lab/writer-desktop tauri:build"
   },
   "devDependencies": {
     "prettier": "^3.5.0",

@@ -1,15 +1,15 @@
 <div align="center">
 
-# Agentic LaTeX Writer
+# LMMs-Lab Writer
 
 **Stop writing LaTeX. Start thinking.**
 
 Let Claude, Cursor, and Codex write your papers while you focus on what matters - your research.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](https://opensource.org/licenses/MIT)
-[![Deploy with Vercel](https://img.shields.io/badge/Deploy-Vercel-black)](https://vercel.com)
+[![macOS](https://img.shields.io/badge/macOS-black.svg)](https://github.com/LMMs-Lab/lmms-lab-writer/releases)
 
-[Live Demo](https://agentic-latex-writer.vercel.app) | [Documentation](https://agentic-latex-writer.vercel.app/docs) | [GitHub](https://github.com/EvolvingLMMs-Lab/agentic-latex-writer)
+[Download](https://github.com/LMMs-Lab/lmms-lab-writer/releases) | [GitHub](https://github.com/LMMs-Lab/lmms-lab-writer)
 
 </div>
 
@@ -23,25 +23,25 @@ Every hour spent on `\begin{figure}[htbp]` is an hour not spent on your actual w
 
 ## The Solution
 
-**Agentic LaTeX Writer** is a local-first LaTeX editor designed for AI pair-programming. Your files stay on your machine. AI tools edit directly. You compile and commit locally.
+**LMMs-Lab Writer** is a local-first LaTeX editor designed for AI pair-programming. Your files stay on your machine. AI tools edit directly. You compile and commit locally.
 
 ```
-Your laptop                          Cloud (optional)
-┌────────────────────────────────┐   ┌──────────────┐
-│  ~/papers/neurips-2025/        │   │   Supabase   │
-│  ├── main.tex  <-- AI edits    │   │   (sync)     │
-│  ├── figures/                  │   └──────────────┘
+Your laptop
+┌────────────────────────────────┐
+│  ~/papers/neurips-2025/        │
+│  ├── main.tex  <-- AI edits    │
+│  ├── figures/                  │
 │  └── refs.bib                  │
 │                                │
 │  Claude Code / Cursor / Codex  │
-│  ↕ WebSocket                   │
-│  llw serve (daemon)            │
+│  ↕ Direct file access          │
+│  LMMs-Lab Writer (Tauri app)   │
 └────────────────────────────────┘
 ```
 
 ## Why Local-First?
 
-| Overleaf                     | Agentic LaTeX Writer     |
+| Overleaf                     | LMMs-Lab Writer          |
 | ---------------------------- | ------------------------ |
 | Files locked in cloud        | Your files, your machine |
 | AI can't access your project | AI edits directly        |
@@ -51,123 +51,87 @@ Your laptop                          Cloud (optional)
 
 ## Quick Start
 
-### 1. Install the CLI
+### 1. Download the App
 
-```bash
-# macOS / Linux
-curl -fsSL https://agentic-latex-writer.vercel.app/install.sh | bash
+Download the latest release from [GitHub Releases](https://github.com/LMMs-Lab/lmms-lab-writer/releases):
 
-# Windows
-irm https://agentic-latex-writer.vercel.app/install.ps1 | iex
-```
+- **macOS**: `LMMs-Lab Writer_x.x.x_aarch64.dmg` (Apple Silicon) or `_x64.dmg` (Intel)
+- **Windows**: `LMMs-Lab Writer_x.x.x_x64-setup.exe`
+- **Linux**: `LMMs-Lab Writer_x.x.x_amd64.AppImage`
 
-### 2. Open your project
+### 2. Open Your Project
 
-```bash
-cd ~/papers/my-paper
-llw serve
-```
+Launch the app and click "Open Folder" to select your LaTeX project directory.
 
 ### 3. Write with AI
 
-Open [agentic-latex-writer.vercel.app](https://agentic-latex-writer.vercel.app) and select your folder. Now any AI tool with file access can edit your LaTeX:
+Any AI tool with file access can now edit your LaTeX:
 
 - **Claude Code**: "Add a related work section comparing our method to LoRA"
 - **Cursor**: "Fix the table formatting in Section 3"
 - **Codex**: "Generate a figure showing the training curves"
 
-The web editor shows real-time changes. Hit compile. Done.
+The editor shows real-time changes. Hit compile. Done.
 
 ## Works With
 
 <div align="center">
 
-| Tool          | Status      | How it works                       |
-| ------------- | ----------- | ---------------------------------- |
-| Claude Code   | Recommended | Direct file editing via MCP        |
-| Cursor        | Supported   | Edit in Cursor, preview in browser |
-| Codex CLI     | Supported   | Batch edits via command line       |
-| OpenCode      | Supported   | VSCode extension support           |
-| Any AI Editor | Supported   | If it can edit files, it works     |
+| Tool          | Status      | How it works                   |
+| ------------- | ----------- | ------------------------------ |
+| Claude Code   | Recommended | Direct file editing via MCP    |
+| Cursor        | Supported   | Edit in Cursor, preview in app |
+| Codex CLI     | Supported   | Batch edits via command line   |
+| OpenCode      | Supported   | Integrated panel in app        |
+| Any AI Editor | Supported   | If it can edit files, it works |
 
 </div>
 
 ## Features
 
-- **Local-First** - Your files never leave your machine (unless you sync to cloud)
+- **Local-First** - Your files never leave your machine
 - **AI-Native** - Designed for Claude, Cursor, Codex, and any AI editor
 - **Real-time Preview** - See changes as AI writes them
 - **Git Integration** - Commit, diff, and push without leaving the editor
 - **Compilation** - Local `latexmk` with XeLaTeX/LuaLaTeX support
-- **Templates** - NeurIPS, ICLR, tech reports, and more
-- **Collaboration** - Optional cloud sync for team projects
-
-## Project Structure
-
-```
-agentic-latex-writer/
-├── packages/
-│   ├── cli/          # Local daemon (llw serve)
-│   ├── web/          # Next.js 15 web editor
-│   └── shared/       # Shared types
-├── turbo.json        # Monorepo config
-└── pnpm-workspace.yaml
-```
-
-## CLI Commands
-
-```bash
-llw serve              # Start local daemon (required for AI editing)
-llw compile main.tex   # Compile LaTeX file
-llw watch main.tex     # Watch mode - recompile on changes
-llw init               # Initialize from template
-llw login              # Connect to cloud sync (optional)
-```
+- **Terminal** - Built-in terminal for advanced operations
+- **OpenCode Panel** - Integrated AI chat panel
 
 ## Development
 
 ```bash
 # Clone
-git clone https://github.com/EvolvingLMMs-Lab/agentic-latex-writer.git
-cd agentic-latex-writer
+git clone https://github.com/LMMs-Lab/lmms-lab-writer.git
+cd lmms-lab-writer
 
 # Install
 pnpm install
 
-# Build
-pnpm build
+# Development
+pnpm tauri:dev
 
-# Dev (web on :3000, daemon on :3001)
-pnpm dev
+# Build
+pnpm tauri:build
 ```
 
 ## Requirements
 
-- Node.js 20+
 - LaTeX distribution (MacTeX, TeX Live, or MiKTeX)
 - Git (for version control features)
 
 ## FAQ
 
 **Q: Do I need an account?**
-A: No. The CLI works fully offline. Accounts are only for optional cloud sync.
+A: No. Everything runs locally on your machine.
 
 **Q: Is my data sent anywhere?**
-A: Only if you enable cloud sync. Otherwise, everything stays local.
+A: No. All files stay on your machine.
 
 **Q: Can I use this with Overleaf projects?**
 A: Yes. Clone your Overleaf git repo locally and use this for editing.
 
 **Q: Why not just use Overleaf?**
 A: You can't give Claude direct access to Overleaf. With local files, AI tools work naturally.
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## License
 
@@ -177,7 +141,7 @@ MIT - Use it however you want.
 
 <div align="center">
 
-**Built by [EvolvingLMMs Lab](https://github.com/EvolvingLMMs-Lab)**
+**Built by [LMMs-Lab](https://github.com/LMMs-Lab)**
 
 _Stop formatting. Start discovering._
 
