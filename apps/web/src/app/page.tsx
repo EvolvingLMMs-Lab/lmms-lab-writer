@@ -61,12 +61,14 @@ export default function HomePage() {
         {/* Hero */}
         <section className="py-24 px-6">
           <div className="max-w-5xl mx-auto text-center">
-            <h1 className="text-3xl md:text-4xl font-medium tracking-tight mb-6">
-              AI-native LaTeX editor
+            <h1 className="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
+              Stop writing LaTeX.
+              <br />
+              Start thinking.
             </h1>
-            <p className="text-muted mb-10 leading-relaxed max-w-2xl mx-auto">
-              Local-first. Works with Claude, Cursor, Codex, or any tool that
-              edits files. Your research stays on your machine.
+            <p className="text-lg text-muted mb-10 leading-relaxed max-w-2xl mx-auto">
+              Let Claude, Cursor, and Codex write your papers while you focus on
+              what matters — your research.
             </p>
             <div className="flex items-center justify-center gap-4">
               <Link href="/download" className="btn btn-primary">

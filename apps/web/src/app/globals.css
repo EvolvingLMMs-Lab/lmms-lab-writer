@@ -56,11 +56,6 @@ body {
 
 .btn-primary {
   @apply bg-foreground text-background;
-  box-shadow: 4px 4px 0 0 #d4d4d4;
-}
-
-.btn-primary:hover {
-  box-shadow: 2px 2px 0 0 #d4d4d4;
 }
 
 .btn-secondary {
