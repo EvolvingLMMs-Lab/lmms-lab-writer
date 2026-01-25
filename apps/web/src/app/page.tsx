@@ -144,7 +144,7 @@ export default function HomePage() {
       </main>
 
       <footer className="border-t border-border">
-        <div className="max-w-5xl mx-auto px-6 py-6 text-sm text-muted">
+        <div className="max-w-5xl mx-auto px-6 py-6 text-sm text-muted text-center">
           Built by{" "}
           <Link
             href="https://www.lmms-lab.com/"
