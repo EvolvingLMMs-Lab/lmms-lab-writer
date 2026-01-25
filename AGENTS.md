@@ -1,6 +1,6 @@
 # AGENTS.md - LMMs-Lab Writer
 
-**Updated:** 2026-01-25 | **Branch:** main
+**Updated:** 2026-01-26 | **Branch:** main
 
 ## Overview
 
@@ -122,6 +122,72 @@ For full-width elements with border (header, footer):
 - All pages use `max-w-5xl` for main container width
 - Inner content can use `max-w-2xl`, `max-w-sm` etc. for reading width
 - This ensures logo, content, and footer all share the same left/right edge
+
+## Debugging (Tauri Desktop App)
+
+**Always debug from dev mode** - don't waste time building. Dev mode has hot reload and DevTools.
+
+### Quick Start Debug
+
+```bash
+# 1. Start dev mode (frontend + Tauri)
+pnpm tauri:dev
+
+# 2. Open DevTools in app: ⌥⌘I (or View → Toggle Developer Tools)
+# 3. Check Console tab for errors
+```
+
+### Diagnostic Commands
+
+```bash
+# Check frontend compiles
+cd apps/desktop && pnpm tsc --noEmit
+
+# Check Rust compiles
+cd apps/desktop/src-tauri && cargo check
+
+# Check dev server running
+lsof -i :3000
+
+# Kill stuck processes
+pkill -f "tauri" && pkill -f "next"
+```
+
+### Debug Layers (check in order)
+
+| Layer               | Check                             | Tool                                  |
+| ------------------- | --------------------------------- | ------------------------------------- |
+| 1. Frontend (React) | Console errors, component renders | DevTools Console                      |
+| 2. IPC Bridge       | `invoke()` calls, event listeners | DevTools Network + Console            |
+| 3. Rust Backend     | Command execution, panics         | Terminal running `tauri dev`          |
+| 4. Tauri Plugins    | Plugin init, permissions          | `src-tauri/capabilities/default.json` |
+
+### Common Issues
+
+| Symptom             | Likely Cause              | Fix                                                |
+| ------------------- | ------------------------- | -------------------------------------------------- |
+| Clicks do nothing   | JS error broke hydration  | Check Console for errors                           |
+| Dialog doesn't open | Plugin permission missing | Check `capabilities/default.json`                  |
+| IPC timeout         | Rust command panicked     | Check terminal for Rust errors                     |
+| Stale UI            | Hot reload failed         | Restart `pnpm tauri:dev`                           |
+| "invoke not found"  | Tauri API not loaded      | Check `withGlobalTauri: true` in `tauri.conf.json` |
+
+### Key Debug Files
+
+| Issue Area         | Files to Check                                     |
+| ------------------ | -------------------------------------------------- |
+| UI/Click handlers  | `apps/desktop/src/app/page.tsx`                    |
+| Tauri IPC hooks    | `apps/desktop/src/lib/tauri/use-tauri-daemon.ts`   |
+| Rust commands      | `apps/desktop/src-tauri/src/commands/*.rs`         |
+| Plugin permissions | `apps/desktop/src-tauri/capabilities/default.json` |
+| Tauri config       | `apps/desktop/src-tauri/tauri.conf.json`           |
+
+### Build Locations (for reference only)
+
+```
+.app bundle:   apps/desktop/src-tauri/target/release/bundle/macos/LMMs-Lab Writer.app
+.dmg installer: apps/desktop/src-tauri/target/release/bundle/dmg/LMMs-Lab Writer_*.dmg
+```
 
 ## Anti-Patterns
 
