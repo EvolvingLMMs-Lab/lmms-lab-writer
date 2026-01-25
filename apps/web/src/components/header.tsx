@@ -58,15 +58,6 @@ export async function Header() {
           LMMs-Lab Writer
         </Link>
         <div className="flex items-center gap-4">
-          <Link
-            href="https://github.com/Luodian/latex-writer/issues"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-muted/60 hover:text-muted transition-colors flex items-center gap-1.5 text-xs"
-          >
-            <Github className="w-3.5 h-3.5" />
-            Feedback
-          </Link>
           {user ? (
             <UserDropdown
               email={user.email}
@@ -91,6 +82,15 @@ export async function Header() {
               </Link>
             </>
           )}
+          <Link
+            href="https://github.com/Luodian/latex-writer/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-muted/60 hover:text-muted transition-colors flex items-center gap-1.5 text-xs"
+          >
+            <Github className="w-3.5 h-3.5" />
+            Feedback
+          </Link>
         </div>
       </div>
     </header>
