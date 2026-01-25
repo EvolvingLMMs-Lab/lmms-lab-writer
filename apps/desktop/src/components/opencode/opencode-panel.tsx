@@ -177,7 +177,7 @@ export function OpenCodePanel({
               {isWorking ? (
                 <button
                   onClick={handleAbort}
-                  className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 transition-colors"
+                  className="px-4 py-2 bg-white text-black text-sm border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
                 >
                   Stop
                 </button>
@@ -185,7 +185,7 @@ export function OpenCodePanel({
                 <button
                   onClick={handleSend}
                   disabled={!input.trim()}
-                  className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-white text-black text-sm border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all disabled:opacity-50 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
                 >
                   Send
                 </button>
@@ -203,7 +203,7 @@ export function OpenCodePanel({
             </p>
             <button
               onClick={handleNewSession}
-              className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 transition-colors"
+              className="px-4 py-2 bg-white text-black text-sm border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
             >
               New Session
             </button>
@@ -236,7 +236,7 @@ function SessionList({
           <p className="text-sm text-muted">No sessions yet</p>
           <button
             onClick={onNewSession}
-            className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 transition-colors"
+            className="px-4 py-2 bg-white text-black text-sm border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
           >
             Create First Session
           </button>

@@ -73,14 +73,12 @@ export default function EditorPage() {
   });
   const [resizing, setResizing] = useState<"sidebar" | "right" | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"files" | "git">("files");
-  const [rightTab, setRightTab] = useState<"compile" | "opencode">("compile");
   const [highlightedFile, setHighlightedFile] = useState<string | null>(null);
 
   const [commitMessage, setCommitMessage] = useState("");
   const [showCommitInput, setShowCommitInput] = useState(false);
   const [showRemoteInput, setShowRemoteInput] = useState(false);
   const [remoteUrl, setRemoteUrl] = useState("");
-  const [showAgentMenu, setShowAgentMenu] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [opencodeDaemonStatus, setOpencodeDaemonStatus] =
     useState<OpenCodeDaemonStatus>("stopped");
@@ -333,12 +331,6 @@ export default function EditorPage() {
     }
   }, [daemon]);
 
-  const handleCompile = useCallback(() => {
-    setShowRightPanel(true);
-    setRightTab("compile");
-    daemon.compile(selectedFile);
-  }, [daemon, selectedFile]);
-
   const handleStageAll = useCallback(() => {
     if (!gitStatus) return;
     const unstaged = gitStatus.changes
@@ -429,77 +421,16 @@ export default function EditorPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
-            <div className="relative">
-              <button
-                onClick={() => setShowAgentMenu((v) => !v)}
-                onBlur={() => setTimeout(() => setShowAgentMenu(false), 150)}
-                className="btn btn-sm bg-white text-black border-2 border-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center gap-2"
-              >
-                Agent Mode
-                <svg
-                  className={`w-3 h-3 transition-transform duration-100 ${showAgentMenu ? "rotate-180" : ""}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="square"
-                    strokeLinejoin="miter"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </button>
-              {showAgentMenu && (
-                <div className="absolute top-full right-0 mt-2 w-56 bg-white border-2 border-black z-50 shadow-[4px_4px_0_0_#000]">
-                  <button
-                    onClick={() => {
-                      handleCompile();
-                      setShowAgentMenu(false);
-                    }}
-                    disabled={daemon.isCompiling || !daemon.projectPath}
-                    className="text-left px-4 py-3 text-xs font-mono uppercase tracking-wide hover:bg-black hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-black flex justify-between items-center w-full transition-colors"
-                  >
-                    <span className="flex items-center gap-2">
-                      {daemon.isCompiling && (
-                        <svg
-                          className="w-3 h-3 animate-spin"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                            fill="none"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          />
-                        </svg>
-                      )}
-                      Compile LaTeX
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowRightPanel(true);
-                      setRightTab("opencode");
-                      setShowAgentMenu(false);
-                    }}
-                    className="text-left px-4 py-3 text-xs font-mono uppercase tracking-wide hover:bg-black hover:text-white w-full transition-colors"
-                  >
-                    OpenCode
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+          <button
+            onClick={() => setShowRightPanel((v) => !v)}
+            className={`btn btn-sm border-2 border-black transition-all flex items-center gap-2 bg-white text-black ${
+              showRightPanel
+                ? "shadow-none translate-x-[3px] translate-y-[3px]"
+                : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px]"
+            }`}
+          >
+            Agent Mode
+          </button>
         </div>
       </header>
 
@@ -987,161 +918,21 @@ export default function EditorPage() {
                 style={{ width: rightPanelWidth }}
                 className="border-l border-border flex flex-col flex-shrink-0 overflow-hidden"
               >
-                <div className="flex items-center border-b border-border flex-shrink-0 bg-white">
-                  <button
-                    onClick={() => setRightTab("opencode")}
-                    className={`group flex-1 flex items-center justify-center gap-1.5 h-9 px-3 text-[11px] font-mono font-medium transition-colors border-r border-border ${
-                      rightTab === "opencode"
-                        ? "text-black border-b-2 border-black -mb-px"
-                        : "text-muted hover:text-black"
-                    }`}
-                  >
-                    <div className="relative flex items-center">
-                      <svg
-                        className="size-3.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path
-                          strokeLinecap="square"
-                          strokeLinejoin="miter"
-                          d="M12 8V4H8"
-                        />
-                        <rect
-                          width="16"
-                          height="12"
-                          x="4"
-                          y="8"
-                          strokeLinecap="square"
-                          strokeLinejoin="miter"
-                        />
-                        <path
-                          strokeLinecap="square"
-                          strokeLinejoin="miter"
-                          d="M2 14h2"
-                        />
-                        <path
-                          strokeLinecap="square"
-                          strokeLinejoin="miter"
-                          d="M20 14h2"
-                        />
-                        <path
-                          strokeLinecap="square"
-                          strokeLinejoin="miter"
-                          d="M15 13v2"
-                        />
-                        <path
-                          strokeLinecap="square"
-                          strokeLinejoin="miter"
-                          d="M9 13v2"
-                        />
-                      </svg>
-                    </div>
-                    Agent
-                  </button>
-                  <button
-                    onClick={() => setRightTab("compile")}
-                    className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 text-[11px] font-mono font-medium transition-colors ${
-                      rightTab === "compile"
-                        ? "text-black border-b-2 border-black -mb-px"
-                        : "text-muted hover:text-black"
-                    }`}
-                  >
-                    <svg
-                      className="size-3.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <polyline
-                        points="4 17 10 11 4 5"
-                        strokeLinecap="square"
-                        strokeLinejoin="miter"
-                      />
-                      <line
-                        x1="12"
-                        y1="19"
-                        x2="20"
-                        y2="19"
-                        strokeLinecap="square"
-                        strokeLinejoin="miter"
-                      />
-                    </svg>
-                    Output
-                  </button>
-                  <button
-                    onClick={() => setShowRightPanel(false)}
-                    className="w-9 h-9 flex items-center justify-center border-l border-border text-muted hover:text-black hover:bg-neutral-100 transition-colors"
-                  >
-                    <svg
-                      className="size-3.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="square"
-                        strokeLinejoin="miter"
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </button>
-                </div>
-
-                <div className="flex-1 min-h-0 overflow-hidden">
-                  {rightTab === "opencode" && (
-                    <OpenCodePanel
-                      className="h-full"
-                      baseUrl={`http://localhost:${opencodePort}`}
-                      directory={daemon.projectPath ?? undefined}
-                      autoConnect={
-                        opencodeDaemonStatus === "running" &&
-                        !!daemon.projectPath
-                      }
-                      daemonStatus={opencodeDaemonStatus}
-                      onRestartOpenCode={restartOpencode}
-                      onMaxReconnectFailed={handleMaxReconnectFailed}
-                    />
-                  )}
-                  {rightTab === "compile" && (
-                    <ScrollArea className="flex-1 p-3 font-mono text-xs bg-neutral-50">
-                      {daemon.compileOutput || (
-                        <span className="text-muted">
-                          Click Compile to build your document
-                        </span>
-                      )}
-                    </ScrollArea>
-                  )}
-                </div>
+                <OpenCodePanel
+                  className="h-full"
+                  baseUrl={`http://localhost:${opencodePort}`}
+                  directory={daemon.projectPath ?? undefined}
+                  autoConnect={
+                    opencodeDaemonStatus === "running" && !!daemon.projectPath
+                  }
+                  daemonStatus={opencodeDaemonStatus}
+                  onRestartOpenCode={restartOpencode}
+                  onMaxReconnectFailed={handleMaxReconnectFailed}
+                />
               </aside>
             </motion.div>
           )}
         </AnimatePresence>
-
-        {!showRightPanel && (
-          <button
-            onClick={() => setShowRightPanel(true)}
-            className="flex-shrink-0 w-6 border-l border-border hover:bg-neutral-100 transition-colors flex items-center justify-center"
-          >
-            <svg
-              className="w-3.5 h-3.5 text-muted"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="square"
-                strokeLinejoin="miter"
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </button>
-        )}
       </main>
 
       <OpenCodeDisconnectedDialog

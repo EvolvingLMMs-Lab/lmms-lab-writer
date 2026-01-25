@@ -142,7 +142,7 @@ export function OpenCodeDisconnectedDialog({
           </button>
           <button
             onClick={handleRestart}
-            className="px-3 py-1.5 text-xs bg-black text-white hover:bg-black/80 transition-colors"
+            className="px-3 py-1.5 text-xs bg-white text-black border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
           >
             Restart OpenCode
           </button>

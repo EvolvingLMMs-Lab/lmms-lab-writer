@@ -33,13 +33,6 @@ interface GitState {
   gitInitResult: GitInitResult | null;
 }
 
-interface CompileState {
-  isCompiling: boolean;
-  compileOutput: string;
-  compileSuccess: boolean | null;
-  compilePdfPath: string | null;
-}
-
 interface FileChangeEvent {
   path: string;
   kind: "create" | "modify" | "remove" | "access" | "other" | "unknown";
@@ -74,13 +67,6 @@ export function useTauriDaemon() {
     gitStatus: null,
     isInitializingGit: false,
     gitInitResult: null,
-  });
-
-  const [compileState, setCompileState] = useState<CompileState>({
-    isCompiling: false,
-    compileOutput: "",
-    compileSuccess: null,
-    compilePdfPath: null,
   });
 
   const setProject = useCallback(async (path: string) => {
@@ -299,52 +285,6 @@ export function useTauriDaemon() {
     setGitState((s) => ({ ...s, gitInitResult: null }));
   }, []);
 
-  const compile = useCallback(
-    async (file?: string, engine?: string) => {
-      if (!projectState.projectPath) return;
-
-      const mainFile = file || projectState.projectInfo?.mainFile;
-      if (!mainFile) {
-        console.error("No main file specified");
-        return;
-      }
-
-      setCompileState({
-        isCompiling: true,
-        compileOutput: "",
-        compileSuccess: null,
-        compilePdfPath: null,
-      });
-
-      try {
-        const result = await invoke<{
-          success: boolean;
-          output: string;
-          pdf_path?: string;
-        }>("compile_latex", {
-          dir: projectState.projectPath,
-          mainFile,
-          engine: engine || "xelatex",
-        });
-
-        setCompileState({
-          isCompiling: false,
-          compileOutput: result.output,
-          compileSuccess: result.success,
-          compilePdfPath: result.pdf_path ?? null,
-        });
-      } catch (error) {
-        setCompileState({
-          isCompiling: false,
-          compileOutput: `Compilation failed: ${error}`,
-          compileSuccess: false,
-          compilePdfPath: null,
-        });
-      }
-    },
-    [projectState.projectPath, projectState.projectInfo],
-  );
-
   const [lastFileChange, setLastFileChange] = useState<FileChangeEvent | null>(
     null,
   );
@@ -449,6 +389,7 @@ export function useTauriDaemon() {
       readFile,
       writeFile,
       compile,
+      stopCompile,
       gitAdd,
       gitCommit,
       gitPush,
@@ -468,6 +409,7 @@ export function useTauriDaemon() {
       readFile,
       writeFile,
       compile,
+      stopCompile,
       gitAdd,
       gitCommit,
       gitPush,
