@@ -189,12 +189,20 @@ export default function EditorPage() {
   useEffect(() => {
     if (!resizing) return;
 
+    const MIN_PANEL_WIDTH = 200;
+    const MAX_PANEL_WIDTH = 480;
+
     const handleMouseMove = (e: MouseEvent) => {
       if (resizing === "sidebar") {
-        setSidebarWidth(Math.min(Math.max(e.clientX, 200), 400));
+        setSidebarWidth(
+          Math.min(Math.max(e.clientX, MIN_PANEL_WIDTH), MAX_PANEL_WIDTH),
+        );
       } else if (resizing === "right") {
         setRightPanelWidth(
-          Math.min(Math.max(window.innerWidth - e.clientX, 200), 400),
+          Math.min(
+            Math.max(window.innerWidth - e.clientX, MIN_PANEL_WIDTH),
+            MAX_PANEL_WIDTH,
+          ),
         );
       }
     };

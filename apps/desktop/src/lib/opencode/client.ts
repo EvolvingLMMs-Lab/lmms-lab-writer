@@ -257,7 +257,19 @@ export class OpenCodeClient {
     if (!response.ok)
       throw new Error(`Failed to get messages: ${response.statusText}`);
     const data = await response.json();
-    const messages = Array.isArray(data) ? data : [];
+    const items = Array.isArray(data) ? data : [];
+
+    const messages: Message[] = [];
+    for (const item of items) {
+      if (item.info) {
+        messages.push(item.info);
+        if (item.parts && Array.isArray(item.parts)) {
+          const key = `${sessionID}:${item.info.id}`;
+          this.store.parts.set(key, item.parts);
+        }
+      }
+    }
+
     this.store.messages.set(sessionID, messages);
     return messages;
   }

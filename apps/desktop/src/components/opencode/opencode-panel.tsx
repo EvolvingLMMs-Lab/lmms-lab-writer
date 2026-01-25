@@ -7,6 +7,7 @@ import type {
   Part,
   ToolPart,
   TextPart,
+  ReasoningPart,
   SessionStatus,
   SessionInfo,
 } from "@/lib/opencode/types";
@@ -616,6 +617,7 @@ function MessageTurn({
 
   const assistantTextParts: TextPart[] = [];
   const toolParts: ToolPart[] = [];
+  const reasoningParts: ReasoningPart[] = [];
 
   for (const part of turn.parts) {
     if (part.messageID === turn.user.id) continue;
@@ -623,6 +625,8 @@ function MessageTurn({
       assistantTextParts.push(part as TextPart);
     } else if (part.type === "tool") {
       toolParts.push(part as ToolPart);
+    } else if (part.type === "reasoning") {
+      reasoningParts.push(part as ReasoningPart);
     }
   }
 
@@ -643,7 +647,10 @@ function MessageTurn({
         </div>
       </div>
 
-      {(toolParts.length > 0 || lastTextPart || isWorking) && (
+      {(toolParts.length > 0 ||
+        lastTextPart ||
+        isWorking ||
+        reasoningParts.length > 0) && (
         <div className="flex gap-2">
           <div className="size-6 border border-neutral-300 bg-neutral-100 flex items-center justify-center text-xs flex-shrink-0 text-neutral-500">
             A
@@ -658,6 +665,10 @@ function MessageTurn({
                     : getStatusText(toolParts)}
                 </span>
               </div>
+            )}
+
+            {reasoningParts.length > 0 && (
+              <ReasoningDisplay parts={reasoningParts} />
             )}
 
             {toolParts.length > 0 && (
@@ -749,6 +760,48 @@ function ToolDisplay({ part }: { part: ToolPart }) {
         <p className="mt-1 text-red-600">
           {(part.state as { error: string }).error}
         </p>
+      )}
+    </div>
+  );
+}
+
+function ReasoningDisplay({ parts }: { parts: ReasoningPart[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const combinedText = parts.map((p) => p.text).join("\n\n");
+  const previewLength = 100;
+  const needsExpand = combinedText.length > previewLength;
+
+  return (
+    <div className="text-xs border border-neutral-200 bg-neutral-50 p-2">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1.5 text-neutral-500 hover:text-neutral-700 w-full text-left"
+      >
+        <svg
+          className={`size-3 transition-transform ${expanded ? "rotate-90" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={2}
+            d="M9 5l7 7-7 7"
+          />
+        </svg>
+        <span className="font-medium">Thinking</span>
+        {!expanded && needsExpand && (
+          <span className="text-neutral-400 truncate flex-1">
+            {combinedText.slice(0, previewLength)}...
+          </span>
+        )}
+      </button>
+      {expanded && (
+        <div className="mt-2 text-neutral-600 whitespace-pre-wrap">
+          {combinedText}
+        </div>
       )}
     </div>
   );
