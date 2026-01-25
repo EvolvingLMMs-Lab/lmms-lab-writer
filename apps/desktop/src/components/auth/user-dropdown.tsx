@@ -34,9 +34,19 @@ export function UserDropdown({ profile }: Props) {
       }
     }
 
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && isOpen) {
+        setIsOpen(false);
+      }
+    }
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -58,6 +68,8 @@ export function UserDropdown({ profile }: Props) {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
       >
         {avatarUrl ? (
           <img
@@ -88,10 +100,14 @@ export function UserDropdown({ profile }: Props) {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-white border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] z-50">
+        <div
+          className="absolute right-0 top-full mt-2 w-80 bg-white border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] z-50"
+          role="menu"
+        >
           <button
             onClick={handleOpenProfile}
             className="w-full p-5 border-b border-border flex items-center gap-4 hover:bg-neutral-50 transition-colors group text-left"
+            role="menuitem"
           >
             {avatarUrl ? (
               <img
@@ -137,6 +153,7 @@ export function UserDropdown({ profile }: Props) {
                 <button
                   onClick={handleOpenProfile}
                   className="text-xs text-muted hover:text-black transition-colors"
+                  role="menuitem"
                 >
                   Manage
                 </button>
@@ -145,6 +162,7 @@ export function UserDropdown({ profile }: Props) {
               <button
                 onClick={handleOpenProfile}
                 className="flex items-center justify-between w-full group"
+                role="menuitem"
               >
                 <span className="text-sm font-medium">
                   Star repos to unlock
@@ -172,6 +190,7 @@ export function UserDropdown({ profile }: Props) {
               onClick={handleSignOut}
               disabled={isSigningOut}
               className="text-sm text-muted hover:text-black transition-colors disabled:opacity-50"
+              role="menuitem"
             >
               {isSigningOut ? "Signing out..." : "Sign out"}
             </button>

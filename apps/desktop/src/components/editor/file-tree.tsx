@@ -132,11 +132,25 @@ const TreeNode = memo(function TreeNode({
     }
   }, [isDirectory, node.path, onFileSelect]);
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        handleClick();
+      }
+    },
+    [handleClick],
+  );
+
   return (
     <div>
       <motion.button
         ref={buttonRef}
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        role="treeitem"
+        aria-expanded={isDirectory ? expanded : undefined}
+        aria-selected={isSelected}
         className={`w-full flex items-center gap-2 px-2 py-1 text-left text-sm transition-colors ${
           isSelected ? "bg-black text-white" : "hover:bg-black/5"
         }`}
@@ -217,6 +231,8 @@ export const FileTree = memo(function FileTree({
   return (
     <OverlayScrollbarsComponent
       className={className}
+      role="tree"
+      aria-label="File explorer"
       options={{
         scrollbars: {
           theme: "os-theme-monochrome",
