@@ -205,16 +205,38 @@ export function useOpenCode(
       const client = clientRef.current;
       if (!client || !connected) return;
 
+      currentSessionIdRef.current = sessionId;
       setCurrentSessionId(sessionId);
 
       try {
-        await client.getMessages(sessionId);
-        syncFromStore();
+        const msgs = await client.getMessages(sessionId);
+        setMessages(msgs);
+        setStatus(client.store.status.get(sessionId) || { type: "idle" });
+
+        const sessionParts = new Map<string, Part[]>();
+        for (const [key, value] of client.store.parts.entries()) {
+          if (key.startsWith(`${sessionId}:`)) {
+            sessionParts.set(key, value);
+          }
+        }
+        setParts(sessionParts);
+
+        for (const msg of msgs) {
+          await client.getParts(sessionId, msg.id);
+        }
+
+        const updatedParts = new Map<string, Part[]>();
+        for (const [key, value] of client.store.parts.entries()) {
+          if (key.startsWith(`${sessionId}:`)) {
+            updatedParts.set(key, value);
+          }
+        }
+        setParts(updatedParts);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load session");
       }
     },
-    [connected, syncFromStore],
+    [connected],
   );
 
   const deleteSession = useCallback(
