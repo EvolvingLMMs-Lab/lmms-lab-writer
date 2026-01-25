@@ -39,23 +39,27 @@ body {
 }
 
 .btn {
-  @apply px-5 py-2.5 text-sm font-medium transition-all duration-150 flex items-center justify-center gap-2 border;
+  @apply px-6 py-3 text-sm font-mono uppercase tracking-wider transition-all duration-100 flex items-center justify-center gap-2;
+  border: 1px solid #000;
+  box-shadow: 4px 4px 0 0 #000;
+}
+
+.btn:hover {
+  box-shadow: 2px 2px 0 0 #000;
+  transform: translate(2px, 2px);
+}
+
+.btn:active {
+  box-shadow: 0 0 0 0 #000;
+  transform: translate(4px, 4px);
 }
 
 .btn-primary {
-  @apply bg-foreground text-background border-foreground;
-}
-
-.btn-primary:hover {
-  @apply bg-neutral-800;
+  @apply bg-foreground text-background;
 }
 
 .btn-secondary {
-  @apply bg-transparent text-foreground border-border;
-}
-
-.btn-secondary:hover {
-  @apply border-foreground;
+  @apply bg-white text-foreground;
 }
 
 .logo-bar {

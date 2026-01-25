@@ -50,7 +50,7 @@ export default function DownloadPage() {
       </header>
 
       <main className="flex-1 py-16 px-6">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <Link
             href="/"
             className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground mb-10"
@@ -62,7 +62,7 @@ export default function DownloadPage() {
           <h1 className="text-2xl font-medium tracking-tight mb-2">Download</h1>
           <p className="text-muted mb-10">Version 0.1.0</p>
 
-          <div className="space-y-8">
+          <div className="space-y-8 max-w-2xl">
             {platforms.map((platform) => (
               <div key={platform.name}>
                 <h2 className="text-sm font-medium mb-3">{platform.name}</h2>
@@ -82,7 +82,7 @@ export default function DownloadPage() {
             ))}
           </div>
 
-          <div className="mt-16 pt-8 border-t border-border">
+          <div className="mt-16 pt-8 border-t border-border max-w-2xl">
             <h2 className="text-sm font-medium mb-3">Requirements</h2>
             <ul className="text-sm text-muted space-y-1">
               <li>
@@ -116,7 +116,7 @@ export default function DownloadPage() {
             </ul>
           </div>
 
-          <div className="mt-10 pt-8 border-t border-border">
+          <div className="mt-10 pt-8 border-t border-border max-w-2xl">
             <h2 className="text-sm font-medium mb-3">Build from source</h2>
             <pre className="text-sm text-muted bg-neutral-50 p-4 overflow-x-auto border border-border">
               {`git clone https://github.com/Luodian/latex-writer.git
@@ -130,7 +130,15 @@ pnpm tauri:build`}
 
       <footer className="border-t border-border">
         <div className="max-w-5xl mx-auto px-6 py-6 text-sm text-muted">
-          Free and open source
+          Built by{" "}
+          <Link
+            href="https://www.lmms-lab.com/"
+            className="hover:text-foreground transition-colors"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            LMMs-Lab
+          </Link>
         </div>
       </footer>
     </div>

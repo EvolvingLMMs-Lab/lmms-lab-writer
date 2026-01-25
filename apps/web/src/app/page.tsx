@@ -60,15 +60,15 @@ export default function HomePage() {
       <main className="flex-1">
         {/* Hero */}
         <section className="py-24 px-6">
-          <div className="max-w-2xl mx-auto text-center">
+          <div className="max-w-5xl mx-auto">
             <h1 className="text-3xl md:text-4xl font-medium tracking-tight mb-6">
               AI-native LaTeX editor
             </h1>
-            <p className="text-muted mb-10 leading-relaxed">
+            <p className="text-muted mb-10 leading-relaxed max-w-2xl">
               Local-first. Works with Claude, Cursor, Codex, or any tool that
               edits files. Your research stays on your machine.
             </p>
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex items-center gap-4">
               <Link href="/download" className="btn btn-primary">
                 <Download className="w-4 h-4" />
                 Download
@@ -83,11 +83,9 @@ export default function HomePage() {
 
         {/* Comparison */}
         <section className="py-20 px-6 bg-neutral-900 text-white">
-          <div className="max-w-3xl mx-auto">
-            <h2 className="text-2xl font-medium mb-10 text-center">
-              Why not Overleaf?
-            </h2>
-            <div className="border border-neutral-700">
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-2xl font-medium mb-10">Why not Overleaf?</h2>
+            <div className="border border-neutral-700 max-w-3xl">
               <div className="grid grid-cols-3 border-b border-neutral-700 text-xs font-mono uppercase tracking-wider text-neutral-400">
                 <div className="p-4 border-r border-neutral-700">Feature</div>
                 <div className="p-4 border-r border-neutral-700">Overleaf</div>
@@ -120,11 +118,11 @@ export default function HomePage() {
 
         {/* AI Tools */}
         <section className="py-20 px-6 border-t border-border">
-          <div className="max-w-2xl mx-auto text-center">
+          <div className="max-w-5xl mx-auto">
             <h2 className="text-xl font-medium mb-6">
               Works with your favorite AI tools
             </h2>
-            <div className="flex flex-wrap justify-center gap-3 text-sm font-mono">
+            <div className="flex flex-wrap gap-3 text-sm font-mono">
               {[
                 "Claude Code",
                 "Cursor",
@@ -145,7 +143,7 @@ export default function HomePage() {
       </main>
 
       <footer className="border-t border-border">
-        <div className="max-w-5xl mx-auto px-6 py-6 text-sm text-muted text-center">
+        <div className="max-w-5xl mx-auto px-6 py-6 text-sm text-muted">
           Built by{" "}
           <Link
             href="https://www.lmms-lab.com/"

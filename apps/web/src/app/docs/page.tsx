@@ -50,7 +50,7 @@ export default function DocsPage() {
       </header>
 
       <main className="flex-1 py-16 px-6">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <Link
             href="/"
             className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground mb-10"
@@ -63,7 +63,7 @@ export default function DocsPage() {
             Documentation
           </h1>
 
-          <div className="space-y-10">
+          <div className="space-y-10 max-w-2xl">
             {sections.map((section) => (
               <div key={section.title}>
                 <h2 className="text-sm font-medium mb-3">{section.title}</h2>
