@@ -590,6 +590,8 @@ function MessageTurn({
   status: SessionStatus;
   onFileClick?: (path: string) => void;
 }) {
+  const [stepsHidden, setStepsHidden] = useState(false);
+
   const seenIds = new Set<string>();
   const dedupedParts = turn.parts.filter((part) => {
     if (seenIds.has(part.id)) return false;
@@ -621,6 +623,39 @@ function MessageTurn({
   const isWorking =
     isLast && (status.type === "running" || status.type === "retry");
 
+  const completedToolParts = toolParts.filter(
+    (p) => p.state.status === "completed",
+  );
+  const totalDuration = completedToolParts.reduce((acc, part) => {
+    const state = part.state as {
+      time?: { start?: number; end?: number };
+    };
+    if (state.time?.start && state.time?.end) {
+      return acc + (state.time.end - state.time.start);
+    }
+    return acc;
+  }, 0);
+
+  const fileChanges = completedToolParts
+    .filter((p) => p.tool === "edit" || p.tool === "write")
+    .map((p) => {
+      const info = getToolInfo(p.tool, p.state.input);
+      const metadata = (p.state as { metadata?: Record<string, unknown> })
+        .metadata;
+      const filediff = metadata?.filediff as
+        | { additions?: number; deletions?: number }
+        | undefined;
+      return {
+        file: info.subtitle || "unknown",
+        additions: filediff?.additions || 0,
+        deletions: filediff?.deletions || 0,
+      };
+    })
+    .filter((f) => f.additions > 0 || f.deletions > 0);
+
+  const hasSteps =
+    toolParts.length > 0 || reasoningParts.length > 0 || isWorking;
+
   return (
     <div className="space-y-3">
       <div className="bg-[#e8f5f2] border border-[#c5e4dd] px-3 py-2">
@@ -629,10 +664,36 @@ function MessageTurn({
         </p>
       </div>
 
-      {(toolParts.length > 0 ||
-        lastTextPart ||
-        isWorking ||
-        reasoningParts.length > 0) && (
+      {hasSteps && (
+        <button
+          type="button"
+          onClick={() => setStepsHidden(!stepsHidden)}
+          className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
+        >
+          <svg
+            className={`size-3 transition-transform ${stepsHidden ? "" : "rotate-90"}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="square"
+              strokeLinejoin="miter"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+          <span>{stepsHidden ? "Show" : "Hide"} steps</span>
+          {totalDuration > 0 && (
+            <>
+              <span className="text-neutral-300">·</span>
+              <span>{formatDuration(totalDuration)}</span>
+            </>
+          )}
+        </button>
+      )}
+
+      {!stepsHidden && (
         <div className="space-y-2.5">
           {isWorking && (
             <div className="flex items-center gap-2 text-xs text-neutral-500">
@@ -650,7 +711,7 @@ function MessageTurn({
           )}
 
           {toolParts.length > 0 && (
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {toolParts.map((part) => (
                 <ToolDisplay
                   key={part.id}
@@ -660,22 +721,101 @@ function MessageTurn({
               ))}
             </div>
           )}
-
-          {lastTextPart && (
-            <div>
-              <p className="text-[10px] uppercase tracking-wider font-medium text-neutral-400 mb-1.5">
-                Response
-              </p>
-              <div className="text-[13px] leading-relaxed whitespace-pre-wrap break-words max-w-none text-neutral-700">
-                <MarkdownText
-                  text={lastTextPart.text}
-                  onFileClick={onFileClick}
-                />
-              </div>
-            </div>
-          )}
         </div>
       )}
+
+      {lastTextPart && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wider font-medium text-neutral-400 mb-1.5">
+            Response
+          </p>
+          <div className="text-[13px] leading-relaxed whitespace-pre-wrap break-words max-w-none text-neutral-700">
+            <MarkdownText text={lastTextPart.text} onFileClick={onFileClick} />
+          </div>
+        </div>
+      )}
+
+      {fileChanges.length > 0 && (
+        <div className="space-y-1 pt-1">
+          {fileChanges.map((fc, i) => (
+            <FileChangeRow
+              key={i}
+              file={fc.file}
+              additions={fc.additions}
+              deletions={fc.deletions}
+              onFileClick={onFileClick}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatDuration(ms: number): string {
+  if (ms >= 60000) {
+    const mins = Math.floor(ms / 60000);
+    return `${mins}min${mins > 1 ? "s" : ""}`;
+  }
+  if (ms >= 1000) {
+    const secs = Math.floor(ms / 1000);
+    return `${secs}s`;
+  }
+  return `${ms}ms`;
+}
+
+function FileChangeRow({
+  file,
+  additions,
+  deletions,
+  onFileClick,
+}: {
+  file: string;
+  additions: number;
+  deletions: number;
+  onFileClick?: (path: string) => void;
+}) {
+  const isClickable =
+    onFileClick &&
+    /\.(tex|bib|cls|sty|txt|md|json|yaml|yml|toml|py|js|ts|tsx|jsx|css|scss|html|xml|sh|bash|zsh|log)$/i.test(
+      file,
+    );
+
+  return (
+    <div className="flex items-center justify-between text-xs border border-border px-2 py-1.5 bg-neutral-50 hover:bg-neutral-100 transition-colors">
+      <div className="flex items-center gap-2 min-w-0">
+        <svg
+          className="size-3.5 text-neutral-400 flex-shrink-0"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
+        </svg>
+        {isClickable ? (
+          <button
+            onClick={() => onFileClick(file)}
+            className="text-neutral-700 hover:text-black hover:underline truncate"
+          >
+            {file}
+          </button>
+        ) : (
+          <span className="text-neutral-700 truncate">{file}</span>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+        {additions > 0 && (
+          <span className="text-green-600 font-medium">+{additions}</span>
+        )}
+        {deletions > 0 && (
+          <span className="text-red-600 font-medium">-{deletions}</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -689,6 +829,190 @@ function getStatusText(toolParts: ToolPart[]): string {
   return "Thinking...";
 }
 
+function ToolIcon({ tool }: { tool: string }) {
+  const iconClass = "size-4 text-neutral-500 flex-shrink-0";
+
+  switch (tool) {
+    case "bash":
+      return (
+        <svg
+          className={iconClass}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
+      );
+    case "glob":
+      return (
+        <svg
+          className={iconClass}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+      );
+    case "grep":
+      return (
+        <svg
+          className={iconClass}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
+        </svg>
+      );
+    case "read":
+      return (
+        <svg
+          className={iconClass}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
+        </svg>
+      );
+    case "write":
+      return (
+        <svg
+          className={iconClass}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
+        </svg>
+      );
+    case "edit":
+      return (
+        <svg
+          className={iconClass}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+          />
+        </svg>
+      );
+    case "list":
+      return (
+        <svg
+          className={iconClass}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M4 6h16M4 10h16M4 14h16M4 18h16"
+          />
+        </svg>
+      );
+    case "todowrite":
+    case "todoread":
+      return (
+        <svg
+          className={iconClass}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+          />
+        </svg>
+      );
+    case "webfetch":
+      return (
+        <svg
+          className={iconClass}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+          />
+        </svg>
+      );
+    case "task":
+      return (
+        <svg
+          className={iconClass}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+          />
+        </svg>
+      );
+    default:
+      return (
+        <svg
+          className={iconClass}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+          />
+        </svg>
+      );
+  }
+}
+
 function ToolDisplay({
   part,
   onFileClick,
@@ -696,6 +1020,7 @@ function ToolDisplay({
   part: ToolPart;
   onFileClick?: (path: string) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const info = getToolInfo(part.tool, part.state.input);
   const isComplete = part.state.status === "completed";
   const isError = part.state.status === "error";
@@ -708,54 +1033,56 @@ function ToolDisplay({
       info.subtitle,
     );
 
+  const hasExpandableContent =
+    isComplete &&
+    (part.tool === "bash" ||
+      part.tool === "read" ||
+      part.tool === "grep" ||
+      part.tool === "glob");
+  const output = (part.state as { output?: string }).output;
+
   return (
     <div
-      className={`text-[11px] border border-border p-2 ${isError ? "border-red-200 bg-red-50" : ""}`}
+      className={`text-[11px] border border-border bg-neutral-50 hover:bg-neutral-100 transition-colors ${isError ? "border-red-200 bg-red-50 hover:bg-red-50" : ""}`}
     >
-      <div className="flex items-center gap-2">
-        {isRunning && <Spinner className="size-3" />}
-        {isComplete && (
-          <svg
-            className="size-3 text-black"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="square"
-              strokeLinejoin="miter"
-              strokeWidth={2}
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
+      <button
+        type="button"
+        onClick={() => hasExpandableContent && setExpanded(!expanded)}
+        disabled={!hasExpandableContent}
+        className={`w-full flex items-center gap-2 px-2 py-1.5 text-left ${hasExpandableContent ? "cursor-pointer" : "cursor-default"}`}
+      >
+        {isRunning ? (
+          <Spinner className="size-4 flex-shrink-0" />
+        ) : (
+          <ToolIcon tool={part.tool} />
         )}
-        {isError && (
-          <svg
-            className="size-3 text-red-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="square"
-              strokeLinejoin="miter"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
+
+        <span className="font-medium text-neutral-600 uppercase tracking-wide text-[10px]">
+          {info.title}
+        </span>
+
+        {info.subtitle && (
+          <>
+            <span className="text-neutral-300">/</span>
+            {isClickableFile && !hasExpandableContent ? (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFileClick(info.subtitle!);
+                }}
+                className="text-neutral-700 font-medium hover:text-black hover:underline truncate cursor-pointer"
+              >
+                {info.subtitle}
+              </span>
+            ) : (
+              <span className="text-neutral-700 font-medium truncate">
+                {info.subtitle}
+              </span>
+            )}
+          </>
         )}
-        <span className="font-medium text-neutral-700">{info.title}</span>
-        {info.subtitle &&
-          (isClickableFile ? (
-            <button
-              onClick={() => onFileClick(info.subtitle!)}
-              className="text-neutral-500 hover:text-black hover:underline truncate cursor-pointer transition-colors"
-            >
-              {info.subtitle}
-            </button>
-          ) : (
-            <span className="text-neutral-500 truncate">{info.subtitle}</span>
-          ))}
+
+        <div className="flex-1" />
 
         {isComplete && (part.tool === "edit" || part.tool === "write") && (
           <DiffStats
@@ -764,12 +1091,38 @@ function ToolDisplay({
             }
           />
         )}
-      </div>
+
+        {hasExpandableContent && (
+          <svg
+            className={`size-3 text-neutral-400 transition-transform flex-shrink-0 ${expanded ? "rotate-90" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="square"
+              strokeLinejoin="miter"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        )}
+      </button>
+
+      {expanded && output && (
+        <div className="border-t border-border px-2 py-2 max-h-48 overflow-auto">
+          <pre className="text-[10px] text-neutral-600 whitespace-pre-wrap break-all font-mono">
+            {output.length > 2000 ? output.slice(0, 2000) + "..." : output}
+          </pre>
+        </div>
+      )}
 
       {isError && (
-        <p className="mt-1 text-red-600">
-          {(part.state as { error: string }).error}
-        </p>
+        <div className="border-t border-red-200 px-2 py-1.5">
+          <p className="text-red-600">
+            {(part.state as { error: string }).error}
+          </p>
+        </div>
       )}
     </div>
   );
@@ -1233,7 +1586,7 @@ function InputArea({
                   {!Array.isArray(providers) || providers.length === 0 ? (
                     <option value="">No models</option>
                   ) : (
-                    providers.map((provider) =>
+                    providers.flatMap((provider) =>
                       Array.isArray(provider?.models)
                         ? provider.models.map((model) => (
                             <option
@@ -1243,7 +1596,7 @@ function InputArea({
                               {model.name} ({provider.name})
                             </option>
                           ))
-                        : null,
+                        : [],
                     )
                   )}
                 </select>
