@@ -49,8 +49,8 @@ export default function DocsPage() {
         </div>
       </header>
 
-      <main className="flex-1 py-16 px-6">
-        <div className="max-w-5xl mx-auto">
+      <main className="flex-1 py-16">
+        <div className="max-w-5xl mx-auto px-6">
           <Link
             href="/"
             className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground mb-10"

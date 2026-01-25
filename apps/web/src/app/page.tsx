@@ -17,7 +17,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b border-border">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
             <div className="logo-bar">
               <span></span>
@@ -28,7 +28,7 @@ export default function HomePage() {
               <span></span>
               <span></span>
             </div>
-            <span className="font-mono text-sm tracking-tight">
+            <span className="font-mono text-lg tracking-tight font-medium">
               LMMs-Lab Writer
             </span>
           </Link>
@@ -82,32 +82,32 @@ export default function HomePage() {
         </section>
 
         {/* Comparison */}
-        <section className="py-20 px-6 bg-neutral-900 text-white">
+        <section className="py-20 px-6 bg-white">
           <div className="max-w-5xl mx-auto">
             <h2 className="text-2xl font-medium mb-10">Why not Overleaf?</h2>
-            <div className="border border-neutral-700 max-w-3xl">
-              <div className="grid grid-cols-3 border-b border-neutral-700 text-xs font-mono uppercase tracking-wider text-neutral-400">
-                <div className="p-4 border-r border-neutral-700">Feature</div>
-                <div className="p-4 border-r border-neutral-700">Overleaf</div>
-                <div className="p-4">Writer</div>
+            <div className="border border-border max-w-3xl">
+              <div className="grid grid-cols-3 border-b border-border text-xs font-mono uppercase tracking-wider text-muted">
+                <div className="p-4 border-r border-border">Feature</div>
+                <div className="p-4 border-r border-border">Overleaf</div>
+                <div className="p-4 bg-neutral-50 font-semibold text-foreground">
+                  Writer
+                </div>
               </div>
               {comparisons.map((row, i) => (
                 <div
                   key={row.feature}
                   className={`grid grid-cols-3 text-sm ${
-                    i !== comparisons.length - 1
-                      ? "border-b border-neutral-700"
-                      : ""
+                    i !== comparisons.length - 1 ? "border-b border-border" : ""
                   }`}
                 >
-                  <div className="p-4 border-r border-neutral-700 font-medium">
+                  <div className="p-4 border-r border-border font-medium text-muted">
                     {row.feature}
                   </div>
-                  <div className="p-4 border-r border-neutral-700 text-neutral-500">
+                  <div className="p-4 border-r border-border text-muted">
                     {row.overleaf}
                   </div>
-                  <div className="p-4 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-white" />
+                  <div className="p-4 flex items-center gap-2 bg-neutral-50 font-medium">
+                    <CheckCircle2 className="w-4 h-4 text-foreground" />
                     {row.writer}
                   </div>
                 </div>

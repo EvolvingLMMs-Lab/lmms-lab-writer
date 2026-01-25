@@ -69,8 +69,8 @@ body {
 }
 
 .logo-bar span {
-  width: 3px;
-  height: 10px;
+  width: 5px;
+  height: 16px;
   background: currentColor;
   animation: logo-wave 1.5s ease-in-out infinite;
 }
