@@ -38,6 +38,26 @@ body {
   @apply w-full px-4 py-3 border border-border focus:border-foreground focus:outline-none transition-colors bg-white;
 }
 
+.btn {
+  @apply px-5 py-2.5 text-sm font-medium transition-all duration-150 flex items-center justify-center gap-2 border;
+}
+
+.btn-primary {
+  @apply bg-foreground text-background border-foreground;
+}
+
+.btn-primary:hover {
+  @apply bg-neutral-800;
+}
+
+.btn-secondary {
+  @apply bg-transparent text-foreground border-border;
+}
+
+.btn-secondary:hover {
+  @apply border-foreground;
+}
+
 .logo-bar {
   display: flex;
   gap: 2px;

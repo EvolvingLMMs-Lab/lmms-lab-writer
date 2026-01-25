@@ -1,5 +1,17 @@
 import Link from "next/link";
-import { Github } from "lucide-react";
+import { Github, Download, FileText, CheckCircle2 } from "lucide-react";
+
+const comparisons = [
+  { feature: "File location", overleaf: "Cloud only", writer: "Your machine" },
+  { feature: "AI access", overleaf: "None", writer: "Direct file editing" },
+  {
+    feature: "Compilation",
+    overleaf: "Their servers",
+    writer: "Local (faster)",
+  },
+  { feature: "Git integration", overleaf: "Limited", writer: "First-class" },
+  { feature: "Price", overleaf: "$15/month", writer: "Free" },
+];
 
 export default function HomePage() {
   return (
@@ -45,30 +57,91 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-6">
-        <div className="max-w-xl text-center">
-          <h1 className="text-3xl md:text-4xl font-medium tracking-tight mb-6">
-            AI-native LaTeX editor
-          </h1>
-          <p className="text-muted mb-10 leading-relaxed">
-            Local-first. Works with Claude, Cursor, Codex, or any tool that
-            edits files. Your research stays on your machine.
-          </p>
-          <div className="flex items-center justify-center gap-4">
-            <Link
-              href="/download"
-              className="px-5 py-2.5 text-sm border border-foreground hover:bg-foreground hover:text-background transition-colors"
-            >
-              Download
-            </Link>
-            <Link
-              href="/docs"
-              className="px-5 py-2.5 text-sm text-muted hover:text-foreground transition-colors"
-            >
-              Documentation
-            </Link>
+      <main className="flex-1">
+        {/* Hero */}
+        <section className="py-24 px-6">
+          <div className="max-w-2xl mx-auto text-center">
+            <h1 className="text-3xl md:text-4xl font-medium tracking-tight mb-6">
+              AI-native LaTeX editor
+            </h1>
+            <p className="text-muted mb-10 leading-relaxed">
+              Local-first. Works with Claude, Cursor, Codex, or any tool that
+              edits files. Your research stays on your machine.
+            </p>
+            <div className="flex items-center justify-center gap-4">
+              <Link href="/download" className="btn btn-primary">
+                <Download className="w-4 h-4" />
+                Download
+              </Link>
+              <Link href="/docs" className="btn btn-secondary">
+                <FileText className="w-4 h-4" />
+                Documentation
+              </Link>
+            </div>
           </div>
-        </div>
+        </section>
+
+        {/* Comparison */}
+        <section className="py-20 px-6 bg-neutral-900 text-white">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-2xl font-medium mb-10 text-center">
+              Why not Overleaf?
+            </h2>
+            <div className="border border-neutral-700">
+              <div className="grid grid-cols-3 border-b border-neutral-700 text-xs font-mono uppercase tracking-wider text-neutral-400">
+                <div className="p-4 border-r border-neutral-700">Feature</div>
+                <div className="p-4 border-r border-neutral-700">Overleaf</div>
+                <div className="p-4">Writer</div>
+              </div>
+              {comparisons.map((row, i) => (
+                <div
+                  key={row.feature}
+                  className={`grid grid-cols-3 text-sm ${
+                    i !== comparisons.length - 1
+                      ? "border-b border-neutral-700"
+                      : ""
+                  }`}
+                >
+                  <div className="p-4 border-r border-neutral-700 font-medium">
+                    {row.feature}
+                  </div>
+                  <div className="p-4 border-r border-neutral-700 text-neutral-500">
+                    {row.overleaf}
+                  </div>
+                  <div className="p-4 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                    {row.writer}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* AI Tools */}
+        <section className="py-20 px-6 border-t border-border">
+          <div className="max-w-2xl mx-auto text-center">
+            <h2 className="text-xl font-medium mb-6">
+              Works with your favorite AI tools
+            </h2>
+            <div className="flex flex-wrap justify-center gap-3 text-sm font-mono">
+              {[
+                "Claude Code",
+                "Cursor",
+                "Codex CLI",
+                "OpenCode",
+                "Windsurf",
+              ].map((tool) => (
+                <span
+                  key={tool}
+                  className="px-4 py-2 border border-border bg-white"
+                >
+                  {tool}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
 
       <footer className="border-t border-border">

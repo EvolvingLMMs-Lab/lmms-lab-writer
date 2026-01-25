@@ -17,6 +17,10 @@ export const metadata: Metadata = {
     "academic writing",
   ],
   authors: [{ name: "LMMs-Lab" }],
+  icons: {
+    icon: "/favicon.png",
+    apple: "/icon-512.png",
+  },
   openGraph: {
     title: "LMMs-Lab Writer",
     description:
