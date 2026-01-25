@@ -302,27 +302,47 @@ kbd {
 
 .logo-bar {
   display: flex;
-  gap: 3px;
+  gap: 2px;
   align-items: center;
 }
 
 .logo-bar span {
-  width: 5px;
-  height: 16px;
+  width: 3px;
+  height: 10px;
   background: currentColor;
+  animation: logo-wave 1.5s ease-in-out infinite;
 }
 
 .logo-bar span:nth-child(1) {
-  opacity: 1;
+  animation-delay: 0s;
 }
 .logo-bar span:nth-child(2) {
-  opacity: 0.7;
+  animation-delay: 0.1s;
 }
 .logo-bar span:nth-child(3) {
-  opacity: 0.5;
+  animation-delay: 0.2s;
 }
 .logo-bar span:nth-child(4) {
-  opacity: 0.35;
+  animation-delay: 0.3s;
+}
+.logo-bar span:nth-child(5) {
+  animation-delay: 0.4s;
+}
+.logo-bar span:nth-child(6) {
+  animation-delay: 0.5s;
+}
+.logo-bar span:nth-child(7) {
+  animation-delay: 0.6s;
+}
+
+@keyframes logo-wave {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* Marquee animation for feature strip */

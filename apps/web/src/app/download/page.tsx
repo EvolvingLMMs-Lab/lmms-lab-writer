@@ -38,6 +38,9 @@ export default function DownloadPage() {
               <span></span>
               <span></span>
               <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
             </div>
             <span className="font-mono text-sm tracking-tight">
               LMMs-Lab Writer

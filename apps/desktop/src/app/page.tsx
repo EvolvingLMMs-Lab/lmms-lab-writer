@@ -362,6 +362,9 @@ export default function EditorPage() {
               <span></span>
               <span></span>
               <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
             </button>
             <span className="text-border">/</span>
             <div className="flex items-center gap-2 min-w-0">
