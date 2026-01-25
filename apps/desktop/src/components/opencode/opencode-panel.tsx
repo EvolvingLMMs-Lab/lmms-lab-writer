@@ -128,19 +128,19 @@ export function OpenCodePanel({
             </>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {!opencode.connected ? (
             <button
               onClick={handleConnect}
               disabled={opencode.connecting}
-              className="text-xs px-2 py-1 border border-border hover:bg-accent transition-colors disabled:opacity-50"
+              className="text-xs px-2 py-1 border border-border hover:bg-neutral-100 transition-colors disabled:opacity-50 whitespace-nowrap"
             >
               {opencode.connecting ? "Connecting..." : "Connect"}
             </button>
           ) : (
             <button
               onClick={handleNewSession}
-              className="text-xs px-2 py-1 border border-border hover:bg-accent transition-colors"
+              className="text-xs px-2 py-1 border border-border hover:bg-neutral-100 transition-colors whitespace-nowrap"
             >
               New Session
             </button>
@@ -256,7 +256,7 @@ function DisconnectedState({
           <button
             onClick={onConnect}
             disabled={connecting}
-            className="px-4 py-2 border border-border hover:bg-accent transition-colors text-sm disabled:opacity-50"
+            className="px-4 py-2 border border-border hover:bg-neutral-100 transition-colors text-sm disabled:opacity-50"
           >
             {connecting ? "Connecting..." : "Connect"}
           </button>
@@ -281,7 +281,7 @@ function DisconnectedState({
         ) : onRestartOpenCode ? (
           <button
             onClick={onRestartOpenCode}
-            className="px-4 py-2 border border-border hover:bg-accent transition-colors text-sm"
+            className="px-4 py-2 border border-border hover:bg-neutral-100 transition-colors text-sm"
           >
             Start OpenCode
           </button>
@@ -289,7 +289,7 @@ function DisconnectedState({
           <button
             onClick={onConnect}
             disabled={connecting}
-            className="px-4 py-2 border border-border hover:bg-accent transition-colors text-sm disabled:opacity-50"
+            className="px-4 py-2 border border-border hover:bg-neutral-100 transition-colors text-sm disabled:opacity-50"
           >
             {connecting ? "Connecting..." : "Connect"}
           </button>
