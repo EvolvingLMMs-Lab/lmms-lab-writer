@@ -102,6 +102,35 @@ body {
   animation-delay: 0.6s;
 }
 
+.logo-bar-sm {
+  display: flex;
+  gap: 1px;
+  align-items: center;
+}
+
+.logo-bar-sm span {
+  width: 2px;
+  height: 8px;
+  background: currentColor;
+  animation: logo-wave 1.5s ease-in-out infinite;
+}
+
+.logo-bar-sm span:nth-child(1) {
+  animation-delay: 0s;
+}
+.logo-bar-sm span:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.logo-bar-sm span:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.logo-bar-sm span:nth-child(4) {
+  animation-delay: 0.2s;
+}
+.logo-bar-sm span:nth-child(5) {
+  animation-delay: 0.25s;
+}
+
 @keyframes logo-wave {
   0%,
   100% {
@@ -233,6 +262,7 @@ body {
   .animate-float-delayed,
   .animate-spin-slow,
   .logo-bar span,
+  .logo-bar-sm span,
   .paper-line {
     animation: none !important;
     opacity: 1 !important;
