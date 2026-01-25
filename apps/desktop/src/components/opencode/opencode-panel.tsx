@@ -829,6 +829,53 @@ function getStatusText(toolParts: ToolPart[]): string {
   return "Thinking...";
 }
 
+function ProviderIcon({ providerId }: { providerId?: string }) {
+  if (!providerId) return null;
+
+  const iconClass = "size-4 text-neutral-500";
+  const lowerProvider = providerId.toLowerCase();
+
+  if (lowerProvider.includes("anthropic") || lowerProvider.includes("claude")) {
+    return (
+      <svg className={iconClass} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M17.303 3.073c-.32-.907-1.662-.907-1.982 0L12 12.573l-3.321-9.5c-.32-.907-1.662-.907-1.982 0L3.073 14.697c-.32.907.187 1.803 1.134 1.803h3.586l2.207 6.427c.32.907 1.662.907 1.982 0l2.207-6.427h3.586c.947 0 1.454-.896 1.134-1.803L17.303 3.073z" />
+      </svg>
+    );
+  }
+
+  if (lowerProvider.includes("openai") || lowerProvider.includes("gpt")) {
+    return (
+      <svg className={iconClass} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.896zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681v6.722zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" />
+      </svg>
+    );
+  }
+
+  if (lowerProvider.includes("google") || lowerProvider.includes("gemini")) {
+    return (
+      <svg className={iconClass} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 0C5.372 0 0 5.373 0 12s5.372 12 12 12c6.627 0 12-5.373 12-12S18.627 0 12 0zm.14 19.018c-3.868 0-7-3.14-7-7.018s3.132-7.018 7-7.018c1.89 0 3.47.697 4.682 1.829l-1.974 1.978c-.517-.548-1.417-1.19-2.708-1.19-2.31 0-4.187 1.956-4.187 4.401 0 2.446 1.877 4.401 4.187 4.401 2.688 0 3.693-1.955 3.852-2.963h-3.852v-2.611h6.403c.063.35.116.697.116 1.15 0 4.027-2.687 6.041-6.519 6.041z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      className={iconClass}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+        strokeWidth={1.5}
+        d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+      />
+    </svg>
+  );
+}
+
 function ToolIcon({ tool }: { tool: string }) {
   const iconClass = "size-4 text-neutral-500 flex-shrink-0";
 
@@ -1502,7 +1549,6 @@ function InputArea({
   onSelectAgent,
   onSelectModel,
 }: InputAreaProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -1520,23 +1566,44 @@ function InputArea({
     }
   }, [input]);
 
+  const selectedAgentName =
+    agents.find((a) => a.id === selectedAgent)?.name || "Agent";
+  const selectedModelName = (() => {
+    if (!selectedModel) return "Model";
+    for (const provider of providers) {
+      const model = provider.models?.find(
+        (m) => m.id === selectedModel.modelId,
+      );
+      if (model) return model.name;
+    }
+    return "Model";
+  })();
+
   return (
     <div className="border-t border-border flex-shrink-0 bg-white relative z-20">
-      {isExpanded && (
-        <div className="px-3 pt-3 pb-2 border-b border-border bg-neutral-50 animate-in slide-in-from-bottom-2 fade-in duration-200">
-          <div className="flex gap-2">
-            <div className="flex-1 space-y-1">
-              <label className="text-[10px] uppercase tracking-wider text-muted font-medium">
-                Agent
-              </label>
+      <div className="p-3">
+        <div className="relative border border-border bg-white focus-within:border-black transition-all">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder='Ask anything... "Help me debug this issue"'
+            disabled={isWorking}
+            className="w-full min-h-[60px] max-h-[200px] px-3 py-2.5 resize-none focus:outline-none text-sm bg-transparent placeholder:text-neutral-400"
+            rows={1}
+          />
+
+          <div className="flex items-center justify-between px-2 pb-2">
+            <div className="flex items-center gap-1">
               <div className="relative">
                 <select
                   value={selectedAgent || ""}
                   onChange={(e) => onSelectAgent(e.target.value || null)}
-                  className="w-full text-xs border border-border bg-white pl-2 pr-6 py-1.5 h-8 focus:outline-none focus:border-black appearance-none rounded-none"
+                  className="text-xs text-neutral-600 bg-transparent pl-1 pr-5 py-1 focus:outline-none appearance-none cursor-pointer hover:text-black transition-colors"
                 >
                   {!Array.isArray(agents) || agents.length === 0 ? (
-                    <option value="">No agents</option>
+                    <option value="">Agent</option>
                   ) : (
                     agents.map((agent) => (
                       <option key={agent.id} value={agent.id}>
@@ -1545,27 +1612,23 @@ function InputArea({
                     ))
                   )}
                 </select>
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg
-                    className="size-3 text-muted"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="square"
-                      strokeLinejoin="miter"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
+                <svg
+                  className="size-3 text-neutral-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
               </div>
-            </div>
-            <div className="flex-1 space-y-1">
-              <label className="text-[10px] uppercase tracking-wider text-muted font-medium">
-                Model
-              </label>
+
+              <ProviderIcon providerId={selectedModel?.providerId} />
+
               <div className="relative">
                 <select
                   value={
@@ -1581,10 +1644,10 @@ function InputArea({
                       onSelectModel(null);
                     }
                   }}
-                  className="w-full text-xs border border-border bg-white pl-2 pr-6 py-1.5 h-8 focus:outline-none focus:border-black appearance-none rounded-none"
+                  className="text-xs text-neutral-600 bg-transparent pl-1 pr-5 py-1 focus:outline-none appearance-none cursor-pointer hover:text-black transition-colors max-w-[180px] truncate"
                 >
                   {!Array.isArray(providers) || providers.length === 0 ? (
-                    <option value="">No models</option>
+                    <option value="">Model</option>
                   ) : (
                     providers.flatMap((provider) =>
                       Array.isArray(provider?.models)
@@ -1593,16 +1656,68 @@ function InputArea({
                               key={`${provider.id}:${model.id}`}
                               value={`${provider.id}:${model.id}`}
                             >
-                              {model.name} ({provider.name})
+                              {model.name}
                             </option>
                           ))
                         : [],
                     )
                   )}
                 </select>
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg
+                  className="size-3 text-neutral-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                className="p-1.5 text-neutral-400 hover:text-neutral-600 transition-colors"
+                title="Attach Image (Coming Soon)"
+              >
+                <svg
+                  className="size-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
+                    strokeWidth={1.5}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+              </button>
+
+              {isWorking ? (
+                <button
+                  onClick={onAbort}
+                  className="p-1.5 text-neutral-600 hover:text-black transition-colors"
+                  title="Stop"
+                >
+                  <div className="size-4 border-2 border-current flex items-center justify-center">
+                    <div className="size-2 bg-current" />
+                  </div>
+                </button>
+              ) : (
+                <button
+                  onClick={onSend}
+                  disabled={!input.trim()}
+                  className="p-1.5 text-neutral-400 hover:text-black transition-colors disabled:opacity-30 disabled:hover:text-neutral-400"
+                  title="Send"
+                >
                   <svg
-                    className="size-3 text-muted"
+                    className="size-4"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -1611,111 +1726,12 @@ function InputArea({
                       strokeLinecap="square"
                       strokeLinejoin="miter"
                       strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
+                      d="M5 10l7-7m0 0l7 7m-7-7v18"
                     />
                   </svg>
-                </div>
-              </div>
+                </button>
+              )}
             </div>
-          </div>
-        </div>
-      )}
-
-      <div className="p-3">
-        <div className="relative border border-border bg-white focus-within:ring-1 focus-within:ring-black transition-all shadow-sm">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask anything..."
-            disabled={isWorking}
-            className="w-full min-h-[40px] max-h-[200px] px-3 py-2 resize-none focus:outline-none text-sm bg-transparent placeholder:text-neutral-400"
-            rows={1}
-          />
-
-          <div className="flex items-center justify-between px-2 pb-2 pt-1 border-t border-transparent">
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className={`p-1.5 text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors ${
-                  isExpanded ? "bg-neutral-100 text-black" : ""
-                }`}
-                title={isExpanded ? "Hide Options" : "Show Options"}
-              >
-                <svg
-                  className={`size-4 transition-transform duration-200 ${
-                    isExpanded ? "rotate-180" : ""
-                  }`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="square"
-                    strokeLinejoin="miter"
-                    strokeWidth={1.5}
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                  />
-                  <path
-                    strokeLinecap="square"
-                    strokeLinejoin="miter"
-                    strokeWidth={1.5}
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-              </button>
-
-              <button
-                className="p-1.5 text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors"
-                title="Attach File (Coming Soon)"
-              >
-                <svg
-                  className="size-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="square"
-                    strokeLinejoin="miter"
-                    strokeWidth={1.5}
-                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {isWorking ? (
-              <button
-                onClick={onAbort}
-                className="flex items-center justify-center size-8 bg-white text-black border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
-                title="Stop"
-              >
-                <div className="size-3 bg-black" />
-              </button>
-            ) : (
-              <button
-                onClick={onSend}
-                disabled={!input.trim()}
-                className="flex items-center justify-center size-8 bg-white text-black border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all disabled:opacity-50 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
-                title="Send"
-              >
-                <svg
-                  className="size-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="square"
-                    strokeLinejoin="miter"
-                    strokeWidth={1.5}
-                    d="M5 12h14M12 5l7 7-7 7"
-                  />
-                </svg>
-              </button>
-            )}
           </div>
         </div>
       </div>
