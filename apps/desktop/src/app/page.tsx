@@ -57,8 +57,20 @@ export default function EditorPage() {
   const [binaryPreviewUrl, setBinaryPreviewUrl] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(280);
-  const [rightPanelWidth, setRightPanelWidth] = useState(280);
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("sidebarWidth");
+      return saved ? parseInt(saved, 10) : 280;
+    }
+    return 280;
+  });
+  const [rightPanelWidth, setRightPanelWidth] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("rightPanelWidth");
+      return saved ? parseInt(saved, 10) : 280;
+    }
+    return 280;
+  });
   const [resizing, setResizing] = useState<"sidebar" | "right" | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"files" | "git">("files");
   const [rightTab, setRightTab] = useState<"compile" | "opencode">("compile");
@@ -145,6 +157,14 @@ export default function EditorPage() {
     setShowDisconnectedDialog(false);
     restartOpencode();
   }, [restartOpencode]);
+
+  useEffect(() => {
+    localStorage.setItem("sidebarWidth", String(sidebarWidth));
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    localStorage.setItem("rightPanelWidth", String(rightPanelWidth));
+  }, [rightPanelWidth]);
 
   useEffect(() => {
     if (!daemon.projectPath) {
@@ -1107,9 +1127,19 @@ export default function EditorPage() {
             onClick={() => setShowRightPanel(true)}
             className="flex-shrink-0 w-6 border-l border-border hover:bg-neutral-100 transition-colors flex items-center justify-center"
           >
-            <span className="text-[10px] font-mono uppercase tracking-widest text-muted [writing-mode:vertical-rl] rotate-180">
-              Panel
-            </span>
+            <svg
+              className="w-3.5 h-3.5 text-muted"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="square"
+                strokeLinejoin="miter"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
           </button>
         )}
       </main>

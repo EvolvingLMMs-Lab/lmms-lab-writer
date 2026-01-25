@@ -150,6 +150,24 @@ export function useOpenCode(
     }
   }, [autoConnect, connected, connecting]);
 
+  const loadSessions = useCallback(async () => {
+    const client = clientRef.current;
+    if (!client || !connected) return;
+
+    try {
+      const sessionList = await client.listSessions();
+      setSessions(sessionList);
+    } catch (err) {
+      console.error("Failed to load sessions:", err);
+    }
+  }, [connected]);
+
+  useEffect(() => {
+    if (connected) {
+      loadSessions();
+    }
+  }, [connected, loadSessions]);
+
   const connect = useCallback(() => {
     const client = clientRef.current;
     if (!client || connected || connecting) return;

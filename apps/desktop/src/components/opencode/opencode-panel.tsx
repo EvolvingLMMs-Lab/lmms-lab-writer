@@ -8,6 +8,7 @@ import type {
   ToolPart,
   TextPart,
   SessionStatus,
+  SessionInfo,
 } from "@/lib/opencode/types";
 import { getToolInfo } from "@/lib/opencode/types";
 
@@ -34,10 +35,9 @@ export function OpenCodePanel({
 }: Props) {
   const opencode = useOpenCode({ baseUrl, directory, autoConnect });
   const [input, setInput] = useState("");
+  const [showSessionList, setShowSessionList] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const sessionCreatedRef = useRef(false);
-  const lastDirectoryRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -49,29 +49,6 @@ export function OpenCodePanel({
     }
   }, [opencode.maxReconnectFailed, onMaxReconnectFailed]);
 
-  useEffect(() => {
-    if (lastDirectoryRef.current !== directory) {
-      lastDirectoryRef.current = directory;
-      sessionCreatedRef.current = false;
-    }
-  }, [directory]);
-
-  useEffect(() => {
-    if (
-      opencode.connected &&
-      !opencode.currentSessionId &&
-      !sessionCreatedRef.current &&
-      directory
-    ) {
-      sessionCreatedRef.current = true;
-      opencode.createSession().then((session) => {
-        if (session) {
-          opencode.selectSession(session.id);
-        }
-      });
-    }
-  }, [opencode.connected, opencode.currentSessionId, opencode, directory]);
-
   const handleConnect = useCallback(() => {
     opencode.connect();
   }, [opencode]);
@@ -80,8 +57,17 @@ export function OpenCodePanel({
     const session = await opencode.createSession();
     if (session) {
       await opencode.selectSession(session.id);
+      setShowSessionList(false);
     }
   }, [opencode]);
+
+  const handleSelectSession = useCallback(
+    async (sessionId: string) => {
+      await opencode.selectSession(sessionId);
+      setShowSessionList(false);
+    },
+    [opencode],
+  );
 
   const handleSend = useCallback(async () => {
     const content = input.trim();
@@ -108,101 +94,208 @@ export function OpenCodePanel({
   const isWorking =
     opencode.status.type === "running" || opencode.status.type === "retry";
 
-  const folderName = directory?.split("/").pop();
+  if (!opencode.connected) {
+    return (
+      <div className={`flex flex-col bg-white min-h-0 ${className}`}>
+        <DisconnectedState
+          connecting={opencode.connecting}
+          error={opencode.error}
+          onConnect={handleConnect}
+          daemonStatus={daemonStatus}
+          onRestartOpenCode={onRestartOpenCode}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={`flex flex-col bg-white min-h-0 ${className}`}>
       <div className="flex items-center justify-between px-3 py-2 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-2 text-xs min-w-0">
-          <span
-            className={`size-2 rounded-full flex-shrink-0 ${opencode.connected ? "bg-green-500" : "bg-muted"}`}
-            title={opencode.connected ? "Connected" : "Disconnected"}
-          />
-          <span className="text-muted flex-shrink-0">OpenCode</span>
-          {folderName && (
-            <>
-              <span className="text-muted">/</span>
-              <span className="truncate text-muted" title={directory}>
-                {folderName}
-              </span>
-            </>
-          )}
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {!opencode.connected ? (
-            <button
-              onClick={handleConnect}
-              disabled={opencode.connecting}
-              className="text-xs px-2 py-1 border border-border hover:bg-neutral-100 transition-colors disabled:opacity-50 whitespace-nowrap"
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="size-2 flex-shrink-0 bg-black" title="Connected" />
+          <button
+            onClick={() => setShowSessionList(!showSessionList)}
+            className="flex items-center gap-1 text-xs hover:bg-neutral-100 px-1 py-0.5 transition-colors min-w-0"
+          >
+            <span className="truncate">
+              {opencode.currentSession?.title || "Select Session"}
+            </span>
+            <svg
+              className={`size-3 flex-shrink-0 transition-transform ${showSessionList ? "rotate-180" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-              {opencode.connecting ? "Connecting..." : "Connect"}
-            </button>
-          ) : (
+              <path
+                strokeLinecap="square"
+                strokeLinejoin="miter"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+        </div>
+        <button
+          onClick={handleNewSession}
+          className="text-xs px-2 py-1 border border-border hover:bg-neutral-100 transition-colors flex-shrink-0"
+          title="New Session"
+        >
+          + New
+        </button>
+      </div>
+
+      {showSessionList ? (
+        <SessionList
+          sessions={opencode.sessions}
+          currentSessionId={opencode.currentSessionId}
+          onSelect={handleSelectSession}
+          onNewSession={handleNewSession}
+        />
+      ) : opencode.currentSessionId ? (
+        <>
+          <div className="flex-1 min-h-0 overflow-y-auto p-3">
+            <MessageList
+              messages={opencode.messages}
+              getPartsForMessage={opencode.getPartsForMessage}
+              status={opencode.status}
+            />
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className="border-t border-border p-3 flex-shrink-0">
+            <div className="flex gap-2">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Message OpenCode..."
+                disabled={isWorking}
+                className="flex-1 min-h-[40px] max-h-[120px] px-3 py-2 border border-border resize-none focus:outline-none focus:ring-1 focus:ring-black disabled:opacity-50 text-sm"
+                rows={1}
+              />
+              {isWorking ? (
+                <button
+                  onClick={handleAbort}
+                  className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 transition-colors"
+                >
+                  Stop
+                </button>
+              ) : (
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim()}
+                  className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 transition-colors disabled:opacity-50"
+                >
+                  Send
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center space-y-3">
+            <p className="text-sm text-muted">
+              {opencode.sessions.length > 0
+                ? "Select a session or create a new one"
+                : "No sessions yet"}
+            </p>
             <button
               onClick={handleNewSession}
-              className="text-xs px-2 py-1 border border-border hover:bg-neutral-100 transition-colors whitespace-nowrap"
+              className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 transition-colors"
             >
               New Session
             </button>
-          )}
-        </div>
-      </div>
-
-      <div className="flex-1 min-h-0 overflow-y-auto p-3">
-        {!opencode.connected ? (
-          <DisconnectedState
-            connecting={opencode.connecting}
-            error={opencode.error}
-            onConnect={handleConnect}
-            daemonStatus={daemonStatus}
-            onRestartOpenCode={onRestartOpenCode}
-          />
-        ) : !opencode.currentSessionId ? (
-          <NoSessionState onNewSession={handleNewSession} />
-        ) : (
-          <MessageList
-            messages={opencode.messages}
-            getPartsForMessage={opencode.getPartsForMessage}
-            status={opencode.status}
-          />
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {opencode.connected && opencode.currentSessionId && (
-        <div className="border-t border-border p-3 flex-shrink-0">
-          <div className="flex gap-2">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask OpenCode..."
-              disabled={isWorking}
-              className="flex-1 min-h-[40px] max-h-[120px] px-3 py-2 border border-border resize-none focus:outline-none focus:ring-1 focus:ring-black disabled:opacity-50 text-sm"
-              rows={1}
-            />
-            {isWorking ? (
-              <button
-                onClick={handleAbort}
-                className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 transition-colors"
-              >
-                Stop
-              </button>
-            ) : (
-              <button
-                onClick={handleSend}
-                disabled={!input.trim()}
-                className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 transition-colors disabled:opacity-50"
-              >
-                Send
-              </button>
-            )}
           </div>
         </div>
       )}
     </div>
   );
+}
+
+function SessionList({
+  sessions,
+  currentSessionId,
+  onSelect,
+  onNewSession,
+}: {
+  sessions: SessionInfo[];
+  currentSessionId: string | null;
+  onSelect: (id: string) => void;
+  onNewSession: () => void;
+}) {
+  const sortedSessions = [...sessions].sort(
+    (a, b) => b.time.updated - a.time.updated,
+  );
+
+  if (sortedSessions.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="text-center space-y-3">
+          <p className="text-sm text-muted">No sessions yet</p>
+          <button
+            onClick={onNewSession}
+            className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 transition-colors"
+          >
+            Create First Session
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto">
+      {sortedSessions.map((session) => {
+        const isActive = session.id === currentSessionId;
+        const date = new Date(session.time.updated);
+        const timeStr = formatRelativeTime(date);
+
+        return (
+          <button
+            key={session.id}
+            onClick={() => onSelect(session.id)}
+            className={`w-full text-left px-3 py-2 border-b border-border hover:bg-neutral-50 transition-colors ${
+              isActive ? "bg-neutral-100" : ""
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">
+                  {session.title || "Untitled"}
+                </p>
+                {session.summary?.files !== undefined && (
+                  <p className="text-xs text-muted mt-0.5">
+                    {session.summary.files} file
+                    {session.summary.files !== 1 ? "s" : ""} modified
+                  </p>
+                )}
+              </div>
+              <span className="text-xs text-muted flex-shrink-0">
+                {timeStr}
+              </span>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function formatRelativeTime(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "now";
+  if (diffMins < 60) return `${diffMins}m`;
+  if (diffHours < 24) return `${diffHours}h`;
+  if (diffDays < 7) return `${diffDays}d`;
+
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function DisconnectedState({
@@ -226,7 +319,7 @@ function DisconnectedState({
   };
 
   return (
-    <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
+    <div className="flex-1 flex flex-col items-center justify-center text-center p-4 space-y-4">
       <div className="text-muted">
         <svg
           className="w-12 h-12 mx-auto mb-4 opacity-20"
@@ -235,8 +328,8 @@ function DisconnectedState({
           viewBox="0 0 24 24"
         >
           <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            strokeLinecap="square"
+            strokeLinejoin="miter"
             strokeWidth={1.5}
             d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
           />
@@ -263,15 +356,9 @@ function DisconnectedState({
         ) : daemonStatus === "unavailable" ? (
           <div className="text-xs text-muted space-y-3">
             <p>Install OpenCode:</p>
-            <code className="bg-accent px-2 py-1 block">
+            <code className="bg-neutral-100 px-2 py-1 block">
               npm i -g opencode-ai@latest
             </code>
-            <p className="text-[10px]">
-              or{" "}
-              <code className="bg-accent px-1">
-                brew install anomalyco/tap/opencode
-              </code>
-            </p>
           </div>
         ) : daemonStatus === "starting" ? (
           <div className="flex items-center gap-2 text-xs text-muted">
@@ -295,38 +382,6 @@ function DisconnectedState({
           </button>
         )}
       </div>
-    </div>
-  );
-}
-
-function NoSessionState({ onNewSession }: { onNewSession: () => void }) {
-  return (
-    <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-      <div className="text-muted">
-        <svg
-          className="w-12 h-12 mx-auto mb-4 opacity-20"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-          />
-        </svg>
-        <p className="font-medium">Start a Session</p>
-        <p className="text-xs mt-2">
-          Create a new session to start chatting with OpenCode.
-        </p>
-      </div>
-      <button
-        onClick={onNewSession}
-        className="px-4 py-2 bg-black text-white text-sm hover:bg-black/80 transition-colors"
-      >
-        New Session
-      </button>
     </div>
   );
 }
@@ -493,8 +548,8 @@ function ToolDisplay({ part }: { part: ToolPart }) {
             viewBox="0 0 24 24"
           >
             <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              strokeLinecap="square"
+              strokeLinejoin="miter"
               strokeWidth={2}
               d="M5 13l4 4L19 7"
             />
@@ -508,8 +563,8 @@ function ToolDisplay({ part }: { part: ToolPart }) {
             viewBox="0 0 24 24"
           >
             <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              strokeLinecap="square"
+              strokeLinejoin="miter"
               strokeWidth={2}
               d="M6 18L18 6M6 6l12 12"
             />
@@ -593,7 +648,7 @@ function MarkdownText({ text }: { text: string }) {
             return (
               <pre
                 key={i}
-                className="bg-accent p-2 overflow-x-auto text-xs my-2"
+                className="bg-neutral-100 p-2 overflow-x-auto text-xs my-2"
               >
                 <code>{code?.trim()}</code>
               </pre>
@@ -607,7 +662,7 @@ function MarkdownText({ text }: { text: string }) {
             {inlineParts.map((p, j) => {
               if (p.startsWith("`") && p.endsWith("`")) {
                 return (
-                  <code key={j} className="bg-accent px-1 text-xs">
+                  <code key={j} className="bg-neutral-100 px-1 text-xs">
                     {p.slice(1, -1)}
                   </code>
                 );
