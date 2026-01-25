@@ -148,13 +148,14 @@ export class OpenCodeClient {
 
       case "message.updated": {
         const msg = event.properties.info;
+        if (!msg?.id || !msg?.sessionID) break;
         const messages = this.store.messages.get(msg.sessionID) || [];
-        const existingIndex = messages.findIndex((m) => m.id === msg.id);
+        const existingIndex = messages.findIndex((m) => m?.id === msg.id);
         if (existingIndex >= 0) {
           messages[existingIndex] = msg;
         } else {
           messages.push(msg);
-          messages.sort((a, b) => a.id.localeCompare(b.id));
+          messages.sort((a, b) => (a?.id || "").localeCompare(b?.id || ""));
         }
         this.store.messages.set(msg.sessionID, messages);
         break;
@@ -255,7 +256,8 @@ export class OpenCodeClient {
     );
     if (!response.ok)
       throw new Error(`Failed to get messages: ${response.statusText}`);
-    const messages = await response.json();
+    const data = await response.json();
+    const messages = Array.isArray(data) ? data : [];
     this.store.messages.set(sessionID, messages);
     return messages;
   }
@@ -269,7 +271,8 @@ export class OpenCodeClient {
     );
     if (!response.ok)
       throw new Error(`Failed to get parts: ${response.statusText}`);
-    const parts = await response.json();
+    const data = await response.json();
+    const parts = Array.isArray(data) ? data : [];
     this.store.parts.set(`${sessionID}:${messageID}`, parts);
     return parts;
   }
