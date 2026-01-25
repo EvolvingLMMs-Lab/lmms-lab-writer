@@ -2,15 +2,32 @@ import Link from "next/link";
 import { Github, Download, FileText, CheckCircle2 } from "lucide-react";
 
 const comparisons = [
-  { feature: "File location", overleaf: "Cloud only", writer: "Your machine" },
-  { feature: "AI access", overleaf: "None", writer: "Direct file editing" },
+  {
+    feature: "File storage",
+    overleaf: "Cloud only",
+    writer: "Local (your machine)",
+  },
+  {
+    feature: "AI editing",
+    overleaf: "Built-in grammar help",
+    writer: "Claude Code, Codex, OpenCode",
+  },
   {
     feature: "Compilation",
     overleaf: "Their servers",
-    writer: "Local (faster)",
+    writer: "Local (faster, offline)",
   },
-  { feature: "Git integration", overleaf: "Limited", writer: "First-class" },
-  { feature: "Price", overleaf: "$15/month", writer: "Free" },
+  {
+    feature: "Git integration",
+    overleaf: "Paid plans only",
+    writer: "First-class, free",
+  },
+  {
+    feature: "Offline work",
+    overleaf: "Not available",
+    writer: "Full support",
+  },
+  { feature: "Price", overleaf: "$21-42/month", writer: "Free & open source" },
 ];
 
 export default function HomePage() {
@@ -176,25 +193,6 @@ export default function HomePage() {
                     {row.writer}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* AI Tools */}
-        <section className="py-20 px-6 border-t border-border">
-          <div className="max-w-5xl mx-auto text-center">
-            <h2 className="text-xl font-medium mb-6">
-              Works with your favorite AI tools
-            </h2>
-            <div className="flex flex-wrap justify-center gap-3 text-sm font-mono">
-              {["Claude Code", "Codex CLI", "OpenCode"].map((tool) => (
-                <span
-                  key={tool}
-                  className="px-4 py-2 border border-border bg-white"
-                >
-                  {tool}
-                </span>
               ))}
             </div>
           </div>
