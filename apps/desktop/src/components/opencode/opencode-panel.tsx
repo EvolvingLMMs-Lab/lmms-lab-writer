@@ -115,7 +115,7 @@ export function OpenCodePanel({
       <div className="flex items-center justify-between px-3 py-2 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2 text-xs min-w-0">
           <span
-            className={`size-2 flex-shrink-0 ${opencode.connected ? "bg-black" : "bg-muted"}`}
+            className={`size-2 rounded-full flex-shrink-0 ${opencode.connected ? "bg-green-500" : "bg-muted"}`}
             title={opencode.connected ? "Connected" : "Disconnected"}
           />
           <span className="text-muted flex-shrink-0">OpenCode</span>
