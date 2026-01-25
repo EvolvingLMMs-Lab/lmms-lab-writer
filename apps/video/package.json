@@ -1,0 +1,21 @@
+{
+  "name": "@lmms-lab/writer-video",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx remotion studio",
+    "build": "npx remotion render",
+    "render": "npx remotion render MarketingVideo out/marketing.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.250",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "remotion": "4.0.250",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "typescript": "^5.4.0"
+  }
+}

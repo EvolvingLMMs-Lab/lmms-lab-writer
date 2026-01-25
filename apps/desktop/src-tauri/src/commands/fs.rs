@@ -1,5 +1,10 @@
+use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher, EventKind};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+use tauri::{AppHandle, Emitter};
 use tokio::fs;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -10,6 +15,28 @@ pub struct FileNode {
     pub node_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub children: Option<Vec<FileNode>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileChangeEvent {
+    pub path: String,
+    pub kind: String,
+}
+
+pub struct WatcherState {
+    watcher: Option<RecommendedWatcher>,
+    watched_path: Option<String>,
+    last_events: Arc<Mutex<HashMap<String, Instant>>>,
+}
+
+impl Default for WatcherState {
+    fn default() -> Self {
+        Self {
+            watcher: None,
+            watched_path: None,
+            last_events: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
 }
 
 const IGNORED_DIRS: &[&str] = &[
@@ -27,6 +54,8 @@ const IGNORED_EXTENSIONS: &[&str] = &[
     ".aux", ".log", ".out", ".toc", ".lof", ".lot", ".fls", ".fdb_latexmk", ".synctex.gz", ".bbl",
     ".blg",
 ];
+
+const DEBOUNCE_MS: u64 = 100;
 
 #[tauri::command]
 pub async fn read_file(path: String) -> Result<String, String> {
@@ -123,8 +152,112 @@ fn build_file_tree(dir: &Path, base_path: &str) -> Vec<FileNode> {
     nodes
 }
 
+fn should_ignore_path(path: &Path) -> bool {
+    for component in path.components() {
+        let name = component.as_os_str().to_string_lossy();
+        if IGNORED_DIRS.contains(&name.as_ref()) {
+            return true;
+        }
+        if name.starts_with('.') && name != ".latexmkrc" {
+            return true;
+        }
+    }
+
+    if let Some(name) = path.file_name() {
+        let name = name.to_string_lossy();
+        if IGNORED_EXTENSIONS.iter().any(|ext| name.ends_with(ext)) {
+            return true;
+        }
+    }
+
+    false
+}
+
+fn event_kind_to_string(kind: &EventKind) -> &'static str {
+    match kind {
+        EventKind::Create(_) => "create",
+        EventKind::Modify(_) => "modify",
+        EventKind::Remove(_) => "remove",
+        EventKind::Access(_) => "access",
+        EventKind::Other => "other",
+        _ => "unknown",
+    }
+}
+
 #[tauri::command]
-pub async fn watch_directory(_path: String) -> Result<(), String> {
+pub fn watch_directory(
+    app: AppHandle,
+    state: tauri::State<'_, Mutex<WatcherState>>,
+    path: String,
+) -> Result<(), String> {
+    let mut state_guard = state.lock().map_err(|e| e.to_string())?;
+    state_guard.watcher = None;
+    state_guard.watched_path = None;
+
+    let watch_path = Path::new(&path);
+    if !watch_path.exists() {
+        return Err(format!("Directory not found: {}", path));
+    }
+
+    let last_events = state_guard.last_events.clone();
+    let app_handle = app.clone();
+    let base_path = path.clone();
+
+    let watcher = RecommendedWatcher::new(
+        move |res: Result<notify::Event, notify::Error>| {
+            if let Ok(event) = res {
+                for event_path in &event.paths {
+                    if should_ignore_path(event_path) {
+                        continue;
+                    }
+
+                    let path_str = event_path.to_string_lossy().to_string();
+
+                    {
+                        let mut events = last_events.lock().unwrap();
+                        let now = Instant::now();
+                        if let Some(last) = events.get(&path_str) {
+                            if now.duration_since(*last) < Duration::from_millis(DEBOUNCE_MS) {
+                                continue;
+                            }
+                        }
+                        events.insert(path_str.clone(), now);
+                    }
+
+                    let relative_path = event_path
+                        .strip_prefix(&base_path)
+                        .map(|p| p.to_string_lossy().to_string())
+                        .unwrap_or_else(|_| path_str.clone());
+
+                    let change_event = FileChangeEvent {
+                        path: relative_path,
+                        kind: event_kind_to_string(&event.kind).to_string(),
+                    };
+
+                    app_handle.emit("file-changed", change_event).ok();
+                }
+            }
+        },
+        Config::default(),
+    )
+    .map_err(|e| format!("Failed to create watcher: {}", e))?;
+
+    let mut watcher = watcher;
+    watcher
+        .watch(watch_path, RecursiveMode::Recursive)
+        .map_err(|e| format!("Failed to watch directory: {}", e))?;
+
+    state_guard.watcher = Some(watcher);
+    state_guard.watched_path = Some(path);
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn stop_watch(state: tauri::State<'_, Mutex<WatcherState>>) -> Result<(), String> {
+    let mut state_guard = state.lock().map_err(|e| e.to_string())?;
+    state_guard.watcher = None;
+    state_guard.watched_path = None;
     Ok(())
 }
 

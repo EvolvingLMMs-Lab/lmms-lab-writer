@@ -1,7 +1,9 @@
 mod commands;
 
+use commands::fs::WatcherState;
 use commands::opencode::OpenCodeState;
 use commands::terminal::PtyState;
+use std::sync::Mutex;
 use tauri::webview::WebviewWindowBuilder;
 use tauri::WebviewUrl;
 use tauri_plugin_opener::OpenerExt;
@@ -41,11 +43,13 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .manage(PtyState::default())
         .manage(OpenCodeState::default())
+        .manage(Mutex::new(WatcherState::default()))
         .invoke_handler(tauri::generate_handler![
             commands::fs::read_file,
             commands::fs::write_file,
             commands::fs::get_file_tree,
             commands::fs::watch_directory,
+            commands::fs::stop_watch,
             commands::git::git_status,
             commands::git::git_log,
             commands::git::git_diff,

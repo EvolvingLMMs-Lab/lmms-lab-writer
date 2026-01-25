@@ -38,6 +38,11 @@ interface CompileState {
   compileOutput: string;
 }
 
+interface FileChangeEvent {
+  path: string;
+  kind: "create" | "modify" | "remove" | "access" | "other" | "unknown";
+}
+
 // Convert Rust FileNode (with node_type) to shared FileNode (with type)
 function convertFileNode(node: {
   name: string;
@@ -79,10 +84,10 @@ export function useTauriDaemon() {
     setProjectState((s) => ({ ...s, projectPath: path }));
 
     try {
-      // Parallel execution of independent operations
       const [rawFiles, mainFile] = await Promise.all([
         invoke<unknown[]>("get_file_tree", { dir: path }),
         invoke<string | null>("find_main_tex", { dir: path }),
+        invoke("watch_directory", { path }),
       ]);
 
       const files = rawFiles.map((f) =>
@@ -95,7 +100,6 @@ export function useTauriDaemon() {
         projectInfo: { path, mainFile },
       }));
 
-      // Git status refresh runs separately (doesn't block UI)
       refreshGitStatusInternal(path);
     } catch (error) {
       console.error("Failed to set project:", error);
@@ -330,6 +334,10 @@ export function useTauriDaemon() {
     [projectState.projectPath, projectState.projectInfo],
   );
 
+  const [lastFileChange, setLastFileChange] = useState<FileChangeEvent | null>(
+    null,
+  );
+
   useEffect(() => {
     let unlisten: (() => void) | undefined;
 
@@ -353,9 +361,40 @@ export function useTauriDaemon() {
         },
       );
 
+      const unlistenFileChanged = await listen<FileChangeEvent>(
+        "file-changed",
+        async (event) => {
+          const { path: changedPath, kind } = event.payload;
+          setLastFileChange(event.payload);
+
+          if (kind === "create" || kind === "remove") {
+            const currentPath = projectState.projectPath;
+            if (currentPath) {
+              try {
+                const rawFiles = await invoke<unknown[]>("get_file_tree", {
+                  dir: currentPath,
+                });
+                const files = rawFiles.map((f) =>
+                  convertFileNode(f as Parameters<typeof convertFileNode>[0]),
+                );
+                setProjectState((s) => ({ ...s, files }));
+              } catch {}
+            }
+          }
+
+          if (kind === "create" || kind === "modify" || kind === "remove") {
+            const currentPath = projectState.projectPath;
+            if (currentPath) {
+              refreshGitStatusInternal(currentPath);
+            }
+          }
+        },
+      );
+
       unlisten = () => {
         unlistenFiles();
         unlistenCompile();
+        unlistenFileChanged();
       };
     };
 
@@ -363,8 +402,9 @@ export function useTauriDaemon() {
 
     return () => {
       unlisten?.();
+      invoke("stop_watch").catch(() => {});
     };
-  }, []);
+  }, [projectState.projectPath, refreshGitStatusInternal]);
 
   // Memoize the return object to prevent unnecessary re-renders
   return useMemo(
@@ -388,6 +428,8 @@ export function useTauriDaemon() {
       isCompiling: compileState.isCompiling,
       compileOutput: compileState.compileOutput,
 
+      lastFileChange,
+
       // Actions
       setProject,
       refreshFiles,
@@ -407,6 +449,7 @@ export function useTauriDaemon() {
       projectState,
       gitState,
       compileState,
+      lastFileChange,
       setProject,
       refreshFiles,
       readFile,
