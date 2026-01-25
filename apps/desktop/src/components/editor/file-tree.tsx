@@ -2,7 +2,15 @@
 
 import { useState, useCallback, memo } from "react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { FileNode } from "@lmms-lab/writer-shared";
+
+const ITEM_SPRING = {
+  type: "spring",
+  stiffness: 500,
+  damping: 30,
+  mass: 0.5,
+} as const;
 
 type Props = {
   files: FileNode[];
@@ -94,42 +102,58 @@ const TreeNode = memo(function TreeNode({
 
   return (
     <div>
-      <button
+      <motion.button
         onClick={handleClick}
-        className={`w-full flex items-center gap-2 px-2 py-1 text-left text-sm hover:bg-accent-hover active:bg-neutral-200 transition-colors ${
-          isSelected
-            ? "bg-black text-white hover:bg-black/90 active:bg-black/80"
-            : ""
+        className={`w-full flex items-center gap-2 px-2 py-1 text-left text-sm ${
+          isSelected ? "bg-black text-white" : ""
         }`}
-        style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        style={{ paddingLeft: `${depth * 12 + 8}px`, willChange: "transform" }}
+        whileHover={
+          isSelected
+            ? { scale: 1 }
+            : { x: 2, backgroundColor: "rgba(0,0,0,0.04)" }
+        }
+        whileTap={{ scale: 0.99 }}
+        transition={ITEM_SPRING}
       >
         {isDirectory && (
-          <svg
-            className={`w-3 h-3 flex-shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`}
-            fill="currentColor"
-            viewBox="0 0 24 24"
+          <motion.div
+            className="w-3 h-3 flex-shrink-0"
+            initial={false}
+            animate={{ rotate: expanded ? 90 : 0 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
           >
-            <path d="M8 5v14l11-7z" />
-          </svg>
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </motion.div>
         )}
         {!isDirectory && <span className="w-3" />}
         <FileIcon type={node.type} expanded={expanded} />
         <span className="truncate">{node.name}</span>
-      </button>
+      </motion.button>
 
-      {isDirectory && expanded && node.children && (
-        <div>
-          {node.children.map((child) => (
-            <TreeNode
-              key={child.path}
-              node={child}
-              depth={depth + 1}
-              onFileSelect={onFileSelect}
-              selectedFile={selectedFile}
-            />
-          ))}
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {isDirectory && expanded && node.children && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            style={{ overflow: "hidden" }}
+          >
+            {node.children.map((child) => (
+              <TreeNode
+                key={child.path}
+                node={child}
+                depth={depth + 1}
+                onFileSelect={onFileSelect}
+                selectedFile={selectedFile}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 });
