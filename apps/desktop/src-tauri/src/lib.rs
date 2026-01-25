@@ -4,7 +4,7 @@ use commands::opencode::OpenCodeState;
 use commands::terminal::PtyState;
 use tauri::webview::WebviewWindowBuilder;
 use tauri::WebviewUrl;
-use tauri_plugin_shell::ShellExt;
+use tauri_plugin_opener::OpenerExt;
 
 fn is_external_url(url: &url::Url, dev_port: u16) -> bool {
     let scheme = url.scheme();
@@ -33,6 +33,7 @@ fn is_external_url(url: &url::Url, dev_port: u16) -> bool {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
@@ -82,23 +83,23 @@ pub fn run() {
                 .resizable(true)
                 .center();
 
-            let shell_handle = app_handle.clone();
+            let opener_handle = app_handle.clone();
             builder = builder.on_navigation(move |url| {
                 if is_external_url(url, 3000) {
                     let url_str = url.to_string();
-                    let handle = shell_handle.clone();
+                    let handle = opener_handle.clone();
                     std::thread::spawn(move || {
-                        let _ = handle.shell().open(&url_str, None);
+                        let _ = handle.opener().open_url(&url_str, None::<&str>);
                     });
                     return false;
                 }
                 true
             });
 
-            let window = builder.build()?;
+            let _window = builder.build()?;
 
             #[cfg(debug_assertions)]
-            window.open_devtools();
+            _window.open_devtools();
 
             Ok(())
         })
