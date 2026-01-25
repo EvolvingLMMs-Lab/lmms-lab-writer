@@ -22,11 +22,6 @@ const LaTeXEditor = dynamic(
   { ssr: false },
 );
 
-const Terminal = dynamic(
-  () => import("@/components/editor/terminal").then((mod) => mod.Terminal),
-  { ssr: false },
-);
-
 const OpenCodePanel = dynamic(
   () =>
     import("@/components/opencode/opencode-panel").then(
@@ -60,16 +55,14 @@ export default function EditorPage() {
   const [fileContent, setFileContent] = useState<string>("");
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [binaryPreviewUrl, setBinaryPreviewUrl] = useState<string | null>(null);
-  const [showSidebar, setShowSidebar] = useState(true);
-  const [showRightPanel, setShowRightPanel] = useState(true);
-  const [isCompactMode, setIsCompactMode] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(224);
-  const [rightPanelWidth, setRightPanelWidth] = useState(400);
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [showRightPanel, setShowRightPanel] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const [rightPanelWidth, setRightPanelWidth] = useState(280);
   const [resizing, setResizing] = useState<"sidebar" | "right" | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"files" | "git">("files");
-  const [rightTab, setRightTab] = useState<"compile" | "terminal" | "opencode">(
-    "compile",
-  );
+  const [rightTab, setRightTab] = useState<"compile" | "opencode">("compile");
+  const [highlightedFile, setHighlightedFile] = useState<string | null>(null);
 
   const [commitMessage, setCommitMessage] = useState("");
   const [showCommitInput, setShowCommitInput] = useState(false);
@@ -180,10 +173,10 @@ export default function EditorPage() {
 
     const handleMouseMove = (e: MouseEvent) => {
       if (resizing === "sidebar") {
-        setSidebarWidth(Math.min(Math.max(e.clientX, 150), 400));
+        setSidebarWidth(Math.min(Math.max(e.clientX, 200), 400));
       } else if (resizing === "right") {
         setRightPanelWidth(
-          Math.min(Math.max(window.innerWidth - e.clientX, 300), 600),
+          Math.min(Math.max(window.innerWidth - e.clientX, 200), 400),
         );
       }
     };
@@ -201,17 +194,15 @@ export default function EditorPage() {
   useEffect(() => {
     const COMPACT_THRESHOLD = 1100;
 
-    const checkCompactMode = () => {
-      const isCompact = window.innerWidth < COMPACT_THRESHOLD;
-      setIsCompactMode(isCompact);
-      if (isCompact) {
+    const handleResize = () => {
+      if (window.innerWidth < COMPACT_THRESHOLD) {
         setShowRightPanel(false);
       }
     };
 
-    checkCompactMode();
-    window.addEventListener("resize", checkCompactMode);
-    return () => window.removeEventListener("resize", checkCompactMode);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const getFileType = useCallback((path: string): "text" | "image" | "pdf" => {
@@ -314,6 +305,8 @@ export default function EditorPage() {
 
       if (selected && typeof selected === "string") {
         await daemon.setProject(selected);
+        setShowSidebar(true);
+        setShowRightPanel(true);
       }
     } catch (err) {
       console.error("Failed to open project:", err);
@@ -321,6 +314,8 @@ export default function EditorPage() {
   }, [daemon]);
 
   const handleCompile = useCallback(() => {
+    setShowRightPanel(true);
+    setRightTab("compile");
     daemon.compile(selectedFile);
   }, [daemon, selectedFile]);
 
@@ -358,14 +353,6 @@ export default function EditorPage() {
         return;
       }
 
-      if (isMod && e.shiftKey && key === "b") {
-        e.preventDefault();
-        if (daemon.projectPath && !daemon.isCompiling) {
-          daemon.compile();
-        }
-        return;
-      }
-
       if (isMod && key === "o" && !e.shiftKey) {
         e.preventDefault();
         handleOpenFolder();
@@ -385,6 +372,23 @@ export default function EditorPage() {
     return () =>
       window.removeEventListener("keydown", handleKeyDown, { capture: true });
   }, [daemon, handleOpenFolder, selectedFile, handleCloseTab]);
+
+  useEffect(() => {
+    if (daemon.compileSuccess && daemon.compilePdfPath && daemon.projectPath) {
+      const relativePath = daemon.compilePdfPath.startsWith(daemon.projectPath)
+        ? daemon.compilePdfPath.slice(daemon.projectPath.length + 1)
+        : daemon.compilePdfPath;
+
+      setHighlightedFile(relativePath);
+      setShowSidebar(true);
+
+      const timer = setTimeout(() => {
+        setHighlightedFile(null);
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [daemon.compileSuccess, daemon.compilePdfPath, daemon.projectPath]);
 
   return (
     <div className="h-dvh flex flex-col">
@@ -417,20 +421,16 @@ export default function EditorPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
             <div className="relative">
               <button
                 onClick={() => setShowAgentMenu((v) => !v)}
                 onBlur={() => setTimeout(() => setShowAgentMenu(false), 150)}
-                className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-mono border transition-colors ${
-                  showAgentMenu
-                    ? "bg-black text-white border-black"
-                    : "bg-white text-neutral-700 border-neutral-300 hover:border-neutral-400"
-                }`}
+                className="btn btn-sm bg-white text-black border-2 border-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center gap-2"
               >
                 Agent Mode
                 <svg
-                  className={`w-3 h-3 transition-transform ${showAgentMenu ? "rotate-180" : ""}`}
+                  className={`w-3 h-3 transition-transform duration-100 ${showAgentMenu ? "rotate-180" : ""}`}
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -438,94 +438,100 @@ export default function EditorPage() {
                   <path
                     strokeLinecap="square"
                     strokeLinejoin="miter"
-                    strokeWidth={1.5}
+                    strokeWidth={2}
                     d="M19 9l-7 7-7-7"
                   />
                 </svg>
               </button>
               {showAgentMenu && (
-                <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-neutral-200 shadow-lg z-50">
-                  <div className="py-1">
-                    <button
-                      onClick={() => {
-                        handleCompile();
-                        setShowAgentMenu(false);
-                      }}
-                      disabled={daemon.isCompiling || !daemon.projectPath}
-                      className="text-left px-3 py-2 text-xs font-mono hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed flex justify-between items-center w-full"
-                    >
-                      <span className="flex items-center gap-2">
-                        {daemon.isCompiling && (
-                          <svg
-                            className="w-3 h-3 animate-spin"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                              fill="none"
-                            />
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            />
-                          </svg>
-                        )}
-                        Compile LaTeX
-                      </span>
-                      <kbd className="text-[10px] text-neutral-400">⇧⌘B</kbd>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowRightPanel(true);
-                        setRightTab("opencode");
-                        setShowAgentMenu(false);
-                      }}
-                      className="text-left px-3 py-2 text-xs font-mono hover:bg-neutral-100 w-full"
-                    >
-                      OpenCode
-                    </button>
-                    <div className="border-t border-neutral-100 my-1" />
-                    <button
-                      disabled
-                      className="text-left px-3 py-2 text-xs font-mono text-neutral-400 cursor-not-allowed w-full"
-                    >
-                      Claude (coming soon)
-                    </button>
-                    <button
-                      disabled
-                      className="text-left px-3 py-2 text-xs font-mono text-neutral-400 cursor-not-allowed w-full"
-                    >
-                      Cursor (coming soon)
-                    </button>
-                  </div>
+                <div className="absolute top-full right-0 mt-2 w-56 bg-white border-2 border-black z-50 shadow-[4px_4px_0_0_#000]">
+                  <button
+                    onClick={() => {
+                      handleCompile();
+                      setShowAgentMenu(false);
+                    }}
+                    disabled={daemon.isCompiling || !daemon.projectPath}
+                    className="text-left px-4 py-3 text-xs font-mono uppercase tracking-wide hover:bg-black hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-black flex justify-between items-center w-full transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      {daemon.isCompiling && (
+                        <svg
+                          className="w-3 h-3 animate-spin"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                      )}
+                      Compile LaTeX
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowRightPanel(true);
+                      setRightTab("opencode");
+                      setShowAgentMenu(false);
+                    }}
+                    className="text-left px-4 py-3 text-xs font-mono uppercase tracking-wide hover:bg-black hover:text-white w-full transition-colors"
+                  >
+                    OpenCode
+                  </button>
                 </div>
               )}
             </div>
-            <button
-              onClick={handleOpenFolder}
-              className="p-1 text-muted hover:text-black transition-colors"
-              title="Open Folder (⌘O)"
-            >
-              <svg
-                className="size-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
+
+            <div className="flex items-center gap-1 pl-6 border-l border-border">
+              <button
+                onClick={() => setShowSidebar((v) => !v)}
+                className={`p-2 transition-all border border-transparent hover:border-black ${showSidebar ? "bg-black text-white" : "text-muted hover:text-black"}`}
+                title="Toggle Sidebar (⌘B)"
               >
-                <path
-                  strokeLinecap="square"
-                  strokeLinejoin="miter"
-                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                />
-              </svg>
-            </button>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                >
+                  <path
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
+                    d="M3 3h7v18H3V3zM10 3h11v18H10"
+                  />
+                </svg>
+              </button>
+              <button
+                onClick={() => setShowRightPanel((v) => !v)}
+                className={`p-2 transition-all border border-transparent hover:border-black ${showRightPanel ? "bg-black text-white" : "text-muted hover:text-black"}`}
+                title="Toggle Right Panel (⌘\)"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                >
+                  <path
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
+                    d="M14 3h7v18h-7V3zM3 3h11v18H3"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -601,6 +607,7 @@ export default function EditorPage() {
                         <FileTree
                           files={daemon.files}
                           selectedFile={selectedFile}
+                          highlightedFile={highlightedFile}
                           onFileSelect={handleFileSelect}
                           className="flex-1 min-h-0 overflow-hidden"
                         />
@@ -614,8 +621,8 @@ export default function EditorPage() {
                           viewBox="0 0 24 24"
                         >
                           <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                            strokeLinecap="square"
+                            strokeLinejoin="miter"
                             strokeWidth={1.5}
                             d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
                           />
@@ -630,21 +637,45 @@ export default function EditorPage() {
                   <div className="flex-1 flex flex-col overflow-hidden">
                     {!daemon.projectPath ? (
                       <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
+                        <svg
+                          className="w-8 h-8 mb-2 opacity-30"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="square"
+                            strokeLinejoin="miter"
+                            strokeWidth={1.5}
+                            d="M6 3v12M18 9a3 3 0 100-6 3 3 0 000 6zM6 21a3 3 0 100-6 3 3 0 000 6zM18 9a9 9 0 01-9 9"
+                          />
+                        </svg>
                         <p className="text-xs">No folder open</p>
                       </div>
                     ) : !gitStatus?.isRepo ? (
-                      <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
-                        <p className="text-xs font-medium mb-1">
-                          Not a git repository
-                        </p>
+                      <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
+                        <svg
+                          className="w-8 h-8 mb-2 opacity-30"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="square"
+                            strokeLinejoin="miter"
+                            strokeWidth={1.5}
+                            d="M6 3v12M18 9a3 3 0 100-6 3 3 0 000 6zM6 21a3 3 0 100-6 3 3 0 000 6zM18 9a9 9 0 01-9 9"
+                          />
+                        </svg>
+                        <p className="text-xs mb-3">Not a git repository</p>
                         <button
                           onClick={() => daemon.gitInit()}
                           disabled={daemon.isInitializingGit}
-                          className="px-3 py-1.5 bg-black text-white text-xs hover:bg-black/80 transition-colors disabled:opacity-50"
+                          className="btn btn-sm btn-primary"
                         >
                           {daemon.isInitializingGit
                             ? "Initializing..."
-                            : "Initialize Git"}
+                            : "Init Git"}
                         </button>
                       </div>
                     ) : (
@@ -788,17 +819,17 @@ export default function EditorPage() {
                                 }
                               }}
                             />
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                               <button
                                 onClick={() => setShowCommitInput(false)}
-                                className="text-xs text-muted"
+                                className="text-xs text-muted hover:text-black"
                               >
                                 Cancel
                               </button>
                               <button
                                 onClick={handleCommit}
                                 disabled={!commitMessage.trim()}
-                                className="px-3 py-1 bg-black text-white text-xs hover:bg-black/80 transition-colors disabled:opacity-50"
+                                className="btn btn-sm btn-primary"
                               >
                                 Commit
                               </button>
@@ -810,7 +841,7 @@ export default function EditorPage() {
                           {stagedChanges.length > 0 && !showCommitInput && (
                             <button
                               onClick={() => setShowCommitInput(true)}
-                              className="flex-1 px-3 py-1.5 bg-black text-white text-xs hover:bg-black/80 transition-colors"
+                              className="btn btn-sm btn-primary flex-1"
                             >
                               Commit ({stagedChanges.length})
                             </button>
@@ -818,7 +849,7 @@ export default function EditorPage() {
                           {gitStatus.ahead > 0 && (
                             <button
                               onClick={() => daemon.gitPush()}
-                              className="flex-1 px-3 py-1.5 border border-border text-xs hover:border-black transition-colors"
+                              className="btn btn-sm btn-secondary flex-1"
                             >
                               Push ({gitStatus.ahead})
                             </button>
@@ -826,7 +857,7 @@ export default function EditorPage() {
                           {gitStatus.behind > 0 && (
                             <button
                               onClick={() => daemon.gitPull()}
-                              className="flex-1 px-3 py-1.5 border border-border text-xs hover:border-black transition-colors"
+                              className="btn btn-sm btn-secondary flex-1"
                             >
                               Pull ({gitStatus.behind})
                             </button>
@@ -937,55 +968,19 @@ export default function EditorPage() {
                   <p className="text-muted">Select a file from the sidebar</p>
                 </div>
               ) : (
-                <div className="text-center max-w-md px-4 sm:px-6">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6 sm:mb-8 border-2 border-black flex items-center justify-center">
-                    <svg
-                      className="w-8 h-8 sm:w-10 sm:h-10"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                      />
-                    </svg>
-                  </div>
-                  <h2 className="text-xl sm:text-2xl font-light tracking-tight mb-2 sm:mb-3">
+                <div className="flex flex-col items-center justify-center text-center px-6">
+                  <h2 className="text-2xl font-bold tracking-tight mb-3 text-black">
                     Open a LaTeX Project
                   </h2>
-                  <p className="text-muted text-xs sm:text-sm mb-6 sm:mb-8 leading-relaxed">
-                    Select a folder containing your .tex files.
+                  <p className="text-muted text-sm mb-8 leading-relaxed max-w-sm">
+                    Select a folder containing your .tex files to start editing.
                   </p>
                   <button
                     onClick={handleOpenFolder}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 bg-black text-white text-sm hover:bg-black/80 active:bg-black/60 transition-colors"
+                    className="btn btn-primary"
                   >
                     Open Folder
                   </button>
-                  {!isCompactMode && (
-                    <div className="mt-10 pt-8 border-t border-neutral-200">
-                      <p className="text-xs text-muted uppercase tracking-wider mb-4">
-                        Works with
-                      </p>
-                      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs text-muted">
-                        <span className="px-2 sm:px-3 py-1 sm:py-1.5 border border-neutral-200">
-                          Claude Code
-                        </span>
-                        <span className="px-2 sm:px-3 py-1 sm:py-1.5 border border-neutral-200">
-                          OpenCode
-                        </span>
-                        <span className="px-2 sm:px-3 py-1 sm:py-1.5 border border-neutral-200">
-                          Codex
-                        </span>
-                        <span className="px-2 sm:px-3 py-1 sm:py-1.5 border border-neutral-200">
-                          Cursor
-                        </span>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
@@ -1081,7 +1076,7 @@ export default function EditorPage() {
                   </button>
                   <button
                     onClick={() => setRightTab("compile")}
-                    className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 text-[11px] font-mono font-medium transition-colors border-r border-border ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 text-[11px] font-mono font-medium transition-colors ${
                       rightTab === "compile"
                         ? "text-black border-b-2 border-black -mb-px"
                         : "text-muted hover:text-black"
@@ -1110,34 +1105,6 @@ export default function EditorPage() {
                     </svg>
                     Output
                   </button>
-                  <button
-                    onClick={() => setRightTab("terminal")}
-                    className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 text-[11px] font-mono font-medium transition-colors ${
-                      rightTab === "terminal"
-                        ? "text-black border-b-2 border-black -mb-px"
-                        : "text-muted hover:text-black"
-                    }`}
-                  >
-                    <svg
-                      className="size-3.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path
-                        d="M4 2h10l6 6v14H4V2z"
-                        strokeLinecap="square"
-                        strokeLinejoin="miter"
-                      />
-                      <path
-                        d="M14 2v6h6"
-                        strokeLinecap="square"
-                        strokeLinejoin="miter"
-                      />
-                    </svg>
-                    PDF
-                  </button>
                 </div>
 
                 <div className="flex-1 min-h-0 overflow-hidden">
@@ -1163,12 +1130,6 @@ export default function EditorPage() {
                         </span>
                       )}
                     </ScrollArea>
-                  )}
-                  {rightTab === "terminal" && (
-                    <Terminal
-                      projectPath={daemon.projectPath ?? undefined}
-                      className="h-full"
-                    />
                   )}
                 </div>
               </aside>
