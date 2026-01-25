@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { Header } from "@/components/header";
 
 const sections = [
   {
@@ -29,35 +30,10 @@ const sections = [
 export default function DocsPage() {
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-border">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="logo-bar">
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-            <span className="font-mono text-sm tracking-tight">
-              LMMs-Lab Writer
-            </span>
-          </Link>
-        </div>
-      </header>
+      <Header />
 
       <main className="flex-1 py-16">
         <div className="max-w-5xl mx-auto px-6">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground mb-10"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </Link>
-
           <h1 className="text-2xl font-medium tracking-tight mb-10">
             Documentation
           </h1>

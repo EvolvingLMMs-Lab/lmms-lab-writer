@@ -12,15 +12,24 @@ type Props = {
   name?: string | null;
   avatarUrl?: string | null;
   tier?: MembershipTier;
-  daysRemaining?: number | null;
+  expiresAt?: string | null;
 };
+
+function formatExpiryDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
 
 export function UserDropdown({
   email,
   name,
   avatarUrl,
   tier = "free",
-  daysRemaining,
+  expiresAt,
 }: Props) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -123,29 +132,17 @@ export function UserDropdown({
             </svg>
           </Link>
 
-          <div className="px-5 py-4 border-b border-border">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted uppercase tracking-wider">
-                Membership
-              </span>
-              <span
-                className={`text-xs font-mono uppercase tracking-wider px-2 py-0.5 ${
-                  tier === "supporter" ? "bg-black text-white" : "text-muted"
-                }`}
-              >
-                {tier}
-              </span>
-            </div>
-          </div>
-
           <div className="px-5 py-4 border-b border-border bg-neutral-50">
-            {tier === "supporter" &&
-            daysRemaining !== null &&
-            daysRemaining !== undefined ? (
+            {tier === "supporter" && expiresAt ? (
               <div className="flex items-center justify-between">
-                <span className="text-sm">
-                  {daysRemaining > 0 ? `${daysRemaining} days left` : "Expired"}
-                </span>
+                <div>
+                  <span className="text-xs text-muted uppercase tracking-wider">
+                    Membership
+                  </span>
+                  <p className="text-sm mt-1">
+                    Expires {formatExpiryDate(expiresAt)}
+                  </p>
+                </div>
                 <Link
                   href="/profile"
                   onClick={() => setIsOpen(false)}

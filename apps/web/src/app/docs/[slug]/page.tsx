@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { Header } from "@/components/header";
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
@@ -74,18 +75,9 @@ export default async function DocPage({
 
   return (
     <div className="min-h-screen">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
-        <div className="max-w-4xl mx-auto px-6 h-14 flex items-center">
-          <Link
-            href="/"
-            className="font-mono text-sm font-semibold tracking-tight"
-          >
-            LMMs-Lab Writer
-          </Link>
-        </div>
-      </header>
+      <Header />
 
-      <main className="pt-32 pb-20 px-6">
+      <main className="py-12 px-6">
         <article className="max-w-3xl mx-auto">
           <Link
             href="/docs"
@@ -107,7 +99,7 @@ export default async function DocPage({
       <footer className="py-12 px-6 border-t border-border">
         <div className="max-w-4xl mx-auto text-center text-sm text-muted">
           <Link
-            href="https://github.com/LMMs-Lab/lmms-lab-writer"
+            href="https://github.com/Luodian/latex-writer"
             className="hover:text-foreground transition-colors"
             target="_blank"
             rel="noopener noreferrer"

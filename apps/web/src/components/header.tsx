@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Github } from "lucide-react";
 
 import { UserDropdown } from "@/components/user-dropdown";
-import { getDaysRemaining } from "@/lib/github/config";
 import { createClient } from "@/lib/supabase/server";
 
 type UserProfile = {
@@ -10,7 +9,7 @@ type UserProfile = {
   name: string | null;
   avatarUrl: string | null;
   tier: "free" | "supporter";
-  daysRemaining: number | null;
+  expiresAt: string | null;
 };
 
 async function getUser(): Promise<UserProfile | null> {
@@ -28,16 +27,12 @@ async function getUser(): Promise<UserProfile | null> {
     .eq("user_id", session.user.id)
     .single();
 
-  const expiresAt = membership?.expires_at
-    ? new Date(membership.expires_at)
-    : null;
-
   return {
     email: session.user.email ?? "",
     name: metadata.full_name || metadata.name || metadata.user_name || null,
     avatarUrl: metadata.avatar_url || metadata.picture || null,
     tier: (membership?.tier as "free" | "supporter") || "free",
-    daysRemaining: getDaysRemaining(expiresAt),
+    expiresAt: membership?.expires_at ?? null,
   };
 }
 
@@ -78,7 +73,7 @@ export async function Header() {
               name={user.name}
               avatarUrl={user.avatarUrl}
               tier={user.tier}
-              daysRemaining={user.daysRemaining}
+              expiresAt={user.expiresAt}
             />
           ) : (
             <>
