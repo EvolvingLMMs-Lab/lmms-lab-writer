@@ -15,7 +15,6 @@ export function Terminal({ projectPath, className = "" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
-  const ptyIdRef = useRef<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -24,6 +23,12 @@ export function Terminal({ projectPath, className = "" }: Props) {
 
   useEffect(() => {
     if (!mounted || !containerRef.current || !projectPath) return;
+
+    // Track cleanup state to prevent zombie processes
+    let isCleanedUp = false;
+    let ptyId: string | null = null;
+    let unlistenOutput: UnlistenFn | null = null;
+    let unlistenExit: UnlistenFn | null = null;
 
     const term = new XTerm({
       fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace',
@@ -65,59 +70,82 @@ export function Terminal({ projectPath, className = "" }: Props) {
     termRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    let unlistenOutput: UnlistenFn | null = null;
-    let unlistenExit: UnlistenFn | null = null;
-
     const setup = async () => {
       try {
-        const ptyId = await invoke<string>("spawn_pty", {
+        // Check if already cleaned up before spawning
+        if (isCleanedUp) return;
+
+        const spawnedPtyId = await invoke<string>("spawn_pty", {
           cwd: projectPath,
           shell: null,
           args: [],
           cols: term.cols,
           rows: term.rows,
         });
-        ptyIdRef.current = ptyId;
+
+        // Check again after async operation
+        if (isCleanedUp) {
+          // Component unmounted during spawn - kill the orphan process
+          invoke("kill_pty", { id: spawnedPtyId }).catch(console.error);
+          return;
+        }
+
+        ptyId = spawnedPtyId;
 
         unlistenOutput = await listen<{ id: string; data: string }>(
           "pty-output",
           (event) => {
-            if (event.payload.id === ptyId) {
+            if (event.payload.id === ptyId && !isCleanedUp) {
               term.write(event.payload.data);
             }
           },
         );
 
+        // Check again after async operation
+        if (isCleanedUp) {
+          unlistenOutput?.();
+          invoke("kill_pty", { id: ptyId }).catch(console.error);
+          return;
+        }
+
         unlistenExit = await listen<{ id: string; code: number }>(
           "pty-exit",
           (event) => {
-            if (event.payload.id === ptyId) {
+            if (event.payload.id === ptyId && !isCleanedUp) {
               term.write(
                 `\r\n[Process exited with code ${event.payload.code}]\r\n`,
               );
-              ptyIdRef.current = null;
+              ptyId = null;
             }
           },
         );
 
+        // Check again after async operation
+        if (isCleanedUp) {
+          unlistenOutput?.();
+          unlistenExit?.();
+          invoke("kill_pty", { id: ptyId }).catch(console.error);
+          return;
+        }
+
         term.onData((data) => {
-          if (ptyIdRef.current) {
-            invoke("write_pty", { id: ptyIdRef.current, data }).catch(
-              console.error,
-            );
+          if (ptyId && !isCleanedUp) {
+            invoke("write_pty", { id: ptyId, data }).catch(console.error);
           }
         });
 
         term.onResize(({ cols, rows }) => {
-          if (ptyIdRef.current) {
-            invoke("resize_pty", { id: ptyIdRef.current, cols, rows }).catch(
+          if (ptyId && !isCleanedUp) {
+            invoke("resize_pty", { id: ptyId, cols, rows }).catch(
               console.error,
             );
           }
         });
       } catch (err) {
-        console.error("Failed to spawn PTY:", err);
-        term.write(`\r\nFailed to start terminal: ${err}\r\n`);
+        if (!isCleanedUp) {
+          console.error("Failed to spawn PTY:", err);
+          term.write(`\r\nFailed to start terminal: ${err}\r\n`);
+        }
       }
     };
 
@@ -136,17 +164,24 @@ export function Terminal({ projectPath, className = "" }: Props) {
     }
 
     return () => {
+      // Mark as cleaned up FIRST to prevent race conditions
+      isCleanedUp = true;
+
       window.removeEventListener("resize", handleResize);
       resizeObserver.disconnect();
+
+      // Clean up listeners
       unlistenOutput?.();
       unlistenExit?.();
-      if (ptyIdRef.current) {
-        invoke("kill_pty", { id: ptyIdRef.current }).catch(console.error);
+
+      // Kill PTY process if it exists
+      if (ptyId) {
+        invoke("kill_pty", { id: ptyId }).catch(console.error);
       }
+
       term.dispose();
       termRef.current = null;
       fitAddonRef.current = null;
-      ptyIdRef.current = null;
     };
   }, [mounted, projectPath]);
 

@@ -146,6 +146,8 @@ export const LaTeXEditor = memo(function LaTeXEditor({
   const [mounted, setMounted] = useState(false);
   const contentRef = useRef(content);
   const isExternalUpdateRef = useRef(false);
+  const onContentChangeRef = useRef(onContentChange);
+  onContentChangeRef.current = onContentChange;
 
   useEffect(() => {
     setMounted(true);
@@ -226,7 +228,7 @@ export const LaTeXEditor = memo(function LaTeXEditor({
             if (update.docChanged && !isExternalUpdateRef.current) {
               const newContent = update.state.doc.toString();
               contentRef.current = newContent;
-              onContentChange?.(newContent);
+              onContentChangeRef.current?.(newContent);
             }
           },
         ),
@@ -244,7 +246,7 @@ export const LaTeXEditor = memo(function LaTeXEditor({
       view.destroy();
       viewRef.current = null;
     };
-  }, [mounted, readOnly, onContentChange]);
+  }, [mounted, readOnly]);
 
   useEffect(() => {
     if (!viewRef.current || content === contentRef.current) return;

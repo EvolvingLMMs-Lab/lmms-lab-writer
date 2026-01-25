@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type {
   FileNode,
@@ -8,6 +8,21 @@ import type {
   GitStatus,
   GitLogEntry,
 } from "@lmms-lab/writer-shared";
+
+function debounce<T extends (...args: Parameters<T>) => void>(
+  fn: T,
+  delay: number,
+): { (...args: Parameters<T>): void; cancel: () => void } {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const debouncedFn = (...args: Parameters<T>) => {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  };
+  debouncedFn.cancel = () => {
+    if (timeoutId) clearTimeout(timeoutId);
+  };
+  return debouncedFn;
+}
 
 interface ProjectInfo {
   path: string;
@@ -32,6 +47,12 @@ interface GitState {
   gitInitResult: GitInitResult | null;
   isPushing: boolean;
   isPulling: boolean;
+}
+
+interface OperationState {
+  isOpeningProject: boolean;
+  isStaging: boolean;
+  lastError: { message: string; operation: string } | null;
 }
 
 interface FileChangeEvent {
@@ -72,30 +93,55 @@ export function useTauriDaemon() {
     isPulling: false,
   });
 
-  const setProject = useCallback(async (path: string) => {
-    setProjectState((s) => ({ ...s, projectPath: path }));
+  const [operationState, setOperationState] = useState<OperationState>({
+    isOpeningProject: false,
+    isStaging: false,
+    lastError: null,
+  });
 
-    try {
-      const [rawFiles] = await Promise.all([
-        invoke<unknown[]>("get_file_tree", { dir: path }),
-        invoke("watch_directory", { path }),
-      ]);
+  const setError = useCallback((message: string, operation: string) => {
+    setOperationState((s) => ({ ...s, lastError: { message, operation } }));
+  }, []);
 
-      const files = rawFiles.map((f) =>
-        convertFileNode(f as Parameters<typeof convertFileNode>[0]),
-      );
+  const clearError = useCallback(() => {
+    setOperationState((s) => ({ ...s, lastError: null }));
+  }, []);
 
-      setProjectState((s) => ({
+  const setProject = useCallback(
+    async (path: string) => {
+      setProjectState((s) => ({ ...s, projectPath: path }));
+      setOperationState((s) => ({
         ...s,
-        files,
-        projectInfo: { path },
+        isOpeningProject: true,
+        lastError: null,
       }));
 
-      refreshGitStatusInternal(path);
-    } catch (error) {
-      console.error("Failed to set project:", error);
-    }
-  }, []);
+      try {
+        const [rawFiles] = await Promise.all([
+          invoke<unknown[]>("get_file_tree", { dir: path }),
+          invoke("watch_directory", { path }),
+        ]);
+
+        const files = rawFiles.map((f) =>
+          convertFileNode(f as Parameters<typeof convertFileNode>[0]),
+        );
+
+        setProjectState((s) => ({
+          ...s,
+          files,
+          projectInfo: { path },
+        }));
+
+        refreshGitStatusInternal(path);
+      } catch (error) {
+        console.error("Failed to set project:", error);
+        setError(String(error), "open project");
+      } finally {
+        setOperationState((s) => ({ ...s, isOpeningProject: false }));
+      }
+    },
+    [setError],
+  );
 
   const readFile = useCallback(
     async (relativePath: string): Promise<string | null> => {
@@ -121,9 +167,10 @@ export function useTauriDaemon() {
         await invoke("write_file", { path: fullPath, content });
       } catch (error) {
         console.error("Failed to write file:", error);
+        setError(String(error), "save file");
       }
     },
-    [projectState.projectPath],
+    [projectState.projectPath, setError],
   );
 
   const refreshFiles = useCallback(async () => {
@@ -142,15 +189,13 @@ export function useTauriDaemon() {
     }
   }, [projectState.projectPath]);
 
-  // Internal function to avoid dependency cycle
   const refreshGitStatusInternal = useCallback(async (dir: string) => {
     try {
       const gitStatus = await invoke<GitStatus>("git_status", { dir });
 
       if (gitStatus.isRepo) {
-        // Get git log in parallel with status update
         const log = await invoke<GitLogEntry[]>("git_log", { dir, limit: 1 });
-        const lastCommit = log[0];
+        const lastCommit = log.length > 0 ? log[0] : undefined;
         const gitInfo: GitInfo = {
           branch: gitStatus.branch,
           isDirty: gitStatus.changes.length > 0,
@@ -193,14 +238,18 @@ export function useTauriDaemon() {
     async (files: string[]) => {
       if (!projectState.projectPath) return;
 
+      setOperationState((s) => ({ ...s, isStaging: true }));
       try {
         await invoke("git_add", { dir: projectState.projectPath, files });
         await refreshGitStatus();
       } catch (error) {
         console.error("Failed to git add:", error);
+        setError(String(error), "stage files");
+      } finally {
+        setOperationState((s) => ({ ...s, isStaging: false }));
       }
     },
-    [projectState.projectPath, refreshGitStatus],
+    [projectState.projectPath, refreshGitStatus, setError],
   );
 
   const gitCommit = useCallback(
@@ -300,9 +349,10 @@ export function useTauriDaemon() {
         await refreshGitStatus();
       } catch (error) {
         console.error("Failed to add remote:", error);
+        setError(String(error), "add remote");
       }
     },
-    [projectState.projectPath, refreshGitStatus],
+    [projectState.projectPath, refreshGitStatus, setError],
   );
 
   const clearGitInitResult = useCallback(() => {
@@ -313,61 +363,90 @@ export function useTauriDaemon() {
     null,
   );
 
+  const projectPathRef = useRef(projectState.projectPath);
+  projectPathRef.current = projectState.projectPath;
+
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
+    if (!projectState.projectPath) return;
+
+    let isCleanedUp = false;
+    let unlistenFiles: (() => void) | null = null;
+    let unlistenFileChanged: (() => void) | null = null;
+
+    const debouncedRefreshFileTree = debounce(async (dir: string) => {
+      if (isCleanedUp) return;
+      try {
+        const rawFiles = await invoke<unknown[]>("get_file_tree", { dir });
+        if (isCleanedUp) return;
+        const files = rawFiles.map((f) =>
+          convertFileNode(f as Parameters<typeof convertFileNode>[0]),
+        );
+        setProjectState((s) => ({ ...s, files }));
+      } catch (error) {
+        if (!isCleanedUp) {
+          console.error("Failed to refresh file tree:", error);
+        }
+      }
+    }, 300);
+
+    const debouncedRefreshGit = debounce(async (dir: string) => {
+      if (isCleanedUp) return;
+      refreshGitStatusInternal(dir);
+    }, 200);
 
     const setupListeners = async () => {
+      if (isCleanedUp) return;
+
       const { listen } = await import("@tauri-apps/api/event");
 
-      const unlistenFiles = await listen<FileNode[]>(
-        "files-changed",
-        (event) => {
-          setProjectState((s) => ({ ...s, files: event.payload }));
-        },
-      );
+      if (isCleanedUp) return;
 
-      const unlistenFileChanged = await listen<FileChangeEvent>(
+      unlistenFiles = await listen<FileNode[]>("files-changed", (event) => {
+        if (!isCleanedUp) {
+          setProjectState((s) => ({ ...s, files: event.payload }));
+        }
+      });
+
+      if (isCleanedUp) {
+        unlistenFiles?.();
+        return;
+      }
+
+      unlistenFileChanged = await listen<FileChangeEvent>(
         "file-changed",
-        async (event) => {
-          const { path: changedPath, kind } = event.payload;
+        (event) => {
+          if (isCleanedUp) return;
+
+          const { kind } = event.payload;
           setLastFileChange(event.payload);
 
+          const currentPath = projectPathRef.current;
+          if (!currentPath) return;
+
           if (kind === "create" || kind === "remove") {
-            const currentPath = projectState.projectPath;
-            if (currentPath) {
-              try {
-                const rawFiles = await invoke<unknown[]>("get_file_tree", {
-                  dir: currentPath,
-                });
-                const files = rawFiles.map((f) =>
-                  convertFileNode(f as Parameters<typeof convertFileNode>[0]),
-                );
-                setProjectState((s) => ({ ...s, files }));
-              } catch (error) {
-                console.error("Failed to refresh file tree:", error);
-              }
-            }
+            debouncedRefreshFileTree(currentPath);
           }
 
           if (kind === "create" || kind === "modify" || kind === "remove") {
-            const currentPath = projectState.projectPath;
-            if (currentPath) {
-              refreshGitStatusInternal(currentPath);
-            }
+            debouncedRefreshGit(currentPath);
           }
         },
       );
 
-      unlisten = () => {
-        unlistenFiles();
-        unlistenFileChanged();
-      };
+      if (isCleanedUp) {
+        unlistenFiles?.();
+        unlistenFileChanged?.();
+      }
     };
 
     setupListeners();
 
     return () => {
-      unlisten?.();
+      isCleanedUp = true;
+      debouncedRefreshFileTree.cancel();
+      debouncedRefreshGit.cancel();
+      unlistenFiles?.();
+      unlistenFileChanged?.();
       invoke("stop_watch").catch((error) =>
         console.error("Failed to stop watch:", error),
       );
@@ -396,6 +475,11 @@ export function useTauriDaemon() {
 
       lastFileChange,
 
+      // Operation state
+      isOpeningProject: operationState.isOpeningProject,
+      isStaging: operationState.isStaging,
+      lastError: operationState.lastError,
+
       // Actions
       setProject,
       refreshFiles,
@@ -409,10 +493,12 @@ export function useTauriDaemon() {
       gitAddRemote,
       clearGitInitResult,
       refreshGitStatus,
+      clearError,
     }),
     [
       projectState,
       gitState,
+      operationState,
       lastFileChange,
       setProject,
       refreshFiles,
@@ -426,6 +512,7 @@ export function useTauriDaemon() {
       gitAddRemote,
       clearGitInitResult,
       refreshGitStatus,
+      clearError,
     ],
   );
 }

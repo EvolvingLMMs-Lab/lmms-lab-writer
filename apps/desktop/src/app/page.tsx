@@ -14,6 +14,20 @@ import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { LoginForm, UserDropdown } from "@/components/auth";
 
+function throttle<T extends (...args: Parameters<T>) => void>(
+  fn: T,
+  limit: number,
+): T {
+  let lastCall = 0;
+  return ((...args: Parameters<T>) => {
+    const now = Date.now();
+    if (now - lastCall >= limit) {
+      lastCall = now;
+      fn(...args);
+    }
+  }) as T;
+}
+
 type OpenCodeStatus = {
   running: boolean;
   port: number;
@@ -291,11 +305,11 @@ export default function EditorPage() {
   useEffect(() => {
     const COMPACT_THRESHOLD = 1100;
 
-    const handleResize = () => {
+    const handleResize = throttle(() => {
       if (window.innerWidth < COMPACT_THRESHOLD) {
         setShowRightPanel(false);
       }
-    };
+    }, 100);
 
     handleResize();
     window.addEventListener("resize", handleResize);
@@ -491,6 +505,7 @@ export default function EditorPage() {
               }}
               className="logo-bar text-foreground hover:opacity-70 transition-opacity"
               title="Visit writer.lmms-lab.com"
+              aria-label="Open LMMs-Lab website"
             >
               <span></span>
               <span></span>
@@ -707,6 +722,7 @@ export default function EditorPage() {
                             <button
                               onClick={() => daemon.refreshGitStatus()}
                               className="text-muted hover:text-black"
+                              aria-label="Refresh git status"
                             >
                               <svg
                                 className="w-4 h-4"
@@ -807,6 +823,7 @@ export default function EditorPage() {
                                   <button
                                     onClick={() => daemon.gitAdd([c.path])}
                                     className="opacity-0 group-hover:opacity-100 text-xs"
+                                    aria-label="Stage file"
                                   >
                                     +
                                   </button>
@@ -929,10 +946,15 @@ export default function EditorPage() {
                   </div>
                 )}
               </aside>
-              <div
-                onMouseDown={() => setResizing("sidebar")}
-                className={`w-1 cursor-col-resize hover:bg-black/20 transition-colors ${resizing === "sidebar" ? "bg-black/20" : ""}`}
-              />
+              <div className="relative group w-1 flex-shrink-0">
+                <div
+                  onMouseDown={() => setResizing("sidebar")}
+                  className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize z-10"
+                />
+                <div
+                  className={`w-full h-full transition-colors ${resizing === "sidebar" ? "bg-black/20" : "group-hover:bg-black/20"}`}
+                />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -955,13 +977,14 @@ export default function EditorPage() {
                     title={tab}
                   >
                     <span className="truncate max-w-[120px]">{fileName}</span>
-                    <span
+                    <button
                       onClick={(e) => handleCloseTab(tab, e)}
                       className={`w-4 h-4 flex items-center justify-center hover:bg-neutral-200 ${
                         isActive
                           ? "opacity-100"
                           : "opacity-0 group-hover:opacity-100"
                       }`}
+                      aria-label="Close tab"
                     >
                       <svg
                         className="w-3 h-3"
@@ -976,7 +999,7 @@ export default function EditorPage() {
                           d="M6 18L18 6M6 6l12 12"
                         />
                       </svg>
-                    </span>
+                    </button>
                   </button>
                 );
               })}
@@ -1077,10 +1100,15 @@ export default function EditorPage() {
                   : "transform, opacity",
               }}
             >
-              <div
-                onMouseDown={() => setResizing("right")}
-                className={`w-1 cursor-col-resize hover:bg-black/20 transition-colors ${resizing === "right" ? "bg-black/20" : ""}`}
-              />
+              <div className="relative group w-1 flex-shrink-0">
+                <div
+                  onMouseDown={() => setResizing("right")}
+                  className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize z-10"
+                />
+                <div
+                  className={`w-full h-full transition-colors ${resizing === "right" ? "bg-black/20" : "group-hover:bg-black/20"}`}
+                />
+              </div>
               <aside
                 style={{
                   width:

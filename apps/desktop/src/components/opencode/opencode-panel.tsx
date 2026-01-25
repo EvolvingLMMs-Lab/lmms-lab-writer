@@ -145,6 +145,7 @@ export function OpenCodePanel({
           currentSessionId={opencode.currentSessionId}
           onSelect={handleSelectSession}
           onNewSession={handleNewSession}
+          onDelete={opencode.deleteSession}
         />
       ) : opencode.currentSessionId ? (
         <>
@@ -182,7 +183,7 @@ export function OpenCodePanel({
             </p>
             <button
               onClick={handleNewSession}
-              className="px-4 py-2 bg-white text-black text-sm border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+              className="px-4 py-2 bg-white text-black text-sm border border-black shadow-[3px_3px_0_0_#000] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
             >
               New Session
             </button>
@@ -198,11 +199,13 @@ function SessionList({
   currentSessionId,
   onSelect,
   onNewSession,
+  onDelete,
 }: {
   sessions: SessionInfo[];
   currentSessionId: string | null;
   onSelect: (id: string) => void;
   onNewSession: () => void;
+  onDelete: (id: string) => void;
 }) {
   const sortedSessions = [...sessions].sort(
     (a, b) => b.time.updated - a.time.updated,
@@ -215,7 +218,7 @@ function SessionList({
           <p className="text-sm text-muted">No sessions yet</p>
           <button
             onClick={onNewSession}
-            className="px-4 py-2 bg-white text-black text-sm border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+            className="px-4 py-2 bg-white text-black text-sm border border-black shadow-[3px_3px_0_0_#000] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
           >
             Create First Session
           </button>
@@ -232,30 +235,60 @@ function SessionList({
         const timeStr = formatRelativeTime(date);
 
         return (
-          <button
+          <div
             key={session.id}
-            onClick={() => onSelect(session.id)}
-            className={`w-full text-left px-3 py-2 border-b border-border hover:bg-neutral-50 transition-colors ${
+            className={`w-full flex items-center border-b border-border hover:bg-neutral-50 transition-colors ${
               isActive ? "bg-neutral-100" : ""
             }`}
           >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm truncate">
-                  {session.title || "Untitled"}
-                </p>
-                {session.summary?.files !== undefined && (
-                  <p className="text-xs text-muted mt-0.5">
-                    {session.summary.files} file
-                    {session.summary.files !== 1 ? "s" : ""} modified
+            <button
+              onClick={() => onSelect(session.id)}
+              className="flex-1 text-left px-3 py-2"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm truncate">
+                    {session.title || "Untitled"}
                   </p>
-                )}
+                  {session.summary?.files !== undefined && (
+                    <p className="text-xs text-muted mt-0.5">
+                      {session.summary.files} file
+                      {session.summary.files !== 1 ? "s" : ""} modified
+                    </p>
+                  )}
+                </div>
+                <span className="text-xs text-muted flex-shrink-0">
+                  {timeStr}
+                </span>
               </div>
-              <span className="text-xs text-muted flex-shrink-0">
-                {timeStr}
-              </span>
-            </div>
-          </button>
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (
+                  window.confirm("Delete this session? This cannot be undone.")
+                ) {
+                  onDelete(session.id);
+                }
+              }}
+              className="px-3 py-2 text-muted hover:text-red-600 transition-colors"
+              title="Delete session"
+            >
+              <svg
+                className="size-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="square"
+                  strokeLinejoin="miter"
+                  strokeWidth={1.5}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+          </div>
         );
       })}
     </div>
@@ -468,7 +501,7 @@ function OnboardingState({
             {onRestartOpenCode && (
               <button
                 onClick={onRestartOpenCode}
-                className="w-full px-4 py-2 bg-white text-black text-sm border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+                className="w-full px-4 py-2 bg-white text-black text-sm border border-black shadow-[3px_3px_0_0_#000] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
               >
                 I've installed OpenCode
               </button>
@@ -479,7 +512,7 @@ function OnboardingState({
         {daemonStatus === "stopped" && onRestartOpenCode && (
           <button
             onClick={onRestartOpenCode}
-            className="w-full px-4 py-2 bg-white text-black text-sm border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+            className="w-full px-4 py-2 bg-white text-black text-sm border border-black shadow-[3px_3px_0_0_#000] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
           >
             Start OpenCode
           </button>
@@ -496,7 +529,7 @@ function OnboardingState({
           <button
             onClick={onConnect}
             disabled={connecting}
-            className="w-full px-4 py-2 bg-white text-black text-sm border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all disabled:opacity-50 disabled:shadow-none"
+            className="w-full px-4 py-2 bg-white text-black text-sm border border-black shadow-[3px_3px_0_0_#000] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all disabled:opacity-50 disabled:shadow-none"
           >
             {connecting ? (
               <span className="flex items-center justify-center gap-2">
@@ -513,7 +546,7 @@ function OnboardingState({
           <button
             onClick={onConnect}
             disabled={connecting}
-            className="w-full px-4 py-2 bg-white text-black text-sm border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all disabled:opacity-50 disabled:shadow-none"
+            className="w-full px-4 py-2 bg-white text-black text-sm border border-black shadow-[3px_3px_0_0_#000] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all disabled:opacity-50 disabled:shadow-none"
           >
             {connecting ? "Connecting..." : "Connect"}
           </button>
