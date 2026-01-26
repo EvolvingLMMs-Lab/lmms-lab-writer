@@ -157,26 +157,34 @@ export default function EditorPage() {
     }
   }, []);
 
-  const startOpencode = useCallback(async (directory: string) => {
-    try {
-      setOpencodeDaemonStatus("starting");
-      const status = await invoke<OpenCodeStatus>("opencode_start", {
-        directory,
-        port: 4096,
-      });
-      setOpencodeDaemonStatus("running");
-      setOpencodePort(status.port);
-      opencodeStartedForPathRef.current = directory;
-      return status;
-    } catch (err) {
-      console.error("Failed to start OpenCode:", err);
-      setOpencodeDaemonStatus("stopped");
-      return null;
-    }
-  }, []);
+  const startOpencode = useCallback(
+    async (directory: string) => {
+      if (opencodeDaemonStatus === "unavailable") return null;
+      try {
+        setOpencodeDaemonStatus("starting");
+        const status = await invoke<OpenCodeStatus>("opencode_start", {
+          directory,
+          port: 4096,
+        });
+        setOpencodeDaemonStatus("running");
+        setOpencodePort(status.port);
+        opencodeStartedForPathRef.current = directory;
+        return status;
+      } catch (err) {
+        console.error("Failed to start OpenCode:", err);
+        setOpencodeDaemonStatus("unavailable");
+        toast(
+          "OpenCode is not installed or configured correctly. Please install it with: go install github.com/anthropics/opencode@latest",
+          "error",
+        );
+        return null;
+      }
+    },
+    [opencodeDaemonStatus, toast],
+  );
 
   const restartOpencode = useCallback(async () => {
-    if (!daemon.projectPath) return;
+    if (!daemon.projectPath || opencodeDaemonStatus === "unavailable") return;
     try {
       setOpencodeDaemonStatus("starting");
       const status = await invoke<OpenCodeStatus>("opencode_restart", {
@@ -186,9 +194,13 @@ export default function EditorPage() {
       setOpencodePort(status.port);
     } catch (err) {
       console.error("Failed to restart OpenCode:", err);
-      setOpencodeDaemonStatus("stopped");
+      setOpencodeDaemonStatus("unavailable");
+      toast(
+        "Failed to restart OpenCode. Please check if it is installed correctly.",
+        "error",
+      );
     }
-  }, [daemon.projectPath]);
+  }, [daemon.projectPath, opencodeDaemonStatus, toast]);
 
   const handleMaxReconnectFailed = useCallback(() => {
     setShowDisconnectedDialog(true);
@@ -203,6 +215,26 @@ export default function EditorPage() {
     restartOpencode();
   }, [restartOpencode]);
 
+  const handleToggleRightPanel = useCallback(async () => {
+    const willOpen = !showRightPanel;
+    setShowRightPanel(willOpen);
+
+    if (willOpen && daemon.projectPath && opencodeDaemonStatus === "stopped") {
+      const status = await checkOpencodeStatus();
+      if (status?.installed && !status.running) {
+        await startOpencode(daemon.projectPath);
+      } else if (status?.running) {
+        opencodeStartedForPathRef.current = daemon.projectPath;
+      }
+    }
+  }, [
+    showRightPanel,
+    daemon.projectPath,
+    opencodeDaemonStatus,
+    checkOpencodeStatus,
+    startOpencode,
+  ]);
+
   useEffect(() => {
     localStorage.setItem("sidebarWidth", String(sidebarWidth));
   }, [sidebarWidth]);
@@ -211,29 +243,12 @@ export default function EditorPage() {
     localStorage.setItem("rightPanelWidth", String(rightPanelWidth));
   }, [rightPanelWidth]);
 
+  // OpenCode is started manually when user clicks the right panel toggle
   useEffect(() => {
     if (!daemon.projectPath) {
       opencodeStartedForPathRef.current = null;
-      return;
     }
-
-    if (opencodeStartedForPathRef.current === daemon.projectPath) {
-      return;
-    }
-
-    const initOpencode = async () => {
-      const status = await checkOpencodeStatus();
-      if (status?.installed && !status.running) {
-        await startOpencode(daemon.projectPath!);
-      } else if (status?.running) {
-        opencodeStartedForPathRef.current = daemon.projectPath;
-      }
-    };
-
-    initOpencode().catch((error) =>
-      console.error("Failed to initialize OpenCode:", error),
-    );
-  }, [daemon.projectPath, checkOpencodeStatus, startOpencode]);
+  }, [daemon.projectPath]);
 
   useEffect(() => {
     if (!resizing) return;
@@ -428,6 +443,11 @@ export default function EditorPage() {
   );
 
   const handleOpenFolder = useCallback(async () => {
+    // Only run in Tauri environment
+    if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
+      console.warn("Tauri APIs not available in browser context");
+      return;
+    }
     try {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const selected = await open({
@@ -531,7 +551,7 @@ export default function EditorPage() {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowRightPanel((v) => !v)}
+              onClick={handleToggleRightPanel}
               className={`btn btn-sm border-2 border-black transition-all flex items-center gap-2 bg-white text-black ${
                 showRightPanel
                   ? "shadow-none translate-x-[3px] translate-y-[3px]"
