@@ -174,7 +174,7 @@ export default function EditorPage() {
         console.error("Failed to start OpenCode:", err);
         setOpencodeDaemonStatus("unavailable");
         toast(
-          "OpenCode is not installed or configured correctly. Please install it with: go install github.com/anthropics/opencode@latest",
+          "OpenCode is not installed or configured correctly. Please install it from https://opencode.ai/ or run: npm i -g opencode-ai@latest",
           "error",
         );
         return null;
@@ -552,11 +552,10 @@ export default function EditorPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={handleToggleRightPanel}
-              className={`btn btn-sm border-2 border-black transition-all flex items-center gap-2 bg-white text-black ${
-                showRightPanel
+              className={`btn btn-sm border-2 border-black transition-all flex items-center gap-2 bg-white text-black ${showRightPanel
                   ? "shadow-none translate-x-[3px] translate-y-[3px]"
                   : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px]"
-              }`}
+                }`}
             >
               Agent Mode
             </button>
@@ -622,21 +621,19 @@ export default function EditorPage() {
                 <div className="flex items-center border-b border-border">
                   <button
                     onClick={() => setSidebarTab("files")}
-                    className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
-                      sidebarTab === "files"
+                    className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${sidebarTab === "files"
                         ? "text-black border-b-2 border-black -mb-px"
                         : "text-muted hover:text-black"
-                    }`}
+                      }`}
                   >
                     Files
                   </button>
                   <button
                     onClick={() => setSidebarTab("git")}
-                    className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
-                      sidebarTab === "git"
+                    className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${sidebarTab === "git"
                         ? "text-black border-b-2 border-black -mb-px"
                         : "text-muted hover:text-black"
-                    }`}
+                      }`}
                   >
                     Git
                     {gitStatus && gitStatus.changes.length > 0 && (
@@ -990,21 +987,19 @@ export default function EditorPage() {
                   <button
                     key={tab}
                     onClick={() => handleFileSelect(tab)}
-                    className={`group flex items-center gap-2 px-3 py-1.5 text-sm border-r border-border transition-colors ${
-                      isActive
+                    className={`group flex items-center gap-2 px-3 py-1.5 text-sm border-r border-border transition-colors ${isActive
                         ? "bg-white text-black"
                         : "text-muted hover:text-black hover:bg-white/50"
-                    }`}
+                      }`}
                     title={tab}
                   >
                     <span className="truncate max-w-[120px]">{fileName}</span>
                     <button
                       onClick={(e) => handleCloseTab(tab, e)}
-                      className={`w-4 h-4 flex items-center justify-center hover:bg-neutral-200 ${
-                        isActive
+                      className={`w-4 h-4 flex items-center justify-center hover:bg-neutral-200 ${isActive
                           ? "opacity-100"
                           : "opacity-0 group-hover:opacity-100"
-                      }`}
+                        }`}
                       aria-label="Close tab"
                     >
                       <svg

@@ -120,7 +120,7 @@ pub async fn opencode_start(
         }
     }
 
-    let opencode_path = find_opencode().await.ok_or("OpenCode not found. Install with: npm install -g opencode")?;
+    let opencode_path = find_opencode().await.ok_or("OpenCode not found. Please install it from https://opencode.ai/ or run: npm i -g opencode-ai@latest")?;
 
     let port = port.unwrap_or(4096);
     *state.port.lock().map_err(|e| e.to_string())? = port;
