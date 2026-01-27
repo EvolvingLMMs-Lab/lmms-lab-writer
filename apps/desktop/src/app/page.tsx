@@ -193,7 +193,7 @@ export default function EditorPage() {
       setOpencodeDaemonStatus("running");
       setOpencodePort(status.port);
     } catch (err) {
-      console.error("Failed to restart OpenCode:", err);
+      // console.error("Failed to restart OpenCode:", err);
       setOpencodeDaemonStatus("unavailable");
       toast(
         "Failed to restart OpenCode. Please check if it is installed correctly.",
@@ -984,10 +984,17 @@ export default function EditorPage() {
                 const fileName = tab.split("/").pop() || tab;
                 const isActive = tab === selectedFile;
                 return (
-                  <button
+                  <div
+                    role="button"
+                    tabIndex={0}
                     key={tab}
                     onClick={() => handleFileSelect(tab)}
-                    className={`group flex items-center gap-2 px-3 py-1.5 text-sm border-r border-border transition-colors ${isActive
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        handleFileSelect(tab);
+                      }
+                    }}
+                    className={`cursor-pointer group flex items-center gap-2 px-3 py-1.5 text-sm border-r border-border transition-colors ${isActive
                         ? "bg-white text-black"
                         : "text-muted hover:text-black hover:bg-white/50"
                       }`}
@@ -1016,7 +1023,7 @@ export default function EditorPage() {
                         />
                       </svg>
                     </button>
-                  </button>
+                  </div>
                 );
               })}
             </div>
