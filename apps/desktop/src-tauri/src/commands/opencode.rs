@@ -33,28 +33,53 @@ async fn find_opencode() -> Option<String> {
         vec!["opencode"]
     };
 
-    for candidate in candidates {
-        if let Ok(output) = TokioCommand::new("which").arg(candidate).output().await {
+    // On Windows, use 'where' command; on Unix, use 'which'
+    let which_cmd = if cfg!(target_os = "windows") { "where" } else { "which" };
+
+    for candidate in &candidates {
+        if let Ok(output) = TokioCommand::new(which_cmd).arg(candidate).output().await {
             if output.status.success() {
-                return Some(String::from_utf8_lossy(&output.stdout).trim().to_string());
+                let path = String::from_utf8_lossy(&output.stdout)
+                    .lines()
+                    .next()
+                    .unwrap_or("")
+                    .trim()
+                    .to_string();
+                if !path.is_empty() {
+                    return Some(path);
+                }
             }
         }
     }
 
-    let home = std::env::var("HOME").unwrap_or_default();
-    let common_paths: Vec<String> = vec![
-        "/opt/homebrew/bin/opencode".to_string(),
-        "/usr/local/bin/opencode".to_string(),
-        "/usr/bin/opencode".to_string(),
-        format!("{}/.local/bin/opencode", home),
-        format!("{}/.opencode/bin/opencode", home),
-        format!("{}/.bun/bin/opencode", home),
-        format!("{}/bin/opencode", home),
-    ];
+    // On Windows, also check common npm/node paths
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(appdata) = std::env::var("APPDATA") {
+            let npm_path = format!("{}\\npm\\opencode.cmd", appdata);
+            if std::path::Path::new(&npm_path).exists() {
+                return Some(npm_path);
+            }
+        }
+    }
 
-    for path in common_paths {
-        if std::path::Path::new(&path).exists() {
-            return Some(path);
+    #[cfg(not(target_os = "windows"))]
+    {
+        let home = std::env::var("HOME").unwrap_or_default();
+        let common_paths: Vec<String> = vec![
+            "/opt/homebrew/bin/opencode".to_string(),
+            "/usr/local/bin/opencode".to_string(),
+            "/usr/bin/opencode".to_string(),
+            format!("{}/.local/bin/opencode", home),
+            format!("{}/.opencode/bin/opencode", home),
+            format!("{}/.bun/bin/opencode", home),
+            format!("{}/bin/opencode", home),
+        ];
+
+        for path in common_paths {
+            if std::path::Path::new(&path).exists() {
+                return Some(path);
+            }
         }
     }
 
@@ -95,7 +120,7 @@ pub async fn opencode_start(
         }
     }
 
-    let opencode_path = find_opencode().await.ok_or("OpenCode not found. Install with: npm install -g opencode")?;
+    let opencode_path = find_opencode().await.ok_or("OpenCode not found. Please install it from https://opencode.ai/ or run: npm i -g opencode-ai@latest")?;
 
     let port = port.unwrap_or(4096);
     *state.port.lock().map_err(|e| e.to_string())? = port;
