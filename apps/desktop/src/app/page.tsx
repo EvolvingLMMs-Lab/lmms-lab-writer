@@ -553,8 +553,8 @@ export default function EditorPage() {
             <button
               onClick={handleToggleRightPanel}
               className={`btn btn-sm border-2 border-black transition-all flex items-center gap-2 bg-white text-black ${showRightPanel
-                  ? "shadow-none translate-x-[3px] translate-y-[3px]"
-                  : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px]"
+                ? "shadow-none translate-x-[3px] translate-y-[3px]"
+                : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px]"
                 }`}
             >
               Agent Mode
@@ -622,8 +622,8 @@ export default function EditorPage() {
                   <button
                     onClick={() => setSidebarTab("files")}
                     className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${sidebarTab === "files"
-                        ? "text-black border-b-2 border-black -mb-px"
-                        : "text-muted hover:text-black"
+                      ? "text-black border-b-2 border-black -mb-px"
+                      : "text-muted hover:text-black"
                       }`}
                   >
                     Files
@@ -631,8 +631,8 @@ export default function EditorPage() {
                   <button
                     onClick={() => setSidebarTab("git")}
                     className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${sidebarTab === "git"
-                        ? "text-black border-b-2 border-black -mb-px"
-                        : "text-muted hover:text-black"
+                      ? "text-black border-b-2 border-black -mb-px"
+                      : "text-muted hover:text-black"
                       }`}
                   >
                     Git
@@ -995,8 +995,8 @@ export default function EditorPage() {
                       }
                     }}
                     className={`cursor-pointer group flex items-center gap-2 px-3 py-1.5 text-sm border-r border-border transition-colors ${isActive
-                        ? "bg-white text-black"
-                        : "text-muted hover:text-black hover:bg-white/50"
+                      ? "bg-white text-black"
+                      : "text-muted hover:text-black hover:bg-white/50"
                       }`}
                     title={tab}
                   >
@@ -1004,8 +1004,8 @@ export default function EditorPage() {
                     <button
                       onClick={(e) => handleCloseTab(tab, e)}
                       className={`w-4 h-4 flex items-center justify-center hover:bg-neutral-200 ${isActive
-                          ? "opacity-100"
-                          : "opacity-0 group-hover:opacity-100"
+                        ? "opacity-100"
+                        : "opacity-0 group-hover:opacity-100"
                         }`}
                       aria-label="Close tab"
                     >

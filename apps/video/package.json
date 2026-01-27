@@ -8,14 +8,14 @@
     "render": "npx remotion render MarketingVideo out/marketing.mp4"
   },
   "dependencies": {
-    "@remotion/cli": "4.0.250",
-    "react": "^18.3.0",
-    "react-dom": "^18.3.0",
-    "remotion": "4.0.250",
-    "zod": "^3.23.0"
+    "@remotion/cli": "4.0.410",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "remotion": "4.0.410",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/react": "^18.3.0",
-    "typescript": "^5.4.0"
+    "@types/react": "^19.2.10",
+    "typescript": "^5.9.3"
   }
 }

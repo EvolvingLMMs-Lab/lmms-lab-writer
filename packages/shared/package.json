@@ -20,8 +20,8 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@types/node": "^22.13.0",
-    "tsup": "^8.5.0",
-    "typescript": "^5.7.0"
+    "@types/node": "^25.0.10",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
   }
 }

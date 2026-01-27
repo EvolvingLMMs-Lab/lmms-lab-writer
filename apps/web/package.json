@@ -9,29 +9,31 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.5.2",
-    "@supabase/supabase-js": "^2.49.1",
-    "framer-motion": "^12.29.0",
-    "geist": "^1.4.1",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.93.1",
+    "framer-motion": "^12.29.2",
+    "geist": "^1.5.1",
     "gray-matter": "^4.0.3",
-    "lucide-react": "^0.468.0",
-    "next": "^15.1.0",
+    "lucide-react": "^0.563.0",
+    "next": "^16.1.5",
     "next-mdx-remote": "^5.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "rehype-autolink-headings": "^7.1.0",
-    "rehype-pretty-code": "^0.14.0",
+    "rehype-pretty-code": "^0.14.1",
     "rehype-slug": "^6.0.0",
-    "shiki": "^1.24.0"
+    "shiki": "^3.21.0"
   },
   "devDependencies": {
-    "@tailwindcss/typography": "^0.5.16",
-    "@types/node": "^22.10.2",
-    "@types/react": "^19.0.2",
-    "@types/react-dom": "^19.0.2",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.17",
-    "typescript": "^5.7.2"
+    "@tailwindcss/typography": "^0.5.19",
+    "@types/node": "^25.0.10",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.23",
+    "eslint": "^9.39.2",
+    "eslint-config-next": "^16.1.5",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3"
   }
 }
