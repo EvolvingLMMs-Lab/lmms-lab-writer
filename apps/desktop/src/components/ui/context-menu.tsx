@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useCallback, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useCallback,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 export interface ContextMenuItem {
@@ -86,7 +93,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     [onClose],
   );
 
-  return (
+  const menu = (
     <AnimatePresence>
       <motion.div
         ref={menuRef}
@@ -122,4 +129,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
       </motion.div>
     </AnimatePresence>
   );
+
+  if (typeof document === "undefined") return menu;
+  return createPortal(menu, document.body);
 }
