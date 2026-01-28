@@ -145,6 +145,65 @@ pub async fn write_file(
 }
 
 #[tauri::command]
+pub async fn create_file(path: String) -> Result<(), String> {
+    // Create parent directory if it doesn't exist
+    if let Some(parent) = Path::new(&path).parent() {
+        if !parent.exists() {
+            fs::create_dir_all(parent).await.map_err(|e| e.to_string())?;
+        }
+    }
+
+    // Check if file already exists
+    if Path::new(&path).exists() {
+        return Err(format!("File already exists: {}", path));
+    }
+
+    // Create empty file
+    fs::write(&path, "").await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn create_directory(path: String) -> Result<(), String> {
+    // Check if directory already exists
+    if Path::new(&path).exists() {
+        return Err(format!("Directory already exists: {}", path));
+    }
+
+    fs::create_dir_all(&path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn rename_path(old_path: String, new_path: String) -> Result<(), String> {
+    // Check if old path exists
+    if !Path::new(&old_path).exists() {
+        return Err(format!("Path not found: {}", old_path));
+    }
+
+    // Check if new path already exists
+    if Path::new(&new_path).exists() {
+        return Err(format!("Path already exists: {}", new_path));
+    }
+
+    fs::rename(&old_path, &new_path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_path(path: String) -> Result<(), String> {
+    let path_obj = Path::new(&path);
+
+    // Check if path exists
+    if !path_obj.exists() {
+        return Err(format!("Path not found: {}", path));
+    }
+
+    if path_obj.is_dir() {
+        fs::remove_dir_all(&path).await.map_err(|e| e.to_string())
+    } else {
+        fs::remove_file(&path).await.map_err(|e| e.to_string())
+    }
+}
+
+#[tauri::command]
 pub async fn get_file_tree(dir: String) -> Result<Vec<FileNode>, String> {
     let path = Path::new(&dir);
     if !path.exists() {

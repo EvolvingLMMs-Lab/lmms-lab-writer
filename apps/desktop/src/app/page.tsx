@@ -469,8 +469,8 @@ export default function EditorPage() {
   const handleStageAll = useCallback(() => {
     if (!gitStatus) return;
     const unstaged = gitStatus.changes
-      .filter((c) => !c.staged)
-      .map((c) => c.path);
+      .filter((c: { staged: boolean }) => !c.staged)
+      .map((c: { path: string }) => c.path);
     if (unstaged.length > 0) {
       daemon.gitAdd(unstaged);
     }
@@ -661,6 +661,12 @@ export default function EditorPage() {
                             highlightedFile={highlightedFile}
                             onFileSelect={handleFileSelect}
                             className="flex-1 min-h-0 overflow-hidden"
+                            fileOperations={{
+                              createFile: daemon.createFile,
+                              createDirectory: daemon.createDirectory,
+                              renamePath: daemon.renamePath,
+                              deletePath: daemon.deletePath,
+                            }}
                           />
                         </EditorErrorBoundary>
                       </>

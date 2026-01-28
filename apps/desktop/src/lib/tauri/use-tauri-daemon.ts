@@ -241,6 +241,78 @@ export function useTauriDaemon() {
     }
   }, [projectState.projectPath]);
 
+  const createFile = useCallback(
+    async (relativePath: string) => {
+      if (!projectState.projectPath) return;
+
+      try {
+        const fullPath = `${projectState.projectPath}/${relativePath}`;
+        await invoke("create_file", { path: fullPath });
+        await refreshFiles();
+      } catch (error) {
+        console.error("Failed to create file:", error);
+        setError(String(error), "create file");
+        throw error;
+      }
+    },
+    [projectState.projectPath, refreshFiles, setError],
+  );
+
+  const createDirectory = useCallback(
+    async (relativePath: string) => {
+      if (!projectState.projectPath) return;
+
+      try {
+        const fullPath = `${projectState.projectPath}/${relativePath}`;
+        await invoke("create_directory", { path: fullPath });
+        await refreshFiles();
+      } catch (error) {
+        console.error("Failed to create directory:", error);
+        setError(String(error), "create directory");
+        throw error;
+      }
+    },
+    [projectState.projectPath, refreshFiles, setError],
+  );
+
+  const renamePath = useCallback(
+    async (oldRelativePath: string, newRelativePath: string) => {
+      if (!projectState.projectPath) return;
+
+      try {
+        const oldFullPath = `${projectState.projectPath}/${oldRelativePath}`;
+        const newFullPath = `${projectState.projectPath}/${newRelativePath}`;
+        await invoke("rename_path", {
+          oldPath: oldFullPath,
+          newPath: newFullPath,
+        });
+        await refreshFiles();
+      } catch (error) {
+        console.error("Failed to rename:", error);
+        setError(String(error), "rename");
+        throw error;
+      }
+    },
+    [projectState.projectPath, refreshFiles, setError],
+  );
+
+  const deletePath = useCallback(
+    async (relativePath: string) => {
+      if (!projectState.projectPath) return;
+
+      try {
+        const fullPath = `${projectState.projectPath}/${relativePath}`;
+        await invoke("delete_path", { path: fullPath });
+        await refreshFiles();
+      } catch (error) {
+        console.error("Failed to delete:", error);
+        setError(String(error), "delete");
+        throw error;
+      }
+    },
+    [projectState.projectPath, refreshFiles, setError],
+  );
+
   const refreshGitStatus = useCallback(async () => {
     if (!projectState.projectPath) return;
     await refreshGitStatusInternal(projectState.projectPath);
@@ -518,6 +590,10 @@ export function useTauriDaemon() {
       refreshFiles,
       readFile,
       writeFile,
+      createFile,
+      createDirectory,
+      renamePath,
+      deletePath,
       gitAdd,
       gitCommit,
       gitPush,
@@ -537,6 +613,10 @@ export function useTauriDaemon() {
       refreshFiles,
       readFile,
       writeFile,
+      createFile,
+      createDirectory,
+      renamePath,
+      deletePath,
       gitAdd,
       gitCommit,
       gitPush,

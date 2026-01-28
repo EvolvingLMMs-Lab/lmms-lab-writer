@@ -4,6 +4,8 @@ import { useState, useCallback, memo, useRef, useEffect, useMemo } from "react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { FileNode } from "@lmms-lab/writer-shared";
+import { ContextMenu, type ContextMenuItem } from "../ui/context-menu";
+import { InputDialog } from "../ui/input-dialog";
 
 const ITEM_SPRING = {
   type: "spring",
@@ -12,13 +14,34 @@ const ITEM_SPRING = {
   mass: 0.5,
 } as const;
 
+export interface FileOperations {
+  createFile: (path: string) => Promise<void>;
+  createDirectory: (path: string) => Promise<void>;
+  renamePath: (oldPath: string, newPath: string) => Promise<void>;
+  deletePath: (path: string) => Promise<void>;
+}
+
 type Props = {
   files: FileNode[];
   onFileSelect?: (path: string) => void;
   selectedFile?: string;
   highlightedFile?: string | null;
   className?: string;
+  fileOperations?: FileOperations;
 };
+
+interface ContextMenuState {
+  x: number;
+  y: number;
+  node: FileNode;
+  parentPath: string;
+}
+
+interface DialogState {
+  type: "create-file" | "create-directory" | "rename";
+  parentPath?: string;
+  node?: FileNode;
+}
 
 // Helper to check if a path is an ancestor of another
 function isAncestorPath(ancestor: string, descendant: string): boolean {
@@ -90,6 +113,8 @@ const TreeNode = memo(function TreeNode({
   defaultExpanded = false,
   focusedPath,
   onExpandedChange,
+  onContextMenu,
+  parentPath = "",
 }: {
   node: FileNode;
   depth: number;
@@ -99,6 +124,12 @@ const TreeNode = memo(function TreeNode({
   defaultExpanded?: boolean;
   focusedPath?: string | null;
   onExpandedChange?: (path: string, expanded: boolean) => void;
+  onContextMenu?: (
+    e: React.MouseEvent,
+    node: FileNode,
+    parentPath: string,
+  ) => void;
+  parentPath?: string;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const isDirectory = node.type === "directory";
@@ -152,12 +183,22 @@ const TreeNode = memo(function TreeNode({
     [handleClick],
   );
 
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onContextMenu?.(e, node, parentPath);
+    },
+    [onContextMenu, node, parentPath],
+  );
+
   return (
     <div>
       <motion.button
         ref={buttonRef}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
+        onContextMenu={handleContextMenu}
         role="treeitem"
         aria-expanded={isDirectory ? expanded : undefined}
         aria-selected={isSelected}
@@ -224,6 +265,8 @@ const TreeNode = memo(function TreeNode({
                 highlightedFile={highlightedFile}
                 focusedPath={focusedPath}
                 onExpandedChange={onExpandedChange}
+                onContextMenu={onContextMenu}
+                parentPath={node.path}
               />
             ))}
           </motion.div>
@@ -268,6 +311,7 @@ export const FileTree = memo(function FileTree({
   selectedFile,
   highlightedFile,
   className = "",
+  fileOperations,
 }: Props) {
   const [focusedPath, setFocusedPath] = useState<string | null>(null);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => {
@@ -434,6 +478,161 @@ export const FileTree = memo(function FileTree({
     }
   }, [focusedPath]);
 
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(
+    null,
+  );
+  const [dialog, setDialog] = useState<DialogState | null>(null);
+
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, node: FileNode, parentPath: string) => {
+      if (!fileOperations) return;
+
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        node,
+        parentPath,
+      });
+    },
+    [fileOperations],
+  );
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const closeDialog = useCallback(() => {
+    setDialog(null);
+  }, []);
+
+  const getContextMenuItems = useCallback(
+    (node: FileNode, parentPath: string): ContextMenuItem[] => {
+      const isDirectory = node.type === "directory";
+      const items: ContextMenuItem[] = [];
+
+      if (isDirectory) {
+        items.push({
+          label: "New File",
+          onClick: () => setDialog({ type: "create-file", parentPath: node.path }),
+          icon: (
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+          ),
+        });
+        items.push({
+          label: "New Folder",
+          onClick: () =>
+            setDialog({ type: "create-directory", parentPath: node.path }),
+          icon: (
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+              />
+            </svg>
+          ),
+        });
+      }
+
+      items.push({
+        label: "Rename",
+        onClick: () => setDialog({ type: "rename", node }),
+        icon: (
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+        ),
+      });
+
+      items.push({
+        label: "Delete",
+        onClick: async () => {
+          if (
+            confirm(
+              `Are you sure you want to delete "${node.name}"?${isDirectory ? " This will delete all files inside." : ""}`,
+            )
+          ) {
+            try {
+              await fileOperations?.deletePath(node.path);
+            } catch (error) {
+              alert(`Failed to delete: ${error}`);
+            }
+          }
+        },
+        danger: true,
+        icon: (
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+        ),
+      });
+
+      return items;
+    },
+    [fileOperations],
+  );
+
+  const validateFileName = useCallback((name: string): string | null => {
+    if (!name.trim()) {
+      return "Name cannot be empty";
+    }
+    if (name.includes("/") || name.includes("\\")) {
+      return "Name cannot contain / or \\";
+    }
+    if (name.startsWith(".")) {
+      return "Name cannot start with .";
+    }
+    return null;
+  }, []);
+
+  const handleDialogConfirm = useCallback(
+    async (value: string) => {
+      if (!dialog || !fileOperations) return;
+
+      try {
+        if (dialog.type === "create-file") {
+          const newPath = dialog.parentPath
+            ? `${dialog.parentPath}/${value}`
+            : value;
+          await fileOperations.createFile(newPath);
+        } else if (dialog.type === "create-directory") {
+          const newPath = dialog.parentPath
+            ? `${dialog.parentPath}/${value}`
+            : value;
+          await fileOperations.createDirectory(newPath);
+        } else if (dialog.type === "rename" && dialog.node) {
+          const parentPath = dialog.node.path.includes("/")
+            ? dialog.node.path.substring(0, dialog.node.path.lastIndexOf("/"))
+            : "";
+          const newPath = parentPath ? `${parentPath}/${value}` : value;
+          await fileOperations.renamePath(dialog.node.path, newPath);
+        }
+        closeDialog();
+      } catch (error) {
+        alert(`Operation failed: ${error}`);
+      }
+    },
+    [dialog, fileOperations, closeDialog],
+  );
+
   if (files.length === 0) {
     return (
       <div className={`p-4 text-sm text-muted ${className}`}>No files</div>
@@ -441,33 +640,68 @@ export const FileTree = memo(function FileTree({
   }
 
   return (
-    <OverlayScrollbarsComponent
-      className={className}
-      role="tree"
-      aria-label="File explorer"
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-      options={{
-        scrollbars: {
-          theme: "os-theme-monochrome",
-          autoHide: "leave",
-          autoHideDelay: 400,
-        },
-      }}
-    >
-      {files.map((node) => (
-        <TreeNode
-          key={node.path}
-          node={node}
-          depth={0}
-          onFileSelect={onFileSelect}
-          selectedFile={selectedFile}
-          highlightedFile={highlightedFile}
-          defaultExpanded
-          focusedPath={focusedPath}
-          onExpandedChange={handleExpandedChange}
+    <>
+      <OverlayScrollbarsComponent
+        className={className}
+        role="tree"
+        aria-label="File explorer"
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+        options={{
+          scrollbars: {
+            theme: "os-theme-monochrome",
+            autoHide: "leave",
+            autoHideDelay: 400,
+          },
+        }}
+      >
+        {files.map((node) => (
+          <TreeNode
+            key={node.path}
+            node={node}
+            depth={0}
+            onFileSelect={onFileSelect}
+            selectedFile={selectedFile}
+            highlightedFile={highlightedFile}
+            onContextMenu={handleContextMenu}
+            defaultExpanded
+            focusedPath={focusedPath}
+            onExpandedChange={handleExpandedChange}
+          />
+        ))}
+      </OverlayScrollbarsComponent>
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={getContextMenuItems(contextMenu.node, contextMenu.parentPath)}
+          onClose={closeContextMenu}
         />
-      ))}
-    </OverlayScrollbarsComponent>
+      )}
+
+      {dialog && (
+        <InputDialog
+          title={
+            dialog.type === "create-file"
+              ? "New File"
+              : dialog.type === "create-directory"
+                ? "New Folder"
+                : "Rename"
+          }
+          placeholder={
+            dialog.type === "rename"
+              ? dialog.node?.name
+              : dialog.type === "create-file"
+                ? "file.tex"
+                : "folder"
+          }
+          defaultValue={dialog.type === "rename" ? dialog.node?.name : ""}
+          onConfirm={handleDialogConfirm}
+          onCancel={closeDialog}
+          validator={validateFileName}
+        />
+      )}
+    </>
   );
 });
