@@ -420,9 +420,7 @@ async function SuggestedReposSection() {
         <div className="flex items-center gap-4">
           {isGitHubConnected && <RefreshStarsButton />}
           <div className="flex items-center gap-3">
-            <span className="text-xs text-muted font-mono">
-              {inks}/{requiredInks} inks
-            </span>
+            <span className="text-xs text-muted font-mono">{inks} inks</span>
             <div className="w-24 h-1.5 bg-neutral-100 border border-neutral-200">
               <div
                 className="h-full bg-black transition-all duration-500"
