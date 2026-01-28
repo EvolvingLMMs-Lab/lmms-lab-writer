@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useLayoutEffect, useRef, useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export interface ContextMenuItem {
@@ -20,6 +20,38 @@ interface ContextMenuProps {
 
 export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ x, y });
+
+  // Adjust position to keep menu within viewport
+  useEffect(() => {
+    if (menuRef.current) {
+      const menu = menuRef.current;
+      const rect = menu.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      let adjustedX = x;
+      let adjustedY = y;
+
+      // Check right edge
+      if (x + rect.width > viewportWidth) {
+        adjustedX = viewportWidth - rect.width - 8;
+      }
+
+      // Check bottom edge
+      if (y + rect.height > viewportHeight) {
+        adjustedY = viewportHeight - rect.height - 8;
+      }
+
+      // Ensure not negative
+      adjustedX = Math.max(8, adjustedX);
+      adjustedY = Math.max(8, adjustedY);
+
+      if (adjustedX !== x || adjustedY !== y) {
+        setPosition({ x: adjustedX, y: adjustedY });
+      }
+    }
+  }, [x, y]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -63,8 +95,8 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
         transition={{ duration: 0.1 }}
         className="fixed z-50 min-w-[180px] rounded-md border border-black/10 bg-white shadow-lg"
         style={{
-          left: `${x}px`,
-          top: `${y}px`,
+          left: `${position.x}px`,
+          top: `${position.y}px`,
         }}
       >
         <div className="py-1">

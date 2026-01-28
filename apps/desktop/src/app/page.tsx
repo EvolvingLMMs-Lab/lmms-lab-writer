@@ -6,6 +6,7 @@ import { useTauriDaemon } from "@/lib/tauri";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
 import { FileTree } from "@/components/editor/file-tree";
+import { InputDialog } from "@/components/ui/input-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
 import { EditorSkeleton } from "@/components/editor/editor-skeleton";
@@ -112,6 +113,9 @@ export default function EditorPage() {
   const [showCommitInput, setShowCommitInput] = useState(false);
   const [showRemoteInput, setShowRemoteInput] = useState(false);
   const [remoteUrl, setRemoteUrl] = useState("");
+  const [createDialog, setCreateDialog] = useState<{
+    type: "file" | "directory";
+  } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [opencodeDaemonStatus, setOpencodeDaemonStatus] =
     useState<OpenCodeDaemonStatus>("stopped");
@@ -548,6 +552,36 @@ export default function EditorPage() {
     }
   }, [commitMessage, daemon, toast]);
 
+  const validateFileName = useCallback((name: string): string | null => {
+    if (!name.trim()) {
+      return "Name cannot be empty";
+    }
+    if (name.includes("/") || name.includes("\\")) {
+      return "Name cannot contain / or \\";
+    }
+    if (name.startsWith(".")) {
+      return "Name cannot start with .";
+    }
+    return null;
+  }, []);
+
+  const handleCreateConfirm = useCallback(
+    async (value: string) => {
+      if (!createDialog) return;
+      try {
+        if (createDialog.type === "file") {
+          await daemon.createFile(value);
+        } else {
+          await daemon.createDirectory(value);
+        }
+        setCreateDialog(null);
+      } catch (error) {
+        toast(`Failed to create: ${error}`, "error");
+      }
+    },
+    [createDialog, daemon, toast],
+  );
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMod = e.metaKey || e.ctrlKey;
@@ -709,10 +743,54 @@ export default function EditorPage() {
                     {daemon.projectPath ? (
                       <>
                         <div
-                          className="px-3 py-2 border-b border-border text-xs text-muted truncate"
+                          className="px-3 py-2 border-b border-border flex items-center justify-between gap-2"
                           title={daemon.projectPath}
                         >
-                          {daemon.projectPath.split("/").pop()}
+                          <span className="text-xs text-muted truncate">
+                            {daemon.projectPath.split("/").pop()}
+                          </span>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => setCreateDialog({ type: "file" })}
+                              className="p-1 text-muted hover:text-black hover:bg-black/5 transition-colors"
+                              title="New File"
+                              aria-label="New File"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={1.5}
+                                  d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => setCreateDialog({ type: "directory" })}
+                              className="p-1 text-muted hover:text-black hover:bg-black/5 transition-colors"
+                              title="New Folder"
+                              aria-label="New Folder"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={1.5}
+                                  d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+                                />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
                         <EditorErrorBoundary>
                           <FileTree
@@ -1232,6 +1310,16 @@ export default function EditorPage() {
         onClose={handleCloseDisconnectedDialog}
         onRestart={handleRestartFromDialog}
       />
+
+      {createDialog && (
+        <InputDialog
+          title={createDialog.type === "file" ? "New File" : "New Folder"}
+          placeholder={createDialog.type === "file" ? "file.tex" : "folder"}
+          onConfirm={handleCreateConfirm}
+          onCancel={() => setCreateDialog(null)}
+          validator={validateFileName}
+        />
+      )}
     </div>
   );
 }
