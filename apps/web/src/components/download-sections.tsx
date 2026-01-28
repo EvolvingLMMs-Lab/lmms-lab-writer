@@ -136,8 +136,10 @@ export function InksGate({
           {requiredInks} inks required to download
         </h2>
         <p className="text-sm text-muted mb-6">
-          Star repositories to earn inks. Each repo ={" "}
-          {GITHUB_CONFIG.INKS_PER_STAR} inks.
+          Star top {GITHUB_CONFIG.MAX_ELIGIBLE_REPOS} repos to earn inks. 1 repo
+          = {GITHUB_CONFIG.INKS_PER_STAR} inks (max{" "}
+          {GITHUB_CONFIG.MAX_ELIGIBLE_REPOS * GITHUB_CONFIG.INKS_PER_STAR}{" "}
+          inks).
         </p>
 
         {isLoggedIn && (
@@ -181,7 +183,8 @@ export function InksGate({
         )}
 
         <p className="text-xs text-muted mt-4">
-          Star 3 repos to earn enough inks
+          Star {Math.ceil(requiredInks / GITHUB_CONFIG.INKS_PER_STAR)} repos to
+          earn enough inks
         </p>
       </div>
     </FadeIn>
