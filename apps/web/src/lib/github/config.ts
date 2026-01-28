@@ -4,6 +4,7 @@ export const GITHUB_CONFIG = {
   MIN_STARS_TO_SHOW: 100,
   INKS_PER_STAR: 6,
   INKS_TO_DOWNLOAD: 15,
+  MAX_INKS: 30,
 } as const;
 
 export type RepoInfo = {

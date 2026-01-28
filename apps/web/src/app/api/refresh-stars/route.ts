@@ -30,14 +30,22 @@ export async function POST() {
 
   try {
     console.log("[refresh-stars] Checking starred repos...");
-    const starredRepos = await checkStarredRepos(tokenInfo.accessToken);
-    console.log("[refresh-stars] Found starred repos:", starredRepos.length);
+    const { allStarred, eligibleCount } = await checkStarredRepos(
+      tokenInfo.accessToken,
+    );
+    console.log(
+      "[refresh-stars] Found starred repos:",
+      allStarred.length,
+      "eligible:",
+      eligibleCount,
+    );
 
     console.log("[refresh-stars] Updating membership...");
     const result = await updateMembershipFromStars(
       supabase,
       user.id,
-      starredRepos,
+      allStarred,
+      eligibleCount,
     );
     console.log("[refresh-stars] Update result:", result);
 
@@ -49,14 +57,14 @@ export async function POST() {
       );
     }
 
-    const inks = starredRepos.length * GITHUB_CONFIG.INKS_PER_STAR;
+    const inks = eligibleCount * GITHUB_CONFIG.INKS_PER_STAR;
 
     return NextResponse.json({
       success: true,
       tier: result.tier,
       inksGranted: result.inksGranted,
-      starredRepos,
-      totalStarCount: starredRepos.length,
+      starredRepos: allStarred,
+      totalStarCount: eligibleCount,
       inks,
       canDownload: inks >= GITHUB_CONFIG.INKS_TO_DOWNLOAD,
     });

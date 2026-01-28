@@ -76,28 +76,44 @@ export function InkDropAnimation({
             >
               <svg
                 className="w-16 h-16 mx-auto"
-                viewBox="0 0 64 64"
+                viewBox="0 0 16 16"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
+                style={{ imageRendering: "pixelated" }}
               >
-                <m.path
-                  d="M32 4C32 4 16 24 16 40C16 48.837 23.163 56 32 56C40.837 56 48 48.837 48 40C48 24 32 4 32 4Z"
-                  fill="black"
-                  initial={prefersReducedMotion ? {} : { pathLength: 0 }}
-                  animate={{ pathLength: 1 }}
+                <m.g
+                  initial={
+                    prefersReducedMotion ? {} : { opacity: 0, scale: 0.8 }
+                  }
+                  animate={{ opacity: 1, scale: 1 }}
                   transition={
                     prefersReducedMotion
                       ? { duration: 0 }
-                      : { duration: 0.8, ease: "easeInOut", delay: 0.3 }
+                      : { duration: 0.5, ease: "easeOut", delay: 0.3 }
                   }
-                />
-                <m.ellipse
-                  cx="26"
-                  cy="36"
-                  rx="4"
-                  ry="6"
+                >
+                  <rect x="7" y="1" width="2" height="1" fill="black" />
+                  <rect x="6" y="2" width="4" height="1" fill="black" />
+                  <rect x="5" y="3" width="6" height="1" fill="black" />
+                  <rect x="4" y="4" width="8" height="1" fill="black" />
+                  <rect x="4" y="5" width="8" height="1" fill="black" />
+                  <rect x="3" y="6" width="10" height="1" fill="black" />
+                  <rect x="3" y="7" width="10" height="1" fill="black" />
+                  <rect x="2" y="8" width="12" height="1" fill="black" />
+                  <rect x="2" y="9" width="12" height="1" fill="black" />
+                  <rect x="2" y="10" width="12" height="1" fill="black" />
+                  <rect x="3" y="11" width="10" height="1" fill="black" />
+                  <rect x="3" y="12" width="10" height="1" fill="black" />
+                  <rect x="4" y="13" width="8" height="1" fill="black" />
+                  <rect x="5" y="14" width="6" height="1" fill="black" />
+                </m.g>
+                <m.rect
+                  x="5"
+                  y="7"
+                  width="2"
+                  height="3"
                   fill="white"
-                  fillOpacity="0.3"
+                  fillOpacity="0.4"
                   initial={prefersReducedMotion ? {} : { opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={

@@ -6,6 +6,7 @@ import {
   StarredRepo,
   GITHUB_CONFIG,
   getAllPopularRepos,
+  getTopRepos,
   canDownload,
   type RepoInfo,
 } from "@/lib/github/config";
@@ -249,9 +250,10 @@ async function InksSection() {
 
   const totalStars = membershipData?.total_star_count || 0;
   const inks = totalStars * GITHUB_CONFIG.INKS_PER_STAR;
+  const maxInks = GITHUB_CONFIG.MAX_INKS;
   const requiredInks = GITHUB_CONFIG.INKS_TO_DOWNLOAD;
   const hasEnoughInks = canDownload(inks);
-  const progressPercent = Math.min((inks / requiredInks) * 100, 100);
+  const progressPercent = Math.min((inks / maxInks) * 100, 100);
 
   return (
     <ProfileSection delay={0.15} className="border border-border mb-8">
@@ -266,7 +268,9 @@ async function InksSection() {
           <div>
             <p className="text-3xl font-light tabular-nums mb-1">
               {inks}
-              <span className="text-sm text-muted font-normal ml-2">inks</span>
+              <span className="text-sm text-muted font-normal ml-2">
+                / {maxInks} inks
+              </span>
             </p>
             {hasEnoughInks ? (
               <p className="text-sm text-muted">Ready to download</p>
@@ -299,8 +303,8 @@ async function InksSection() {
           />
         </div>
         <p className="text-xs text-muted mt-3">
-          Beta period: Inks accumulate permanently. Need {requiredInks} inks to
-          unlock download.
+          Star top {GITHUB_CONFIG.MAX_ELIGIBLE_REPOS} repos to earn up to{" "}
+          {maxInks} inks. Need {requiredInks} inks to download.
         </p>
       </div>
     </ProfileSection>
@@ -383,29 +387,32 @@ async function SuggestedReposSection() {
   const user = session.user;
   const provider = user.app_metadata?.provider || null;
 
-  const [membershipResult, githubTokenResult, repos] = await Promise.all([
-    supabase
-      .from("user_memberships")
-      .select("total_star_count, starred_repos")
-      .eq("user_id", user.id)
-      .single(),
-    supabase
-      .from("user_github_tokens")
-      .select("id")
-      .eq("user_id", user.id)
-      .single(),
-    getAllPopularRepos(),
-  ]);
+  const [membershipResult, githubTokenResult, allRepos, topRepos] =
+    await Promise.all([
+      supabase
+        .from("user_memberships")
+        .select("total_star_count, starred_repos")
+        .eq("user_id", user.id)
+        .single(),
+      supabase
+        .from("user_github_tokens")
+        .select("id")
+        .eq("user_id", user.id)
+        .single(),
+      getAllPopularRepos(),
+      getTopRepos(),
+    ]);
 
   const isGitHubConnected = provider === "github" || !!githubTokenResult.data;
   const totalStars = membershipResult.data?.total_star_count || 0;
   const starredRepos =
     (membershipResult.data?.starred_repos as unknown as StarredRepo[]) || [];
   const starredRepoNames = new Set(starredRepos.map((r) => r.repo));
+  const eligibleRepoNames = new Set(topRepos.map((r) => r.name));
 
   const inks = totalStars * GITHUB_CONFIG.INKS_PER_STAR;
-  const requiredInks = GITHUB_CONFIG.INKS_TO_DOWNLOAD;
-  const inksProgressPercent = Math.min((inks / requiredInks) * 100, 100);
+  const maxInks = GITHUB_CONFIG.MAX_INKS;
+  const inksProgressPercent = Math.min((inks / maxInks) * 100, 100);
 
   return (
     <ProfileSection
@@ -420,7 +427,9 @@ async function SuggestedReposSection() {
         <div className="flex items-center gap-4">
           {isGitHubConnected && <RefreshStarsButton />}
           <div className="flex items-center gap-3">
-            <span className="text-xs text-muted font-mono">{inks} inks</span>
+            <span className="text-xs text-muted font-mono">
+              {inks}/{maxInks} inks
+            </span>
             <div className="w-24 h-1.5 bg-neutral-100 border border-neutral-200">
               <div
                 className="h-full bg-black transition-all duration-500"
@@ -450,8 +459,9 @@ async function SuggestedReposSection() {
         )}
 
         <RepoList>
-          {repos.map((repo) => {
+          {allRepos.map((repo) => {
             const isStarred = starredRepoNames.has(repo.name);
+            const isEligible = eligibleRepoNames.has(repo.name);
 
             return (
               <RepoItem key={repo.name} isStarred={isStarred}>
@@ -476,14 +486,21 @@ async function SuggestedReposSection() {
                     </svg>
                   )}
                   <div className="min-w-0 flex-1">
-                    <a
-                      href={repo.html_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono text-sm hover:underline block truncate"
-                    >
-                      {repo.name}
-                    </a>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={repo.html_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-sm hover:underline block truncate"
+                      >
+                        {repo.name}
+                      </a>
+                      {isEligible && (
+                        <span className="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 bg-black text-white flex-shrink-0">
+                          Top 5
+                        </span>
+                      )}
+                    </div>
                     {repo.description && (
                       <p className="text-xs text-muted truncate mt-0.5">
                         {repo.description}
@@ -497,9 +514,13 @@ async function SuggestedReposSection() {
                   )}
                 </div>
 
-                {isStarred ? (
-                  <span className="text-xs font-mono uppercase tracking-wider text-muted ml-4 flex-shrink-0">
+                {isStarred && isEligible ? (
+                  <span className="text-xs font-mono uppercase tracking-wider text-black ml-4 flex-shrink-0">
                     +{GITHUB_CONFIG.INKS_PER_STAR} inks
+                  </span>
+                ) : isStarred ? (
+                  <span className="text-xs font-mono uppercase tracking-wider text-muted ml-4 flex-shrink-0">
+                    Starred
                   </span>
                 ) : (
                   <a
@@ -517,8 +538,9 @@ async function SuggestedReposSection() {
         </RepoList>
 
         <p className="text-sm text-muted text-center pt-4 border-t border-border">
-          Star a repo = {GITHUB_CONFIG.INKS_PER_STAR} inks | Need{" "}
-          {GITHUB_CONFIG.INKS_TO_DOWNLOAD} inks to download
+          Max {GITHUB_CONFIG.MAX_INKS} inks | Star top{" "}
+          {GITHUB_CONFIG.MAX_ELIGIBLE_REPOS} repos | 1 repo ={" "}
+          {GITHUB_CONFIG.INKS_PER_STAR} inks
         </p>
       </div>
     </ProfileSection>

@@ -65,12 +65,15 @@ export async function POST() {
   }
 
   try {
-    const starredRepos = await checkStarredRepos(tokenInfo.accessToken);
+    const { allStarred, eligibleCount } = await checkStarredRepos(
+      tokenInfo.accessToken,
+    );
 
     const result = await updateMembershipFromStars(
       supabase,
       user.id,
-      starredRepos,
+      allStarred,
+      eligibleCount,
     );
 
     if (result.error) {
@@ -80,14 +83,14 @@ export async function POST() {
       );
     }
 
-    const inks = starredRepos.length * GITHUB_CONFIG.INKS_PER_STAR;
+    const inks = eligibleCount * GITHUB_CONFIG.INKS_PER_STAR;
 
     return NextResponse.json({
       success: true,
       tier: result.tier,
       inksGranted: result.inksGranted,
-      starredRepos,
-      totalStarCount: starredRepos.length,
+      starredRepos: allStarred,
+      totalStarCount: eligibleCount,
       inks,
       canDownload: inks >= GITHUB_CONFIG.INKS_TO_DOWNLOAD,
     });

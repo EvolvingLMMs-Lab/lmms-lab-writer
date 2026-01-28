@@ -2,6 +2,7 @@ import {
   GITHUB_CONFIG,
   calculateMembership,
   getTopRepos,
+  getAllPopularRepos,
   type StarredRepo,
 } from "./config";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -92,11 +93,16 @@ async function getRepoStarredAt(
 
 export async function checkStarredRepos(
   accessToken: string,
-): Promise<StarredRepo[]> {
-  const topRepos = await getTopRepos();
+): Promise<{ allStarred: StarredRepo[]; eligibleCount: number }> {
+  const [allRepos, topRepos] = await Promise.all([
+    getAllPopularRepos(),
+    getTopRepos(),
+  ]);
+
+  const topRepoNames = new Set(topRepos.map((r) => r.name));
   const starredRepos: StarredRepo[] = [];
 
-  const checks = topRepos.map(async (repo) => {
+  const checks = allRepos.map(async (repo) => {
     const starredAt = await getRepoStarredAt(
       accessToken,
       GITHUB_CONFIG.ORG,
@@ -120,21 +126,25 @@ export async function checkStarredRepos(
     }
   }
 
-  return starredRepos;
+  const eligibleCount = starredRepos.filter((r) =>
+    topRepoNames.has(r.repo),
+  ).length;
+
+  return { allStarred: starredRepos, eligibleCount };
 }
 
 export async function updateMembershipFromStars(
   supabase: SupabaseClient,
   userId: string,
-  starredRepos: StarredRepo[],
+  allStarredRepos: StarredRepo[],
+  eligibleCount: number,
 ): Promise<{ tier: string; inksGranted: number; error?: string }> {
-  const starCount = starredRepos.length;
-  const { tier, inksGranted } = calculateMembership(starCount);
+  const { tier, inksGranted } = calculateMembership(eligibleCount);
 
   const { error } = await supabase.rpc("update_membership_from_stars", {
     p_user_id: userId,
-    p_starred_repos: starredRepos,
-    p_star_count: starCount,
+    p_starred_repos: allStarredRepos,
+    p_star_count: eligibleCount,
   });
 
   if (error) {
