@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { startTransition, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Github } from "lucide-react";
@@ -30,7 +30,9 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/profile");
+    startTransition(() => {
+      router.push("/profile");
+    });
   };
 
   const handleGitHubLogin = async () => {

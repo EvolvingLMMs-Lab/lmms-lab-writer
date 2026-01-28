@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { Search, Copy, Check, Download, ArrowRight } from "lucide-react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 interface ErrorMatch {
   pattern: RegExp;
@@ -186,7 +186,7 @@ export default function LaTeXErrorExplainerPage() {
 
       <main className="flex-1 px-6 py-12 md:py-20">
         <div className="max-w-2xl mx-auto">
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -199,9 +199,9 @@ export default function LaTeXErrorExplainerPage() {
               Paste your LaTeX error message and get a human-readable
               explanation with fixes.
             </p>
-          </motion.div>
+          </m.div>
 
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -229,10 +229,10 @@ l.42 \includegraphic
               <Search className="w-4 h-4" />
               Explain This Error
             </button>
-          </motion.div>
+          </m.div>
 
           {searched && (
-            <motion.div
+            <m.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
@@ -295,10 +295,10 @@ l.42 \includegraphic
                   </p>
                 </div>
               )}
-            </motion.div>
+            </m.div>
           )}
 
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.3 }}
@@ -319,7 +319,7 @@ l.42 \includegraphic
               Download Free
               <ArrowRight className="w-4 h-4" />
             </Link>
-          </motion.div>
+          </m.div>
 
           <div className="mt-12">
             <h3 className="font-medium mb-4">Common LaTeX Errors</h3>

@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 const SignupForm = dynamic(
   () => import("@/components/auth/signup-form").then((m) => m.SignupForm),
@@ -27,12 +27,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          custom={0}
-          variants={fadeIn}
-        >
+        <m.div initial="hidden" animate="visible" custom={0} variants={fadeIn}>
           <Link
             href="/"
             className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground mb-8"
@@ -40,9 +35,9 @@ export default function SignupPage() {
             <ArrowLeft className="w-4 h-4" />
             Back to home
           </Link>
-        </motion.div>
+        </m.div>
 
-        <motion.h1
+        <m.h1
           className="text-2xl font-semibold mb-2"
           initial="hidden"
           animate="visible"
@@ -50,8 +45,8 @@ export default function SignupPage() {
           variants={fadeIn}
         >
           Create an account
-        </motion.h1>
-        <motion.p
+        </m.h1>
+        <m.p
           className="text-sm text-muted mb-8"
           initial="hidden"
           animate="visible"
@@ -59,16 +54,16 @@ export default function SignupPage() {
           variants={fadeIn}
         >
           Get access to license management and premium features.
-        </motion.p>
+        </m.p>
 
-        <motion.div
+        <m.div
           initial="hidden"
           animate="visible"
           custom={0.2}
           variants={fadeIn}
         >
           <SignupForm />
-        </motion.div>
+        </m.div>
       </div>
     </div>
   );
