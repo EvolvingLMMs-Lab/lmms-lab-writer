@@ -1,9 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #fafafa;
+  --color-foreground: #0a0a0a;
+  --color-border: #e5e5e5;
+  --color-border-dark: #404040;
+  --color-muted: #737373;
+  --color-muted-foreground: #a3a3a3;
+  --color-accent: #0a0a0a;
+  --color-accent-hover: #f5f5f5;
+  --color-accent-muted: #404040;
+  --color-accent-dark: #000000;
+  --color-surface: #171717;
+  --color-surface-text: #fafafa;
+
+  --font-family-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  --font-family-mono: var(--font-geist-mono), monospace;
+}
+
 @import "overlayscrollbars/overlayscrollbars.css";
 @import "@xterm/xterm/css/xterm.css";
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 :root {
   --background: #fafafa;
