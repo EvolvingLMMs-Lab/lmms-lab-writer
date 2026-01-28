@@ -1,6 +1,7 @@
 mod commands;
 
 use commands::fs::{ProjectState, WatcherState};
+use commands::latex::LaTeXCompilationState;
 use commands::opencode::OpenCodeState;
 use commands::terminal::PtyState;
 use std::sync::Mutex;
@@ -43,6 +44,7 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .manage(PtyState::default())
         .manage(OpenCodeState::default())
+        .manage(LaTeXCompilationState::default())
         .manage(Mutex::new(WatcherState::default()))
         .manage(Mutex::new(ProjectState::default()))
         .invoke_handler(tauri::generate_handler![
@@ -74,6 +76,10 @@ pub fn run() {
             commands::opencode::opencode_start,
             commands::opencode::opencode_stop,
             commands::opencode::opencode_restart,
+            commands::latex::latex_detect_compilers,
+            commands::latex::latex_compile,
+            commands::latex::latex_stop_compilation,
+            commands::latex::latex_clean_aux_files,
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();

@@ -14,6 +14,8 @@ import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { LoginForm, UserDropdown } from "@/components/auth";
+import { useLatexSettings, useLatexCompiler, findTexFiles, findMainTexFile, isTexFile, getPdfPathFromTex } from "@/lib/latex";
+import { CompileButton, CompilationOutputPanel, LaTeXSettingsDialog } from "@/components/latex";
 
 function throttle<T extends (...args: Parameters<T>) => void>(
   fn: T,
@@ -121,6 +123,7 @@ export default function EditorPage() {
     useState<OpenCodeDaemonStatus>("stopped");
   const [opencodePort, setOpencodePort] = useState(4096);
   const [showDisconnectedDialog, setShowDisconnectedDialog] = useState(false);
+  const [showLatexSettings, setShowLatexSettings] = useState(false);
 
   const contentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const opencodeStartedForPathRef = useRef<string | null>(null);
@@ -142,6 +145,64 @@ export default function EditorPage() {
       gitStatus?.changes.filter((c: { staged: boolean }) => !c.staged) ?? [],
     [gitStatus?.changes],
   );
+
+  // LaTeX compilation
+  const latexSettings = useLatexSettings();
+  const texFiles = useMemo(
+    () => findTexFiles(daemon.files),
+    [daemon.files],
+  );
+
+  // Ref for handleFileSelect to break circular dependency
+  const handleFileSelectRef = useRef<(path: string) => void>(() => {});
+
+  // Auto-detect main file when project opens
+  useEffect(() => {
+    if (daemon.files.length > 0 && !latexSettings.settings.mainFile) {
+      const mainFile = findMainTexFile(daemon.files);
+      if (mainFile) {
+        latexSettings.setMainFile(mainFile);
+      }
+    }
+  }, [daemon.files, latexSettings.settings.mainFile, latexSettings]);
+
+  const handleCompileSuccess = useCallback(
+    (result: { pdf_path: string | null }) => {
+      toast("Compilation successful", "success");
+      // Auto-open PDF if enabled
+      if (latexSettings.settings.autoOpenPdf && result.pdf_path && daemon.projectPath) {
+        // Convert absolute path to relative path for handleFileSelect
+        // Handle both forward slash and backslash for cross-platform
+        const normalizedPdfPath = result.pdf_path.replace(/\\/g, "/");
+        const normalizedProjectPath = daemon.projectPath.replace(/\\/g, "/");
+        const relativePath = normalizedPdfPath.replace(normalizedProjectPath + "/", "");
+        handleFileSelectRef.current(relativePath);
+      }
+    },
+    [latexSettings.settings.autoOpenPdf, daemon.projectPath, toast],
+  );
+
+  const handleCompileError = useCallback(
+    (error: string) => {
+      toast(`Compilation failed: ${error}`, "error");
+    },
+    [toast],
+  );
+
+  const latexCompiler = useLatexCompiler({
+    settings: latexSettings.settings,
+    projectPath: daemon.projectPath,
+    onCompileSuccess: handleCompileSuccess,
+    onCompileError: handleCompileError,
+  });
+
+  const handleCompile = useCallback(() => {
+    latexCompiler.compile();
+  }, [latexCompiler]);
+
+  const handleStopCompile = useCallback(() => {
+    latexCompiler.stopCompilation();
+  }, [latexCompiler]);
 
   const checkOpencodeStatus = useCallback(async () => {
     try {
@@ -451,6 +512,11 @@ export default function EditorPage() {
     [daemon, getFileType, toast],
   );
 
+  // Update ref for circular dependency
+  useEffect(() => {
+    handleFileSelectRef.current = handleFileSelect;
+  }, [handleFileSelect]);
+
   useEffect(() => {
     if (selectedFile && !openTabs.includes(selectedFile)) {
       setOpenTabs((prev) => [...prev, selectedFile]);
@@ -532,6 +598,10 @@ export default function EditorPage() {
         if (fileToSave) {
           try {
             await daemon.writeFile(fileToSave, content);
+            // Auto-compile on save if enabled and file is .tex
+            if (latexSettings.settings.autoCompileOnSave && isTexFile(fileToSave) && !latexCompiler.isCompiling) {
+              latexCompiler.compile();
+            }
           } catch (error) {
             console.error("Failed to save file:", error);
           }
@@ -543,7 +613,7 @@ export default function EditorPage() {
         setIsSaving(false);
       }, 500);
     },
-    [selectedFile, daemon],
+    [selectedFile, daemon, latexSettings.settings.autoCompileOnSave, latexCompiler],
   );
 
   const handleOpenFolder = useCallback(async () => {
@@ -640,12 +710,28 @@ export default function EditorPage() {
         }
         return;
       }
+
+      // Compile: Cmd/Ctrl+Shift+B
+      if (isMod && e.shiftKey && key === "b") {
+        e.preventDefault();
+        if (daemon.projectPath && !latexCompiler.isCompiling) {
+          handleCompile();
+        }
+        return;
+      }
+
+      // Stop compilation: Escape
+      if (key === "escape" && latexCompiler.isCompiling) {
+        e.preventDefault();
+        handleStopCompile();
+        return;
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown, { capture: true });
     return () =>
       window.removeEventListener("keydown", handleKeyDown, { capture: true });
-  }, [daemon, handleOpenFolder, selectedFile, handleCloseTab]);
+  }, [daemon, handleOpenFolder, selectedFile, handleCloseTab, handleCompile, handleStopCompile, latexCompiler.isCompiling]);
 
   return (
     <div className="h-dvh flex flex-col">
@@ -684,6 +770,16 @@ export default function EditorPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            {daemon.projectPath && (
+              <CompileButton
+                status={latexCompiler.status}
+                onCompile={handleCompile}
+                onStop={handleStopCompile}
+                onSettingsClick={() => setShowLatexSettings(true)}
+                disabled={!latexSettings.settings.mainFile}
+              />
+            )}
+
             <button
               onClick={handleToggleRightPanel}
               className={`btn btn-sm border-2 border-black transition-all flex items-center gap-2 bg-white text-black ${showRightPanel
@@ -1277,6 +1373,17 @@ export default function EditorPage() {
               )}
             </div>
           )}
+
+          {/* Compilation Output Panel */}
+          {daemon.projectPath && (
+            <CompilationOutputPanel
+              output={latexCompiler.output}
+              status={latexCompiler.status}
+              errorCount={latexCompiler.errorCount}
+              warningCount={latexCompiler.warningCount}
+              onClear={latexCompiler.clearOutput}
+            />
+          )}
         </div>
 
         <AnimatePresence mode="wait">
@@ -1358,6 +1465,17 @@ export default function EditorPage() {
           validator={validateFileName}
         />
       )}
+
+      <LaTeXSettingsDialog
+        open={showLatexSettings}
+        onClose={() => setShowLatexSettings(false)}
+        settings={latexSettings.settings}
+        onUpdateSettings={latexSettings.updateSettings}
+        compilersStatus={latexCompiler.compilersStatus}
+        isDetecting={latexCompiler.isDetecting}
+        onDetectCompilers={latexCompiler.detectCompilers}
+        texFiles={texFiles}
+      />
     </div>
   );
 }
