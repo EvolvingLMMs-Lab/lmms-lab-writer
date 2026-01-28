@@ -149,17 +149,30 @@ export type SessionInfo = {
   }
 }
 
-export type SessionStatus = 
+export type SessionStatus =
   | { type: 'idle' }
   | { type: 'running' }
+  | { type: 'busy' }
   | { type: 'retry'; message: string; attempt: number; next?: number }
 
-export type Event = 
+export type SessionError = {
+  name: string
+  data?: {
+    message?: string
+    providerID?: string
+  }
+}
+
+export type Event =
   | { type: 'server.connected'; properties: Record<string, unknown> }
   | { type: 'server.heartbeat'; properties: Record<string, unknown> }
+  | { type: 'session.created'; properties: { info: SessionInfo } }
   | { type: 'session.updated'; properties: { info: SessionInfo } }
   | { type: 'session.deleted'; properties: { info: SessionInfo } }
   | { type: 'session.status'; properties: { sessionID: string; status: SessionStatus } }
+  | { type: 'session.error'; properties: { sessionID: string; error: SessionError } }
+  | { type: 'session.idle'; properties: { sessionID: string } }
+  | { type: 'session.diff'; properties: { sessionID: string; diff: unknown[] } }
   | { type: 'message.updated'; properties: { info: Message } }
   | { type: 'message.removed'; properties: { sessionID: string; messageID: string } }
   | { type: 'message.part.updated'; properties: { part: Part; delta?: string } }

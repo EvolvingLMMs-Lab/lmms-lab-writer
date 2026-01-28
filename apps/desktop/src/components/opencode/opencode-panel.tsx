@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOpenCode } from "@/lib/opencode/use-opencode";
 import type {
   Message,
@@ -84,7 +84,41 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   }, [opencode]);
 
   const isWorking =
-    opencode.status.type === "running" || opencode.status.type === "retry";
+    opencode.status.type === "running" || opencode.status.type === "busy" || opencode.status.type === "retry";
+
+  // Compute the current working status from parts
+  const workingStatus = useMemo(() => {
+    if (!isWorking) return undefined;
+
+    // Get all parts from all messages
+    const allParts: Part[] = [];
+    for (const msg of opencode.messages) {
+      const msgParts = opencode.getPartsForMessage(msg.id);
+      allParts.push(...msgParts);
+    }
+
+    // Find running tool
+    const runningTool = allParts.find(
+      (p): p is ToolPart => p.type === "tool" && (p as ToolPart).state?.status === "running"
+    );
+
+    if (runningTool) {
+      const info = getToolInfo(runningTool.tool, runningTool.state.input);
+      return `${info.title}${info.subtitle ? ` - ${info.subtitle}` : ""}`;
+    }
+
+    // Check for pending tools
+    const pendingTool = allParts.find(
+      (p): p is ToolPart => p.type === "tool" && (p as ToolPart).state?.status === "pending"
+    );
+
+    if (pendingTool) {
+      const info = getToolInfo(pendingTool.tool, pendingTool.state.input);
+      return `Preparing: ${info.title}`;
+    }
+
+    return "Thinking...";
+  }, [isWorking, opencode.messages, opencode.getPartsForMessage]);
 
   if (!opencode.connected) {
     return (
@@ -150,6 +184,16 @@ export const OpenCodePanel = memo(function OpenCodePanel({
         />
       ) : opencode.currentSessionId ? (
         <>
+          {/* Error banner */}
+          {opencode.error && (
+            <div className="px-3 py-2 bg-red-50 border-b border-red-200 text-xs text-red-700 flex items-start gap-2">
+              <svg className="size-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="flex-1">{opencode.error}</span>
+            </div>
+          )}
+
           <div className="flex-1 min-h-0 overflow-y-auto p-3">
             <MessageList
               messages={opencode.messages}
@@ -166,6 +210,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
             onSend={handleSend}
             onAbort={handleAbort}
             isWorking={isWorking}
+            workingStatus={workingStatus}
             agents={opencode.agents}
             providers={opencode.providers}
             selectedAgent={opencode.selectedAgent}
@@ -714,7 +759,7 @@ function MessageTurn({
 
   const lastTextPart = assistantTextParts.at(-1);
   const isWorking =
-    isLast && (status.type === "running" || status.type === "retry");
+    isLast && (status.type === "running" || status.type === "busy" || status.type === "retry");
 
   const completedToolParts = toolParts.filter(
     (p) => p.state.status === "completed",
@@ -1615,6 +1660,7 @@ type InputAreaProps = {
   onSend: () => void;
   onAbort: () => void;
   isWorking: boolean;
+  workingStatus?: string;
   agents: { id: string; name: string; description?: string }[];
   providers: {
     id: string;
@@ -1635,6 +1681,7 @@ function InputArea({
   onSend,
   onAbort,
   isWorking,
+  workingStatus,
   agents,
   providers,
   selectedAgent,
@@ -1681,8 +1728,8 @@ function InputArea({
             <span className="absolute size-2 bg-black/60 animate-ping rounded-full" />
             <span className="size-2 bg-black rounded-full" />
           </div>
-          <span className="text-xs text-neutral-600">
-            Agent is working in the background...
+          <span className="text-xs text-neutral-600 truncate">
+            {workingStatus || "Agent is working..."}
           </span>
         </div>
       )}
