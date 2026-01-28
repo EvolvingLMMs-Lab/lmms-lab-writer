@@ -10,7 +10,7 @@ type Props = {
   email: string;
   name?: string | null;
   avatarUrl?: string | null;
-  credits?: number;
+  inks?: number;
   canDownload?: boolean;
 };
 
@@ -18,7 +18,7 @@ export function UserDropdown({
   email,
   name,
   avatarUrl,
-  credits = 0,
+  inks = 0,
   canDownload = false,
 }: Props) {
   const router = useRouter();
@@ -129,9 +129,9 @@ export function UserDropdown({
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-xs text-muted uppercase tracking-wider">
-                  Credits
+                  Inks
                 </span>
-                <p className="text-sm font-mono mt-1">{credits}/30</p>
+                <p className="text-sm font-mono mt-1">{inks}/30</p>
               </div>
               {canDownload ? (
                 <Link
@@ -143,7 +143,7 @@ export function UserDropdown({
                 </Link>
               ) : (
                 <Link
-                  href="/profile#earn-credits"
+                  href="/profile#earn-inks"
                   onClick={() => setIsOpen(false)}
                   className="text-xs text-muted hover:text-black transition-colors"
                 >

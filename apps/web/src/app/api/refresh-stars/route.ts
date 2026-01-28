@@ -49,16 +49,16 @@ export async function POST() {
       );
     }
 
-    const credits = starredRepos.length * GITHUB_CONFIG.CREDITS_PER_STAR;
+    const inks = starredRepos.length * GITHUB_CONFIG.INKS_PER_STAR;
 
     return NextResponse.json({
       success: true,
       tier: result.tier,
-      creditsGranted: result.creditsGranted,
+      inksGranted: result.inksGranted,
       starredRepos,
       totalStarCount: starredRepos.length,
-      credits,
-      canDownload: credits >= GITHUB_CONFIG.CREDITS_TO_DOWNLOAD,
+      inks,
+      canDownload: inks >= GITHUB_CONFIG.INKS_TO_DOWNLOAD,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

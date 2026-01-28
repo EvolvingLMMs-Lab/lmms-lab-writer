@@ -118,35 +118,33 @@ pnpm tauri:build`}
   );
 }
 
-export function CreditsGate({
-  credits,
-  requiredCredits,
+export function InksGate({
+  inks,
+  requiredInks,
   isLoggedIn,
 }: {
-  credits: number;
-  requiredCredits: number;
+  inks: number;
+  requiredInks: number;
   isLoggedIn: boolean;
 }) {
-  const progressPercent = Math.min((credits / requiredCredits) * 100, 100);
+  const progressPercent = Math.min((inks / requiredInks) * 100, 100);
 
   return (
     <FadeIn className="max-w-2xl">
       <div className="border-2 border-dashed border-neutral-300 p-8">
         <h2 className="text-xl font-medium mb-2">
-          {requiredCredits} credits required to download
+          {requiredInks} inks required to download
         </h2>
         <p className="text-sm text-muted mb-6">
-          Star repositories to earn credits. Each repo ={" "}
-          {GITHUB_CONFIG.CREDITS_PER_STAR} credits.
+          Star repositories to earn inks. Each repo ={" "}
+          {GITHUB_CONFIG.INKS_PER_STAR} inks.
         </p>
 
         {isLoggedIn && (
           <div className="mb-6">
             <div className="flex items-center justify-between text-sm mb-2">
-              <span className="text-muted">Your credits</span>
-              <span className="font-mono">
-                {credits}/{requiredCredits}
-              </span>
+              <span className="text-muted">Your inks</span>
+              <span className="font-mono">{inks} inks</span>
             </div>
             <div className="w-full h-2 bg-neutral-100 border border-neutral-200">
               <div
@@ -158,22 +156,20 @@ export function CreditsGate({
         )}
 
         <div className="border border-black bg-neutral-50 p-4 mb-6">
-          <p className="text-sm font-medium mb-1">
-            Beta users: Permanent credits
-          </p>
+          <p className="text-sm font-medium mb-1">Beta users: Permanent inks</p>
           <p className="text-xs text-muted">
-            Credits earned during beta never expire. After public launch, the
-            app will be free to download, but premium AI features will consume
-            credits daily. Lock in your credits now.
+            Inks earned during beta never expire. After public launch, the app
+            will be free to download, but premium AI features will consume inks
+            daily. Lock in your inks now.
           </p>
         </div>
 
         {isLoggedIn ? (
           <Link
-            href="/profile#earn-credits"
+            href="/profile#earn-inks"
             className="inline-flex items-center gap-2 px-6 py-3 border-2 border-black text-sm font-mono uppercase tracking-wider hover:bg-neutral-100 transition-colors"
           >
-            Go to Profile to Earn Credits
+            Go to Profile to Earn Inks
           </Link>
         ) : (
           <Link
@@ -185,7 +181,7 @@ export function CreditsGate({
         )}
 
         <p className="text-xs text-muted mt-4">
-          Takes 2-3 minutes to earn enough credits
+          Star 3 repos to earn enough inks
         </p>
       </div>
     </FadeIn>
