@@ -68,13 +68,26 @@ async function getRepoStarredAt(
     return null;
   }
 
+  if (response.status === 204) {
+    return new Date().toISOString();
+  }
+
   if (!response.ok) {
     const isStarred = await checkRepoStarred(accessToken, owner, repo);
     return isStarred ? new Date().toISOString() : null;
   }
 
-  const data = await response.json();
-  return data.starred_at || new Date().toISOString();
+  const text = await response.text();
+  if (!text) {
+    return new Date().toISOString();
+  }
+
+  try {
+    const data = JSON.parse(text);
+    return data.starred_at || new Date().toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
 }
 
 export async function checkStarredRepos(

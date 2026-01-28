@@ -30,15 +30,20 @@ export async function POST() {
   }
 
   try {
+    console.log("[refresh-stars] Checking starred repos...");
     const starredRepos = await checkStarredRepos(tokenInfo.accessToken);
+    console.log("[refresh-stars] Found starred repos:", starredRepos.length);
 
+    console.log("[refresh-stars] Updating membership...");
     const result = await updateMembershipFromStars(
       supabase,
       user.id,
       starredRepos,
     );
+    console.log("[refresh-stars] Update result:", result);
 
     if (result.error) {
+      console.error("[refresh-stars] Membership update error:", result.error);
       return NextResponse.json(
         { error: "Failed to update membership", details: result.error },
         { status: 500 },
@@ -60,6 +65,8 @@ export async function POST() {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    const stack = error instanceof Error ? error.stack : "";
+    console.error("[refresh-stars] Error:", message, stack);
 
     if (message.includes("401")) {
       return NextResponse.json(
