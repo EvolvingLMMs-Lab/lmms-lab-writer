@@ -77,15 +77,20 @@ async fn find_opencode() -> Option<String> {
         ];
 
         let result = tokio::task::spawn_blocking(move || {
-        for path in common_paths {
-            if std::path::Path::new(&path).exists() {
-                return Some(path);
+            for path in common_paths {
+                if std::path::Path::new(&path).exists() {
+                    return Some(path);
+                }
             }
-        }
-        None
-    }).await.ok().flatten();
+            None
+        }).await.ok().flatten();
 
-    result
+        if result.is_some() {
+            return result;
+        }
+    }
+
+    None
 }
 
 #[tauri::command]
