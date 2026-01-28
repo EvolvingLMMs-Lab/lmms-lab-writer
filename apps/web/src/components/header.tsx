@@ -68,20 +68,12 @@ export async function Header() {
               expiresAt={user.expiresAt}
             />
           ) : (
-            <>
-              <Link
-                href="/login"
-                className="text-sm text-muted hover:text-black transition-colors hidden sm:block"
-              >
-                Login
-              </Link>
-              <Link
-                href="/signup"
-                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white text-black text-xs sm:text-sm border-2 border-black hover:bg-neutral-100 active:bg-neutral-200 transition-colors whitespace-nowrap"
-              >
-                Get Started
-              </Link>
-            </>
+            <Link
+              href="/login"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white text-black text-xs sm:text-sm border-2 border-black hover:bg-neutral-100 active:bg-neutral-200 transition-colors whitespace-nowrap"
+            >
+              Get Started
+            </Link>
           )}
           <Link
             href="https://github.com/Luodian/latex-writer/issues"
