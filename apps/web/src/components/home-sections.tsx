@@ -98,7 +98,11 @@ export function HeroSection() {
             style={{ willChange: "transform" }}
             className="w-full sm:w-auto"
           >
-            <Link href="/download" className="btn btn-primary w-full sm:w-auto">
+            <Link
+              href="/download"
+              prefetch={true}
+              className="btn btn-primary w-full sm:w-auto"
+            >
               <Download className="w-4 h-4" />
               Download
             </Link>
@@ -110,7 +114,11 @@ export function HeroSection() {
             style={{ willChange: "transform" }}
             className="w-full sm:w-auto"
           >
-            <Link href="/docs" className="btn btn-secondary w-full sm:w-auto">
+            <Link
+              href="/docs"
+              prefetch={true}
+              className="btn btn-secondary w-full sm:w-auto"
+            >
               <FileText className="w-4 h-4" />
               Documentation
             </Link>

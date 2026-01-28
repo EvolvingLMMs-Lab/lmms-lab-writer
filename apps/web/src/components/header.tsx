@@ -63,6 +63,7 @@ async function AuthButton() {
   return (
     <Link
       href="/login"
+      prefetch={true}
       className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white text-black text-xs sm:text-sm border-2 border-black hover:bg-neutral-100 active:bg-neutral-200 transition-colors whitespace-nowrap"
     >
       Get Started
@@ -76,6 +77,7 @@ export function Header() {
       <div className="w-full max-w-5xl mx-auto py-3 sm:py-4 flex items-center justify-between">
         <Link
           href="/"
+          prefetch={true}
           className="text-base sm:text-lg font-bold tracking-tight flex items-center gap-2 sm:gap-3"
         >
           <div className="logo-bar text-foreground">
