@@ -22,20 +22,12 @@ const platforms = [
     name: "macOS",
     variants: [
       { label: "Apple Silicon", file: "LMMs-Lab_Writer_0.1.0_aarch64.dmg" },
-      { label: "Intel", file: "LMMs-Lab_Writer_0.1.0_x64.dmg" },
     ],
   },
   {
     name: "Windows",
     variants: [
       { label: "64-bit", file: "LMMs-Lab_Writer_0.1.0_x64-setup.exe" },
-    ],
-  },
-  {
-    name: "Linux",
-    variants: [
-      { label: "AppImage", file: "LMMs-Lab_Writer_0.1.0_amd64.AppImage" },
-      { label: "Debian", file: "lmms-lab-writer_0.1.0_amd64.deb" },
     ],
   },
 ];
