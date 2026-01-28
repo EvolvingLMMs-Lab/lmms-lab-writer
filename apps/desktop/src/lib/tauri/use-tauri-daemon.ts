@@ -203,8 +203,14 @@ export function useTauriDaemon() {
       try {
         return await invoke<string>("read_file", { path: fullPath });
       } catch (error) {
+        const errorStr = String(error);
+        // Check if file doesn't exist (os error 2 on Windows, "No such file" on Unix)
+        if (errorStr.includes("os error 2") || errorStr.includes("No such file")) {
+          console.warn(`File not found: ${relativePath}`);
+          throw new Error(`FILE_NOT_FOUND:${relativePath}`);
+        }
         console.error("Failed to read file:", error);
-        return null;
+        throw error;
       }
     },
     [projectState.projectPath],

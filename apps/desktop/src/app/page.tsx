@@ -362,8 +362,37 @@ export default function EditorPage() {
           const content = await daemon.readFile(path);
           setFileContent(content ?? "");
         } catch (err) {
-          console.error("Failed to read file:", err);
-          setFileContent("");
+          const errorStr = String(err);
+
+          // Handle file not found - remove from tabs and notify user
+          if (errorStr.includes("FILE_NOT_FOUND")) {
+            const fileName = path.split("/").pop() || path;
+            toast(`File "${fileName}" no longer exists and has been removed from tabs`, "error");
+
+            // Remove the file from open tabs
+            setOpenTabs((prev) => {
+              const newTabs = prev.filter((p) => p !== path);
+
+              // Switch to another tab if available
+              if (newTabs.length > 0) {
+                const nextFile = newTabs[0];
+                if (nextFile) {
+                  // Recursively try to open the next file
+                  setTimeout(() => handleFileSelect(nextFile), 0);
+                }
+              } else {
+                // No more tabs, clear selection
+                setSelectedFile(undefined);
+                setFileContent("");
+              }
+
+              return newTabs;
+            });
+          } else {
+            console.error("Failed to read file:", err);
+            toast(`Failed to read file: ${err}`, "error");
+            setFileContent("");
+          }
         } finally {
           setIsLoadingFile(false);
         }
@@ -375,7 +404,7 @@ export default function EditorPage() {
         setFileContent("");
       }
     },
-    [daemon, getFileType],
+    [daemon, getFileType, toast],
   );
 
   useEffect(() => {
@@ -383,6 +412,37 @@ export default function EditorPage() {
       setOpenTabs((prev) => [...prev, selectedFile]);
     }
   }, [selectedFile, openTabs]);
+
+  // Handle file deletion - automatically close tabs for deleted files
+  useEffect(() => {
+    if (!daemon.lastFileChange) return;
+
+    const { path, kind } = daemon.lastFileChange;
+
+    if (kind === "remove") {
+      // Check if the deleted file is in open tabs
+      setOpenTabs((prev) => {
+        if (!prev.includes(path)) return prev;
+
+        const newTabs = prev.filter((p) => p !== path);
+
+        // If the deleted file was selected, switch to another tab
+        if (selectedFile === path) {
+          if (newTabs.length > 0) {
+            const nextFile = newTabs[0];
+            if (nextFile) {
+              handleFileSelect(nextFile);
+            }
+          } else {
+            setSelectedFile(undefined);
+            setFileContent("");
+          }
+        }
+
+        return newTabs;
+      });
+    }
+  }, [daemon.lastFileChange, selectedFile, handleFileSelect]);
 
   const handleCloseTab = useCallback(
     (path: string, e?: React.MouseEvent) => {
