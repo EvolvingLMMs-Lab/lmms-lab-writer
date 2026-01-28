@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pixel Ink Drop Preview</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.6);
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
+      .card {
+        background: white;
+        border: 2px solid black;
+        padding: 2rem;
+        text-align: center;
+        max-width: 320px;
+        box-shadow: 4px 4px 0 0 rgba(0, 0, 0, 1);
+        animation: cardIn 0.5s ease-out;
+      }
+      @keyframes cardIn {
+        from {
+          opacity: 0;
+          transform: scale(0.8);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+      .ink-drop {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 1.5rem;
+        image-rendering: pixelated;
+        animation: dropIn 0.5s ease-out 0.3s both;
+      }
+      @keyframes dropIn {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .ripple {
+        width: 48px;
+        height: 12px;
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 50%;
+        margin: -0.5rem auto 1.5rem;
+        animation: ripple 1s ease-out 0.5s infinite;
+      }
+      @keyframes ripple {
+        0% {
+          transform: scale(0.5);
+          opacity: 0;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          transform: scale(1.5);
+          opacity: 0;
+        }
+      }
+      h2 {
+        font-size: 1.25rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        animation: fadeIn 0.4s ease-out 0.6s both;
+      }
+      p {
+        font-size: 0.875rem;
+        color: #666;
+        margin-bottom: 1.5rem;
+        animation: fadeIn 0.4s ease-out 0.8s both;
+      }
+      .inks {
+        font-size: 2rem;
+        font-weight: 300;
+        margin-bottom: 1rem;
+        font-variant-numeric: tabular-nums;
+        animation: fadeIn 0.4s ease-out 1s both;
+      }
+      .inks span {
+        font-size: 0.875rem;
+        color: #666;
+        font-weight: 400;
+        margin-left: 0.5rem;
+      }
+      button {
+        padding: 0.5rem 1.5rem;
+        border: 2px solid black;
+        background: white;
+        font-family: monospace;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        cursor: pointer;
+        transition: background 0.2s;
+        animation: fadeIn 0.4s ease-out 1.2s both;
+      }
+      button:hover {
+        background: #f5f5f5;
+      }
+      .hint {
+        font-size: 0.75rem;
+        color: #999;
+        margin-top: 1rem;
+        animation: fadeIn 0.4s ease-out 1.4s both;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <svg
+        class="ink-drop"
+        viewBox="0 0 16 16"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <rect x="7" y="1" width="2" height="1" fill="black" />
+        <rect x="6" y="2" width="4" height="1" fill="black" />
+        <rect x="5" y="3" width="6" height="1" fill="black" />
+        <rect x="4" y="4" width="8" height="1" fill="black" />
+        <rect x="4" y="5" width="8" height="1" fill="black" />
+        <rect x="3" y="6" width="10" height="1" fill="black" />
+        <rect x="3" y="7" width="10" height="1" fill="black" />
+        <rect x="2" y="8" width="12" height="1" fill="black" />
+        <rect x="2" y="9" width="12" height="1" fill="black" />
+        <rect x="2" y="10" width="12" height="1" fill="black" />
+        <rect x="3" y="11" width="10" height="1" fill="black" />
+        <rect x="3" y="12" width="10" height="1" fill="black" />
+        <rect x="4" y="13" width="8" height="1" fill="black" />
+        <rect x="5" y="14" width="6" height="1" fill="black" />
+        <rect
+          x="5"
+          y="7"
+          width="2"
+          height="3"
+          fill="white"
+          fill-opacity="0.4"
+        />
+      </svg>
+      <div class="ripple"></div>
+
+      <h2>You earned your first ink!</h2>
+      <p>
+        Ink fuels your writing. Earn inks by starring repos to unlock our beta
+        version app.
+      </p>
+
+      <div class="inks">30<span>inks</span></div>
+
+      <button onclick="location.reload()">Got it</button>
+
+      <p class="hint">Click anywhere to dismiss</p>
+    </div>
+  </body>
+</html>

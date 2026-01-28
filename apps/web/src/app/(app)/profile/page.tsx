@@ -250,10 +250,8 @@ async function InksSection() {
 
   const totalStars = membershipData?.total_star_count || 0;
   const inks = totalStars * GITHUB_CONFIG.INKS_PER_STAR;
-  const maxInks = GITHUB_CONFIG.MAX_INKS;
   const requiredInks = GITHUB_CONFIG.INKS_TO_DOWNLOAD;
   const hasEnoughInks = canDownload(inks);
-  const progressPercent = Math.min((inks / maxInks) * 100, 100);
 
   return (
     <ProfileSection delay={0.15} className="border border-border mb-8">
@@ -268,9 +266,7 @@ async function InksSection() {
           <div>
             <p className="text-3xl font-light tabular-nums mb-1">
               {inks}
-              <span className="text-sm text-muted font-normal ml-2">
-                / {maxInks} inks
-              </span>
+              <span className="text-sm text-muted font-normal ml-2">inks</span>
             </p>
             {hasEnoughInks ? (
               <p className="text-sm text-muted">Ready to download</p>
@@ -296,15 +292,9 @@ async function InksSection() {
             </a>
           )}
         </div>
-        <div className="w-full h-2 bg-neutral-100 border border-neutral-200">
-          <div
-            className="h-full bg-black transition-all duration-500"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-        <p className="text-xs text-muted mt-3">
-          Star top {GITHUB_CONFIG.MAX_ELIGIBLE_REPOS} repos to earn up to{" "}
-          {maxInks} inks. Need {requiredInks} inks to download.
+        <p className="text-xs text-muted">
+          Star top {GITHUB_CONFIG.MAX_ELIGIBLE_REPOS} repos to earn inks. Need{" "}
+          {requiredInks} inks to download.
         </p>
       </div>
     </ProfileSection>
@@ -411,8 +401,6 @@ async function SuggestedReposSection() {
   const eligibleRepoNames = new Set(topRepos.map((r) => r.name));
 
   const inks = totalStars * GITHUB_CONFIG.INKS_PER_STAR;
-  const maxInks = GITHUB_CONFIG.MAX_INKS;
-  const inksProgressPercent = Math.min((inks / maxInks) * 100, 100);
 
   return (
     <ProfileSection
@@ -426,17 +414,7 @@ async function SuggestedReposSection() {
         </h2>
         <div className="flex items-center gap-4">
           {isGitHubConnected && <RefreshStarsButton />}
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted font-mono">
-              {inks}/{maxInks} inks
-            </span>
-            <div className="w-24 h-1.5 bg-neutral-100 border border-neutral-200">
-              <div
-                className="h-full bg-black transition-all duration-500"
-                style={{ width: `${inksProgressPercent}%` }}
-              />
-            </div>
-          </div>
+          <span className="text-xs text-muted font-mono">{inks} inks</span>
         </div>
       </div>
 
@@ -538,9 +516,8 @@ async function SuggestedReposSection() {
         </RepoList>
 
         <p className="text-sm text-muted text-center pt-4 border-t border-border">
-          Max {GITHUB_CONFIG.MAX_INKS} inks | Star top{" "}
-          {GITHUB_CONFIG.MAX_ELIGIBLE_REPOS} repos | 1 repo ={" "}
-          {GITHUB_CONFIG.INKS_PER_STAR} inks
+          Star top {GITHUB_CONFIG.MAX_ELIGIBLE_REPOS} repos to earn inks | 1
+          repo = {GITHUB_CONFIG.INKS_PER_STAR} inks
         </p>
       </div>
     </ProfileSection>

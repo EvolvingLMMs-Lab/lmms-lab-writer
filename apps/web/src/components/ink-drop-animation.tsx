@@ -162,8 +162,8 @@ export function InkDropAnimation({
               }
               className="text-sm text-muted mb-6"
             >
-              Ink fuels your writing. Earn more by starring repos, then use inks
-              to unlock the editor and AI features.
+              Ink fuels your writing. Earn inks by starring repos to unlock our
+              beta version app.
             </m.p>
 
             <m.p

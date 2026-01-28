@@ -137,9 +137,7 @@ export function InksGate({
         </h2>
         <p className="text-sm text-muted mb-6">
           Star top {GITHUB_CONFIG.MAX_ELIGIBLE_REPOS} repos to earn inks. 1 repo
-          = {GITHUB_CONFIG.INKS_PER_STAR} inks (max{" "}
-          {GITHUB_CONFIG.MAX_ELIGIBLE_REPOS * GITHUB_CONFIG.INKS_PER_STAR}{" "}
-          inks).
+          = {GITHUB_CONFIG.INKS_PER_STAR} inks.
         </p>
 
         {isLoggedIn && (
