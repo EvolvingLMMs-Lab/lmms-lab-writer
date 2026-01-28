@@ -7,7 +7,7 @@ import {
   DownloadSection,
   RequirementsSection,
   BuildSection,
-  CreditsGate,
+  InksGate,
 } from "@/components/download-sections";
 
 function DownloadSkeleton() {
@@ -31,9 +31,9 @@ async function DownloadContent() {
 
   if (!session) {
     return (
-      <CreditsGate
-        credits={0}
-        requiredCredits={GITHUB_CONFIG.CREDITS_TO_DOWNLOAD}
+      <InksGate
+        inks={0}
+        requiredInks={GITHUB_CONFIG.INKS_TO_DOWNLOAD}
         isLoggedIn={false}
       />
     );
@@ -46,14 +46,14 @@ async function DownloadContent() {
     .single();
 
   const totalStars = membershipData?.total_star_count || 0;
-  const credits = totalStars * GITHUB_CONFIG.CREDITS_PER_STAR;
-  const hasEnoughCredits = canDownload(credits);
+  const inks = totalStars * GITHUB_CONFIG.INKS_PER_STAR;
+  const hasEnoughInks = canDownload(inks);
 
-  if (!hasEnoughCredits) {
+  if (!hasEnoughInks) {
     return (
-      <CreditsGate
-        credits={credits}
-        requiredCredits={GITHUB_CONFIG.CREDITS_TO_DOWNLOAD}
+      <InksGate
+        inks={inks}
+        requiredInks={GITHUB_CONFIG.INKS_TO_DOWNLOAD}
         isLoggedIn={true}
       />
     );
@@ -65,14 +65,14 @@ async function DownloadContent() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">
-              You have {credits} credits - ready to download
+              You have {inks} inks - ready to download
             </p>
             <p className="text-xs text-muted mt-1">
-              Beta period: No credits deducted when you download or use the app
+              Beta period: No inks deducted when you download or use the app
             </p>
           </div>
           <span className="text-xs font-mono text-muted uppercase tracking-wider">
-            {credits}/{GITHUB_CONFIG.CREDITS_TO_DOWNLOAD}
+            {inks} inks
           </span>
         </div>
       </div>

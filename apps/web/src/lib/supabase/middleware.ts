@@ -54,14 +54,14 @@ export async function updateSession(request: NextRequest) {
       .single();
 
     const totalStars = membership?.total_star_count || 0;
-    const credits = totalStars * 7;
-    const canDownload = credits >= 30;
+    const inks = totalStars * 7;
+    const canDownload = inks >= 30;
 
     const cachedUser: CachedUser = {
       email: user.email ?? "",
       name: metadata.full_name || metadata.name || metadata.user_name || null,
       avatarUrl: metadata.avatar_url || metadata.picture || null,
-      credits,
+      inks,
       canDownload,
     };
 

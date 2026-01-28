@@ -2,10 +2,8 @@ export const GITHUB_CONFIG = {
   ORG: "EvolvingLMMs-Lab",
   MAX_ELIGIBLE_REPOS: 5,
   MIN_STARS_TO_SHOW: 100,
-  CREDITS_PER_STAR: 7,
-  MAX_STARS: 5,
-  MAX_CREDITS: 35,
-  CREDITS_TO_DOWNLOAD: 30,
+  INKS_PER_STAR: 6,
+  INKS_TO_DOWNLOAD: 15,
 } as const;
 
 export type RepoInfo = {
@@ -116,21 +114,17 @@ export interface MembershipInfo {
 
 export function calculateMembership(starCount: number): {
   tier: MembershipTier;
-  creditsGranted: number;
+  inksGranted: number;
 } {
   if (starCount >= 1) {
-    const effectiveStars = Math.min(starCount, GITHUB_CONFIG.MAX_STARS);
-    const credits = Math.min(
-      effectiveStars * GITHUB_CONFIG.CREDITS_PER_STAR,
-      GITHUB_CONFIG.MAX_CREDITS,
-    );
-    return { tier: "supporter", creditsGranted: credits };
+    const inks = starCount * GITHUB_CONFIG.INKS_PER_STAR;
+    return { tier: "supporter", inksGranted: inks };
   }
-  return { tier: "free", creditsGranted: 0 };
+  return { tier: "free", inksGranted: 0 };
 }
 
-export function canDownload(credits: number): boolean {
-  return credits >= GITHUB_CONFIG.CREDITS_TO_DOWNLOAD;
+export function canDownload(inks: number): boolean {
+  return inks >= GITHUB_CONFIG.INKS_TO_DOWNLOAD;
 }
 
 export function getDaysRemaining(expiresAt: Date | null): number | null {

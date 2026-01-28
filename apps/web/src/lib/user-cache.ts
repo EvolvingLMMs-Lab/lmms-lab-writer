@@ -5,7 +5,7 @@ export type CachedUser = {
   email: string;
   name: string | null;
   avatarUrl: string | null;
-  credits: number;
+  inks: number;
   canDownload: boolean;
 };
 

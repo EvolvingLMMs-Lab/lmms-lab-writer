@@ -50,7 +50,7 @@ export function Header() {
               email={user.email}
               name={user.name}
               avatarUrl={user.avatarUrl}
-              credits={user.credits}
+              inks={user.inks}
               canDownload={user.canDownload}
             />
           ) : (

@@ -232,7 +232,7 @@ async function ConnectedAccountsSection() {
   );
 }
 
-async function CreditsSection() {
+async function InksSection() {
   const supabase = await createClient();
   const {
     data: { session },
@@ -247,35 +247,35 @@ async function CreditsSection() {
     .single();
 
   const totalStars = membershipData?.total_star_count || 0;
-  const credits = totalStars * GITHUB_CONFIG.CREDITS_PER_STAR;
-  const requiredCredits = GITHUB_CONFIG.CREDITS_TO_DOWNLOAD;
-  const hasEnoughCredits = canDownload(credits);
-  const progressPercent = Math.min((credits / requiredCredits) * 100, 100);
+  const inks = totalStars * GITHUB_CONFIG.INKS_PER_STAR;
+  const requiredInks = GITHUB_CONFIG.INKS_TO_DOWNLOAD;
+  const hasEnoughInks = canDownload(inks);
+  const progressPercent = Math.min((inks / requiredInks) * 100, 100);
 
   return (
     <ProfileSection delay={0.15} className="border border-border mb-8">
       <div className="px-6 py-4 border-b border-border bg-neutral-50 flex items-center justify-between">
-        <h2 className="text-sm font-mono uppercase tracking-wider">Credits</h2>
+        <h2 className="text-sm font-mono uppercase tracking-wider">Inks</h2>
         <span className="text-xs font-mono text-muted uppercase tracking-wider">
-          Beta - Credits never expire
+          Beta - Inks never expire
         </span>
       </div>
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-3xl font-light tabular-nums mb-1">
-              {credits}
-              <span className="text-sm text-muted font-normal">
-                /{requiredCredits} credits
-              </span>
+              {inks}
+              <span className="text-sm text-muted font-normal ml-2">inks</span>
             </p>
-            {hasEnoughCredits ? (
+            {hasEnoughInks ? (
               <p className="text-sm text-muted">Ready to download</p>
             ) : (
-              <p className="text-sm text-muted">Star repos to earn credits</p>
+              <p className="text-sm text-muted">
+                {requiredInks - inks} more inks to unlock download
+              </p>
             )}
           </div>
-          {hasEnoughCredits ? (
+          {hasEnoughInks ? (
             <Link
               href="/download"
               className="px-4 py-2 border border-black text-sm font-mono uppercase tracking-wider hover:bg-neutral-100 transition-colors"
@@ -284,10 +284,10 @@ async function CreditsSection() {
             </Link>
           ) : (
             <a
-              href="#earn-credits"
+              href="#earn-inks"
               className="text-sm text-muted hover:text-black transition-colors"
             >
-              Earn credits →
+              Earn inks →
             </a>
           )}
         </div>
@@ -298,9 +298,8 @@ async function CreditsSection() {
           />
         </div>
         <p className="text-xs text-muted mt-3">
-          Beta period: Credits accumulate permanently. After public launch, the
-          app will be free to download, but premium features will consume
-          credits daily.
+          Beta period: Inks accumulate permanently. Need {requiredInks} inks to
+          unlock download.
         </p>
       </div>
     </ProfileSection>
@@ -383,33 +382,30 @@ async function SuggestedReposSection() {
     (membershipResult.data?.starred_repos as unknown as StarredRepo[]) || [];
   const starredRepoNames = new Set(starredRepos.map((r) => r.repo));
 
-  const credits = totalStars * GITHUB_CONFIG.CREDITS_PER_STAR;
-  const requiredCredits = GITHUB_CONFIG.CREDITS_TO_DOWNLOAD;
-  const creditsProgressPercent = Math.min(
-    (credits / requiredCredits) * 100,
-    100,
-  );
+  const inks = totalStars * GITHUB_CONFIG.INKS_PER_STAR;
+  const requiredInks = GITHUB_CONFIG.INKS_TO_DOWNLOAD;
+  const inksProgressPercent = Math.min((inks / requiredInks) * 100, 100);
 
   return (
     <ProfileSection
       delay={0.25}
       className="border border-border scroll-mt-6"
-      id="earn-credits"
+      id="earn-inks"
     >
       <div className="px-6 py-4 border-b border-border bg-neutral-50 flex items-center justify-between">
         <h2 className="text-sm font-mono uppercase tracking-wider">
-          Earn Credits
+          Earn Inks
         </h2>
         <div className="flex items-center gap-4">
           {isGitHubConnected && <RefreshStarsButton />}
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted font-mono">
-              {credits}/{requiredCredits}
+              {inks}/{requiredInks} inks
             </span>
             <div className="w-24 h-1.5 bg-neutral-100 border border-neutral-200">
               <div
                 className="h-full bg-black transition-all duration-500"
-                style={{ width: `${creditsProgressPercent}%` }}
+                style={{ width: `${inksProgressPercent}%` }}
               />
             </div>
           </div>
@@ -428,7 +424,7 @@ async function SuggestedReposSection() {
             </svg>
             <h3 className="text-lg font-medium mb-2">Connect GitHub</h3>
             <p className="text-sm text-muted mb-6 max-w-sm mx-auto">
-              Link your GitHub account to track starred repos and earn credits.
+              Link your GitHub account to track starred repos and earn inks.
             </p>
             <GitHubLoginButton />
           </div>
@@ -484,7 +480,7 @@ async function SuggestedReposSection() {
 
                 {isStarred ? (
                   <span className="text-xs font-mono uppercase tracking-wider text-muted ml-4 flex-shrink-0">
-                    +{GITHUB_CONFIG.CREDITS_PER_STAR} credits
+                    +{GITHUB_CONFIG.INKS_PER_STAR} inks
                   </span>
                 ) : (
                   <a
@@ -502,8 +498,8 @@ async function SuggestedReposSection() {
         </RepoList>
 
         <p className="text-sm text-muted text-center pt-4 border-t border-border">
-          Star a repo = {GITHUB_CONFIG.CREDITS_PER_STAR} credits | Need{" "}
-          {GITHUB_CONFIG.CREDITS_TO_DOWNLOAD} credits to download
+          Star a repo = {GITHUB_CONFIG.INKS_PER_STAR} inks | Need{" "}
+          {GITHUB_CONFIG.INKS_TO_DOWNLOAD} inks to download
         </p>
       </div>
     </ProfileSection>
@@ -537,7 +533,7 @@ export default async function ProfilePage() {
           </Suspense>
 
           <Suspense fallback={<MembershipSkeleton />}>
-            <CreditsSection />
+            <InksSection />
           </Suspense>
 
           <Suspense fallback={<SectionSkeleton title="Account Details" />}>
