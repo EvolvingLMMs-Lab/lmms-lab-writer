@@ -93,7 +93,7 @@ export function useOpenCode(
   } | null>(null);
   selectedModelRef.current = selectedModel;
 
-  const syncFromStoreRef = useRef<() => void>(() => {});
+  const syncFromStoreRef = useRef<() => void>(() => { });
   syncFromStoreRef.current = () => {
     const client = clientRef.current;
     if (!client) return;
@@ -119,7 +119,7 @@ export function useOpenCode(
     syncFromStoreRef.current();
   }, []);
 
-  const handleEventRef = useRef<(event: Event) => void>(() => {});
+  const handleEventRef = useRef<(event: Event) => void>(() => { });
   handleEventRef.current = (event: Event) => {
     if ("properties" in event) {
       const props = event.properties as Record<string, unknown>;
@@ -205,10 +205,7 @@ export function useOpenCode(
             client.store.status.get(firstSession.id) || { type: "idle" },
           );
 
-          // Use allSettled to prevent one failing request from breaking the whole flow
-          await Promise.allSettled(
-            msgs.map((msg) => client.getParts(firstSession.id, msg.id)),
-          );
+          // Parts are already included in messages
           const sessionParts = new Map<string, Part[]>();
           for (const [key, value] of client.store.parts.entries()) {
             if (key.startsWith(`${firstSession.id}:`)) {
@@ -343,11 +340,7 @@ export function useOpenCode(
         }
         setParts(sessionParts);
 
-        // Use allSettled to prevent one failing request from breaking the whole flow
-        await Promise.allSettled(
-          msgs.map((msg) => client.getParts(sessionId, msg.id)),
-        );
-
+        // Parts are already included in messages
         const updatedParts = new Map<string, Part[]>();
         for (const [key, value] of client.store.parts.entries()) {
           if (key.startsWith(`${sessionId}:`)) {
@@ -413,9 +406,9 @@ export function useOpenCode(
           agent: selectedAgent || undefined,
           model: selectedModel
             ? {
-                providerID: selectedModel.providerId,
-                modelID: selectedModel.modelId,
-              }
+              providerID: selectedModel.providerId,
+              modelID: selectedModel.modelId,
+            }
             : undefined,
         });
         setTimeout(() => syncFromStore(), 100);

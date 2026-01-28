@@ -1170,11 +1170,10 @@ export default function EditorPage() {
                 return (
                   <div
                     key={tab}
-                    className={`group flex items-center border-r border-border transition-colors ${
-                      isActive
+                    className={`group flex items-center border-r border-border transition-colors ${isActive
                         ? "bg-white text-black"
                         : "text-muted hover:text-black hover:bg-white/50"
-                    }`}
+                      }`}
                     title={tab}
                   >
                     <button
@@ -1185,11 +1184,10 @@ export default function EditorPage() {
                     </button>
                     <button
                       onClick={(e) => handleCloseTab(tab, e)}
-                      className={`w-6 h-full flex items-center justify-center hover:bg-neutral-200 ${
-                        isActive
+                      className={`w-6 h-full flex items-center justify-center hover:bg-neutral-200 ${isActive
                           ? "opacity-100"
                           : "opacity-0 group-hover:opacity-100"
-                      }`}
+                        }`}
                       aria-label="Close tab"
                     >
                       <svg
