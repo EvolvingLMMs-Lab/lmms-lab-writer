@@ -95,6 +95,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
           onConnect={handleConnect}
           daemonStatus={daemonStatus}
           onRestartOpenCode={onRestartOpenCode}
+          hasProject={!!directory}
         />
       </div>
     );
@@ -340,12 +341,14 @@ function OnboardingState({
   onConnect,
   daemonStatus,
   onRestartOpenCode,
+  hasProject,
 }: {
   connecting: boolean;
   error: string | null;
   onConnect: () => void;
   daemonStatus?: OpenCodeDaemonStatus;
   onRestartOpenCode?: () => void;
+  hasProject?: boolean;
 }) {
   const [copiedNpm, setCopiedNpm] = useState(false);
   const [copiedBrew, setCopiedBrew] = useState(false);
@@ -399,6 +402,39 @@ function OnboardingState({
           : "pending",
     },
   ];
+
+  if (!hasProject) {
+    return (
+      <div className="flex-1 flex flex-col p-4 overflow-y-auto">
+        <div className="flex-1 flex flex-col justify-center max-w-xs mx-auto w-full space-y-6">
+          <div className="text-center">
+            <div className="size-12 mx-auto mb-3 border border-border flex items-center justify-center">
+              <svg
+                className="size-6 text-muted"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="square"
+                  strokeLinejoin="miter"
+                  strokeWidth={1.5}
+                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-sm mb-1">Open a Project</h3>
+            <p className="text-xs text-muted">
+              Open a LaTeX project folder to use AI features
+            </p>
+          </div>
+          <p className="text-xs text-muted text-center">
+            Click the folder icon in the top left or use ⌘O to open a project.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col p-4 overflow-y-auto">
