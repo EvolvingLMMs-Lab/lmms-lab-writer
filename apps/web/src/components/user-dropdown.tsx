@@ -125,32 +125,28 @@ export function UserDropdown({
             </svg>
           </Link>
 
-          <div className="px-5 py-4 border-b border-border bg-neutral-50">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs text-muted uppercase tracking-wider">
-                  Inks
-                </span>
-                <p className="text-sm font-mono mt-1">{inks}</p>
-              </div>
-              {canDownload ? (
-                <Link
-                  href="/download"
-                  onClick={() => setIsOpen(false)}
-                  className="text-xs font-medium hover:text-black transition-colors"
-                >
-                  Download
-                </Link>
-              ) : (
-                <Link
-                  href="/profile#earn-inks"
-                  onClick={() => setIsOpen(false)}
-                  className="text-xs text-muted hover:text-black transition-colors"
-                >
-                  Earn more
-                </Link>
-              )}
+          <div className="px-5 py-4 border-b border-border bg-neutral-50 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-mono tabular-nums">{inks}</span>
+              <span className="text-sm text-muted">inks</span>
             </div>
+            {canDownload ? (
+              <Link
+                href="/download"
+                onClick={() => setIsOpen(false)}
+                className="px-3 py-1 border border-black text-xs font-mono uppercase tracking-wider hover:bg-neutral-100 transition-colors"
+              >
+                Download
+              </Link>
+            ) : (
+              <Link
+                href="/profile#earn-inks"
+                onClick={() => setIsOpen(false)}
+                className="text-xs text-muted hover:text-black transition-colors"
+              >
+                Earn more →
+              </Link>
+            )}
           </div>
 
           <div className="px-5 py-3">
