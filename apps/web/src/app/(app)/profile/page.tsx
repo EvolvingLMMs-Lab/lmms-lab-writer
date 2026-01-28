@@ -6,8 +6,10 @@ import {
   StarredRepo,
   GITHUB_CONFIG,
   getAllPopularRepos,
+  canDownload,
   type RepoInfo,
 } from "@/lib/github/config";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { GitHubLoginButton } from "@/components/auth/github-login-button";
 import { RefreshStarsButton } from "@/components/auth/refresh-stars-button";
@@ -230,7 +232,7 @@ async function ConnectedAccountsSection() {
   );
 }
 
-async function MembershipStatsSection() {
+async function CreditsSection() {
   const supabase = await createClient();
   const {
     data: { session },
@@ -240,50 +242,68 @@ async function MembershipStatsSection() {
 
   const { data: membershipData } = await supabase
     .from("user_memberships")
-    .select("tier, expires_at, total_star_count")
+    .select("tier, total_star_count")
     .eq("user_id", session.user.id)
     .single();
 
-  const tier = (membershipData?.tier as MembershipTier) || "free";
   const totalStars = membershipData?.total_star_count || 0;
-  const expiresAt = membershipData?.expires_at
-    ? new Date(membershipData.expires_at)
-    : null;
-  const maxStars = GITHUB_CONFIG.MAX_ELIGIBLE_REPOS;
+  const credits = totalStars * GITHUB_CONFIG.CREDITS_PER_STAR;
+  const requiredCredits = GITHUB_CONFIG.CREDITS_TO_DOWNLOAD;
+  const hasEnoughCredits = canDownload(credits);
+  const progressPercent = Math.min((credits / requiredCredits) * 100, 100);
 
   return (
-    <ProfileCard delay={0.15} className="border border-border p-6 mb-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-3xl font-light tabular-nums mb-1">
-            {totalStars}
-            <span className="text-sm text-muted font-normal">
-              /{maxStars} stars
-            </span>
-          </p>
-          {tier === "supporter" && expiresAt ? (
-            <p className="text-sm text-muted">
-              Expires{" "}
-              {expiresAt.toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })}
+    <ProfileSection delay={0.15} className="border border-border mb-8">
+      <div className="px-6 py-4 border-b border-border bg-neutral-50 flex items-center justify-between">
+        <h2 className="text-sm font-mono uppercase tracking-wider">Credits</h2>
+        <span className="text-xs font-mono text-muted uppercase tracking-wider">
+          Beta - Credits never expire
+        </span>
+      </div>
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-3xl font-light tabular-nums mb-1">
+              {credits}
+              <span className="text-sm text-muted font-normal">
+                /{requiredCredits} credits
+              </span>
             </p>
+            {hasEnoughCredits ? (
+              <p className="text-sm text-muted">Ready to download</p>
+            ) : (
+              <p className="text-sm text-muted">Star repos to earn credits</p>
+            )}
+          </div>
+          {hasEnoughCredits ? (
+            <Link
+              href="/download"
+              className="px-4 py-2 border border-black text-sm font-mono uppercase tracking-wider hover:bg-neutral-100 transition-colors"
+            >
+              Download
+            </Link>
           ) : (
-            <p className="text-sm text-muted">
-              Star repos to unlock membership
-            </p>
+            <a
+              href="#earn-credits"
+              className="text-sm text-muted hover:text-black transition-colors"
+            >
+              Earn credits →
+            </a>
           )}
         </div>
-        <a
-          href="#suggested-repos"
-          className="text-sm text-muted hover:text-black transition-colors"
-        >
-          {tier === "supporter" ? "Extend" : "Unlock"} →
-        </a>
+        <div className="w-full h-2 bg-neutral-100 border border-neutral-200">
+          <div
+            className="h-full bg-black transition-all duration-500"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+        <p className="text-xs text-muted mt-3">
+          Beta period: Credits accumulate permanently. After public launch, the
+          app will be free to download, but premium features will consume
+          credits daily.
+        </p>
       </div>
-    </ProfileCard>
+    </ProfileSection>
   );
 }
 
@@ -296,16 +316,6 @@ async function AccountDetailsSection() {
   if (!session) return null;
 
   const user = session.user;
-
-  const { data: membershipData } = await supabase
-    .from("user_memberships")
-    .select("expires_at")
-    .eq("user_id", user.id)
-    .single();
-
-  const expiresAt = membershipData?.expires_at
-    ? new Date(membershipData.expires_at)
-    : null;
 
   return (
     <ProfileSection delay={0.2} className="border border-border mb-8">
@@ -329,18 +339,6 @@ async function AccountDetailsSection() {
           <span className="text-sm text-muted">Registered</span>
           <span className="text-sm">{formatDate(user.created_at)}</span>
         </div>
-        {expiresAt && (
-          <div className="px-6 py-4 flex items-center justify-between">
-            <span className="text-sm text-muted">Membership Expires</span>
-            <span className="text-sm">
-              {expiresAt.toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </span>
-          </div>
-        )}
         {user.last_sign_in_at && (
           <div className="px-6 py-4 flex items-center justify-between">
             <span className="text-sm text-muted">Last Sign In</span>
@@ -384,29 +382,34 @@ async function SuggestedReposSection() {
   const starredRepos =
     (membershipResult.data?.starred_repos as unknown as StarredRepo[]) || [];
   const starredRepoNames = new Set(starredRepos.map((r) => r.repo));
-  const maxStars = GITHUB_CONFIG.MAX_ELIGIBLE_REPOS;
-  const progressPercent = Math.min((totalStars / maxStars) * 100, 100);
+
+  const credits = totalStars * GITHUB_CONFIG.CREDITS_PER_STAR;
+  const requiredCredits = GITHUB_CONFIG.CREDITS_TO_DOWNLOAD;
+  const creditsProgressPercent = Math.min(
+    (credits / requiredCredits) * 100,
+    100,
+  );
 
   return (
     <ProfileSection
       delay={0.25}
       className="border border-border scroll-mt-6"
-      id="suggested-repos"
+      id="earn-credits"
     >
       <div className="px-6 py-4 border-b border-border bg-neutral-50 flex items-center justify-between">
         <h2 className="text-sm font-mono uppercase tracking-wider">
-          Suggested Repos
+          Earn Credits
         </h2>
         <div className="flex items-center gap-4">
           {isGitHubConnected && <RefreshStarsButton />}
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted font-mono">
-              {totalStars}/{maxStars}
+              {credits}/{requiredCredits}
             </span>
             <div className="w-24 h-1.5 bg-neutral-100 border border-neutral-200">
               <div
                 className="h-full bg-black transition-all duration-500"
-                style={{ width: `${progressPercent}%` }}
+                style={{ width: `${creditsProgressPercent}%` }}
               />
             </div>
           </div>
@@ -425,7 +428,7 @@ async function SuggestedReposSection() {
             </svg>
             <h3 className="text-lg font-medium mb-2">Connect GitHub</h3>
             <p className="text-sm text-muted mb-6 max-w-sm mx-auto">
-              Link your GitHub account to track stars and unlock membership.
+              Link your GitHub account to track starred repos and earn credits.
             </p>
             <GitHubLoginButton />
           </div>
@@ -481,7 +484,7 @@ async function SuggestedReposSection() {
 
                 {isStarred ? (
                   <span className="text-xs font-mono uppercase tracking-wider text-muted ml-4 flex-shrink-0">
-                    +7 days
+                    +{GITHUB_CONFIG.CREDITS_PER_STAR} credits
                   </span>
                 ) : (
                   <a
@@ -499,8 +502,8 @@ async function SuggestedReposSection() {
         </RepoList>
 
         <p className="text-sm text-muted text-center pt-4 border-t border-border">
-          Star a repo = {GITHUB_CONFIG.DAYS_PER_STAR} days membership | Max{" "}
-          {GITHUB_CONFIG.MAX_DAYS} days
+          Star a repo = {GITHUB_CONFIG.CREDITS_PER_STAR} credits | Need{" "}
+          {GITHUB_CONFIG.CREDITS_TO_DOWNLOAD} credits to download
         </p>
       </div>
     </ProfileSection>
@@ -534,7 +537,7 @@ export default async function ProfilePage() {
           </Suspense>
 
           <Suspense fallback={<MembershipSkeleton />}>
-            <MembershipStatsSection />
+            <CreditsSection />
           </Suspense>
 
           <Suspense fallback={<SectionSkeleton title="Account Details" />}>

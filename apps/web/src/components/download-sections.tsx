@@ -8,6 +8,7 @@ import {
   FadeInStagger,
   FadeInStaggerItem,
 } from "@/components/motion";
+import { GITHUB_CONFIG } from "@/lib/github/config";
 
 const GPU_SPRING = {
   type: "spring",
@@ -121,6 +122,80 @@ cd latex-writer
 pnpm install
 pnpm tauri:build`}
       </pre>
+    </FadeIn>
+  );
+}
+
+export function CreditsGate({
+  credits,
+  requiredCredits,
+  isLoggedIn,
+}: {
+  credits: number;
+  requiredCredits: number;
+  isLoggedIn: boolean;
+}) {
+  const progressPercent = Math.min((credits / requiredCredits) * 100, 100);
+
+  return (
+    <FadeIn className="max-w-2xl">
+      <div className="border-2 border-dashed border-neutral-300 p-8">
+        <h2 className="text-xl font-medium mb-2">
+          {requiredCredits} credits required to download
+        </h2>
+        <p className="text-sm text-muted mb-6">
+          Star repositories to earn credits. Each repo ={" "}
+          {GITHUB_CONFIG.CREDITS_PER_STAR} credits.
+        </p>
+
+        {isLoggedIn && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span className="text-muted">Your credits</span>
+              <span className="font-mono">
+                {credits}/{requiredCredits}
+              </span>
+            </div>
+            <div className="w-full h-2 bg-neutral-100 border border-neutral-200">
+              <div
+                className="h-full bg-black transition-all duration-500"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="border border-black bg-neutral-50 p-4 mb-6">
+          <p className="text-sm font-medium mb-1">
+            Beta users: Permanent credits
+          </p>
+          <p className="text-xs text-muted">
+            Credits earned during beta never expire. After public launch, the
+            app will be free to download, but premium AI features will consume
+            credits daily. Lock in your credits now.
+          </p>
+        </div>
+
+        {isLoggedIn ? (
+          <Link
+            href="/profile#earn-credits"
+            className="inline-flex items-center gap-2 px-6 py-3 border-2 border-black text-sm font-mono uppercase tracking-wider hover:bg-neutral-100 transition-colors"
+          >
+            Go to Profile to Earn Credits
+          </Link>
+        ) : (
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-2 px-6 py-3 border-2 border-black text-sm font-mono uppercase tracking-wider hover:bg-neutral-100 transition-colors"
+          >
+            Sign in to Get Started
+          </Link>
+        )}
+
+        <p className="text-xs text-muted mt-4">
+          Takes 2-3 minutes to earn enough credits
+        </p>
+      </div>
     </FadeIn>
   );
 }

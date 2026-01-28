@@ -50,8 +50,8 @@ export function Header() {
               email={user.email}
               name={user.name}
               avatarUrl={user.avatarUrl}
-              tier={user.tier}
-              expiresAt={user.expiresAt}
+              credits={user.credits}
+              canDownload={user.canDownload}
             />
           ) : (
             <Link

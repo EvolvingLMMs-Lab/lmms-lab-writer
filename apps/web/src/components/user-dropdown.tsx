@@ -6,31 +6,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
 
-type MembershipTier = "free" | "supporter";
-
 type Props = {
   email: string;
   name?: string | null;
   avatarUrl?: string | null;
-  tier?: MembershipTier;
-  expiresAt?: string | null;
+  credits?: number;
+  canDownload?: boolean;
 };
-
-function formatExpiryDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
 
 export function UserDropdown({
   email,
   name,
   avatarUrl,
-  tier = "free",
-  expiresAt,
+  credits = 0,
+  canDownload = false,
 }: Props) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -137,49 +126,31 @@ export function UserDropdown({
           </Link>
 
           <div className="px-5 py-4 border-b border-border bg-neutral-50">
-            {tier === "supporter" && expiresAt ? (
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-muted uppercase tracking-wider">
-                    Membership
-                  </span>
-                  <p className="text-sm mt-1">
-                    Expires {formatExpiryDate(expiresAt)}
-                  </p>
-                </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs text-muted uppercase tracking-wider">
+                  Credits
+                </span>
+                <p className="text-sm font-mono mt-1">{credits}/30</p>
+              </div>
+              {canDownload ? (
                 <Link
-                  href="/profile"
+                  href="/download"
+                  onClick={() => setIsOpen(false)}
+                  className="text-xs font-medium hover:text-black transition-colors"
+                >
+                  Download
+                </Link>
+              ) : (
+                <Link
+                  href="/profile#earn-credits"
                   onClick={() => setIsOpen(false)}
                   className="text-xs text-muted hover:text-black transition-colors"
                 >
-                  Manage
+                  Earn more
                 </Link>
-              </div>
-            ) : (
-              <Link
-                href="/profile"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center justify-between group"
-              >
-                <span className="text-sm font-medium">
-                  Star repos to unlock
-                </span>
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-muted group-hover:text-black transition-colors">
-                  Unlock
-                  <svg
-                    className="size-3"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2.5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                </span>
-              </Link>
-            )}
+              )}
+            </div>
           </div>
 
           <div className="px-5 py-3">

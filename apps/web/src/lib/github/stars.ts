@@ -127,9 +127,9 @@ export async function updateMembershipFromStars(
   supabase: SupabaseClient,
   userId: string,
   starredRepos: StarredRepo[],
-): Promise<{ tier: string; daysGranted: number; error?: string }> {
+): Promise<{ tier: string; creditsGranted: number; error?: string }> {
   const starCount = starredRepos.length;
-  const { tier, daysGranted } = calculateMembership(starCount);
+  const { tier, creditsGranted } = calculateMembership(starCount);
 
   const { error } = await supabase.rpc("update_membership_from_stars", {
     p_user_id: userId,
@@ -138,10 +138,10 @@ export async function updateMembershipFromStars(
   });
 
   if (error) {
-    return { tier, daysGranted, error: error.message };
+    return { tier, creditsGranted, error: error.message };
   }
 
-  return { tier, daysGranted };
+  return { tier, creditsGranted };
 }
 
 export async function storeGitHubToken(

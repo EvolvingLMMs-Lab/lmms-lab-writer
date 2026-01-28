@@ -1,10 +1,11 @@
 export const GITHUB_CONFIG = {
   ORG: "EvolvingLMMs-Lab",
-  MAX_ELIGIBLE_REPOS: 5, // Top N repos counted for membership
-  MIN_STARS_TO_SHOW: 100, // Minimum stars to show in suggested repos
-  DAYS_PER_STAR: 7,
+  MAX_ELIGIBLE_REPOS: 5,
+  MIN_STARS_TO_SHOW: 100,
+  CREDITS_PER_STAR: 7,
   MAX_STARS: 5,
-  MAX_DAYS: 35,
+  MAX_CREDITS: 35,
+  CREDITS_TO_DOWNLOAD: 30,
 } as const;
 
 export type RepoInfo = {
@@ -115,17 +116,21 @@ export interface MembershipInfo {
 
 export function calculateMembership(starCount: number): {
   tier: MembershipTier;
-  daysGranted: number;
+  creditsGranted: number;
 } {
   if (starCount >= 1) {
     const effectiveStars = Math.min(starCount, GITHUB_CONFIG.MAX_STARS);
-    const days = Math.min(
-      effectiveStars * GITHUB_CONFIG.DAYS_PER_STAR,
-      GITHUB_CONFIG.MAX_DAYS,
+    const credits = Math.min(
+      effectiveStars * GITHUB_CONFIG.CREDITS_PER_STAR,
+      GITHUB_CONFIG.MAX_CREDITS,
     );
-    return { tier: "supporter", daysGranted: days };
+    return { tier: "supporter", creditsGranted: credits };
   }
-  return { tier: "free", daysGranted: 0 };
+  return { tier: "free", creditsGranted: 0 };
+}
+
+export function canDownload(credits: number): boolean {
+  return credits >= GITHUB_CONFIG.CREDITS_TO_DOWNLOAD;
 }
 
 export function getDaysRemaining(expiresAt: Date | null): number | null {

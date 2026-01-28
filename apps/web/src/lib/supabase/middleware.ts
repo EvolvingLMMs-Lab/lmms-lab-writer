@@ -49,16 +49,20 @@ export async function updateSession(request: NextRequest) {
     const metadata = user.user_metadata || {};
     const { data: membership } = await supabase
       .from("user_memberships")
-      .select("tier, expires_at")
+      .select("total_star_count")
       .eq("user_id", user.id)
       .single();
+
+    const totalStars = membership?.total_star_count || 0;
+    const credits = totalStars * 7;
+    const canDownload = credits >= 30;
 
     const cachedUser: CachedUser = {
       email: user.email ?? "",
       name: metadata.full_name || metadata.name || metadata.user_name || null,
       avatarUrl: metadata.avatar_url || metadata.picture || null,
-      tier: (membership?.tier as "free" | "supporter") || "free",
-      expiresAt: membership?.expires_at ?? null,
+      credits,
+      canDownload,
     };
 
     supabaseResponse.cookies.set(COOKIE_NAME, encodeUserCache(cachedUser), {

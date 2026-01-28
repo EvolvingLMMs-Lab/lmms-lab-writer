@@ -4,9 +4,8 @@ import {
   getStoredGitHubToken,
   checkStarredRepos,
   updateMembershipFromStars,
-  getMembershipInfo,
 } from "@/lib/github/stars";
-import { getDaysRemaining } from "@/lib/github/config";
+import { GITHUB_CONFIG } from "@/lib/github/config";
 
 export async function POST() {
   const supabase = await createClient();
@@ -50,18 +49,16 @@ export async function POST() {
       );
     }
 
-    const membership = await getMembershipInfo(supabase, user.id);
+    const credits = starredRepos.length * GITHUB_CONFIG.CREDITS_PER_STAR;
 
     return NextResponse.json({
       success: true,
       tier: result.tier,
-      daysGranted: result.daysGranted,
+      creditsGranted: result.creditsGranted,
       starredRepos,
       totalStarCount: starredRepos.length,
-      expiresAt: membership?.expiresAt || null,
-      daysRemaining: membership?.expiresAt
-        ? getDaysRemaining(new Date(membership.expiresAt))
-        : null,
+      credits,
+      canDownload: credits >= GITHUB_CONFIG.CREDITS_TO_DOWNLOAD,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

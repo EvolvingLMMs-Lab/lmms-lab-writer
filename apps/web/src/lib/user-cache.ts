@@ -5,8 +5,8 @@ export type CachedUser = {
   email: string;
   name: string | null;
   avatarUrl: string | null;
-  tier: "free" | "supporter";
-  expiresAt: string | null;
+  credits: number;
+  canDownload: boolean;
 };
 
 export function encodeUserCache(user: CachedUser): string {
