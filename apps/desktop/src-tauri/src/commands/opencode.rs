@@ -96,7 +96,7 @@ async fn find_opencode() -> Option<String> {
 
 #[tauri::command]
 pub async fn opencode_status(state: tauri::State<'_, OpenCodeState>) -> Result<OpenCodeStatus, String> {
-    let running = state
+    let process_running = state
         .process
         .lock()
         .map_err(|e| e.to_string())?
@@ -104,8 +104,22 @@ pub async fn opencode_status(state: tauri::State<'_, OpenCodeState>) -> Result<O
         .map(|_| true)
         .unwrap_or(false);
 
-    let port = *state.port.lock().map_err(|e| e.to_string())?;
+    let mut port = *state.port.lock().map_err(|e| e.to_string())?;
     let installed = find_opencode().await.is_some();
+
+    // If no process is tracked by this app, check if daemon is running externally
+    let running = if process_running {
+        true
+    } else if let Some(detected_port) = find_running_opencode_port(4096, 10).await {
+        // Found an externally running daemon, update the port
+        port = detected_port;
+        if let Ok(mut port_guard) = state.port.lock() {
+            *port_guard = detected_port;
+        }
+        true
+    } else {
+        false
+    };
 
     Ok(OpenCodeStatus {
         running,
@@ -117,6 +131,44 @@ pub async fn opencode_status(state: tauri::State<'_, OpenCodeState>) -> Result<O
 async fn check_port_in_use(port: u16) -> bool {
     use std::net::TcpListener;
     TcpListener::bind(("127.0.0.1", port)).is_err()
+}
+
+/// Check if OpenCode daemon is running on a specific port by making an HTTP request
+async fn check_opencode_running_on_port(port: u16) -> bool {
+    let url = format!("http://127.0.0.1:{}/agent", port);
+    let client = match reqwest::Client::builder()
+        .timeout(Duration::from_millis(500))
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+
+    match client.get(&url).send().await {
+        Ok(resp) => resp.status().is_success(),
+        Err(_) => false,
+    }
+}
+
+/// Find a running OpenCode daemon on common ports
+async fn find_running_opencode_port(start_port: u16, max_attempts: u16) -> Option<u16> {
+    for offset in 0..max_attempts {
+        let port = start_port + offset;
+        if check_opencode_running_on_port(port).await {
+            return Some(port);
+        }
+    }
+    None
+}
+
+async fn find_available_port(start_port: u16, max_attempts: u16) -> Option<u16> {
+    for offset in 0..max_attempts {
+        let port = start_port + offset;
+        if !check_port_in_use(port).await {
+            return Some(port);
+        }
+    }
+    None
 }
 
 #[tauri::command]
@@ -135,15 +187,16 @@ pub async fn opencode_start(
 
     let opencode_path = find_opencode().await.ok_or("OpenCode not found. Please install it from https://opencode.ai/ or run: npm i -g opencode-ai@latest")?;
 
-    let port = port.unwrap_or(4096);
-    
-    if check_port_in_use(port).await {
-        return Err(format!(
-            "Port {} is already in use. Kill the existing process or use a different port.\n\
-            Try: lsof -i :{} | grep LISTEN",
-            port, port
-        ));
-    }
+    let requested_port = port.unwrap_or(4096);
+
+    // Try to find an available port, starting from the requested port
+    let port = find_available_port(requested_port, 10).await.ok_or_else(|| {
+        format!(
+            "Could not find an available port in range {}-{}. Please close some applications or specify a different port.",
+            requested_port,
+            requested_port + 9
+        )
+    })?;
 
     let dir_path = std::path::Path::new(&directory);
     if !dir_path.exists() {
