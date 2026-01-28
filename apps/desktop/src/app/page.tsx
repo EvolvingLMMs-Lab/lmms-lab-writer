@@ -188,7 +188,25 @@ export default function EditorPage() {
   );
 
   const restartOpencode = useCallback(async () => {
-    if (!daemon.projectPath || opencodeDaemonStatus === "unavailable") return;
+    if (!daemon.projectPath) return;
+
+    // If status is "unavailable", re-check if OpenCode is now installed
+    if (opencodeDaemonStatus === "unavailable") {
+      const status = await checkOpencodeStatus();
+      if (!status?.installed) {
+        toast(
+          "OpenCode is still not installed. Please install it first.",
+          "error",
+        );
+        return;
+      }
+      // OpenCode is now installed, proceed to start it
+      if (!status.running) {
+        await startOpencode(daemon.projectPath);
+      }
+      return;
+    }
+
     try {
       setOpencodeDaemonStatus("starting");
       const status = await invoke<OpenCodeStatus>("opencode_restart", {
@@ -204,7 +222,7 @@ export default function EditorPage() {
         "error",
       );
     }
-  }, [daemon.projectPath, opencodeDaemonStatus, toast]);
+  }, [daemon.projectPath, opencodeDaemonStatus, toast, checkOpencodeStatus, startOpencode]);
 
   const handleMaxReconnectFailed = useCallback(() => {
     setShowDisconnectedDialog(true);
@@ -253,6 +271,28 @@ export default function EditorPage() {
       opencodeStartedForPathRef.current = null;
     }
   }, [daemon.projectPath]);
+
+  // Listen for opencode logs from Tauri backend
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    import("@tauri-apps/api/event").then(({ listen }) => {
+      listen<{ type: string; message: string }>("opencode-log", (event) => {
+        const { type, message } = event.payload;
+        if (type === "stderr") {
+          console.error("[OpenCode]", message);
+        } else {
+          console.log("[OpenCode]", message);
+        }
+      }).then((fn) => {
+        unlisten = fn;
+      });
+    });
+
+    return () => {
+      unlisten?.();
+    };
+  }, []);
 
   useEffect(() => {
     if (!resizing) return;

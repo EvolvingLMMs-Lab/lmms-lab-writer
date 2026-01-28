@@ -2,6 +2,7 @@ use std::process::Stdio;
 use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child as TokioChild, Command as TokioCommand};
 use tokio::time::{sleep, Duration};
 
@@ -163,42 +164,49 @@ pub async fn opencode_start(
         .spawn()
         .map_err(|e| format!("Failed to spawn OpenCode process: {}", e))?;
 
+    // Spawn tasks to stream stdout/stderr to frontend
+    if let Some(stdout) = child.stdout.take() {
+        let app_clone = app.clone();
+        tokio::spawn(async move {
+            let reader = BufReader::new(stdout);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = app_clone.emit("opencode-log", serde_json::json!({
+                    "type": "stdout",
+                    "message": line
+                }));
+            }
+        });
+    }
+
+    if let Some(stderr) = child.stderr.take() {
+        let app_clone = app.clone();
+        tokio::spawn(async move {
+            let reader = BufReader::new(stderr);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = app_clone.emit("opencode-log", serde_json::json!({
+                    "type": "stderr",
+                    "message": line
+                }));
+            }
+        });
+    }
+
     sleep(Duration::from_millis(800)).await;
 
     if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
-        let stderr = if let Some(mut stderr_handle) = child.stderr.take() {
-            use tokio::io::AsyncReadExt;
-            let mut buffer = Vec::new();
-            stderr_handle.read_to_end(&mut buffer).await.ok();
-            String::from_utf8_lossy(&buffer).to_string()
-        } else {
-            String::new()
-        };
-
-        let stdout = if let Some(mut stdout_handle) = child.stdout.take() {
-            use tokio::io::AsyncReadExt;
-            let mut buffer = Vec::new();
-            stdout_handle.read_to_end(&mut buffer).await.ok();
-            String::from_utf8_lossy(&buffer).to_string()
-        } else {
-            String::new()
-        };
-
-        let mut error_msg = format!(
+        // Note: stdout/stderr are already being streamed via events above
+        // Check the opencode-log events for detailed output
+        let error_msg = format!(
             "OpenCode exited immediately (exit code: {})\n\
             Path: {}\n\
-            Directory: {}",
+            Directory: {}\n\n\
+            Check the opencode-log events for detailed output.",
             status.code().map(|c| c.to_string()).unwrap_or_else(|| "signal".to_string()),
             opencode_path,
             directory
         );
-
-        if !stderr.trim().is_empty() {
-            error_msg.push_str(&format!("\n\nStderr:\n{}", stderr.trim()));
-        }
-        if !stdout.trim().is_empty() {
-            error_msg.push_str(&format!("\n\nStdout:\n{}", stdout.trim()));
-        }
 
         return Err(error_msg);
     }

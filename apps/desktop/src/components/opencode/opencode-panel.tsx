@@ -1639,6 +1639,17 @@ function InputArea({
 
   return (
     <div className="border-t border-border flex-shrink-0 bg-white relative z-20">
+      {isWorking && (
+        <div className="px-3 py-2 bg-neutral-50 border-b border-border flex items-center gap-2">
+          <div className="relative flex items-center justify-center">
+            <span className="absolute size-2 bg-black/60 animate-ping rounded-full" />
+            <span className="size-2 bg-black rounded-full" />
+          </div>
+          <span className="text-xs text-neutral-600">
+            Agent is working in the background...
+          </span>
+        </div>
+      )}
       {isExpanded && (
         <div className="px-3 pt-3 pb-2 border-b border-border bg-neutral-50">
           <div className="flex gap-2">

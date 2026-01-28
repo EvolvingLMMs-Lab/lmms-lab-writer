@@ -205,7 +205,8 @@ export function useOpenCode(
             client.store.status.get(firstSession.id) || { type: "idle" },
           );
 
-          await Promise.all(
+          // Use allSettled to prevent one failing request from breaking the whole flow
+          await Promise.allSettled(
             msgs.map((msg) => client.getParts(firstSession.id, msg.id)),
           );
           const sessionParts = new Map<string, Part[]>();
@@ -261,8 +262,31 @@ export function useOpenCode(
 
   useEffect(() => {
     if (connected) {
-      loadSessions();
-      loadConfig();
+      // Wait for API to be ready before loading data
+      // EventSource may connect before REST endpoints are ready
+      const client = clientRef.current;
+      if (!client) return;
+
+      let cancelled = false;
+      const initData = async () => {
+        // Wait for API to return JSON (with retries)
+        const ready = await client.waitForApiReady();
+        if (cancelled) return;
+
+        if (ready) {
+          loadSessions();
+          loadConfig();
+        } else {
+          console.error(
+            "[OpenCode] API not ready, skipping initial data load",
+          );
+        }
+      };
+
+      initData();
+      return () => {
+        cancelled = true;
+      };
     }
   }, [connected, loadSessions, loadConfig]);
 
@@ -319,7 +343,8 @@ export function useOpenCode(
         }
         setParts(sessionParts);
 
-        await Promise.all(
+        // Use allSettled to prevent one failing request from breaking the whole flow
+        await Promise.allSettled(
           msgs.map((msg) => client.getParts(sessionId, msg.id)),
         );
 

@@ -43,6 +43,68 @@ export class OpenCodeClient {
     this.abortController = new AbortController();
   }
 
+  /**
+   * Safely parse JSON response, with content-type validation
+   * Returns null if the response is not valid JSON
+   */
+  private async safeParseJson<T>(
+    response: Response,
+    context: string,
+  ): Promise<T | null> {
+    const contentType = response.headers.get("content-type");
+    if (!contentType?.includes("application/json")) {
+      // Try to get a preview of the response for debugging
+      const text = await response.text();
+      const preview = text.slice(0, 100);
+      console.error(
+        `[OpenCode] ${context}: Expected JSON but got ${contentType || "unknown content-type"}. Preview: ${preview}`,
+      );
+      return null;
+    }
+    try {
+      return await response.json();
+    } catch (err) {
+      console.error(`[OpenCode] ${context}: Failed to parse JSON:`, err);
+      return null;
+    }
+  }
+
+  /**
+   * Wait for the API to be ready by checking if /session returns JSON
+   * Retries with exponential backoff
+   */
+  async waitForApiReady(maxRetries = 5, initialDelay = 500): Promise<boolean> {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const response = await fetch(
+          `${this.baseUrl}/session${this.getQueryParams()}`,
+          {
+            headers: this.getHeaders(),
+            signal: AbortSignal.timeout(2000),
+          },
+        );
+        const contentType = response.headers.get("content-type");
+        if (contentType?.includes("application/json")) {
+          console.log("[OpenCode] API is ready");
+          return true;
+        }
+        console.log(
+          `[OpenCode] API not ready yet (attempt ${i + 1}/${maxRetries}), got ${contentType}`,
+        );
+      } catch (err) {
+        console.log(
+          `[OpenCode] API check failed (attempt ${i + 1}/${maxRetries}):`,
+          err,
+        );
+      }
+      // Exponential backoff
+      const delay = initialDelay * Math.pow(2, i);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+    console.error("[OpenCode] API did not become ready after retries");
+    return false;
+  }
+
   private getHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -239,7 +301,10 @@ export class OpenCodeClient {
         console.error(`Failed to list sessions: ${response.statusText}`);
         return [];
       }
-      const data = await response.json();
+      const data = await this.safeParseJson<SessionInfo[]>(
+        response,
+        "listSessions",
+      );
       return Array.isArray(data) ? data : [];
     } catch (error) {
       if ((error as Error).name === "AbortError") return [];
@@ -258,7 +323,9 @@ export class OpenCodeClient {
     );
     if (!response.ok)
       throw new Error(`Failed to get session: ${response.statusText}`);
-    return response.json();
+    const data = await this.safeParseJson<SessionInfo>(response, "getSession");
+    if (!data) throw new Error("Invalid response from server (expected JSON)");
+    return data;
   }
 
   async createSession(): Promise<SessionInfo> {
@@ -273,7 +340,12 @@ export class OpenCodeClient {
     );
     if (!response.ok)
       throw new Error(`Failed to create session: ${response.statusText}`);
-    return response.json();
+    const data = await this.safeParseJson<SessionInfo>(
+      response,
+      "createSession",
+    );
+    if (!data) throw new Error("Invalid response from server (expected JSON)");
+    return data;
   }
 
   async deleteSession(sessionID: string): Promise<void> {
@@ -299,7 +371,7 @@ export class OpenCodeClient {
     );
     if (!response.ok)
       throw new Error(`Failed to get messages: ${response.statusText}`);
-    const data = await response.json();
+    const data = await this.safeParseJson<unknown[]>(response, "getMessages");
     const items = Array.isArray(data) ? data : [];
 
     const messages: Message[] = [];
@@ -327,7 +399,7 @@ export class OpenCodeClient {
     );
     if (!response.ok)
       throw new Error(`Failed to get parts: ${response.statusText}`);
-    const data = await response.json();
+    const data = await this.safeParseJson<Part[]>(response, "getParts");
     const parts = Array.isArray(data) ? data : [];
     this.store.parts.set(`${sessionID}:${messageID}`, parts);
     return parts;
@@ -392,7 +464,9 @@ export class OpenCodeClient {
         console.error(`Failed to get agents: ${response.statusText}`);
         return [];
       }
-      const data = await response.json();
+      const data = await this.safeParseJson<
+        { id: string; name: string; description?: string }[]
+      >(response, "getAgents");
       return Array.isArray(data) ? data : [];
     } catch (error) {
       if ((error as Error).name === "AbortError") return [];
@@ -416,7 +490,11 @@ export class OpenCodeClient {
         console.error(`Failed to get providers: ${response.statusText}`);
         return [];
       }
-      const data = await response.json();
+      const data = await this.safeParseJson<{
+        all?: unknown[];
+        connected?: string[];
+      }>(response, "getProviders");
+      if (!data) return [];
       const allProviders = Array.isArray(data?.all) ? data.all : [];
       const connectedIds = new Set(
         Array.isArray(data?.connected) ? data.connected : [],
