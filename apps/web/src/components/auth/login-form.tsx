@@ -38,16 +38,25 @@ export function LoginForm() {
     setError(null);
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "github",
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
       if (error) {
-        setError(error.message);
+        setError(`GitHub OAuth error: ${error.message}`);
         setLoading(false);
+        return;
       }
+      if (!data?.url) {
+        setError(
+          "GitHub OAuth not configured. Please check Supabase settings.",
+        );
+        setLoading(false);
+        return;
+      }
+      window.location.href = data.url;
     } catch (e) {
       setError(e instanceof Error ? e.message : "GitHub login failed");
       setLoading(false);
