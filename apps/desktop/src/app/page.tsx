@@ -188,23 +188,39 @@ export default function EditorPage() {
   );
 
   const restartOpencode = useCallback(async () => {
-    if (!daemon.projectPath || opencodeDaemonStatus === "unavailable") return;
+    if (!daemon.projectPath) {
+      toast("Please open a project first.", "error");
+      return;
+    }
+
     try {
       setOpencodeDaemonStatus("starting");
+      const currentStatus = await invoke<OpenCodeStatus>("opencode_status");
+
+      if (!currentStatus.installed) {
+        setOpencodeDaemonStatus("unavailable");
+        toast(
+          "OpenCode is not installed. Please install it first:\nnpm i -g opencode-ai@latest\nor\nbrew install sst/tap/opencode",
+          "error",
+        );
+        return;
+      }
+
       const status = await invoke<OpenCodeStatus>("opencode_restart", {
         directory: daemon.projectPath,
       });
       setOpencodeDaemonStatus("running");
       setOpencodePort(status.port);
+      toast("OpenCode started successfully!", "success");
     } catch (err) {
-      // console.error("Failed to restart OpenCode:", err);
+      console.error("Failed to start OpenCode:", err);
       setOpencodeDaemonStatus("unavailable");
       toast(
-        "Failed to restart OpenCode. Please check if it is installed correctly.",
+        `Failed to start OpenCode: ${err instanceof Error ? err.message : String(err)}`,
         "error",
       );
     }
-  }, [daemon.projectPath, opencodeDaemonStatus, toast]);
+  }, [daemon.projectPath, toast]);
 
   const handleMaxReconnectFailed = useCallback(() => {
     setShowDisconnectedDialog(true);
@@ -247,7 +263,10 @@ export default function EditorPage() {
     localStorage.setItem("rightPanelWidth", String(rightPanelWidth));
   }, [rightPanelWidth]);
 
-  // OpenCode is started manually when user clicks the right panel toggle
+  useEffect(() => {
+    checkOpencodeStatus();
+  }, [checkOpencodeStatus]);
+
   useEffect(() => {
     if (!daemon.projectPath) {
       opencodeStartedForPathRef.current = null;
@@ -371,7 +390,10 @@ export default function EditorPage() {
           // Handle file not found - remove from tabs and notify user
           if (errorStr.includes("FILE_NOT_FOUND")) {
             const fileName = path.split("/").pop() || path;
-            toast(`File "${fileName}" no longer exists and has been removed from tabs`, "error");
+            toast(
+              `File "${fileName}" no longer exists and has been removed from tabs`,
+              "error",
+            );
 
             // Remove the file from open tabs
             setOpenTabs((prev) => {
@@ -507,11 +529,6 @@ export default function EditorPage() {
   );
 
   const handleOpenFolder = useCallback(async () => {
-    // Only run in Tauri environment
-    if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
-      console.warn("Tauri APIs not available in browser context");
-      return;
-    }
     try {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const selected = await open({
@@ -646,10 +663,11 @@ export default function EditorPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={handleToggleRightPanel}
-              className={`btn btn-sm border-2 border-black transition-all flex items-center gap-2 bg-white text-black ${showRightPanel
-                ? "shadow-none translate-x-[3px] translate-y-[3px]"
-                : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px]"
-                }`}
+              className={`btn btn-sm border-2 border-black transition-all flex items-center gap-2 bg-white text-black ${
+                showRightPanel
+                  ? "shadow-none translate-x-[3px] translate-y-[3px]"
+                  : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px]"
+              }`}
             >
               Agent Mode
             </button>
@@ -715,19 +733,21 @@ export default function EditorPage() {
                 <div className="flex items-center border-b border-border">
                   <button
                     onClick={() => setSidebarTab("files")}
-                    className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${sidebarTab === "files"
-                      ? "text-black border-b-2 border-black -mb-px"
-                      : "text-muted hover:text-black"
-                      }`}
+                    className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
+                      sidebarTab === "files"
+                        ? "text-black border-b-2 border-black -mb-px"
+                        : "text-muted hover:text-black"
+                    }`}
                   >
                     Files
                   </button>
                   <button
                     onClick={() => setSidebarTab("git")}
-                    className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${sidebarTab === "git"
-                      ? "text-black border-b-2 border-black -mb-px"
-                      : "text-muted hover:text-black"
-                      }`}
+                    className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
+                      sidebarTab === "git"
+                        ? "text-black border-b-2 border-black -mb-px"
+                        : "text-muted hover:text-black"
+                    }`}
                   >
                     Git
                     {gitStatus && gitStatus.changes.length > 0 && (
@@ -771,7 +791,9 @@ export default function EditorPage() {
                               </svg>
                             </button>
                             <button
-                              onClick={() => setCreateDialog({ type: "directory" })}
+                              onClick={() =>
+                                setCreateDialog({ type: "directory" })
+                              }
                               className="p-1 text-muted hover:text-black hover:bg-black/5 transition-colors"
                               title="New Folder"
                               aria-label="New Folder"
@@ -1241,20 +1263,16 @@ export default function EditorPage() {
           )}
         </div>
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {showRightPanel && (
             <motion.div
               key="right-panel-container"
               initial={
-                prefersReducedMotion
-                  ? { opacity: 1 }
-                  : { x: rightPanelWidth, opacity: 0 }
+                prefersReducedMotion ? { opacity: 1 } : { x: 300, opacity: 0 }
               }
               animate={{ x: 0, opacity: 1 }}
               exit={
-                prefersReducedMotion
-                  ? { opacity: 0 }
-                  : { x: rightPanelWidth, opacity: 0 }
+                prefersReducedMotion ? { opacity: 0 } : { x: 300, opacity: 0 }
               }
               transition={
                 prefersReducedMotion ? INSTANT_TRANSITION : PANEL_SPRING
