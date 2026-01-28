@@ -53,6 +53,7 @@
     "yjs": "^13.6.29"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
     "@tauri-apps/cli": "^2.9.6",
     "@types/node": "^25.0.10",
     "@types/react": "^19.2.10",

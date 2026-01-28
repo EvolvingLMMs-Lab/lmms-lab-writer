@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@lmms-lab/writer-shared"],
   assetPrefix: isProd ? undefined : `http://${internalHost}:3000`,
   productionBrowserSourceMaps: false,
+  turbopack: {},
 
   webpack: (config: Configuration, { isServer }) => {
     config.module = config.module || { rules: [] };
