@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, memo, useRef, useEffect } from "react";
+import { useState, useCallback, memo, useRef, useEffect, useMemo } from "react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { FileNode } from "@lmms-lab/writer-shared";
@@ -88,6 +88,8 @@ const TreeNode = memo(function TreeNode({
   selectedFile,
   highlightedFile,
   defaultExpanded = false,
+  focusedPath,
+  onExpandedChange,
 }: {
   node: FileNode;
   depth: number;
@@ -95,10 +97,13 @@ const TreeNode = memo(function TreeNode({
   selectedFile?: string;
   highlightedFile?: string | null;
   defaultExpanded?: boolean;
+  focusedPath?: string | null;
+  onExpandedChange?: (path: string, expanded: boolean) => void;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const isDirectory = node.type === "directory";
   const isHighlighted = highlightedFile === node.path;
+  const isFocused = focusedPath === node.path;
   const shouldAutoExpand =
     isDirectory &&
     !!highlightedFile &&
@@ -112,8 +117,9 @@ const TreeNode = memo(function TreeNode({
   useEffect(() => {
     if (shouldAutoExpand && !expanded) {
       setExpanded(true);
+      onExpandedChange?.(node.path, true);
     }
-  }, [shouldAutoExpand, expanded]);
+  }, [shouldAutoExpand, expanded, node.path, onExpandedChange]);
 
   useEffect(() => {
     if (isHighlighted && buttonRef.current) {
@@ -126,11 +132,15 @@ const TreeNode = memo(function TreeNode({
 
   const handleClick = useCallback(() => {
     if (isDirectory) {
-      setExpanded((prev) => !prev);
+      setExpanded((prev) => {
+        const newExpanded = !prev;
+        onExpandedChange?.(node.path, newExpanded);
+        return newExpanded;
+      });
     } else {
       onFileSelect?.(node.path);
     }
-  }, [isDirectory, node.path, onFileSelect]);
+  }, [isDirectory, node.path, onFileSelect, onExpandedChange]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -151,8 +161,14 @@ const TreeNode = memo(function TreeNode({
         role="treeitem"
         aria-expanded={isDirectory ? expanded : undefined}
         aria-selected={isSelected}
+        tabIndex={-1}
+        data-path={node.path}
         className={`w-full flex items-center gap-2 px-2 py-1 text-left text-sm transition-colors ${
-          isSelected ? "bg-black text-white" : "hover:bg-black/5"
+          isSelected
+            ? "bg-black text-white"
+            : isFocused
+              ? "bg-black/10"
+              : "hover:bg-black/5"
         }`}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
         whileTap={{ scale: 0.98 }}
@@ -206,6 +222,8 @@ const TreeNode = memo(function TreeNode({
                 onFileSelect={onFileSelect}
                 selectedFile={selectedFile}
                 highlightedFile={highlightedFile}
+                focusedPath={focusedPath}
+                onExpandedChange={onExpandedChange}
               />
             ))}
           </motion.div>
@@ -215,6 +233,35 @@ const TreeNode = memo(function TreeNode({
   );
 });
 
+function flattenVisibleNodes(
+  nodes: FileNode[],
+  expandedPaths: Set<string>,
+  depth = 0,
+): Array<{ node: FileNode; depth: number }> {
+  const result: Array<{ node: FileNode; depth: number }> = [];
+
+  for (const node of nodes) {
+    result.push({ node, depth });
+
+    if (
+      node.type === "directory" &&
+      node.children &&
+      expandedPaths.has(node.path)
+    ) {
+      result.push(
+        ...flattenVisibleNodes(node.children, expandedPaths, depth + 1),
+      );
+    }
+  }
+
+  return result;
+}
+
+function getParentPath(path: string): string | null {
+  const lastSlash = path.lastIndexOf("/");
+  return lastSlash > 0 ? path.substring(0, lastSlash) : null;
+}
+
 export const FileTree = memo(function FileTree({
   files,
   onFileSelect,
@@ -222,6 +269,171 @@ export const FileTree = memo(function FileTree({
   highlightedFile,
   className = "",
 }: Props) {
+  const [focusedPath, setFocusedPath] = useState<string | null>(null);
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    files.forEach((node) => {
+      if (node.type === "directory") {
+        initial.add(node.path);
+      }
+    });
+    return initial;
+  });
+
+  const visibleItems = useMemo(
+    () => flattenVisibleNodes(files, expandedPaths),
+    [files, expandedPaths],
+  );
+
+  const handleExpandedChange = useCallback(
+    (path: string, expanded: boolean) => {
+      setExpandedPaths((prev) => {
+        const next = new Set(prev);
+        if (expanded) {
+          next.add(path);
+        } else {
+          next.delete(path);
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (visibleItems.length === 0) return;
+
+      const currentIndex = focusedPath
+        ? visibleItems.findIndex((item) => item.node.path === focusedPath)
+        : -1;
+
+      switch (e.key) {
+        case "ArrowDown": {
+          e.preventDefault();
+          const nextIndex =
+            currentIndex < visibleItems.length - 1 ? currentIndex + 1 : 0;
+          const nextItem = visibleItems[nextIndex];
+          if (nextItem) {
+            setFocusedPath(nextItem.node.path);
+          }
+          break;
+        }
+
+        case "ArrowUp": {
+          e.preventDefault();
+          const prevIndex =
+            currentIndex > 0 ? currentIndex - 1 : visibleItems.length - 1;
+          const prevItem = visibleItems[prevIndex];
+          if (prevItem) {
+            setFocusedPath(prevItem.node.path);
+          }
+          break;
+        }
+
+        case "ArrowRight": {
+          e.preventDefault();
+          if (currentIndex >= 0) {
+            const current = visibleItems[currentIndex];
+            if (current && current.node.type === "directory") {
+              if (!expandedPaths.has(current.node.path)) {
+                handleExpandedChange(current.node.path, true);
+              } else if (
+                current.node.children &&
+                current.node.children.length > 0
+              ) {
+                const firstChild = current.node.children[0];
+                if (firstChild) {
+                  setFocusedPath(firstChild.path);
+                }
+              }
+            }
+          }
+          break;
+        }
+
+        case "ArrowLeft": {
+          e.preventDefault();
+          if (currentIndex >= 0) {
+            const current = visibleItems[currentIndex];
+            if (current) {
+              if (
+                current.node.type === "directory" &&
+                expandedPaths.has(current.node.path)
+              ) {
+                handleExpandedChange(current.node.path, false);
+              } else {
+                const parentPath = getParentPath(current.node.path);
+                if (parentPath) {
+                  setFocusedPath(parentPath);
+                }
+              }
+            }
+          }
+          break;
+        }
+
+        case "Home": {
+          e.preventDefault();
+          const firstItem = visibleItems[0];
+          if (firstItem) {
+            setFocusedPath(firstItem.node.path);
+          }
+          break;
+        }
+
+        case "End": {
+          e.preventDefault();
+          const lastItem = visibleItems[visibleItems.length - 1];
+          if (lastItem) {
+            setFocusedPath(lastItem.node.path);
+          }
+          break;
+        }
+
+        case "Enter":
+        case " ": {
+          e.preventDefault();
+          if (currentIndex >= 0) {
+            const current = visibleItems[currentIndex];
+            if (current) {
+              if (current.node.type === "directory") {
+                handleExpandedChange(
+                  current.node.path,
+                  !expandedPaths.has(current.node.path),
+                );
+              } else {
+                onFileSelect?.(current.node.path);
+              }
+            }
+          }
+          break;
+        }
+      }
+    },
+    [
+      visibleItems,
+      focusedPath,
+      expandedPaths,
+      handleExpandedChange,
+      onFileSelect,
+    ],
+  );
+
+  useEffect(() => {
+    if (focusedPath) {
+      const button = document.querySelector(
+        `[data-path="${CSS.escape(focusedPath)}"]`,
+      ) as HTMLElement;
+      if (button) {
+        button.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }
+    }
+  }, [focusedPath]);
+
   if (files.length === 0) {
     return (
       <div className={`p-4 text-sm text-muted ${className}`}>No files</div>
@@ -233,6 +445,8 @@ export const FileTree = memo(function FileTree({
       className={className}
       role="tree"
       aria-label="File explorer"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
       options={{
         scrollbars: {
           theme: "os-theme-monochrome",
@@ -250,6 +464,8 @@ export const FileTree = memo(function FileTree({
           selectedFile={selectedFile}
           highlightedFile={highlightedFile}
           defaultExpanded
+          focusedPath={focusedPath}
+          onExpandedChange={handleExpandedChange}
         />
       ))}
     </OverlayScrollbarsComponent>

@@ -62,6 +62,7 @@ export function useAuth() {
 
   useEffect(() => {
     let mounted = true;
+    let unsubscribe: (() => void) | null = null;
 
     const init = async () => {
       try {
@@ -121,9 +122,8 @@ export function useAuth() {
           }
         });
 
-        return () => {
-          subscription.unsubscribe();
-        };
+        // Store unsubscribe function for cleanup
+        unsubscribe = () => subscription.unsubscribe();
       } catch (err) {
         if (!mounted) return;
 
@@ -144,6 +144,7 @@ export function useAuth() {
 
     return () => {
       mounted = false;
+      unsubscribe?.();
     };
   }, [fetchProfile]);
 

@@ -1,6 +1,6 @@
 mod commands;
 
-use commands::fs::WatcherState;
+use commands::fs::{ProjectState, WatcherState};
 use commands::opencode::OpenCodeState;
 use commands::terminal::PtyState;
 use std::sync::Mutex;
@@ -44,7 +44,9 @@ pub fn run() {
         .manage(PtyState::default())
         .manage(OpenCodeState::default())
         .manage(Mutex::new(WatcherState::default()))
+        .manage(Mutex::new(ProjectState::default()))
         .invoke_handler(tauri::generate_handler![
+            commands::fs::set_project_path,
             commands::fs::read_file,
             commands::fs::write_file,
             commands::fs::get_file_tree,

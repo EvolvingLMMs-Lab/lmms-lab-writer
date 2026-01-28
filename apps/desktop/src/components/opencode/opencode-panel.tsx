@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useOpenCode } from "@/lib/opencode/use-opencode";
 import type {
   Message,
@@ -26,7 +26,7 @@ type Props = {
   onFileClick?: (path: string) => void;
 };
 
-export function OpenCodePanel({
+export const OpenCodePanel = memo(function OpenCodePanel({
   className = "",
   baseUrl,
   directory,
@@ -192,7 +192,7 @@ export function OpenCodePanel({
       )}
     </div>
   );
-}
+});
 
 function SessionList({
   sessions,
@@ -207,6 +207,7 @@ function SessionList({
   onNewSession: () => void;
   onDelete: (id: string) => void;
 }) {
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const sortedSessions = [...sessions].sort(
     (a, b) => b.time.updated - a.time.updated,
   );
@@ -265,11 +266,7 @@ function SessionList({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (
-                  window.confirm("Delete this session? This cannot be undone.")
-                ) {
-                  onDelete(session.id);
-                }
+                setDeleteConfirmId(session.id);
               }}
               className="px-3 py-2 text-muted hover:text-red-600 transition-colors"
               title="Delete session"
@@ -291,6 +288,33 @@ function SessionList({
           </div>
         );
       })}
+
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white border border-border p-4 max-w-xs w-full mx-4 shadow-[4px_4px_0_0_#000]">
+            <p className="text-sm mb-4">
+              Delete this session? This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="px-3 py-1.5 text-sm border border-border hover:bg-neutral-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onDelete(deleteConfirmId);
+                  setDeleteConfirmId(null);
+                }}
+                className="px-3 py-1.5 text-sm bg-white text-black border border-black shadow-[2px_2px_0_0_#000] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

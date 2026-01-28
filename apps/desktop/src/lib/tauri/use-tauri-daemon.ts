@@ -107,8 +107,50 @@ export function useTauriDaemon() {
     setOperationState((s) => ({ ...s, lastError: null }));
   }, []);
 
+  const refreshGitStatusInternal = useCallback(async (dir: string) => {
+    try {
+      const gitStatus = await invoke<GitStatus>("git_status", { dir });
+
+      if (gitStatus.isRepo) {
+        const log = await invoke<GitLogEntry[]>("git_log", { dir, limit: 1 });
+        const lastCommit = log.length > 0 ? log[0] : undefined;
+        const gitInfo: GitInfo = {
+          branch: gitStatus.branch,
+          isDirty: gitStatus.changes.length > 0,
+          lastCommit: lastCommit
+            ? {
+                hash: lastCommit.hash,
+                message: lastCommit.message,
+                date: lastCommit.date,
+              }
+            : undefined,
+          ahead: gitStatus.ahead,
+          behind: gitStatus.behind,
+        };
+        setGitState((s) => ({ ...s, gitStatus, gitInfo }));
+      } else {
+        setGitState((s) => ({ ...s, gitStatus, gitInfo: null }));
+      }
+    } catch (error) {
+      console.error("Failed to get git status:", error);
+      setGitState((s) => ({
+        ...s,
+        gitStatus: {
+          branch: "",
+          ahead: 0,
+          behind: 0,
+          changes: [],
+          isRepo: false,
+        },
+        gitInfo: null,
+      }));
+    }
+  }, []);
+
   const setProject = useCallback(
     async (path: string) => {
+      let isMounted = true;
+
       setProjectState((s) => ({ ...s, projectPath: path }));
       setOperationState((s) => ({
         ...s,
@@ -117,10 +159,13 @@ export function useTauriDaemon() {
       }));
 
       try {
-        const [rawFiles] = await Promise.all([
-          invoke<unknown[]>("get_file_tree", { dir: path }),
-          invoke("watch_directory", { path }),
-        ]);
+        await invoke("set_project_path", { path });
+        if (!isMounted) return;
+
+        const rawFiles = await invoke<unknown[]>("get_file_tree", {
+          dir: path,
+        });
+        if (!isMounted) return;
 
         const files = rawFiles.map((f) =>
           convertFileNode(f as Parameters<typeof convertFileNode>[0]),
@@ -134,13 +179,20 @@ export function useTauriDaemon() {
 
         refreshGitStatusInternal(path);
       } catch (error) {
+        if (!isMounted) return;
         console.error("Failed to set project:", error);
         setError(String(error), "open project");
       } finally {
-        setOperationState((s) => ({ ...s, isOpeningProject: false }));
+        if (isMounted) {
+          setOperationState((s) => ({ ...s, isOpeningProject: false }));
+        }
       }
+
+      return () => {
+        isMounted = false;
+      };
     },
-    [setError],
+    [setError, refreshGitStatusInternal],
   );
 
   const readFile = useCallback(
@@ -188,46 +240,6 @@ export function useTauriDaemon() {
       console.error("Failed to refresh files:", error);
     }
   }, [projectState.projectPath]);
-
-  const refreshGitStatusInternal = useCallback(async (dir: string) => {
-    try {
-      const gitStatus = await invoke<GitStatus>("git_status", { dir });
-
-      if (gitStatus.isRepo) {
-        const log = await invoke<GitLogEntry[]>("git_log", { dir, limit: 1 });
-        const lastCommit = log.length > 0 ? log[0] : undefined;
-        const gitInfo: GitInfo = {
-          branch: gitStatus.branch,
-          isDirty: gitStatus.changes.length > 0,
-          lastCommit: lastCommit
-            ? {
-                hash: lastCommit.hash,
-                message: lastCommit.message,
-                date: lastCommit.date,
-              }
-            : undefined,
-          ahead: gitStatus.ahead,
-          behind: gitStatus.behind,
-        };
-        setGitState((s) => ({ ...s, gitStatus, gitInfo }));
-      } else {
-        setGitState((s) => ({ ...s, gitStatus, gitInfo: null }));
-      }
-    } catch (error) {
-      console.error("Failed to get git status:", error);
-      setGitState((s) => ({
-        ...s,
-        gitStatus: {
-          branch: "",
-          ahead: 0,
-          behind: 0,
-          changes: [],
-          isRepo: false,
-        },
-        gitInfo: null,
-      }));
-    }
-  }, []);
 
   const refreshGitStatus = useCallback(async () => {
     if (!projectState.projectPath) return;
@@ -370,6 +382,7 @@ export function useTauriDaemon() {
     if (!projectState.projectPath) return;
 
     let isCleanedUp = false;
+    let watcherStarted = false;
     let unlistenFiles: (() => void) | null = null;
     let unlistenFileChanged: (() => void) | null = null;
 
@@ -417,13 +430,20 @@ export function useTauriDaemon() {
         (event) => {
           if (isCleanedUp) return;
 
-          const { kind } = event.payload;
-          setLastFileChange(event.payload);
+          const { path, kind } = event.payload;
+
+          const isTransientFile =
+            /\.(aux|log|out|toc|lof|lot|fls|fdb_latexmk|synctex\.gz|bbl|blg|nav|snm|vrb)$/i.test(
+              path,
+            );
+          if (!isTransientFile) {
+            setLastFileChange(event.payload);
+          }
 
           const currentPath = projectPathRef.current;
           if (!currentPath) return;
 
-          if (kind === "create" || kind === "remove") {
+          if ((kind === "create" || kind === "remove") && !isTransientFile) {
             debouncedRefreshFileTree(currentPath);
           }
 
@@ -439,7 +459,18 @@ export function useTauriDaemon() {
       }
     };
 
+    const startWatcher = async () => {
+      if (isCleanedUp) return;
+      try {
+        await invoke("watch_directory", { path: projectState.projectPath });
+        watcherStarted = true;
+      } catch (error) {
+        console.error("Failed to start watcher:", error);
+      }
+    };
+
     setupListeners();
+    startWatcher();
 
     return () => {
       isCleanedUp = true;
@@ -447,9 +478,11 @@ export function useTauriDaemon() {
       debouncedRefreshGit.cancel();
       unlistenFiles?.();
       unlistenFileChanged?.();
-      invoke("stop_watch").catch((error) =>
-        console.error("Failed to stop watch:", error),
-      );
+      if (watcherStarted) {
+        invoke("stop_watch").catch((error) =>
+          console.error("Failed to stop watch:", error),
+        );
+      }
     };
   }, [projectState.projectPath, refreshGitStatusInternal]);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { invoke } from "@tauri-apps/api/core";
@@ -11,7 +11,10 @@ type Props = {
   className?: string;
 };
 
-export function Terminal({ projectPath, className = "" }: Props) {
+export const Terminal = memo(function Terminal({
+  projectPath,
+  className = "",
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -60,6 +63,7 @@ export function Terminal({ projectPath, className = "" }: Props) {
       cursorBlink: true,
       cursorStyle: "block",
       scrollback: 10000,
+      screenReaderMode: true,
     });
 
     const fitAddon = new FitAddon();
@@ -208,4 +212,4 @@ export function Terminal({ projectPath, className = "" }: Props) {
       <div ref={containerRef} className="w-full h-full p-2" />
     </div>
   );
-}
+});

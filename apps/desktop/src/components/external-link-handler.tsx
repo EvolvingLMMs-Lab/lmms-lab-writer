@@ -19,8 +19,13 @@ export function ExternalLinkHandler() {
 
       const isExternal =
         href.startsWith("http://") || href.startsWith("https://");
-      const isSameOrigin =
-        isExternal && new URL(href).origin === window.location.origin;
+      let isSameOrigin = false;
+      try {
+        isSameOrigin =
+          isExternal && new URL(href).origin === window.location.origin;
+      } catch {
+        isSameOrigin = false;
+      }
 
       if (isExternal && !isSameOrigin) {
         e.preventDefault();
@@ -45,8 +50,13 @@ export function ExternalLinkHandler() {
       const urlString = url?.toString() ?? "";
       const isExternal =
         urlString.startsWith("http://") || urlString.startsWith("https://");
-      const isSameOrigin =
-        isExternal && new URL(urlString).origin === window.location.origin;
+      let isSameOrigin = false;
+      try {
+        isSameOrigin =
+          isExternal && new URL(urlString).origin === window.location.origin;
+      } catch {
+        isSameOrigin = false;
+      }
 
       if (isExternal && !isSameOrigin) {
         import("@tauri-apps/plugin-shell")

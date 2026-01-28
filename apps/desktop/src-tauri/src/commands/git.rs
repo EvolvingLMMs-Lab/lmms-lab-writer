@@ -234,8 +234,12 @@ pub async fn git_init(dir: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn git_clone(url: String, directory: String) -> Result<String, String> {
+    if url.starts_with('-') {
+        return Err("Invalid URL: cannot start with '-'".to_string());
+    }
+    
     let output = Command::new("git")
-        .args(["clone", &url, &directory])
+        .args(["clone", "--", &url, &directory])
         .output()
         .await
         .map_err(|e| e.to_string())?;

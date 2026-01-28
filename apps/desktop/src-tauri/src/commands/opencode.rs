@@ -76,14 +76,16 @@ async fn find_opencode() -> Option<String> {
             format!("{}/bin/opencode", home),
         ];
 
+        let result = tokio::task::spawn_blocking(move || {
         for path in common_paths {
             if std::path::Path::new(&path).exists() {
                 return Some(path);
             }
         }
-    }
+        None
+    }).await.ok().flatten();
 
-    None
+    result
 }
 
 #[tauri::command]
@@ -106,6 +108,11 @@ pub async fn opencode_status(state: tauri::State<'_, OpenCodeState>) -> Result<O
     })
 }
 
+async fn check_port_in_use(port: u16) -> bool {
+    use std::net::TcpListener;
+    TcpListener::bind(("127.0.0.1", port)).is_err()
+}
+
 #[tauri::command]
 pub async fn opencode_start(
     app: AppHandle,
@@ -123,6 +130,23 @@ pub async fn opencode_start(
     let opencode_path = find_opencode().await.ok_or("OpenCode not found. Please install it from https://opencode.ai/ or run: npm i -g opencode-ai@latest")?;
 
     let port = port.unwrap_or(4096);
+    
+    if check_port_in_use(port).await {
+        return Err(format!(
+            "Port {} is already in use. Kill the existing process or use a different port.\n\
+            Try: lsof -i :{} | grep LISTEN",
+            port, port
+        ));
+    }
+
+    let dir_path = std::path::Path::new(&directory);
+    if !dir_path.exists() {
+        return Err(format!("Directory does not exist: {}", directory));
+    }
+    if !dir_path.is_dir() {
+        return Err(format!("Path is not a directory: {}", directory));
+    }
+
     *state.port.lock().map_err(|e| e.to_string())? = port;
 
     let mut child = TokioCommand::new(&opencode_path)
@@ -132,12 +156,46 @@ pub async fn opencode_start(
         .stderr(Stdio::piped())
         .kill_on_drop(true)
         .spawn()
-        .map_err(|e| format!("Failed to start OpenCode: {}", e))?;
+        .map_err(|e| format!("Failed to spawn OpenCode process: {}", e))?;
 
-    sleep(Duration::from_millis(500)).await;
+    sleep(Duration::from_millis(800)).await;
 
     if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
-        return Err(format!("OpenCode exited immediately with status: {}", status));
+        let stderr = if let Some(mut stderr_handle) = child.stderr.take() {
+            use tokio::io::AsyncReadExt;
+            let mut buffer = Vec::new();
+            stderr_handle.read_to_end(&mut buffer).await.ok();
+            String::from_utf8_lossy(&buffer).to_string()
+        } else {
+            String::new()
+        };
+
+        let stdout = if let Some(mut stdout_handle) = child.stdout.take() {
+            use tokio::io::AsyncReadExt;
+            let mut buffer = Vec::new();
+            stdout_handle.read_to_end(&mut buffer).await.ok();
+            String::from_utf8_lossy(&buffer).to_string()
+        } else {
+            String::new()
+        };
+
+        let mut error_msg = format!(
+            "OpenCode exited immediately (exit code: {})\n\
+            Path: {}\n\
+            Directory: {}",
+            status.code().map(|c| c.to_string()).unwrap_or_else(|| "signal".to_string()),
+            opencode_path,
+            directory
+        );
+
+        if !stderr.trim().is_empty() {
+            error_msg.push_str(&format!("\n\nStderr:\n{}", stderr.trim()));
+        }
+        if !stdout.trim().is_empty() {
+            error_msg.push_str(&format!("\n\nStdout:\n{}", stdout.trim()));
+        }
+
+        return Err(error_msg);
     }
 
     *state.process.lock().map_err(|e| e.to_string())? = Some(child);

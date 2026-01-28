@@ -39,6 +39,39 @@ impl Default for WatcherState {
     }
 }
 
+pub struct ProjectState {
+    pub project_path: Option<String>,
+}
+
+impl Default for ProjectState {
+    fn default() -> Self {
+        Self { project_path: None }
+    }
+}
+
+fn validate_path_within_project(path: &str, project_path: &str) -> Result<(), String> {
+    let canonical_project = std::fs::canonicalize(project_path)
+        .map_err(|e| format!("Invalid project path: {}", e))?;
+    
+    let target_path = Path::new(path);
+    let canonical_target = if target_path.exists() {
+        std::fs::canonicalize(target_path)
+            .map_err(|e| format!("Invalid target path: {}", e))?
+    } else {
+        let parent = target_path.parent()
+            .ok_or_else(|| "Invalid path: no parent directory".to_string())?;
+        let parent_canonical = std::fs::canonicalize(parent)
+            .map_err(|e| format!("Invalid parent path: {}", e))?;
+        parent_canonical.join(target_path.file_name().unwrap_or_default())
+    };
+    
+    if !canonical_target.starts_with(&canonical_project) {
+        return Err("Access denied: path is outside project directory".to_string());
+    }
+    
+    Ok(())
+}
+
 const IGNORED_DIRS: &[&str] = &[
     "node_modules",
     ".git",
@@ -58,7 +91,35 @@ const IGNORED_EXTENSIONS: &[&str] = &[
 const DEBOUNCE_MS: u64 = 100;
 
 #[tauri::command]
-pub async fn read_file(path: String) -> Result<String, String> {
+pub async fn set_project_path(
+    state: tauri::State<'_, Mutex<ProjectState>>,
+    path: String,
+) -> Result<(), String> {
+    let canonical = std::fs::canonicalize(&path)
+        .map_err(|e| format!("Invalid project path: {}", e))?;
+    
+    if !canonical.is_dir() {
+        return Err("Project path must be a directory".to_string());
+    }
+    
+    let mut state_guard = state.lock().map_err(|e| e.to_string())?;
+    state_guard.project_path = Some(canonical.to_string_lossy().to_string());
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn read_file(
+    state: tauri::State<'_, Mutex<ProjectState>>,
+    path: String,
+) -> Result<String, String> {
+    let project_path = {
+        let state_guard = state.lock().map_err(|e| e.to_string())?;
+        state_guard.project_path.clone()
+            .ok_or_else(|| "No project open".to_string())?
+    };
+    
+    validate_path_within_project(&path, &project_path)?;
+    
     let metadata = fs::metadata(&path).await.map_err(|e| e.to_string())?;
     if metadata.is_dir() {
         return Err("Cannot read directory as file".to_string());
@@ -67,7 +128,19 @@ pub async fn read_file(path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub async fn write_file(path: String, content: String) -> Result<(), String> {
+pub async fn write_file(
+    state: tauri::State<'_, Mutex<ProjectState>>,
+    path: String,
+    content: String,
+) -> Result<(), String> {
+    let project_path = {
+        let state_guard = state.lock().map_err(|e| e.to_string())?;
+        state_guard.project_path.clone()
+            .ok_or_else(|| "No project open".to_string())?
+    };
+    
+    validate_path_within_project(&path, &project_path)?;
+    
     fs::write(&path, content).await.map_err(|e| e.to_string())
 }
 
@@ -218,7 +291,9 @@ pub fn watch_directory(
                     let path_str = event_path.to_string_lossy().to_string();
 
                     {
-                        let mut events = last_events.lock().unwrap();
+                        let Ok(mut events) = last_events.lock() else {
+                            continue;
+                        };
                         let now = Instant::now();
                         if let Some(last) = events.get(&path_str) {
                             if now.duration_since(*last) < Duration::from_millis(DEBOUNCE_MS) {

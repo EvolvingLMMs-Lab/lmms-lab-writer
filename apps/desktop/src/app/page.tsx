@@ -985,28 +985,27 @@ export default function EditorPage() {
                 const isActive = tab === selectedFile;
                 return (
                   <div
-                    role="button"
-                    tabIndex={0}
                     key={tab}
-                    onClick={() => handleFileSelect(tab)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        handleFileSelect(tab);
-                      }
-                    }}
-                    className={`cursor-pointer group flex items-center gap-2 px-3 py-1.5 text-sm border-r border-border transition-colors ${isActive
-                      ? "bg-white text-black"
-                      : "text-muted hover:text-black hover:bg-white/50"
-                      }`}
+                    className={`group flex items-center border-r border-border transition-colors ${
+                      isActive
+                        ? "bg-white text-black"
+                        : "text-muted hover:text-black hover:bg-white/50"
+                    }`}
                     title={tab}
                   >
-                    <span className="truncate max-w-[120px]">{fileName}</span>
+                    <button
+                      onClick={() => handleFileSelect(tab)}
+                      className="px-3 py-1.5 text-sm truncate max-w-[120px]"
+                    >
+                      {fileName}
+                    </button>
                     <button
                       onClick={(e) => handleCloseTab(tab, e)}
-                      className={`w-4 h-4 flex items-center justify-center hover:bg-neutral-200 ${isActive
-                        ? "opacity-100"
-                        : "opacity-0 group-hover:opacity-100"
-                        }`}
+                      className={`w-6 h-full flex items-center justify-center hover:bg-neutral-200 ${
+                        isActive
+                          ? "opacity-100"
+                          : "opacity-0 group-hover:opacity-100"
+                      }`}
                       aria-label="Close tab"
                     >
                       <svg

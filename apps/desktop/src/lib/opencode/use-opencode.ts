@@ -205,9 +205,9 @@ export function useOpenCode(
             client.store.status.get(firstSession.id) || { type: "idle" },
           );
 
-          for (const msg of msgs) {
-            await client.getParts(firstSession.id, msg.id);
-          }
+          await Promise.all(
+            msgs.map((msg) => client.getParts(firstSession.id, msg.id)),
+          );
           const sessionParts = new Map<string, Part[]>();
           for (const [key, value] of client.store.parts.entries()) {
             if (key.startsWith(`${firstSession.id}:`)) {
@@ -319,9 +319,9 @@ export function useOpenCode(
         }
         setParts(sessionParts);
 
-        for (const msg of msgs) {
-          await client.getParts(sessionId, msg.id);
-        }
+        await Promise.all(
+          msgs.map((msg) => client.getParts(sessionId, msg.id)),
+        );
 
         const updatedParts = new Map<string, Part[]>();
         for (const [key, value] of client.store.parts.entries()) {

@@ -69,7 +69,24 @@ export class OpenCodeClient {
     }
 
     const url = `${this.baseUrl}/event${this.getQueryParams()}`;
-    this.eventSource = new EventSource(url);
+
+    try {
+      new URL(url);
+    } catch {
+      this.options.onError?.(new Error(`Invalid URL: ${url}`));
+      return;
+    }
+
+    try {
+      this.eventSource = new EventSource(url);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to create EventSource";
+      this.options.onError?.(
+        new Error(`Connection failed: ${message}. URL: ${url}`),
+      );
+      return;
+    }
 
     this.eventSource.onopen = () => {
       this.store.connected = true;
