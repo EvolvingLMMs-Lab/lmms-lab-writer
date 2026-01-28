@@ -193,22 +193,44 @@ pub async fn opencode_start(
         });
     }
 
-    sleep(Duration::from_millis(800)).await;
+    // Wait for the process to start listening on the port
+    let start_time = std::time::Instant::now();
+    let timeout = Duration::from_secs(10);
+    let mut started = false;
 
-    if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
-        // Note: stdout/stderr are already being streamed via events above
-        // Check the opencode-log events for detailed output
-        let error_msg = format!(
-            "OpenCode exited immediately (exit code: {})\n\
-            Path: {}\n\
-            Directory: {}\n\n\
+    while start_time.elapsed() < timeout {
+        // Check if process is still running
+        if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
+            let error_msg = format!(
+                "OpenCode exited immediately (exit code: {})\n\
+                Path: {}\n\
+                Directory: {}\n\n\
+                Check the opencode-log events for detailed output.",
+                status.code().map(|c| c.to_string()).unwrap_or_else(|| "signal".to_string()),
+                opencode_path,
+                directory
+            );
+            return Err(error_msg);
+        }
+
+        // Check if port is in use (meaning it started listening)
+        if check_port_in_use(port).await {
+            started = true;
+            break;
+        }
+
+        sleep(Duration::from_millis(200)).await;
+    }
+
+    if !started {
+        // Kill the process if it timed out
+        let _ = child.kill().await;
+        return Err(format!(
+            "OpenCode failed to start within {} seconds (port {} not listening).\n\
             Check the opencode-log events for detailed output.",
-            status.code().map(|c| c.to_string()).unwrap_or_else(|| "signal".to_string()),
-            opencode_path,
-            directory
-        );
-
-        return Err(error_msg);
+            timeout.as_secs(),
+            port
+        ));
     }
 
     *state.process.lock().map_err(|e| e.to_string())? = Some(child);
