@@ -131,7 +131,7 @@ export function UserDropdown({
                 <span className="text-xs text-muted uppercase tracking-wider">
                   Inks
                 </span>
-                <p className="text-sm font-mono mt-1">{inks}/30</p>
+                <p className="text-sm font-mono mt-1">{inks}</p>
               </div>
               {canDownload ? (
                 <Link

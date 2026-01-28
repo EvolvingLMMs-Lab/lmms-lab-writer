@@ -20,6 +20,7 @@ import {
   RepoList,
   RepoItem,
 } from "@/components/profile-sections";
+import { InkDropAnimation } from "@/components/ink-drop-animation";
 
 function formatStarCount(count: number): string {
   if (count >= 1000) {
@@ -306,6 +307,26 @@ async function InksSection() {
   );
 }
 
+async function InkDropAnimationWrapper() {
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) return null;
+
+  const { data: membershipData } = await supabase
+    .from("user_memberships")
+    .select("total_star_count")
+    .eq("user_id", session.user.id)
+    .single();
+
+  const totalStars = membershipData?.total_star_count || 0;
+  const inks = totalStars * GITHUB_CONFIG.INKS_PER_STAR;
+
+  return <InkDropAnimation inks={inks} />;
+}
+
 async function AccountDetailsSection() {
   const supabase = await createClient();
   const {
@@ -399,9 +420,7 @@ async function SuggestedReposSection() {
         <div className="flex items-center gap-4">
           {isGitHubConnected && <RefreshStarsButton />}
           <div className="flex items-center gap-3">
-            <span className="text-xs text-muted font-mono">
-              {inks}/{requiredInks} inks
-            </span>
+            <span className="text-xs text-muted font-mono">{inks} inks</span>
             <div className="w-24 h-1.5 bg-neutral-100 border border-neutral-200">
               <div
                 className="h-full bg-black transition-all duration-500"
@@ -519,6 +538,9 @@ export default async function ProfilePage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <Suspense fallback={null}>
+        <InkDropAnimationWrapper />
+      </Suspense>
 
       <main className="px-6 py-12">
         <div className="max-w-5xl mx-auto">
