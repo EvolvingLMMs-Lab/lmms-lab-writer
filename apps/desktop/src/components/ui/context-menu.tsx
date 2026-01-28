@@ -22,35 +22,36 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x, y });
 
-  // Adjust position to keep menu within viewport
-  useEffect(() => {
-    if (menuRef.current) {
-      const menu = menuRef.current;
-      const rect = menu.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-
-      let adjustedX = x;
-      let adjustedY = y;
-
-      // Check right edge
-      if (x + rect.width > viewportWidth) {
-        adjustedX = viewportWidth - rect.width - 8;
-      }
-
-      // Check bottom edge
-      if (y + rect.height > viewportHeight) {
-        adjustedY = viewportHeight - rect.height - 8;
-      }
-
-      // Ensure not negative
-      adjustedX = Math.max(8, adjustedX);
-      adjustedY = Math.max(8, adjustedY);
-
-      if (adjustedX !== x || adjustedY !== y) {
-        setPosition({ x: adjustedX, y: adjustedY });
-      }
+  // Adjust position when x/y props change, keeping menu within viewport
+  useLayoutEffect(() => {
+    if (!menuRef.current) {
+      setPosition({ x, y });
+      return;
     }
+
+    const menu = menuRef.current;
+    const rect = menu.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let adjustedX = x;
+    let adjustedY = y;
+
+    // Check right edge
+    if (x + rect.width > viewportWidth) {
+      adjustedX = viewportWidth - rect.width - 8;
+    }
+
+    // Check bottom edge
+    if (y + rect.height > viewportHeight) {
+      adjustedY = viewportHeight - rect.height - 8;
+    }
+
+    // Ensure not negative
+    adjustedX = Math.max(8, adjustedX);
+    adjustedY = Math.max(8, adjustedY);
+
+    setPosition({ x: adjustedX, y: adjustedY });
   }, [x, y]);
 
   useEffect(() => {
