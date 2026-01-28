@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -24,6 +25,9 @@ const fadeIn = {
 };
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
+  const error = searchParams.get("error");
+
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
@@ -60,6 +64,18 @@ export default function LoginPage() {
         >
           Access your license and membership features.
         </motion.p>
+
+        {error && (
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            custom={0.18}
+            variants={fadeIn}
+            className="mb-4 p-3 border border-red-200 bg-red-50 text-red-700 text-sm"
+          >
+            {decodeURIComponent(error)}
+          </motion.div>
+        )}
 
         <motion.div
           initial="hidden"
