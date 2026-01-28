@@ -1,5 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  encodeUserCache,
+  COOKIE_NAME,
+  COOKIE_MAX_AGE,
+  type CachedUser,
+} from "@/lib/user-cache";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -35,11 +41,35 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // IMPORTANT: Do not add code between createServerClient and supabase.auth.getUser()
-  // A simple mistake could make your app slow due to unnecessary session refreshes
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (user) {
+    const metadata = user.user_metadata || {};
+    const { data: membership } = await supabase
+      .from("user_memberships")
+      .select("tier, expires_at")
+      .eq("user_id", user.id)
+      .single();
+
+    const cachedUser: CachedUser = {
+      email: user.email ?? "",
+      name: metadata.full_name || metadata.name || metadata.user_name || null,
+      avatarUrl: metadata.avatar_url || metadata.picture || null,
+      tier: (membership?.tier as "free" | "supporter") || "free",
+      expiresAt: membership?.expires_at ?? null,
+    };
+
+    supabaseResponse.cookies.set(COOKIE_NAME, encodeUserCache(cachedUser), {
+      path: "/",
+      maxAge: COOKIE_MAX_AGE,
+      sameSite: "lax",
+      httpOnly: false,
+    });
+  } else {
+    supabaseResponse.cookies.delete(COOKIE_NAME);
+  }
 
   const protectedPaths = ["/profile"];
   const isProtectedPath = protectedPaths.some((path) =>

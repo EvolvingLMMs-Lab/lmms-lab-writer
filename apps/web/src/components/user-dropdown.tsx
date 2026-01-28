@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { clearUserCacheCookie } from "@/lib/user-cache";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
@@ -52,6 +53,7 @@ export function UserDropdown({
 
   async function handleSignOut() {
     setIsSigningOut(true);
+    clearUserCacheCookie();
     const supabase = createClient();
     await supabase.auth.signOut();
     startTransition(() => {
