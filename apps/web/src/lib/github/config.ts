@@ -34,7 +34,7 @@ async function fetchAllOrgRepos(): Promise<RepoInfo[]> {
               Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
             }),
           },
-          cache: "no-store",
+          next: { revalidate: 300 }, // Cache for 5 minutes
         },
       );
 

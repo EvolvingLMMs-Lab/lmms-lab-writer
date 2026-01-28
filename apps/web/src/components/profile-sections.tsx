@@ -62,15 +62,18 @@ export function ProfileSection({
   children,
   delay = 0,
   className,
+  id,
 }: {
   children: ReactNode;
   delay?: number;
   className?: string;
+  id?: string;
 }) {
   const fadeIn = useFadeInVariants();
 
   return (
     <m.div
+      id={id}
       className={className}
       initial="hidden"
       animate="visible"
