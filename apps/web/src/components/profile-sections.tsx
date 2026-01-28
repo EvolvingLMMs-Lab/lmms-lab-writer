@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 import { type ReactNode } from "react";
 
 const INSTANT_TRANSITION = { duration: 0 } as const;
@@ -43,7 +43,7 @@ export function ProfileCard({
   const fadeIn = useFadeInVariants();
 
   return (
-    <motion.div
+    <m.div
       className={className}
       initial="hidden"
       animate="visible"
@@ -54,7 +54,7 @@ export function ProfileCard({
       style={prefersReducedMotion ? undefined : { willChange: "transform" }}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -70,7 +70,7 @@ export function ProfileSection({
   const fadeIn = useFadeInVariants();
 
   return (
-    <motion.div
+    <m.div
       className={className}
       initial="hidden"
       animate="visible"
@@ -78,7 +78,7 @@ export function ProfileSection({
       variants={fadeIn}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -92,7 +92,7 @@ export function ProfileTitle({
   const fadeIn = useFadeInVariants();
 
   return (
-    <motion.h1
+    <m.h1
       className="text-2xl font-light tracking-tight mb-8"
       initial="hidden"
       animate="visible"
@@ -100,7 +100,7 @@ export function ProfileTitle({
       variants={fadeIn}
     >
       {children}
-    </motion.h1>
+    </m.h1>
   );
 }
 
@@ -142,14 +142,14 @@ export function RepoList({ children }: { children: ReactNode }) {
   const { container } = useStaggerVariants();
 
   return (
-    <motion.div
+    <m.div
       className="space-y-2 mb-8 max-h-[400px] overflow-y-auto pr-2"
       initial="hidden"
       animate="visible"
       variants={container}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -164,7 +164,7 @@ export function RepoItem({
   const { item } = useStaggerVariants();
 
   return (
-    <motion.div
+    <m.div
       className={`flex items-center justify-between p-4 border transition-colors ${
         isStarred
           ? "border-black bg-neutral-50"
@@ -177,6 +177,6 @@ export function RepoItem({
       style={prefersReducedMotion ? undefined : { willChange: "transform" }}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }

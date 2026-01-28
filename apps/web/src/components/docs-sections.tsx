@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 
 const INSTANT_TRANSITION = { duration: 0 } as const;
 
@@ -71,7 +71,7 @@ export function DocsContent({ sections }: { sections: Section[] }) {
   return (
     <main className="flex-1 py-16 px-6">
       <div className="max-w-5xl mx-auto">
-        <motion.h1
+        <m.h1
           className="text-2xl font-medium tracking-tight mb-10"
           initial="hidden"
           animate="visible"
@@ -79,20 +79,20 @@ export function DocsContent({ sections }: { sections: Section[] }) {
           variants={fadeIn}
         >
           Documentation
-        </motion.h1>
+        </m.h1>
 
-        <motion.div
+        <m.div
           className="space-y-10 max-w-2xl"
           initial="hidden"
           animate="visible"
           variants={stagger.container}
         >
           {sections.map((section) => (
-            <motion.div key={section.title} variants={stagger.item}>
+            <m.div key={section.title} variants={stagger.item}>
               <h2 className="text-sm font-medium mb-3">{section.title}</h2>
               <ul className="space-y-2">
                 {section.items.map((item) => (
-                  <motion.li
+                  <m.li
                     key={item.href}
                     whileHover={prefersReducedMotion ? undefined : { x: 4 }}
                     transition={
@@ -107,12 +107,12 @@ export function DocsContent({ sections }: { sections: Section[] }) {
                     >
                       {item.title}
                     </Link>
-                  </motion.li>
+                  </m.li>
                 ))}
               </ul>
-            </motion.div>
+            </m.div>
           ))}
-        </motion.div>
+        </m.div>
       </div>
     </main>
   );

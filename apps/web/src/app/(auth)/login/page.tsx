@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 const LoginForm = dynamic(
   () => import("@/components/auth/login-form").then((m) => m.LoginForm),
@@ -32,7 +32,7 @@ function ErrorMessage() {
   if (!error) return null;
 
   return (
-    <motion.div
+    <m.div
       initial="hidden"
       animate="visible"
       custom={0.18}
@@ -40,7 +40,7 @@ function ErrorMessage() {
       className="mb-4 p-3 border border-red-200 bg-red-50 text-red-700 text-sm"
     >
       {decodeURIComponent(error)}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -48,12 +48,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          custom={0}
-          variants={fadeIn}
-        >
+        <m.div initial="hidden" animate="visible" custom={0} variants={fadeIn}>
           <Link
             href="/"
             className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground mb-8"
@@ -61,9 +56,9 @@ export default function LoginPage() {
             <ArrowLeft className="w-4 h-4" />
             Back to home
           </Link>
-        </motion.div>
+        </m.div>
 
-        <motion.h1
+        <m.h1
           className="text-2xl font-semibold mb-2"
           initial="hidden"
           animate="visible"
@@ -71,8 +66,8 @@ export default function LoginPage() {
           variants={fadeIn}
         >
           Sign in
-        </motion.h1>
-        <motion.p
+        </m.h1>
+        <m.p
           className="text-sm text-muted mb-8"
           initial="hidden"
           animate="visible"
@@ -80,20 +75,20 @@ export default function LoginPage() {
           variants={fadeIn}
         >
           Access your license and membership features.
-        </motion.p>
+        </m.p>
 
         <Suspense fallback={null}>
           <ErrorMessage />
         </Suspense>
 
-        <motion.div
+        <m.div
           initial="hidden"
           animate="visible"
           custom={0.2}
           variants={fadeIn}
         >
           <LoginForm />
-        </motion.div>
+        </m.div>
       </div>
     </div>
   );

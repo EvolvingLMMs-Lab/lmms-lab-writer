@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export function RefreshStarsButton() {
@@ -19,7 +19,9 @@ export function RefreshStarsButton() {
       const data = await response.json();
 
       if (response.ok) {
-        router.refresh();
+        startTransition(() => {
+          router.refresh();
+        });
       } else {
         setError(data.error || "Failed to refresh");
         console.error("Refresh failed:", data);

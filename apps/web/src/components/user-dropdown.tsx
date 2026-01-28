@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 
 type MembershipTier = "free" | "supporter";
 
@@ -54,8 +54,10 @@ export function UserDropdown({
     setIsSigningOut(true);
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    startTransition(() => {
+      router.push("/login");
+      router.refresh();
+    });
   }
 
   const displayName = name || email.split("@")[0] || "User";

@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  motion,
+  m,
   useReducedMotion,
   type Variants,
   type HTMLMotionProps,
@@ -59,7 +59,7 @@ export const MotionLink = forwardRef<HTMLAnchorElement, MotionLinkProps>(
 
     return (
       <Link {...props} passHref legacyBehavior>
-        <motion.a
+        <m.a
           ref={ref}
           className={className}
           whileHover={prefersReducedMotion ? undefined : { scale: 1.02 }}
@@ -70,7 +70,7 @@ export const MotionLink = forwardRef<HTMLAnchorElement, MotionLinkProps>(
           style={prefersReducedMotion ? undefined : { willChange: "transform" }}
         >
           {children}
-        </motion.a>
+        </m.a>
       </Link>
     );
   },
@@ -84,7 +84,7 @@ export const MotionButton = forwardRef<HTMLButtonElement, MotionButtonProps>(
     const prefersReducedMotion = useReducedMotion();
 
     return (
-      <motion.button
+      <m.button
         ref={ref}
         className={className}
         whileHover={prefersReducedMotion ? undefined : { scale: 1.02 }}
@@ -94,7 +94,7 @@ export const MotionButton = forwardRef<HTMLButtonElement, MotionButtonProps>(
         {...props}
       >
         {children}
-      </motion.button>
+      </m.button>
     );
   },
 );
@@ -107,7 +107,7 @@ export const FadeIn = forwardRef<HTMLDivElement, MotionDivProps>(
     const prefersReducedMotion = useReducedMotion();
 
     return (
-      <motion.div
+      <m.div
         ref={ref}
         initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 16 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -116,7 +116,7 @@ export const FadeIn = forwardRef<HTMLDivElement, MotionDivProps>(
         {...props}
       >
         {children}
-      </motion.div>
+      </m.div>
     );
   },
 );
@@ -129,7 +129,7 @@ export const FadeInStagger = forwardRef<
   const prefersReducedMotion = useReducedMotion();
 
   return (
-    <motion.div
+    <m.div
       ref={ref}
       initial={prefersReducedMotion ? "visible" : "hidden"}
       whileInView="visible"
@@ -146,7 +146,7 @@ export const FadeInStagger = forwardRef<
       {...props}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 });
 FadeInStagger.displayName = "FadeInStagger";
@@ -156,7 +156,7 @@ export const FadeInStaggerItem = forwardRef<HTMLDivElement, MotionDivProps>(
     const prefersReducedMotion = useReducedMotion();
 
     return (
-      <motion.div
+      <m.div
         ref={ref}
         variants={{
           hidden: prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 16 },
@@ -171,7 +171,7 @@ export const FadeInStaggerItem = forwardRef<HTMLDivElement, MotionDivProps>(
         {...props}
       >
         {children}
-      </motion.div>
+      </m.div>
     );
   },
 );
@@ -182,7 +182,7 @@ export const MotionCard = forwardRef<HTMLDivElement, MotionDivProps>(
     const prefersReducedMotion = useReducedMotion();
 
     return (
-      <motion.div
+      <m.div
         ref={ref}
         className={className}
         whileHover={
@@ -194,10 +194,10 @@ export const MotionCard = forwardRef<HTMLDivElement, MotionDivProps>(
         {...props}
       >
         {children}
-      </motion.div>
+      </m.div>
     );
   },
 );
 MotionCard.displayName = "MotionCard";
 
-export { motion };
+export { m as motion };
