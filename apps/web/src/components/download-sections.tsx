@@ -17,23 +17,20 @@ const GPU_SPRING = {
   mass: 0.5,
 } as const;
 
+const BLOB_URL = "https://uv96nthsmy3qxwco.public.blob.vercel-storage.com";
+
 const platforms = [
   {
     name: "macOS",
     variants: [
-      { label: "Apple Silicon", file: "LMMs-Lab_Writer_0.1.0_aarch64.dmg" },
-    ],
-  },
-  {
-    name: "Windows",
-    variants: [
-      { label: "64-bit", file: "LMMs-Lab_Writer_0.1.0_x64-setup.exe" },
+      {
+        label: "Apple Silicon",
+        file: "LMMs-Lab_Writer_0.1.0_aarch64.dmg",
+        url: `${BLOB_URL}/LMMs-Lab_Writer_0.1.0_aarch64.dmg`,
+      },
     ],
   },
 ];
-
-const releaseUrl =
-  "https://github.com/Luodian/latex-writer/releases/latest/download";
 
 export function DownloadSection() {
   return (
@@ -51,7 +48,7 @@ export function DownloadSection() {
                 style={{ willChange: "transform" }}
               >
                 <Link
-                  href={`${releaseUrl}/${variant.file}`}
+                  href={variant.url}
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm border border-border hover:border-foreground transition-colors"
                 >
                   <Download className="w-4 h-4" />
