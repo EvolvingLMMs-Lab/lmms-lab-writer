@@ -250,10 +250,10 @@ Please analyze these ${issueType} and suggest how to fix or suppress them. If th
 
             <div
               ref={outputRef}
-              className="h-full overflow-auto font-mono text-xs p-2 bg-neutral-900 text-neutral-100"
+              className="h-full overflow-auto font-mono text-xs p-3 bg-white text-neutral-800"
             >
               {output.length === 0 ? (
-                <div className="text-neutral-500 italic">
+                <div className="text-neutral-400 italic">
                   No compilation output yet. Press Compile or Ctrl+Shift+B to
                   start.
                 </div>
@@ -263,10 +263,10 @@ Please analyze these ${issueType} and suggest how to fix or suppress them. If th
                     key={index}
                     className={`whitespace-pre-wrap ${
                       line.isError
-                        ? "text-red-400"
+                        ? "text-red-600"
                         : line.isWarning
-                          ? "text-yellow-400"
-                          : "text-neutral-300"
+                          ? "text-yellow-600"
+                          : "text-neutral-600"
                     }`}
                   >
                     {line.line}

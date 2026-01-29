@@ -911,8 +911,8 @@ export default function EditorPage() {
               onClick={handleToggleRightPanel}
               className={`h-8 px-3 text-sm border-2 border-black transition-all flex items-center gap-2 font-medium bg-white text-black ${
                 showRightPanel
-                  ? "shadow-[1px_1px_0_0_#000] translate-x-[2px] translate-y-[2px]"
-                  : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px]"
+                  ? "shadow-none translate-x-[3px] translate-y-[3px]"
+                  : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] active:shadow-none active:translate-x-[3px] active:translate-y-[3px]"
               }`}
             >
               Agent Mode
@@ -960,15 +960,11 @@ export default function EditorPage() {
             <motion.div
               key="sidebar-container"
               initial={
-                prefersReducedMotion
-                  ? { opacity: 1 }
-                  : { x: -sidebarWidth, opacity: 0 }
+                prefersReducedMotion ? { opacity: 1 } : { x: -280, opacity: 0 }
               }
               animate={{ x: 0, opacity: 1 }}
               exit={
-                prefersReducedMotion
-                  ? { opacity: 0 }
-                  : { x: -sidebarWidth, opacity: 0 }
+                prefersReducedMotion ? { opacity: 0 } : { x: -280, opacity: 0 }
               }
               transition={
                 prefersReducedMotion ? INSTANT_TRANSITION : PANEL_SPRING
@@ -1405,7 +1401,12 @@ export default function EditorPage() {
           )}
         </AnimatePresence>
 
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <motion.div
+          layout
+          transition={prefersReducedMotion ? INSTANT_TRANSITION : PANEL_SPRING}
+          className="flex-1 min-w-0 flex flex-col overflow-hidden"
+          style={{ willChange: prefersReducedMotion ? undefined : "width" }}
+        >
           {selectedFile && (
             <div className="flex items-center border-b border-border bg-neutral-50 overflow-x-auto min-h-[34px]">
               {openTabs.map((tab) => {
@@ -1552,7 +1553,7 @@ export default function EditorPage() {
               }}
             />
           )}
-        </div>
+        </motion.div>
 
         <AnimatePresence>
           {showRightPanel && (

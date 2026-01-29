@@ -27,7 +27,12 @@ interface LaTeXSettingsDialogProps {
   texFiles: string[];
 }
 
-const COMPILERS: LaTeXCompiler[] = ["pdflatex", "xelatex", "lualatex", "latexmk"];
+const COMPILERS: LaTeXCompiler[] = [
+  "pdflatex",
+  "xelatex",
+  "lualatex",
+  "latexmk",
+];
 
 type SettingsTab = "compiler" | "editor" | "build";
 
@@ -67,8 +72,18 @@ function CheckboxItem({
         }`}
       >
         {checked && (
-          <svg className="size-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={3} d="M5 13l4 4L19 7" />
+          <svg
+            className="size-3 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="square"
+              strokeLinejoin="miter"
+              strokeWidth={3}
+              d="M5 13l4 4L19 7"
+            />
           </svg>
         )}
       </div>
@@ -104,8 +119,12 @@ function SelectField({
   return (
     <div className="flex items-center justify-between py-2 gap-8">
       <div className="shrink-0">
-        <label className="text-sm font-medium text-neutral-700 block">{label}</label>
-        {description && <p className="text-xs text-neutral-400 mt-0.5">{description}</p>}
+        <label className="text-sm font-medium text-neutral-700 block">
+          {label}
+        </label>
+        {description && (
+          <p className="text-xs text-neutral-400 mt-0.5">{description}</p>
+        )}
       </div>
       <select
         value={value}
@@ -136,7 +155,7 @@ export function LaTeXSettingsDialog({
 }: LaTeXSettingsDialogProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("compiler");
   const [customArgsInput, setCustomArgsInput] = useState(
-    settings.arguments.join(" ")
+    settings.arguments.join(" "),
   );
 
   useEffect(() => {
@@ -156,7 +175,7 @@ export function LaTeXSettingsDialog({
         onClose();
       }
     },
-    [onClose]
+    [onClose],
   );
 
   const handleResetLatexSettings = useCallback(() => {
@@ -185,7 +204,7 @@ export function LaTeXSettingsDialog({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50"
+            className="fixed inset-0 bg-black/50 z-[9999]"
             onClick={onClose}
           />
 
@@ -195,7 +214,7 @@ export function LaTeXSettingsDialog({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
             onKeyDown={handleKeyDown}
           >
             <div
@@ -271,7 +290,9 @@ export function LaTeXSettingsDialog({
 
                     <div className="py-2">
                       <div className="flex items-center justify-between mb-4">
-                        <label className="text-sm font-medium text-neutral-700">Compiler</label>
+                        <label className="text-sm font-medium text-neutral-700">
+                          Compiler
+                        </label>
                         <button
                           onClick={onDetectCompilers}
                           disabled={isDetecting}
@@ -498,14 +519,26 @@ export function LaTeXSettingsDialog({
                         <button
                           onClick={() =>
                             onUpdateEditorSettings({
-                              fontSize: Math.max(8, editorSettings.fontSize - 1),
+                              fontSize: Math.max(
+                                8,
+                                editorSettings.fontSize - 1,
+                              ),
                             })
                           }
                           className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-r border-neutral-200"
                           aria-label="Decrease font size"
                         >
-                          <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="square" strokeWidth={2} d="M20 12H4" />
+                          <svg
+                            className="size-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="square"
+                              strokeWidth={2}
+                              d="M20 12H4"
+                            />
                           </svg>
                         </button>
                         <input
@@ -515,7 +548,10 @@ export function LaTeXSettingsDialog({
                           value={editorSettings.fontSize}
                           onChange={(e) =>
                             onUpdateEditorSettings({
-                              fontSize: Math.min(32, Math.max(8, parseInt(e.target.value) || 14)),
+                              fontSize: Math.min(
+                                32,
+                                Math.max(8, parseInt(e.target.value) || 14),
+                              ),
                             })
                           }
                           className="w-12 h-8 text-sm text-center border-0 focus:outline-none focus:ring-0 font-mono bg-transparent"
@@ -523,17 +559,31 @@ export function LaTeXSettingsDialog({
                         <button
                           onClick={() =>
                             onUpdateEditorSettings({
-                              fontSize: Math.min(32, editorSettings.fontSize + 1),
+                              fontSize: Math.min(
+                                32,
+                                editorSettings.fontSize + 1,
+                              ),
                             })
                           }
                           className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-l border-neutral-200"
                           aria-label="Increase font size"
                         >
-                          <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="square" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          <svg
+                            className="size-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="square"
+                              strokeWidth={2}
+                              d="M12 4v16m8-8H4"
+                            />
                           </svg>
                         </button>
-                        <span className="text-xs text-neutral-400 px-2 border-l border-neutral-200">px</span>
+                        <span className="text-xs text-neutral-400 px-2 border-l border-neutral-200">
+                          px
+                        </span>
                       </div>
                     </div>
 
@@ -545,14 +595,28 @@ export function LaTeXSettingsDialog({
                         <button
                           onClick={() =>
                             onUpdateEditorSettings({
-                              lineHeight: Math.max(1.0, Math.round((editorSettings.lineHeight - 0.1) * 10) / 10),
+                              lineHeight: Math.max(
+                                1.0,
+                                Math.round(
+                                  (editorSettings.lineHeight - 0.1) * 10,
+                                ) / 10,
+                              ),
                             })
                           }
                           className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-r border-neutral-200"
                           aria-label="Decrease line height"
                         >
-                          <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="square" strokeWidth={2} d="M20 12H4" />
+                          <svg
+                            className="size-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="square"
+                              strokeWidth={2}
+                              d="M20 12H4"
+                            />
                           </svg>
                         </button>
                         <input
@@ -563,7 +627,13 @@ export function LaTeXSettingsDialog({
                           value={editorSettings.lineHeight.toFixed(1)}
                           onChange={(e) =>
                             onUpdateEditorSettings({
-                              lineHeight: Math.min(3.0, Math.max(1.0, parseFloat(e.target.value) || 1.6)),
+                              lineHeight: Math.min(
+                                3.0,
+                                Math.max(
+                                  1.0,
+                                  parseFloat(e.target.value) || 1.6,
+                                ),
+                              ),
                             })
                           }
                           className="w-12 h-8 text-sm text-center border-0 focus:outline-none focus:ring-0 font-mono bg-transparent"
@@ -571,14 +641,28 @@ export function LaTeXSettingsDialog({
                         <button
                           onClick={() =>
                             onUpdateEditorSettings({
-                              lineHeight: Math.min(3.0, Math.round((editorSettings.lineHeight + 0.1) * 10) / 10),
+                              lineHeight: Math.min(
+                                3.0,
+                                Math.round(
+                                  (editorSettings.lineHeight + 0.1) * 10,
+                                ) / 10,
+                              ),
                             })
                           }
                           className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-l border-neutral-200"
                           aria-label="Increase line height"
                         >
-                          <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="square" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          <svg
+                            className="size-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="square"
+                              strokeWidth={2}
+                              d="M12 4v16m8-8H4"
+                            />
                           </svg>
                         </button>
                       </div>
@@ -605,7 +689,8 @@ export function LaTeXSettingsDialog({
                       value={editorSettings.renderWhitespace}
                       onChange={(v) =>
                         onUpdateEditorSettings({
-                          renderWhitespace: v as EditorSettings["renderWhitespace"],
+                          renderWhitespace:
+                            v as EditorSettings["renderWhitespace"],
                         })
                       }
                       options={[
@@ -633,12 +718,16 @@ export function LaTeXSettingsDialog({
                     <div className="flex items-center justify-between py-2">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-neutral-700">Enable Minimap</span>
+                          <span className="text-sm font-medium text-neutral-700">
+                            Enable Minimap
+                          </span>
                           <span className="text-[10px] px-1.5 py-0.5 border border-neutral-300 text-neutral-500 font-medium uppercase tracking-wider">
                             Preview
                           </span>
                         </div>
-                        <p className="text-xs text-neutral-500 mt-0.5">Code overview panel</p>
+                        <p className="text-xs text-neutral-500 mt-0.5">
+                          Code overview panel
+                        </p>
                       </div>
                       <button
                         onClick={() =>
@@ -677,7 +766,10 @@ export function LaTeXSettingsDialog({
                                 key={side}
                                 onClick={() =>
                                   onUpdateEditorSettings({
-                                    minimap: { ...editorSettings.minimap, side },
+                                    minimap: {
+                                      ...editorSettings.minimap,
+                                      side,
+                                    },
                                   })
                                 }
                                 className={`px-4 py-1.5 text-sm border transition-all ${
@@ -730,7 +822,6 @@ export function LaTeXSettingsDialog({
                           ]}
                           description="When to show the viewport indicator"
                         />
-
 
                         {/* Render Characters */}
                         <div className="pt-2">
@@ -846,13 +937,17 @@ export function LaTeXSettingsDialog({
                       value={editorSettings.autoClosingBrackets}
                       onChange={(v) =>
                         onUpdateEditorSettings({
-                          autoClosingBrackets: v as EditorSettings["autoClosingBrackets"],
+                          autoClosingBrackets:
+                            v as EditorSettings["autoClosingBrackets"],
                         })
                       }
                       options={[
                         { value: "always", label: "Always" },
                         { value: "languageDefined", label: "Language Defined" },
-                        { value: "beforeWhitespace", label: "Before Whitespace" },
+                        {
+                          value: "beforeWhitespace",
+                          label: "Before Whitespace",
+                        },
                         { value: "never", label: "Never" },
                       ]}
                     />
@@ -862,13 +957,17 @@ export function LaTeXSettingsDialog({
                       value={editorSettings.autoClosingQuotes}
                       onChange={(v) =>
                         onUpdateEditorSettings({
-                          autoClosingQuotes: v as EditorSettings["autoClosingQuotes"],
+                          autoClosingQuotes:
+                            v as EditorSettings["autoClosingQuotes"],
                         })
                       }
                       options={[
                         { value: "always", label: "Always" },
                         { value: "languageDefined", label: "Language Defined" },
-                        { value: "beforeWhitespace", label: "Before Whitespace" },
+                        {
+                          value: "beforeWhitespace",
+                          label: "Before Whitespace",
+                        },
                         { value: "never", label: "Never" },
                       ]}
                     />
@@ -975,9 +1074,7 @@ export function LaTeXSettingsDialog({
                     <div className="space-y-3">
                       <CheckboxItem
                         checked={settings.cleanAuxFiles}
-                        onChange={(v) =>
-                          onUpdateSettings({ cleanAuxFiles: v })
-                        }
+                        onChange={(v) => onUpdateSettings({ cleanAuxFiles: v })}
                         label="Clean Auxiliary Files"
                         description="Remove .aux, .log, .toc and other temporary files after compilation"
                       />
@@ -1013,7 +1110,7 @@ export function LaTeXSettingsDialog({
                 </button>
                 <button
                   onClick={onClose}
-                  className="px-6 py-2 text-sm font-medium bg-black text-white hover:bg-neutral-800 transition-colors"
+                  className="px-6 py-2 text-sm font-medium bg-white text-black border-2 border-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
                 >
                   Done
                 </button>

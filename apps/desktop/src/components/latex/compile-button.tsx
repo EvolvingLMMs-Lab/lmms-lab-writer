@@ -52,11 +52,15 @@ export function CompileButton({
         className={`h-8 w-8 border-2 border-black transition-all flex items-center justify-center bg-white text-black relative ${
           disabled
             ? "opacity-50 cursor-not-allowed"
-            : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px]"
+            : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] active:shadow-none active:translate-x-[3px] active:translate-y-[3px]"
         }`}
-        title={isCompiling ? "Stop compilation (Esc)" : "Compile (Ctrl+Shift+B)"}
+        title={
+          isCompiling ? "Stop compilation (Esc)" : "Compile (Ctrl+Shift+B)"
+        }
       >
-        <span className={`absolute top-1 left-1 size-1.5 rounded-full ${getStatusColor()}`} />
+        <span
+          className={`absolute top-1 left-1 size-1.5 rounded-full ${getStatusColor()}`}
+        />
         {isCompiling ? (
           <Spinner className="size-4" />
         ) : (
@@ -84,7 +88,7 @@ export function CompileButton({
 
       <button
         onClick={onSettingsClick}
-        className="h-8 w-8 border-2 border-black bg-white text-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center justify-center"
+        className="h-8 w-8 border-2 border-black bg-white text-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] active:shadow-none active:translate-x-[3px] active:translate-y-[3px] transition-all flex items-center justify-center"
         title="LaTeX Settings"
         aria-label="LaTeX Settings"
       >
