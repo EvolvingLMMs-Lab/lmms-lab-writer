@@ -3,9 +3,53 @@
 import { useState, useCallback, memo, useRef, useEffect, useMemo } from "react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ask } from "@tauri-apps/plugin-dialog";
+import { Command } from "@tauri-apps/plugin-shell";
+import { platform } from "@tauri-apps/plugin-os";
+
+// Reveal file/folder in system file manager
+async function revealInFileManager(path: string): Promise<void> {
+  const os = platform();
+
+  if (os === "macos") {
+    // macOS: open -R reveals the item in Finder
+    await Command.create("open", ["-R", path]).execute();
+  } else if (os === "windows") {
+    // Windows: explorer /select, highlights the item
+    // Convert forward slashes to backslashes for Windows
+    const winPath = path.replace(/\//g, "\\");
+    await Command.create("explorer", [`/select,${winPath}`]).execute();
+  } else {
+    // Linux: xdg-open opens the containing folder
+    const parentPath = path.replace(/\/[^/]*$/, "") || path;
+    await Command.create("xdg-open", [parentPath]).execute();
+  }
+}
 import type { FileNode } from "@lmms-lab/writer-shared";
 import { ContextMenu, type ContextMenuItem } from "../ui/context-menu";
 import { InputDialog } from "../ui/input-dialog";
+import {
+  File,
+  FileText,
+  FileCode,
+  FileJson,
+  FileImage,
+  FileArchive,
+  FileVideo,
+  FileAudio,
+  FileSpreadsheet,
+  FileCog,
+  FilePen,
+  FileOutput,
+  FileBox,
+  FileTerminal,
+  Folder,
+  FolderOpen,
+  Library,
+  LayoutTemplate,
+  Blocks,
+  type LucideIcon,
+} from "lucide-react";
 
 const _ITEM_SPRING = {
   type: "spring",
@@ -28,6 +72,8 @@ type Props = {
   highlightedFile?: string | null;
   className?: string;
   fileOperations?: FileOperations;
+  projectPath?: string;
+  onRefresh?: () => void;
 };
 
 interface ContextMenuState {
@@ -48,60 +94,152 @@ function isAncestorPath(ancestor: string, descendant: string): boolean {
   return descendant.startsWith(ancestor + "/");
 }
 
+function getFileExtension(filename: string): string {
+  const lastDot = filename.lastIndexOf(".");
+  return lastDot > 0 ? filename.substring(lastDot).toLowerCase() : "";
+}
+
+// Map file extensions to icons
+const FILE_ICON_MAP: Record<string, LucideIcon> = {
+  // LaTeX source files
+  ".tex": FilePen,
+  ".ltx": FilePen,
+  // LaTeX bibliography
+  ".bib": Library,
+  // LaTeX document class (template)
+  ".cls": LayoutTemplate,
+  // LaTeX style packages
+  ".sty": Blocks,
+  // LaTeX package source
+  ".dtx": FileBox,
+  ".ins": FileBox,
+  // LaTeX output
+  ".pdf": FileOutput,
+  ".dvi": FileOutput,
+  ".ps": FileOutput,
+  // LaTeX config
+  ".latexmkrc": FileCog,
+  // Documents
+  ".doc": FileText,
+  ".docx": FileText,
+  ".txt": FileText,
+  ".rtf": FileText,
+  ".md": FileText,
+  ".mdx": FileText,
+  ".rst": FileText,
+  // Code
+  ".js": FileCode,
+  ".jsx": FileCode,
+  ".ts": FileCode,
+  ".tsx": FileCode,
+  ".mjs": FileCode,
+  ".cjs": FileCode,
+  ".py": FileCode,
+  ".rb": FileCode,
+  ".go": FileCode,
+  ".rs": FileCode,
+  ".c": FileCode,
+  ".cpp": FileCode,
+  ".h": FileCode,
+  ".hpp": FileCode,
+  ".java": FileCode,
+  ".kt": FileCode,
+  ".swift": FileCode,
+  ".lua": FileCode,
+  ".r": FileCode,
+  ".m": FileCode,
+  ".html": FileCode,
+  ".htm": FileCode,
+  ".css": FileCode,
+  ".scss": FileCode,
+  ".sass": FileCode,
+  ".less": FileCode,
+  ".vue": FileCode,
+  ".svelte": FileCode,
+  // Shell/Scripts
+  ".sh": FileTerminal,
+  ".bash": FileTerminal,
+  ".zsh": FileTerminal,
+  ".fish": FileTerminal,
+  ".ps1": FileTerminal,
+  ".bat": FileTerminal,
+  ".cmd": FileTerminal,
+  // Config/Data
+  ".json": FileJson,
+  ".yaml": FileJson,
+  ".yml": FileJson,
+  ".toml": FileJson,
+  ".xml": FileJson,
+  ".ini": FileCog,
+  ".cfg": FileCog,
+  ".conf": FileCog,
+  ".env": FileCog,
+  ".gitignore": FileCog,
+  ".editorconfig": FileCog,
+  ".prettierrc": FileCog,
+  ".eslintrc": FileCog,
+  // Images
+  ".png": FileImage,
+  ".jpg": FileImage,
+  ".jpeg": FileImage,
+  ".gif": FileImage,
+  ".svg": FileImage,
+  ".webp": FileImage,
+  ".ico": FileImage,
+  ".bmp": FileImage,
+  ".tiff": FileImage,
+  ".tif": FileImage,
+  ".eps": FileImage,
+  ".pgf": FileImage,
+  ".tikz": FileImage,
+  // Archives
+  ".zip": FileArchive,
+  ".tar": FileArchive,
+  ".gz": FileArchive,
+  ".rar": FileArchive,
+  ".7z": FileArchive,
+  // Video
+  ".mp4": FileVideo,
+  ".mkv": FileVideo,
+  ".avi": FileVideo,
+  ".mov": FileVideo,
+  ".webm": FileVideo,
+  // Audio
+  ".mp3": FileAudio,
+  ".wav": FileAudio,
+  ".flac": FileAudio,
+  ".ogg": FileAudio,
+  ".m4a": FileAudio,
+  // Spreadsheet/Data
+  ".csv": FileSpreadsheet,
+  ".xls": FileSpreadsheet,
+  ".xlsx": FileSpreadsheet,
+  ".tsv": FileSpreadsheet,
+};
+
 function FileIcon({
   type,
   expanded,
+  filename,
 }: {
   type: "file" | "directory";
   expanded?: boolean;
+  filename?: string;
 }) {
+  const iconClass = "w-4 h-4 flex-shrink-0";
+
   if (type === "directory") {
     return expanded ? (
-      <svg
-        className="w-4 h-4 flex-shrink-0"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="square"
-          strokeLinejoin="miter"
-          strokeWidth={1.5}
-          d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"
-        />
-      </svg>
+      <FolderOpen className={iconClass} />
     ) : (
-      <svg
-        className="w-4 h-4 flex-shrink-0"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="square"
-          strokeLinejoin="miter"
-          strokeWidth={1.5}
-          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-        />
-      </svg>
+      <Folder className={iconClass} />
     );
   }
 
-  return (
-    <svg
-      className="w-4 h-4 flex-shrink-0"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="square"
-        strokeLinejoin="miter"
-        strokeWidth={1.5}
-        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-      />
-    </svg>
-  );
+  const ext = filename ? getFileExtension(filename) : "";
+  const IconComponent = FILE_ICON_MAP[ext] || File;
+
+  return <IconComponent className={iconClass} />;
 }
 
 const TreeNode = memo(function TreeNode({
@@ -113,6 +251,7 @@ const TreeNode = memo(function TreeNode({
   defaultExpanded = false,
   focusedPath,
   onExpandedChange,
+  onFocusChange,
   onContextMenu,
   parentPath = "",
 }: {
@@ -124,6 +263,7 @@ const TreeNode = memo(function TreeNode({
   defaultExpanded?: boolean;
   focusedPath?: string | null;
   onExpandedChange?: (path: string, expanded: boolean) => void;
+  onFocusChange?: (path: string) => void;
   onContextMenu?: (
     e: React.MouseEvent,
     node: FileNode,
@@ -164,6 +304,9 @@ const TreeNode = memo(function TreeNode({
   }, [isHighlighted]);
 
   const handleClick = useCallback(() => {
+    // Sync keyboard focus with mouse click
+    onFocusChange?.(node.path);
+
     if (isDirectory) {
       setExpanded((prev) => {
         const newExpanded = !prev;
@@ -173,7 +316,7 @@ const TreeNode = memo(function TreeNode({
     } else {
       onFileSelect?.(node.path);
     }
-  }, [isDirectory, node.path, onFileSelect, onExpandedChange]);
+  }, [isDirectory, node.path, onFileSelect, onExpandedChange, onFocusChange]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -244,7 +387,7 @@ const TreeNode = memo(function TreeNode({
           </motion.div>
         )}
         {!isDirectory && <span className="w-3" />}
-        <FileIcon type={node.type} expanded={expanded} />
+        <FileIcon type={node.type} expanded={expanded} filename={node.name} />
         <span className="truncate">{node.name}</span>
       </motion.button>
 
@@ -267,6 +410,7 @@ const TreeNode = memo(function TreeNode({
                 highlightedFile={highlightedFile}
                 focusedPath={focusedPath}
                 onExpandedChange={onExpandedChange}
+                onFocusChange={onFocusChange}
                 onContextMenu={onContextMenu}
                 parentPath={node.path}
               />
@@ -314,6 +458,8 @@ export const FileTree = memo(function FileTree({
   highlightedFile,
   className = "",
   fileOperations,
+  projectPath,
+  onRefresh,
 }: Props) {
   const [focusedPath, setFocusedPath] = useState<string | null>(null);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => {
@@ -346,6 +492,8 @@ export const FileTree = memo(function FileTree({
     [],
   );
 
+  const [dialog, setDialog] = useState<DialogState | null>(null);
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (visibleItems.length === 0) return;
@@ -353,6 +501,8 @@ export const FileTree = memo(function FileTree({
       const currentIndex = focusedPath
         ? visibleItems.findIndex((item) => item.node.path === focusedPath)
         : -1;
+
+      const currentNode = currentIndex >= 0 ? visibleItems[currentIndex]?.node : null;
 
       switch (e.key) {
         case "ArrowDown": {
@@ -455,6 +605,80 @@ export const FileTree = memo(function FileTree({
           }
           break;
         }
+
+        // F2 - Rename
+        case "F2": {
+          e.preventDefault();
+          if (currentNode && fileOperations) {
+            setDialog({ type: "rename", node: currentNode });
+          }
+          break;
+        }
+
+        // Delete or Backspace - Delete file/folder
+        case "Delete":
+        case "Backspace": {
+          e.preventDefault();
+          if (currentNode && fileOperations) {
+            const isDirectory = currentNode.type === "directory";
+            const nodePath = currentNode.path;
+            const nodeName = currentNode.name;
+            // Use async Tauri dialog to ensure proper confirmation before delete
+            (async () => {
+              const confirmed = await ask(
+                `Are you sure you want to delete "${nodeName}"?${isDirectory ? " This will delete all files inside." : ""}`,
+                { title: "Confirm Delete", kind: "warning" }
+              );
+              if (confirmed) {
+                try {
+                  await fileOperations.deletePath(nodePath);
+                } catch (error) {
+                  alert(`Failed to delete: ${error}`);
+                }
+              }
+            })();
+          }
+          break;
+        }
+
+        // N - New file (Shift+N for new folder)
+        case "n":
+        case "N": {
+          if (!fileOperations) break;
+          e.preventDefault();
+          // Determine parent path: if current is directory use it, otherwise use parent
+          const parentPath = currentNode
+            ? currentNode.type === "directory"
+              ? currentNode.path
+              : getParentPath(currentNode.path) || ""
+            : "";
+
+          if (e.shiftKey) {
+            // Shift+N: New folder
+            setDialog({ type: "create-directory", parentPath });
+          } else {
+            // N: New file
+            setDialog({ type: "create-file", parentPath });
+          }
+          break;
+        }
+
+        // F5 - Refresh file list
+        case "F5": {
+          e.preventDefault();
+          onRefresh?.();
+          break;
+        }
+
+        // R - Reveal in Explorer/Finder (when a file/folder is focused)
+        case "r":
+        case "R": {
+          if (!currentNode || !projectPath) break;
+          e.preventDefault();
+          const fullPath = `${projectPath}/${currentNode.path}`;
+          revealInFileManager(fullPath).catch(console.error);
+          break;
+        }
       }
     },
     [
@@ -463,6 +687,9 @@ export const FileTree = memo(function FileTree({
       expandedPaths,
       handleExpandedChange,
       onFileSelect,
+      fileOperations,
+      onRefresh,
+      projectPath,
     ],
   );
 
@@ -483,7 +710,6 @@ export const FileTree = memo(function FileTree({
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(
     null,
   );
-  const [dialog, setDialog] = useState<DialogState | null>(null);
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, node: FileNode, parentPath: string) => {
@@ -562,11 +788,11 @@ export const FileTree = memo(function FileTree({
       items.push({
         label: "Delete",
         onClick: async () => {
-          if (
-            confirm(
-              `Are you sure you want to delete "${node.name}"?${isDirectory ? " This will delete all files inside." : ""}`,
-            )
-          ) {
+          const confirmed = await ask(
+            `Are you sure you want to delete "${node.name}"?${isDirectory ? " This will delete all files inside." : ""}`,
+            { title: "Confirm Delete", kind: "warning" }
+          );
+          if (confirmed) {
             try {
               await fileOperations?.deletePath(node.path);
             } catch (error) {
@@ -587,9 +813,147 @@ export const FileTree = memo(function FileTree({
         ),
       });
 
+      if (projectPath) {
+        items.push({
+          label: platform() === "macos" ? "Reveal in Finder" : "Reveal in Explorer",
+          onClick: async () => {
+            const fullPath = `${projectPath}/${node.path}`;
+            try {
+              await revealInFileManager(fullPath);
+            } catch (error) {
+              console.error("Failed to reveal in file manager:", error);
+            }
+          },
+          icon: (
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+              />
+            </svg>
+          ),
+        });
+      }
+
+      if (onRefresh) {
+        items.push({
+          label: "Refresh",
+          onClick: onRefresh,
+          icon: (
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+          ),
+        });
+      }
+
       return items;
     },
-    [fileOperations],
+    [fileOperations, projectPath, onRefresh],
+  );
+
+  // Context menu items for empty area (root level)
+  const getRootContextMenuItems = useCallback((): ContextMenuItem[] => {
+    const items: ContextMenuItem[] = [];
+
+    if (fileOperations) {
+      items.push({
+        label: "New File",
+        onClick: () => setDialog({ type: "create-file", parentPath: "" }),
+        icon: (
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+        ),
+      });
+      items.push({
+        label: "New Folder",
+        onClick: () => setDialog({ type: "create-directory", parentPath: "" }),
+        icon: (
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+            />
+          </svg>
+        ),
+      });
+    }
+
+    if (projectPath) {
+      items.push({
+        label: platform() === "macos" ? "Reveal in Finder" : "Reveal in Explorer",
+        onClick: async () => {
+          try {
+            await revealInFileManager(projectPath);
+          } catch (error) {
+            console.error("Failed to reveal in file manager:", error);
+          }
+        },
+        icon: (
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+            />
+          </svg>
+        ),
+      });
+    }
+
+    if (onRefresh) {
+      items.push({
+        label: "Refresh",
+        onClick: onRefresh,
+        icon: (
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+        ),
+      });
+    }
+
+    return items;
+  }, [fileOperations, projectPath, onRefresh]);
+
+  // Handle right-click on empty area
+  const handleRootContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      // Only show if clicking on the container itself, not on a tree node
+      if ((e.target as HTMLElement).closest('[data-path]')) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        node: { name: "", path: "", type: "directory" } as FileNode,
+        parentPath: "",
+      });
+    },
+    [],
   );
 
   const validateFileName = useCallback((name: string): string | null => {
@@ -649,6 +1013,7 @@ export const FileTree = memo(function FileTree({
         aria-label="File explorer"
         tabIndex={0}
         onKeyDown={handleKeyDown}
+        onContextMenu={handleRootContextMenu}
         options={{
           scrollbars: {
             theme: "os-theme-monochrome",
@@ -669,6 +1034,7 @@ export const FileTree = memo(function FileTree({
             defaultExpanded
             focusedPath={focusedPath}
             onExpandedChange={handleExpandedChange}
+            onFocusChange={setFocusedPath}
           />
         ))}
       </OverlayScrollbarsComponent>
@@ -677,7 +1043,11 @@ export const FileTree = memo(function FileTree({
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
-          items={getContextMenuItems(contextMenu.node, contextMenu.parentPath)}
+          items={
+            contextMenu.node.path === ""
+              ? getRootContextMenuItems()
+              : getContextMenuItems(contextMenu.node, contextMenu.parentPath)
+          }
           onClose={closeContextMenu}
         />
       )}
