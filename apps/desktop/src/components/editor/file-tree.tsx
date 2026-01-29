@@ -859,6 +859,103 @@ export const FileTree = memo(function FileTree({
     [fileOperations, projectPath, onRefresh],
   );
 
+  // Context menu items for empty area (root level)
+  const getRootContextMenuItems = useCallback((): ContextMenuItem[] => {
+    const items: ContextMenuItem[] = [];
+
+    if (fileOperations) {
+      items.push({
+        label: "New File",
+        onClick: () => setDialog({ type: "create-file", parentPath: "" }),
+        icon: (
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+        ),
+      });
+      items.push({
+        label: "New Folder",
+        onClick: () => setDialog({ type: "create-directory", parentPath: "" }),
+        icon: (
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+            />
+          </svg>
+        ),
+      });
+    }
+
+    if (projectPath) {
+      items.push({
+        label: platform() === "macos" ? "Reveal in Finder" : "Reveal in Explorer",
+        onClick: async () => {
+          try {
+            await revealInFileManager(projectPath);
+          } catch (error) {
+            console.error("Failed to reveal in file manager:", error);
+          }
+        },
+        icon: (
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+            />
+          </svg>
+        ),
+      });
+    }
+
+    if (onRefresh) {
+      items.push({
+        label: "Refresh",
+        onClick: onRefresh,
+        icon: (
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+        ),
+      });
+    }
+
+    return items;
+  }, [fileOperations, projectPath, onRefresh]);
+
+  // Handle right-click on empty area
+  const handleRootContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      // Only show if clicking on the container itself, not on a tree node
+      if ((e.target as HTMLElement).closest('[data-path]')) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        node: { name: "", path: "", type: "directory" } as FileNode,
+        parentPath: "",
+      });
+    },
+    [],
+  );
+
   const validateFileName = useCallback((name: string): string | null => {
     if (!name.trim()) {
       return "Name cannot be empty";
@@ -916,6 +1013,7 @@ export const FileTree = memo(function FileTree({
         aria-label="File explorer"
         tabIndex={0}
         onKeyDown={handleKeyDown}
+        onContextMenu={handleRootContextMenu}
         options={{
           scrollbars: {
             theme: "os-theme-monochrome",
@@ -945,7 +1043,11 @@ export const FileTree = memo(function FileTree({
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
-          items={getContextMenuItems(contextMenu.node, contextMenu.parentPath)}
+          items={
+            contextMenu.node.path === ""
+              ? getRootContextMenuItems()
+              : getContextMenuItems(contextMenu.node, contextMenu.parentPath)
+          }
           onClose={closeContextMenu}
         />
       )}
