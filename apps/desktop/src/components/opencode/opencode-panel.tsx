@@ -316,15 +316,8 @@ function MessageList({
   getPartsForMessage: (messageId: string) => Part[];
   onFileClick?: (path: string) => void;
 }) {
-  if (messages.length === 0) {
-    return (
-      <div className="h-full flex items-center justify-center text-muted text-xs">
-        <p>Send a message to get started</p>
-      </div>
-    );
-  }
-
   // Group messages into turns (user + assistant responses)
+  // Must be before any early returns to satisfy rules-of-hooks
   const turns = useMemo(() => {
     const result: { user: Message; assistantParts: Part[] }[] = [];
     let currentTurn: { user: Message; assistantParts: Part[] } | null = null;
@@ -341,6 +334,14 @@ function MessageList({
     if (currentTurn) result.push(currentTurn);
     return result;
   }, [messages, getPartsForMessage]);
+
+  if (messages.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center text-muted text-xs">
+        <p>Send a message to get started</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -730,7 +731,9 @@ function OnboardingState({
         setCopiedBrew(true);
         setTimeout(() => setCopiedBrew(false), 2000);
       }
-    } catch {}
+    } catch {
+      // Silently ignore clipboard errors
+    }
   };
 
   if (!hasProject) {
