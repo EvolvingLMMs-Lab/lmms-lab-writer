@@ -3,6 +3,7 @@
 import { useState, useCallback, memo, useRef, useEffect, useMemo } from "react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ask } from "@tauri-apps/plugin-dialog";
 import type { FileNode } from "@lmms-lab/writer-shared";
 import { ContextMenu, type ContextMenuItem } from "../ui/context-menu";
 import { InputDialog } from "../ui/input-dialog";
@@ -595,15 +596,22 @@ export const FileTree = memo(function FileTree({
           e.preventDefault();
           if (currentNode && fileOperations) {
             const isDirectory = currentNode.type === "directory";
-            if (
-              confirm(
-                `Are you sure you want to delete "${currentNode.name}"?${isDirectory ? " This will delete all files inside." : ""}`,
-              )
-            ) {
-              fileOperations.deletePath(currentNode.path).catch((error) => {
-                alert(`Failed to delete: ${error}`);
-              });
-            }
+            const nodePath = currentNode.path;
+            const nodeName = currentNode.name;
+            // Use async Tauri dialog to ensure proper confirmation before delete
+            (async () => {
+              const confirmed = await ask(
+                `Are you sure you want to delete "${nodeName}"?${isDirectory ? " This will delete all files inside." : ""}`,
+                { title: "Confirm Delete", kind: "warning" }
+              );
+              if (confirmed) {
+                try {
+                  await fileOperations.deletePath(nodePath);
+                } catch (error) {
+                  alert(`Failed to delete: ${error}`);
+                }
+              }
+            })();
           }
           break;
         }
@@ -736,11 +744,11 @@ export const FileTree = memo(function FileTree({
       items.push({
         label: "Delete",
         onClick: async () => {
-          if (
-            confirm(
-              `Are you sure you want to delete "${node.name}"?${isDirectory ? " This will delete all files inside." : ""}`,
-            )
-          ) {
+          const confirmed = await ask(
+            `Are you sure you want to delete "${node.name}"?${isDirectory ? " This will delete all files inside." : ""}`,
+            { title: "Confirm Delete", kind: "warning" }
+          );
+          if (confirmed) {
             try {
               await fileOperations?.deletePath(node.path);
             } catch (error) {
