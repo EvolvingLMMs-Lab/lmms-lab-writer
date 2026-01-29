@@ -408,11 +408,12 @@ export class OpenCodeClient {
 
     const messages: Message[] = [];
     for (const item of items) {
-      if (item.info) {
-        messages.push(item.info);
-        if (item.parts && Array.isArray(item.parts)) {
-          const key = `${sessionID}:${item.info.id}`;
-          this.store.parts.set(key, item.parts);
+      const typedItem = item as { info?: Message; parts?: Part[] };
+      if (typedItem.info) {
+        messages.push(typedItem.info);
+        if (typedItem.parts && Array.isArray(typedItem.parts)) {
+          const key = `${sessionID}:${typedItem.info.id}`;
+          this.store.parts.set(key, typedItem.parts);
         }
       }
     }
@@ -591,16 +592,16 @@ export class OpenCodeClient {
         connected: data?.connected,
       });
       if (!data) return [];
-      const allProviders = Array.isArray(data?.all) ? data.all : [];
+      const allProviders = (Array.isArray(data?.all) ? data.all : []) as Record<string, unknown>[];
       const connectedIds = new Set(
         Array.isArray(data?.connected) ? data.connected : [],
       );
       console.log("[OpenCode Client] Connected provider IDs:", Array.from(connectedIds));
 
       const connectedProviders = allProviders.filter(
-        (p: Record<string, unknown>) => connectedIds.has(String(p?.id || "")),
+        (p) => connectedIds.has(String(p?.id || "")),
       );
-      const result = connectedProviders.map((provider: Record<string, unknown>) => {
+      const result = connectedProviders.map((provider) => {
         const modelsObj = provider?.models;
         const modelsArray =
           modelsObj &&
