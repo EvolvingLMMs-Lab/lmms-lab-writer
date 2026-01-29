@@ -45,46 +45,40 @@ export function CompileButton({
   };
 
   return (
-    <div className={`flex items-center gap-1 h-8 ${className}`}>
+    <div className={`flex items-center gap-2 h-8 ${className}`}>
       <button
         onClick={handleClick}
         disabled={disabled}
-        className={`h-8 px-3 text-sm border-2 border-black transition-all flex items-center gap-2 bg-white text-black ${
+        className={`h-8 w-8 border-2 border-black transition-all flex items-center justify-center bg-white text-black relative ${
           disabled
             ? "opacity-50 cursor-not-allowed"
             : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px]"
         }`}
         title={isCompiling ? "Stop compilation (Esc)" : "Compile (Ctrl+Shift+B)"}
       >
-        <span className={`size-2 rounded-full ${getStatusColor()}`} />
+        <span className={`absolute top-1 left-1 size-1.5 rounded-full ${getStatusColor()}`} />
         {isCompiling ? (
-          <>
-            <Spinner className="size-3" />
-            <span>Compiling...</span>
-          </>
+          <Spinner className="size-4" />
         ) : (
-          <>
-            <svg
-              className="size-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <span>Compile</span>
-          </>
+          <svg
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
         )}
       </button>
 
