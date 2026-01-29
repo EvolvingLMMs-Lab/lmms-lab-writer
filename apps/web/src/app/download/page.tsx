@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { GITHUB_CONFIG, canDownload } from "@/lib/github/config";
 import {
   DownloadSection,
+  HomebrewSection,
   InstallationSection,
   RequirementsSection,
   BuildSection,
@@ -77,6 +78,7 @@ async function DownloadContent() {
           </span>
         </div>
       </div>
+      <HomebrewSection />
       <DownloadSection />
       <InstallationSection />
       <RequirementsSection />

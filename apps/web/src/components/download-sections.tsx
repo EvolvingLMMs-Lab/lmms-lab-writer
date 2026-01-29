@@ -63,14 +63,33 @@ export function DownloadSection() {
   );
 }
 
+export function HomebrewSection() {
+  return (
+    <FadeIn className="mt-10 pt-8 border-t border-border max-w-2xl">
+      <h2 className="text-sm font-medium mb-3">
+        Install via Homebrew{" "}
+        <span className="text-xs font-normal text-muted">(Recommended)</span>
+      </h2>
+      <pre className="text-sm text-muted bg-neutral-50 p-4 overflow-x-auto border border-border">
+        {`brew tap EvolvingLMMs-Lab/tap
+brew install --cask lmms-lab-writer`}
+      </pre>
+      <p className="text-xs text-muted mt-2">
+        No security warnings. Auto-updates with{" "}
+        <code className="bg-neutral-100 px-1">brew upgrade</code>.
+      </p>
+    </FadeIn>
+  );
+}
+
 export function InstallationSection() {
   return (
     <FadeIn className="mt-10 pt-8 border-t border-border max-w-2xl">
-      <h2 className="text-sm font-medium mb-3">Installation</h2>
+      <h2 className="text-sm font-medium mb-3">Manual Installation</h2>
       <div className="text-sm text-muted space-y-4">
         <p>
-          The app is not signed with an Apple Developer certificate. macOS will
-          show a security warning when you first open the installer.
+          If you downloaded the .pkg file directly, macOS will show a security
+          warning because the app is not signed.
         </p>
         <div className="bg-neutral-50 border border-border p-4 space-y-3">
           <p className="font-medium text-foreground">To install:</p>
