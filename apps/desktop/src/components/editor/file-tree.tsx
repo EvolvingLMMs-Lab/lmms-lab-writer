@@ -6,6 +6,28 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { FileNode } from "@lmms-lab/writer-shared";
 import { ContextMenu, type ContextMenuItem } from "../ui/context-menu";
 import { InputDialog } from "../ui/input-dialog";
+import {
+  File,
+  FileText,
+  FileCode,
+  FileJson,
+  FileImage,
+  FileArchive,
+  FileVideo,
+  FileAudio,
+  FileSpreadsheet,
+  FileCog,
+  FilePen,
+  FileOutput,
+  FileBox,
+  FileTerminal,
+  Folder,
+  FolderOpen,
+  Library,
+  LayoutTemplate,
+  Blocks,
+  type LucideIcon,
+} from "lucide-react";
 
 const _ITEM_SPRING = {
   type: "spring",
@@ -48,60 +70,152 @@ function isAncestorPath(ancestor: string, descendant: string): boolean {
   return descendant.startsWith(ancestor + "/");
 }
 
+function getFileExtension(filename: string): string {
+  const lastDot = filename.lastIndexOf(".");
+  return lastDot > 0 ? filename.substring(lastDot).toLowerCase() : "";
+}
+
+// Map file extensions to icons
+const FILE_ICON_MAP: Record<string, LucideIcon> = {
+  // LaTeX source files
+  ".tex": FilePen,
+  ".ltx": FilePen,
+  // LaTeX bibliography
+  ".bib": Library,
+  // LaTeX document class (template)
+  ".cls": LayoutTemplate,
+  // LaTeX style packages
+  ".sty": Blocks,
+  // LaTeX package source
+  ".dtx": FileBox,
+  ".ins": FileBox,
+  // LaTeX output
+  ".pdf": FileOutput,
+  ".dvi": FileOutput,
+  ".ps": FileOutput,
+  // LaTeX config
+  ".latexmkrc": FileCog,
+  // Documents
+  ".doc": FileText,
+  ".docx": FileText,
+  ".txt": FileText,
+  ".rtf": FileText,
+  ".md": FileText,
+  ".mdx": FileText,
+  ".rst": FileText,
+  // Code
+  ".js": FileCode,
+  ".jsx": FileCode,
+  ".ts": FileCode,
+  ".tsx": FileCode,
+  ".mjs": FileCode,
+  ".cjs": FileCode,
+  ".py": FileCode,
+  ".rb": FileCode,
+  ".go": FileCode,
+  ".rs": FileCode,
+  ".c": FileCode,
+  ".cpp": FileCode,
+  ".h": FileCode,
+  ".hpp": FileCode,
+  ".java": FileCode,
+  ".kt": FileCode,
+  ".swift": FileCode,
+  ".lua": FileCode,
+  ".r": FileCode,
+  ".m": FileCode,
+  ".html": FileCode,
+  ".htm": FileCode,
+  ".css": FileCode,
+  ".scss": FileCode,
+  ".sass": FileCode,
+  ".less": FileCode,
+  ".vue": FileCode,
+  ".svelte": FileCode,
+  // Shell/Scripts
+  ".sh": FileTerminal,
+  ".bash": FileTerminal,
+  ".zsh": FileTerminal,
+  ".fish": FileTerminal,
+  ".ps1": FileTerminal,
+  ".bat": FileTerminal,
+  ".cmd": FileTerminal,
+  // Config/Data
+  ".json": FileJson,
+  ".yaml": FileJson,
+  ".yml": FileJson,
+  ".toml": FileJson,
+  ".xml": FileJson,
+  ".ini": FileCog,
+  ".cfg": FileCog,
+  ".conf": FileCog,
+  ".env": FileCog,
+  ".gitignore": FileCog,
+  ".editorconfig": FileCog,
+  ".prettierrc": FileCog,
+  ".eslintrc": FileCog,
+  // Images
+  ".png": FileImage,
+  ".jpg": FileImage,
+  ".jpeg": FileImage,
+  ".gif": FileImage,
+  ".svg": FileImage,
+  ".webp": FileImage,
+  ".ico": FileImage,
+  ".bmp": FileImage,
+  ".tiff": FileImage,
+  ".tif": FileImage,
+  ".eps": FileImage,
+  ".pgf": FileImage,
+  ".tikz": FileImage,
+  // Archives
+  ".zip": FileArchive,
+  ".tar": FileArchive,
+  ".gz": FileArchive,
+  ".rar": FileArchive,
+  ".7z": FileArchive,
+  // Video
+  ".mp4": FileVideo,
+  ".mkv": FileVideo,
+  ".avi": FileVideo,
+  ".mov": FileVideo,
+  ".webm": FileVideo,
+  // Audio
+  ".mp3": FileAudio,
+  ".wav": FileAudio,
+  ".flac": FileAudio,
+  ".ogg": FileAudio,
+  ".m4a": FileAudio,
+  // Spreadsheet/Data
+  ".csv": FileSpreadsheet,
+  ".xls": FileSpreadsheet,
+  ".xlsx": FileSpreadsheet,
+  ".tsv": FileSpreadsheet,
+};
+
 function FileIcon({
   type,
   expanded,
+  filename,
 }: {
   type: "file" | "directory";
   expanded?: boolean;
+  filename?: string;
 }) {
+  const iconClass = "w-4 h-4 flex-shrink-0";
+
   if (type === "directory") {
     return expanded ? (
-      <svg
-        className="w-4 h-4 flex-shrink-0"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="square"
-          strokeLinejoin="miter"
-          strokeWidth={1.5}
-          d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"
-        />
-      </svg>
+      <FolderOpen className={iconClass} />
     ) : (
-      <svg
-        className="w-4 h-4 flex-shrink-0"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="square"
-          strokeLinejoin="miter"
-          strokeWidth={1.5}
-          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-        />
-      </svg>
+      <Folder className={iconClass} />
     );
   }
 
-  return (
-    <svg
-      className="w-4 h-4 flex-shrink-0"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="square"
-        strokeLinejoin="miter"
-        strokeWidth={1.5}
-        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-      />
-    </svg>
-  );
+  const ext = filename ? getFileExtension(filename) : "";
+  const IconComponent = FILE_ICON_MAP[ext] || File;
+
+  return <IconComponent className={iconClass} />;
 }
 
 const TreeNode = memo(function TreeNode({
@@ -244,7 +358,7 @@ const TreeNode = memo(function TreeNode({
           </motion.div>
         )}
         {!isDirectory && <span className="w-3" />}
-        <FileIcon type={node.type} expanded={expanded} />
+        <FileIcon type={node.type} expanded={expanded} filename={node.name} />
         <span className="truncate">{node.name}</span>
       </motion.button>
 
