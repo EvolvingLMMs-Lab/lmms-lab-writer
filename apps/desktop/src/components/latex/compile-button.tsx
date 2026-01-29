@@ -90,7 +90,7 @@ export function CompileButton({
 
       <button
         onClick={onSettingsClick}
-        className="btn btn-sm border-2 border-black bg-white text-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all p-1.5"
+        className="btn btn-sm border-2 border-black bg-white text-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all px-2"
         title="LaTeX Settings"
         aria-label="LaTeX Settings"
       >
