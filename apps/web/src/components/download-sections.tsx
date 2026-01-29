@@ -25,8 +25,8 @@ const platforms = [
     variants: [
       {
         label: "Apple Silicon",
-        file: "LMMs-Lab_Writer_0.1.0_aarch64.dmg",
-        url: `${BLOB_URL}/LMMs-Lab_Writer_0.1.0_aarch64.dmg`,
+        file: "LMMs-Lab_Writer_0.1.0_aarch64.pkg",
+        url: `${BLOB_URL}/LMMs-Lab_Writer_0.1.0_aarch64.pkg`,
       },
     ],
   },

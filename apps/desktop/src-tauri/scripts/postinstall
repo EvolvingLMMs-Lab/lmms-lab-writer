@@ -1,0 +1,12 @@
+#!/bin/bash
+# Post-installation script for LMMs-Lab Writer
+# Removes macOS quarantine attribute to prevent "damaged app" error
+
+APP_PATH="/Applications/LMMs-Lab Writer.app"
+
+if [ -d "$APP_PATH" ]; then
+    xattr -cr "$APP_PATH"
+    echo "Quarantine attribute removed from LMMs-Lab Writer"
+fi
+
+exit 0
