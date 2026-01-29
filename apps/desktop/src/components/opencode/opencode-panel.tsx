@@ -564,66 +564,79 @@ function ToolDisplay({
   const isClickableFile =
     onFileClick &&
     info.subtitle &&
-    /\.(tex|bib|cls|sty|txt|md|json|yaml|yml|py|js|ts|tsx|css|html)$/i.test(
+    /\.(tex|bib|cls|sty|txt|md|json|yaml|yml|py|js|ts|tsx|css|html|pdf|log|aux|gz|xdv|fdb_latexmk|synctex)$/i.test(
       info.subtitle,
     );
   const output = (part.state as { output?: string }).output;
   const hasDetails = Object.keys(part.state.input).length > 0 || output;
 
+  const diffStats = useMemo(() => {
+    if (output && (part.tool === "write" || part.tool === "edit")) {
+      const addMatch = output.match(/\+(\d+)/);
+      const delMatch = output.match(/-(\d+)/);
+      return {
+        added: addMatch?.[1] ? parseInt(addMatch[1], 10) : null,
+        deleted: delMatch?.[1] ? parseInt(delMatch[1], 10) : null,
+      };
+    }
+    return null;
+  }, [output, part.tool]);
+
   return (
     <div
-      className={`text-[11px] border bg-neutral-50 hover:bg-neutral-100 transition-colors ${isError ? "border-red-200 bg-red-50" : "border-border"}`}
+      className={`text-[13px] bg-neutral-50 hover:bg-neutral-100 transition-colors ${isError ? "bg-red-50" : ""}`}
     >
       <button
         type="button"
         onClick={() => hasDetails && setExpanded(!expanded)}
-        className={`w-full flex items-center gap-2 px-2 py-1.5 text-left ${hasDetails ? "cursor-pointer" : "cursor-default"}`}
+        className={`w-full flex items-center gap-3 px-3 py-2.5 text-left ${hasDetails ? "cursor-pointer" : "cursor-default"}`}
       >
         {isRunning ? (
           <Spinner className="size-4 flex-shrink-0" />
         ) : (
-          <ToolIcon tool={part.tool} />
+          <FileTypeIcon filename={info.subtitle || info.title} />
         )}
-        <span className="font-medium text-neutral-600 uppercase tracking-wide text-[10px]">
-          {info.title}
-        </span>
-        {info.subtitle && (
-          <>
-            <span className="text-neutral-300">/</span>
-            {isClickableFile ? (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onFileClick!(info.subtitle!);
-                }}
-                className="text-neutral-700 font-medium hover:text-black hover:underline truncate cursor-pointer"
-              >
-                {info.subtitle}
-              </span>
-            ) : (
-              <span className="text-neutral-700 font-medium truncate">
-                {info.subtitle}
-              </span>
+        {isClickableFile ? (
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              onFileClick!(info.subtitle!);
+            }}
+            className="text-neutral-800 hover:text-black hover:underline truncate cursor-pointer flex-1"
+          >
+            {info.subtitle || info.title}
+          </span>
+        ) : (
+          <span className="text-neutral-800 truncate flex-1">
+            {info.subtitle || info.title}
+          </span>
+        )}
+        {diffStats && (diffStats.added || diffStats.deleted) && (
+          <span className="flex items-center gap-1 text-xs flex-shrink-0">
+            {diffStats.added && (
+              <span className="text-green-600">+{diffStats.added}</span>
             )}
-          </>
+            {diffStats.deleted && (
+              <span className="text-red-500">-{diffStats.deleted}</span>
+            )}
+          </span>
         )}
-        <div className="flex-1" />
         {hasDetails && (
-          <ChevronRightIcon
-            className={`size-3 text-neutral-400 transition-transform ${expanded ? "rotate-90" : ""}`}
+          <ChevronIcon
+            className={`size-4 text-neutral-400 flex-shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
           />
         )}
       </button>
 
       {expanded && (
-        <div className="border-t border-border">
+        <div className="border-t border-neutral-200 bg-white">
           {Object.keys(part.state.input).length > 0 && (
-            <div className="px-2 py-2 space-y-1">
-              <div className="text-[9px] uppercase tracking-wider text-neutral-400 font-medium">
+            <div className="px-3 py-2 space-y-1">
+              <div className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium">
                 Input
               </div>
               {Object.entries(part.state.input).map(([key, value]) => (
-                <div key={key} className="font-mono">
+                <div key={key} className="font-mono text-xs">
                   <span className="text-blue-600">{key}</span>
                   <span className="text-neutral-400">: </span>
                   <span className="text-neutral-700 whitespace-pre-wrap break-all">
@@ -634,11 +647,11 @@ function ToolDisplay({
             </div>
           )}
           {output && (
-            <div className="px-2 py-2 border-t border-border">
-              <div className="text-[9px] uppercase tracking-wider text-neutral-400 font-medium mb-1">
+            <div className="px-3 py-2 border-t border-neutral-200">
+              <div className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium mb-1">
                 Output
               </div>
-              <pre className="text-[10px] text-neutral-600 whitespace-pre-wrap break-all font-mono max-h-48 overflow-auto">
+              <pre className="text-xs text-neutral-600 whitespace-pre-wrap break-all font-mono max-h-48 overflow-auto">
                 {output.length > 2000 ? output.slice(0, 2000) + "..." : output}
               </pre>
             </div>
@@ -647,8 +660,8 @@ function ToolDisplay({
       )}
 
       {isError && (
-        <div className="border-t border-red-200 px-2 py-1.5">
-          <p className="text-red-600">
+        <div className="border-t border-red-200 px-3 py-2 bg-red-50">
+          <p className="text-xs text-red-600">
             {(part.state as { error: string }).error}
           </p>
         </div>
@@ -740,8 +753,8 @@ function InputArea({
   }, [selectedModel, providers]);
 
   return (
-    <div className="border-t border-border flex-shrink-0 bg-white p-3">
-      <div className="border border-border bg-white focus-within:border-black transition-colors">
+    <div className="flex-shrink-0 bg-white p-4">
+      <div className="border border-neutral-200 rounded-xl bg-neutral-50 focus-within:border-neutral-400 focus-within:bg-white transition-all">
         <textarea
           ref={textareaRef}
           value={input}
@@ -749,15 +762,15 @@ function InputArea({
           onKeyDown={handleKeyDown}
           placeholder='Ask anything... "Add unit tests for the user service"'
           disabled={isWorking}
-          className="w-full min-h-[60px] max-h-[200px] px-3 py-2.5 resize-none focus:outline-none text-sm bg-transparent placeholder:text-neutral-400"
+          className="w-full min-h-[44px] max-h-[200px] px-4 py-3 resize-none focus:outline-none text-sm bg-transparent placeholder:text-neutral-400"
           rows={1}
         />
-        <div className="flex items-center gap-3 px-3 py-2 border-t border-border">
+        <div className="flex items-center gap-2 px-3 py-2">
           <div className="relative">
             <select
               value={selectedAgent || ""}
               onChange={(e) => onSelectAgent(e.target.value || null)}
-              className="text-xs bg-transparent pr-5 py-0.5 focus:outline-none appearance-none cursor-pointer text-neutral-700 hover:text-black"
+              className="text-xs bg-transparent pr-5 py-1 focus:outline-none appearance-none cursor-pointer text-neutral-600 hover:text-black font-medium"
             >
               {agents
                 .filter((a) => a?.id)
@@ -770,9 +783,8 @@ function InputArea({
             <ChevronIcon className="size-3 text-neutral-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <ProviderIcon providerId={selectedModel?.providerId} />
-            <div className="relative">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <div className="relative min-w-0 flex-1 max-w-[200px]">
               <select
                 value={
                   selectedModel
@@ -787,7 +799,7 @@ function InputArea({
                     onSelectModel(null);
                   }
                 }}
-                className="text-xs bg-transparent pr-5 py-0.5 focus:outline-none appearance-none cursor-pointer text-neutral-700 hover:text-black"
+                className="text-xs bg-transparent w-full pr-5 py-1 focus:outline-none appearance-none cursor-pointer text-neutral-600 hover:text-black font-medium truncate"
               >
                 {providers
                   .filter((p) => p?.id)
@@ -807,30 +819,35 @@ function InputArea({
               <ChevronIcon className="size-3 text-neutral-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
             {selectedModelInfo.isMax && (
-              <span className="text-[10px] text-neutral-500 font-medium">
+              <span className="text-xs text-neutral-500 font-medium flex-shrink-0">
                 Max
               </span>
             )}
           </div>
 
-          <div className="flex-1" />
+          <button
+            className="p-1.5 text-neutral-400 hover:text-neutral-600 transition-colors flex-shrink-0"
+            title="Attach image"
+          >
+            <ImageIcon className="size-4" />
+          </button>
 
           {isWorking ? (
             <button
               onClick={onAbort}
-              className="p-1 text-neutral-500 hover:text-black transition-colors"
+              className="p-1.5 text-neutral-500 hover:text-black transition-colors"
               title="Stop"
             >
-              <StopIcon className="size-4" />
+              <StopIcon className="size-5" />
             </button>
           ) : (
             <button
               onClick={onSend}
               disabled={!input.trim()}
-              className="p-1 text-neutral-400 hover:text-black transition-colors disabled:opacity-30"
+              className="p-1.5 bg-neutral-200 hover:bg-neutral-300 rounded-full transition-colors disabled:opacity-30 disabled:hover:bg-neutral-200"
               title="Send"
             >
-              <SendIcon className="size-4" />
+              <SendIcon className="size-4 text-neutral-600" />
             </button>
           )}
         </div>
@@ -1331,10 +1348,28 @@ function SendIcon({ className }: { className?: string }) {
       stroke="currentColor"
     >
       <path
-        strokeLinecap="square"
-        strokeLinejoin="miter"
+        strokeLinecap="round"
+        strokeLinejoin="round"
         strokeWidth={2}
         d="M5 10l7-7m0 0l7 7m-7-7v18"
+      />
+    </svg>
+  );
+}
+
+function ImageIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
       />
     </svg>
   );
@@ -1388,6 +1423,93 @@ function DisclosureTriangle({
       viewBox="0 0 24 24"
     >
       <path d="M8 5v14l11-7z" />
+    </svg>
+  );
+}
+
+function FileTypeIcon({ filename }: { filename: string }) {
+  const className = "size-4 flex-shrink-0";
+  const ext = filename.split(".").pop()?.toLowerCase();
+
+  if (ext === "pdf") {
+    return (
+      <svg
+        className={`${className} text-red-500`}
+        fill="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM8.5 13a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm2 4.5a.5.5 0 0 1-.5.5H7a.5.5 0 0 1-.5-.5v-4a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v4zm4.5.5h-2v-5h2a2.5 2.5 0 0 1 0 5zm4-2.5a2.5 2.5 0 0 1-2.5 2.5H15v-5h1.5a2.5 2.5 0 0 1 2.5 2.5z" />
+      </svg>
+    );
+  }
+
+  if (ext === "log" || ext === "aux" || ext === "fdb_latexmk") {
+    return (
+      <svg
+        className={`${className} text-neutral-400`}
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="square"
+          strokeLinejoin="miter"
+          strokeWidth={1.5}
+          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+        />
+      </svg>
+    );
+  }
+
+  if (ext === "tex" || ext === "bib" || ext === "cls" || ext === "sty") {
+    return (
+      <svg
+        className={`${className} text-teal-600`}
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="square"
+          strokeLinejoin="miter"
+          strokeWidth={1.5}
+          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+        />
+      </svg>
+    );
+  }
+
+  if (ext === "gz" || ext === "synctex" || ext === "xdv") {
+    return (
+      <svg
+        className={`${className} text-amber-500`}
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="square"
+          strokeLinejoin="miter"
+          strokeWidth={1.5}
+          d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      className={`${className} text-neutral-500`}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+        strokeWidth={1.5}
+        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+      />
     </svg>
   );
 }
