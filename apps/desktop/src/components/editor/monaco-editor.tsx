@@ -726,7 +726,7 @@ export const MonacoEditor = memo(function MonacoEditor({
           wrappingIndent: "indent",
           automaticLayout: true,
           minimap: {
-            enabled: editorSettings?.minimap?.enabled ?? true,
+            enabled: editorSettings?.minimap?.enabled ?? false,
             side: editorSettings?.minimap?.side ?? "right",
             size: editorSettings?.minimap?.size ?? "proportional",
             maxColumn: 120,

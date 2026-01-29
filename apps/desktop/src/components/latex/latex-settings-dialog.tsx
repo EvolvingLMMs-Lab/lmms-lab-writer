@@ -521,7 +521,12 @@ export function LaTeXSettingsDialog({
                     {/* Minimap Enable Toggle */}
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="text-sm font-medium">Enable Minimap</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">Enable Minimap</span>
+                          <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-medium">
+                            Preview
+                          </span>
+                        </div>
                         <p className="text-xs text-muted">Code overview panel</p>
                       </div>
                       <button

@@ -35,7 +35,7 @@ export interface EditorSettings {
 }
 
 export const DEFAULT_MINIMAP_SETTINGS: MinimapSettings = {
-  enabled: true,
+  enabled: false,
   side: "right",
   showSlider: "mouseover",
   renderCharacters: false,
