@@ -6,8 +6,6 @@ import { useEffect, useState } from "react";
 import {
   motion,
   FadeIn,
-  FadeInStagger,
-  FadeInStaggerItem,
 } from "@/components/motion";
 import { GITHUB_CONFIG } from "@/lib/github/config";
 

@@ -10,7 +10,7 @@ import {
   COMPILER_DESCRIPTIONS,
   DEFAULT_LATEX_SETTINGS,
 } from "@/lib/latex/types";
-import { EditorSettings, MinimapSettings, DEFAULT_EDITOR_SETTINGS, DEFAULT_MINIMAP_SETTINGS } from "@/lib/editor/types";
+import { EditorSettings, MinimapSettings, DEFAULT_EDITOR_SETTINGS } from "@/lib/editor/types";
 import { Spinner } from "@/components/ui/spinner";
 import { LaTeXInstallPrompt } from "./latex-install-prompt";
 

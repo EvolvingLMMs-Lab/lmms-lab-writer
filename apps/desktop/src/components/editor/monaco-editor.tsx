@@ -413,7 +413,7 @@ const registerLaTeXLanguage = (monaco: Monaco) => {
       options: [
         [/\]/, { token: "delimiter.bracket", next: "@pop" }],
         [/\{/, { token: "delimiter.bracket", next: "@braceArg" }],
-        [/[^\]\{]+/, "variable.parameter"],
+        [/[^\]{}]+/, "variable.parameter"],
       ],
 
       braceArg: [
