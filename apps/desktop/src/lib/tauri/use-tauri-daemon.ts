@@ -57,7 +57,7 @@ interface OperationState {
 
 interface FileChangeEvent {
   path: string;
-  kind: "create" | "modify" | "remove" | "access" | "other" | "unknown";
+  kind: "create" | "modify" | "remove" | "rename" | "access" | "other" | "unknown";
 }
 
 function convertFileNode(node: {
@@ -488,7 +488,14 @@ export function useTauriDaemon() {
     const setupListeners = async () => {
       if (isCleanedUp) return;
 
-      const { listen } = await import("@tauri-apps/api/event");
+      let listen: typeof import("@tauri-apps/api/event").listen;
+      try {
+        const eventModule = await import("@tauri-apps/api/event");
+        listen = eventModule.listen;
+      } catch (error) {
+        console.error("Failed to import Tauri event API:", error);
+        return;
+      }
 
       if (isCleanedUp) return;
 
@@ -521,7 +528,7 @@ export function useTauriDaemon() {
           const currentPath = projectPathRef.current;
           if (!currentPath) return;
 
-          if ((kind === "create" || kind === "remove") && !isTransientFile) {
+          if ((kind === "create" || kind === "remove" || kind === "rename") && !isTransientFile) {
             debouncedRefreshFileTree(currentPath);
           }
 
@@ -547,8 +554,13 @@ export function useTauriDaemon() {
       }
     };
 
-    setupListeners();
-    startWatcher();
+    // Ensure listeners are ready before starting watcher to avoid missing events
+    (async () => {
+      await setupListeners();
+      if (!isCleanedUp) {
+        await startWatcher();
+      }
+    })();
 
     return () => {
       isCleanedUp = true;

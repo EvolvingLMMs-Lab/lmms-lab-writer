@@ -55,4 +55,4 @@ CLAUDE.md
 # Marketing assets (local only)
 marketing-assets/
 apps/video/out/
-.claude/settings.local.json
+*.local.json

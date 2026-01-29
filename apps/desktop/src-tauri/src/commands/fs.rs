@@ -1,4 +1,5 @@
-use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher, EventKind};
+use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher, EventKind, event::ModifyKind};
+use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -312,7 +313,13 @@ fn should_ignore_path(path: &Path) -> bool {
 fn event_kind_to_string(kind: &EventKind) -> &'static str {
     match kind {
         EventKind::Create(_) => "create",
-        EventKind::Modify(_) => "modify",
+        EventKind::Modify(modify_kind) => {
+            // Distinguish rename events from other modifications
+            match modify_kind {
+                ModifyKind::Name(_) => "rename",
+                _ => "modify",
+            }
+        }
         EventKind::Remove(_) => "remove",
         EventKind::Access(_) => "access",
         EventKind::Other => "other",
@@ -337,7 +344,10 @@ pub fn watch_directory(
 
     let last_events = state_guard.last_events.clone();
     let app_handle = app.clone();
-    let base_path = path.clone();
+
+    // Canonicalize base_path for reliable path comparison on Windows
+    let base_path: PathBuf = std::fs::canonicalize(&path)
+        .map_err(|e| format!("Failed to canonicalize path: {}", e))?;
 
     let watcher = RecommendedWatcher::new(
         move |res: Result<notify::Event, notify::Error>| {
@@ -354,6 +364,12 @@ pub fn watch_directory(
                             continue;
                         };
                         let now = Instant::now();
+
+                        // Clean up old entries when map grows too large (prevent memory leak)
+                        if events.len() > 100 {
+                            events.retain(|_, time| now.duration_since(*time) < Duration::from_secs(5));
+                        }
+
                         if let Some(last) = events.get(&path_str) {
                             if now.duration_since(*last) < Duration::from_millis(DEBOUNCE_MS) {
                                 continue;
@@ -362,10 +378,22 @@ pub fn watch_directory(
                         events.insert(path_str.clone(), now);
                     }
 
-                    let relative_path = event_path
-                        .strip_prefix(&base_path)
-                        .map(|p| p.to_string_lossy().to_string())
-                        .unwrap_or_else(|_| path_str.clone());
+                    // Calculate relative path with proper handling for Windows paths
+                    let relative_path = match event_path.canonicalize() {
+                        Ok(canonical_event_path) => {
+                            canonical_event_path
+                                .strip_prefix(&base_path)
+                                .map(|p| p.to_string_lossy().replace("\\", "/"))
+                                .unwrap_or_else(|_| event_path.to_string_lossy().replace("\\", "/"))
+                        }
+                        Err(_) => {
+                            // File might have been deleted, try direct comparison
+                            event_path
+                                .strip_prefix(&base_path)
+                                .map(|p| p.to_string_lossy().replace("\\", "/"))
+                                .unwrap_or_else(|_| event_path.to_string_lossy().replace("\\", "/"))
+                        }
+                    };
 
                     let change_event = FileChangeEvent {
                         path: relative_path,
@@ -396,6 +424,12 @@ pub fn stop_watch(state: tauri::State<'_, Mutex<WatcherState>>) -> Result<(), St
     let mut state_guard = state.lock().map_err(|e| e.to_string())?;
     state_guard.watcher = None;
     state_guard.watched_path = None;
+
+    // Clear debounce cache to free memory
+    if let Ok(mut events) = state_guard.last_events.lock() {
+        events.clear();
+    }
+
     Ok(())
 }
 
