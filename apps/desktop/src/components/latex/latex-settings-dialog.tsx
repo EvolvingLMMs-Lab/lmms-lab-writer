@@ -124,7 +124,7 @@ export function LaTeXSettingsDialog({
               <div className="flex-1 overflow-y-auto p-4 space-y-5">
                 {/* Install Prompt - shown when no compiler is detected */}
                 {compilersStatus && !hasAnyCompiler && !isDetecting && (
-                  <LaTeXInstallPrompt onInstallComplete={onDetectCompilers} />
+                  <LaTeXInstallPrompt onRefreshCompilers={onDetectCompilers} />
                 )}
 
                 {/* Compiler Selection */}

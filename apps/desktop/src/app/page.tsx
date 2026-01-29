@@ -1408,7 +1408,7 @@ export default function EditorPage() {
           {/* LaTeX Install Prompt - shown when no compiler is detected */}
           {daemon.projectPath && latexCompiler.compilersStatus && !hasAnyCompiler && !latexCompiler.isDetecting && (
             <div className="border-t border-border">
-              <LaTeXInstallPrompt onInstallComplete={latexCompiler.detectCompilers} />
+              <LaTeXInstallPrompt onRefreshCompilers={latexCompiler.detectCompilers} />
             </div>
           )}
 

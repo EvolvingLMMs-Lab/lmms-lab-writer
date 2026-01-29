@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLatexInstaller } from "@/lib/latex";
 import { Spinner } from "@/components/ui/spinner";
 
 interface LaTeXInstallPromptProps {
-  onInstallComplete?: () => void;
+  onRefreshCompilers?: () => void;
 }
 
-export function LaTeXInstallPrompt({ onInstallComplete }: LaTeXInstallPromptProps) {
+export function LaTeXInstallPrompt({ onRefreshCompilers }: LaTeXInstallPromptProps) {
   const {
     distributions,
-    status,
     progress,
     result,
     fetchDistributions,
@@ -26,12 +25,6 @@ export function LaTeXInstallPrompt({ onInstallComplete }: LaTeXInstallPromptProp
     fetchDistributions();
   }, [fetchDistributions]);
 
-  useEffect(() => {
-    if (result?.success && result.needs_restart) {
-      onInstallComplete?.();
-    }
-  }, [result, onInstallComplete]);
-
   const handleInstall = async (distributionId: string) => {
     await install(distributionId);
   };
@@ -39,6 +32,11 @@ export function LaTeXInstallPrompt({ onInstallComplete }: LaTeXInstallPromptProp
   const handleOpenDownload = (url: string) => {
     openDownloadPage(url);
   };
+
+  const handleRefresh = useCallback(() => {
+    onRefreshCompilers?.();
+    reset();
+  }, [onRefreshCompilers, reset]);
 
   return (
     <div className="bg-amber-50 border-2 border-amber-400 p-4">
@@ -59,10 +57,35 @@ export function LaTeXInstallPrompt({ onInstallComplete }: LaTeXInstallPromptProp
         </svg>
 
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-amber-800">LaTeX Not Detected</h3>
-          <p className="text-sm text-amber-700 mt-1">
-            No LaTeX compiler was found on your system. Install a LaTeX distribution to compile documents.
-          </p>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h3 className="font-bold text-amber-800">LaTeX Not Detected</h3>
+              <p className="text-sm text-amber-700 mt-1">
+                No LaTeX compiler was found on your system. Install a LaTeX distribution to compile documents.
+              </p>
+            </div>
+            {!isInstalling && !result && (
+              <button
+                onClick={handleRefresh}
+                className="flex-shrink-0 p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-100 rounded transition-colors"
+                title="Refresh compiler detection"
+              >
+                <svg
+                  className="size-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
 
           {/* Installation Progress */}
           <AnimatePresence mode="wait">
@@ -105,10 +128,18 @@ export function LaTeXInstallPrompt({ onInstallComplete }: LaTeXInstallPromptProp
                 }`}>
                   {result.message}
                 </p>
-                {result.needs_restart && result.success && (
-                  <p className="text-sm text-green-600 mt-2 font-medium">
-                    Please restart the application to detect the new installation.
-                  </p>
+                {result.success && (
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      onClick={handleRefresh}
+                      className="btn btn-sm border-2 border-green-600 bg-green-600 text-white hover:bg-green-700 transition-colors"
+                    >
+                      Refresh Compilers
+                    </button>
+                    <span className="text-xs text-green-600">
+                      Click to detect the newly installed compiler
+                    </span>
+                  </div>
                 )}
                 {!result.success && (
                   <button

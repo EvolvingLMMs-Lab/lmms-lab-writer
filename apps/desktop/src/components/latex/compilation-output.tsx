@@ -101,16 +101,34 @@ export function CompilationOutputPanel({
     // Also get some context lines around errors
     const allOutput = output.map((line) => line.line).join("\n");
 
-    const prompt = `LaTeX compilation failed with the following errors:
+    // Generate different prompts based on compilation status
+    const isFailed = status === "error";
+    const issueType = isFailed
+      ? "errors"
+      : (errorCount > 0 && warningCount > 0)
+        ? "errors and warnings"
+        : errorCount > 0
+          ? "errors"
+          : "warnings";
+
+    const prompt = isFailed
+      ? `LaTeX compilation failed with the following errors:
 
 \`\`\`
 ${errorLines || allOutput.slice(-2000)}
 \`\`\`
 
-Please analyze these LaTeX compilation errors and fix them in the source files.`;
+Please analyze these LaTeX compilation errors and fix them in the source files.`
+      : `LaTeX compilation succeeded but with ${issueType}:
+
+\`\`\`
+${errorLines || allOutput.slice(-2000)}
+\`\`\`
+
+Please analyze these ${issueType} and suggest how to fix or suppress them. If they are minor issues (like package update reminders), explain what they mean and whether they can be safely ignored.`;
 
     onFixWithAI(prompt);
-  }, [output, onFixWithAI]);
+  }, [output, onFixWithAI, status, errorCount, warningCount]);
 
   const getStatusBadge = () => {
     if (status === "compiling") {
@@ -178,7 +196,7 @@ Please analyze these LaTeX compilation errors and fix them in the source files.`
           )}
         </div>
         <div className="flex items-center gap-2">
-          {status === "error" && onFixWithAI && (
+          {onFixWithAI && (status === "error" || (status === "success" && (errorCount > 0 || warningCount > 0))) && (
             <button
               onClick={handleFixWithAI}
               className="text-xs px-2 py-0.5 bg-black text-white hover:bg-neutral-800 transition-colors flex items-center gap-1"
