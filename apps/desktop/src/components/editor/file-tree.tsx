@@ -4,8 +4,25 @@ import { useState, useCallback, memo, useRef, useEffect, useMemo } from "react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ask } from "@tauri-apps/plugin-dialog";
-import { open as shellOpen } from "@tauri-apps/plugin-shell";
+import { Command } from "@tauri-apps/plugin-shell";
 import { platform } from "@tauri-apps/plugin-os";
+
+// Reveal file/folder in system file manager
+async function revealInFileManager(path: string): Promise<void> {
+  const os = platform();
+
+  if (os === "macos") {
+    // macOS: open -R reveals the item in Finder
+    await Command.create("open", ["-R", path]).execute();
+  } else if (os === "windows") {
+    // Windows: explorer /select, highlights the item
+    await Command.create("explorer", ["/select,", path]).execute();
+  } else {
+    // Linux: xdg-open opens the containing folder
+    const parentPath = path.replace(/\/[^/]*$/, "") || path;
+    await Command.create("xdg-open", [parentPath]).execute();
+  }
+}
 import type { FileNode } from "@lmms-lab/writer-shared";
 import { ContextMenu, type ContextMenuItem } from "../ui/context-menu";
 import { InputDialog } from "../ui/input-dialog";
@@ -657,10 +674,7 @@ export const FileTree = memo(function FileTree({
           if (!currentNode || !projectPath) break;
           e.preventDefault();
           const fullPath = `${projectPath}/${currentNode.path}`;
-          const pathToOpen = currentNode.type === "directory"
-            ? fullPath
-            : projectPath + "/" + (getParentPath(currentNode.path) || "");
-          shellOpen(pathToOpen).catch(console.error);
+          revealInFileManager(fullPath).catch(console.error);
           break;
         }
       }
@@ -808,12 +822,10 @@ export const FileTree = memo(function FileTree({
           label: platform() === "macos" ? "Reveal in Finder" : "Reveal in Explorer",
           onClick: async () => {
             const fullPath = `${projectPath}/${node.path}`;
-            // Open the parent directory for files, or the directory itself for folders
-            const pathToOpen = isDirectory ? fullPath : projectPath + "/" + (getParentPath(node.path) || "");
             try {
-              await shellOpen(pathToOpen);
+              await revealInFileManager(fullPath);
             } catch (error) {
-              console.error("Failed to reveal in explorer:", error);
+              console.error("Failed to reveal in file manager:", error);
             }
           },
           icon: (
