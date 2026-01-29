@@ -77,6 +77,8 @@ export default tseslint.config(
       ...nextPlugin.configs["core-web-vitals"].rules,
       // Disable for Tauri apps where next/image may not work well
       "@next/next/no-img-element": "off",
+      // Disable since we use App Router, not Pages Router
+      "@next/next/no-html-link-for-pages": "off",
     },
   },
 
