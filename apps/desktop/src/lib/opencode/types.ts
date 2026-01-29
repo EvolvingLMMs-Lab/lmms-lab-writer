@@ -149,17 +149,30 @@ export type SessionInfo = {
   }
 }
 
-export type SessionStatus = 
+export type SessionStatus =
   | { type: 'idle' }
   | { type: 'running' }
+  | { type: 'busy' }
   | { type: 'retry'; message: string; attempt: number; next?: number }
 
-export type Event = 
+export type SessionError = {
+  name: string
+  data?: {
+    message?: string
+    providerID?: string
+  }
+}
+
+export type Event =
   | { type: 'server.connected'; properties: Record<string, unknown> }
   | { type: 'server.heartbeat'; properties: Record<string, unknown> }
+  | { type: 'session.created'; properties: { info: SessionInfo } }
   | { type: 'session.updated'; properties: { info: SessionInfo } }
   | { type: 'session.deleted'; properties: { info: SessionInfo } }
   | { type: 'session.status'; properties: { sessionID: string; status: SessionStatus } }
+  | { type: 'session.error'; properties: { sessionID: string; error: SessionError } }
+  | { type: 'session.idle'; properties: { sessionID: string } }
+  | { type: 'session.diff'; properties: { sessionID: string; diff: unknown[] } }
   | { type: 'message.updated'; properties: { info: Message } }
   | { type: 'message.removed'; properties: { sessionID: string; messageID: string } }
   | { type: 'message.part.updated'; properties: { part: Part; delta?: string } }
@@ -172,14 +185,24 @@ export type ToolInfo = {
 }
 
 export function getToolInfo(tool: string, input: Record<string, unknown> = {}): ToolInfo {
-  const getFilename = (path: string) => path.split('/').pop() || path
+  const getFilename = (path: string) => {
+    // Handle both forward and back slashes
+    const parts = path.replace(/\\/g, '/').split('/')
+    return parts.pop() || path
+  }
+
+  // Truncate long strings for display
+  const truncate = (str: string, maxLen = 80) => {
+    if (!str) return str
+    return str.length > maxLen ? str.slice(0, maxLen) + '...' : str
+  }
 
   switch (tool) {
     case 'read':
       return {
         icon: 'glasses',
         title: 'Reading',
-        subtitle: input.filePath ? getFilename(input.filePath as string) : undefined,
+        subtitle: input.filePath ? getFilename(input.filePath as string) : (input.file_path ? getFilename(input.file_path as string) : undefined),
       }
     case 'list':
       return {
@@ -190,59 +213,84 @@ export function getToolInfo(tool: string, input: Record<string, unknown> = {}): 
     case 'glob':
       return {
         icon: 'search',
-        title: 'Searching files',
+        title: 'Glob',
         subtitle: input.pattern as string,
       }
     case 'grep':
       return {
         icon: 'search',
-        title: 'Searching content',
-        subtitle: input.pattern as string,
+        title: 'Grep',
+        subtitle: truncate(input.pattern as string),
       }
     case 'webfetch':
       return {
         icon: 'globe',
-        title: 'Fetching URL',
-        subtitle: input.url as string,
+        title: 'Fetching',
+        subtitle: truncate(input.url as string),
       }
     case 'task':
       return {
         icon: 'bot',
         title: `Agent: ${input.subagent_type || 'task'}`,
-        subtitle: input.description as string,
+        subtitle: truncate(input.description as string),
       }
-    case 'bash':
+    case 'bash': {
+      // Show the actual command, not just description
+      const cmd = input.command as string
+      const desc = input.description as string
+      // Prefer showing command, fall back to description
+      const display = cmd ? truncate(cmd, 100) : desc
       return {
         icon: 'terminal',
-        title: 'Running command',
-        subtitle: input.description as string,
+        title: 'Bash',
+        subtitle: display,
       }
+    }
     case 'edit':
       return {
         icon: 'edit',
         title: 'Editing',
-        subtitle: input.filePath ? getFilename(input.filePath as string) : undefined,
+        subtitle: input.filePath ? getFilename(input.filePath as string) : (input.file_path ? getFilename(input.file_path as string) : undefined),
       }
     case 'write':
       return {
         icon: 'file-plus',
         title: 'Writing',
-        subtitle: input.filePath ? getFilename(input.filePath as string) : undefined,
+        subtitle: input.filePath ? getFilename(input.filePath as string) : (input.file_path ? getFilename(input.file_path as string) : undefined),
       }
     case 'todowrite':
+    case 'todocreate':
       return {
         icon: 'checklist',
-        title: 'Planning',
+        title: 'Creating task',
+        subtitle: truncate(input.subject as string),
       }
     case 'todoread':
+    case 'todolist':
       return {
         icon: 'checklist',
-        title: 'Reading todos',
+        title: 'Listing tasks',
       }
+    case 'todoupdate':
+      return {
+        icon: 'checklist',
+        title: 'Updating task',
+        subtitle: input.status as string,
+      }
+    case 'mcp': {
+      // MCP tool calls - show the tool name
+      const mcpTool = input.tool as string || input.name as string
+      return {
+        icon: 'plug',
+        title: 'MCP',
+        subtitle: mcpTool,
+      }
+    }
     default:
       return {
         icon: 'tool',
         title: tool,
+        subtitle: truncate(JSON.stringify(input).slice(0, 60)),
       }
   }
 }

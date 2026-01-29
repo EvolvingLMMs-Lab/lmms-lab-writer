@@ -1,0 +1,755 @@
+use serde::{Deserialize, Serialize};
+use std::process::Stdio;
+use std::sync::Arc;
+use tauri::{AppHandle, Emitter, State};
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::{Child, Command};
+use tokio::sync::Mutex;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LaTeXDistribution {
+    pub name: String,
+    pub id: String,
+    pub description: String,
+    pub install_command: Option<String>,
+    pub download_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstallProgress {
+    pub stage: String,
+    pub message: String,
+    pub progress: Option<f32>, // 0.0 to 1.0
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstallResult {
+    pub success: bool,
+    pub message: String,
+    pub needs_restart: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompilerInfo {
+    pub name: String,
+    pub path: Option<String>,
+    pub available: bool,
+    pub version: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LaTeXCompilersStatus {
+    pub pdflatex: CompilerInfo,
+    pub xelatex: CompilerInfo,
+    pub lualatex: CompilerInfo,
+    pub latexmk: CompilerInfo,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompilationResult {
+    pub success: bool,
+    pub exit_code: Option<i32>,
+    pub pdf_path: Option<String>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompileOutputEvent {
+    pub line: String,
+    pub is_error: bool,
+    pub is_warning: bool,
+}
+
+pub struct LaTeXCompilationState {
+    pub current_process: Arc<Mutex<Option<Child>>>,
+}
+
+impl Default for LaTeXCompilationState {
+    fn default() -> Self {
+        Self {
+            current_process: Arc::new(Mutex::new(None)),
+        }
+    }
+}
+
+async fn find_compiler(name: &str) -> CompilerInfo {
+    let which_cmd = if cfg!(target_os = "windows") {
+        "where"
+    } else {
+        "which"
+    };
+
+    // Try system PATH first
+    let output = Command::new(which_cmd)
+        .arg(name)
+        .output()
+        .await;
+
+    if let Ok(output) = output {
+        if output.status.success() {
+            let path = String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .next()
+                .unwrap_or("")
+                .trim()
+                .to_string();
+
+            if !path.is_empty() {
+                let version = get_compiler_version(name, &path).await;
+                return CompilerInfo {
+                    name: name.to_string(),
+                    path: Some(path),
+                    available: true,
+                    version,
+                };
+            }
+        }
+    }
+
+    // Check common installation paths
+    let common_paths = get_common_paths(name);
+    for path in common_paths {
+        if std::path::Path::new(&path).exists() {
+            let version = get_compiler_version(name, &path).await;
+            return CompilerInfo {
+                name: name.to_string(),
+                path: Some(path),
+                available: true,
+                version,
+            };
+        }
+    }
+
+    CompilerInfo {
+        name: name.to_string(),
+        path: None,
+        available: false,
+        version: None,
+    }
+}
+
+fn get_common_paths(name: &str) -> Vec<String> {
+    let mut paths = Vec::new();
+
+    #[cfg(target_os = "windows")]
+    {
+        // TeX Live paths
+        for year in (2020..=2030).rev() {
+            paths.push(format!("C:\\texlive\\{}\\bin\\win32\\{}.exe", year, name));
+            paths.push(format!("C:\\texlive\\{}\\bin\\windows\\{}.exe", year, name));
+        }
+        // MiKTeX paths
+        paths.push(format!("C:\\Program Files\\MiKTeX\\miktex\\bin\\x64\\{}.exe", name));
+        paths.push(format!("C:\\Program Files (x86)\\MiKTeX\\miktex\\bin\\{}.exe", name));
+        // User MiKTeX
+        if let Ok(home) = std::env::var("LOCALAPPDATA") {
+            paths.push(format!("{}\\Programs\\MiKTeX\\miktex\\bin\\x64\\{}.exe", home, name));
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        paths.push(format!("/Library/TeX/texbin/{}", name));
+        paths.push(format!("/opt/homebrew/bin/{}", name));
+        paths.push(format!("/usr/local/bin/{}", name));
+        paths.push(format!("/usr/local/texlive/2024/bin/universal-darwin/{}", name));
+        paths.push(format!("/usr/local/texlive/2023/bin/universal-darwin/{}", name));
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        paths.push(format!("/usr/bin/{}", name));
+        paths.push(format!("/usr/local/bin/{}", name));
+        for year in (2020..=2030).rev() {
+            paths.push(format!("/usr/local/texlive/{}/bin/x86_64-linux/{}", year, name));
+        }
+    }
+
+    paths
+}
+
+async fn get_compiler_version(name: &str, path: &str) -> Option<String> {
+    let output = Command::new(path)
+        .arg("--version")
+        .output()
+        .await
+        .ok()?;
+
+    if output.status.success() {
+        let version_output = String::from_utf8_lossy(&output.stdout);
+        // Extract first line which usually contains version info
+        let first_line = version_output.lines().next()?;
+        // Try to extract just the version number
+        if name == "latexmk" {
+            // latexmk outputs "Latexmk, John Collins, ..."
+            Some(first_line.to_string())
+        } else {
+            // pdflatex, xelatex, lualatex output "pdfTeX 3.14159265-2.6-1.40.25 (TeX Live 2024)"
+            Some(first_line.to_string())
+        }
+    } else {
+        None
+    }
+}
+
+#[tauri::command]
+pub async fn latex_detect_compilers() -> Result<LaTeXCompilersStatus, String> {
+    let (pdflatex, xelatex, lualatex, latexmk) = tokio::join!(
+        find_compiler("pdflatex"),
+        find_compiler("xelatex"),
+        find_compiler("lualatex"),
+        find_compiler("latexmk"),
+    );
+
+    Ok(LaTeXCompilersStatus {
+        pdflatex,
+        xelatex,
+        lualatex,
+        latexmk,
+    })
+}
+
+#[tauri::command]
+pub async fn latex_compile(
+    app: AppHandle,
+    state: State<'_, LaTeXCompilationState>,
+    directory: String,
+    compiler: String,
+    main_file: String,
+    args: Vec<String>,
+    custom_path: Option<String>,
+) -> Result<CompilationResult, String> {
+    // Stop any existing compilation
+    {
+        let mut process_guard = state.current_process.lock().await;
+        if let Some(mut child) = process_guard.take() {
+            let _ = child.kill().await;
+        }
+    }
+
+    // Determine the compiler executable
+    let compiler_path = if let Some(ref path) = custom_path {
+        path.clone()
+    } else {
+        compiler.clone()
+    };
+
+    // Build command arguments
+    let mut cmd_args = vec![
+        "-interaction=nonstopmode".to_string(),
+        "-file-line-error".to_string(),
+    ];
+
+    // Add user-provided arguments
+    cmd_args.extend(args);
+
+    // Add the main file
+    cmd_args.push(main_file.clone());
+
+    // Create the command
+    let mut cmd = Command::new(&compiler_path);
+    cmd.current_dir(&directory)
+        .args(&cmd_args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    // Ensure PATH includes common TeX directories
+    let env_path = std::env::var("PATH").unwrap_or_default();
+    #[cfg(target_os = "macos")]
+    let env_path = {
+        if !env_path.contains("/Library/TeX/texbin") {
+            format!("/Library/TeX/texbin:/opt/homebrew/bin:/usr/local/bin:{}", env_path)
+        } else {
+            env_path
+        }
+    };
+    cmd.env("PATH", env_path);
+
+    // Spawn the process
+    let child = cmd.spawn().map_err(|e| format!("Failed to start compiler: {}", e))?;
+
+    // Store the child process
+    {
+        let mut process_guard = state.current_process.lock().await;
+        *process_guard = Some(child);
+    }
+
+    // Get stdout and stderr
+    let stdout;
+    let stderr;
+    {
+        let mut process_guard = state.current_process.lock().await;
+        if let Some(ref mut child) = *process_guard {
+            stdout = child.stdout.take();
+            stderr = child.stderr.take();
+        } else {
+            return Err("Process not found".to_string());
+        }
+    }
+
+    // Stream output
+    let app_clone = app.clone();
+    let stdout_handle = if let Some(stdout) = stdout {
+        let app = app_clone.clone();
+        Some(tokio::spawn(async move {
+            let reader = BufReader::new(stdout);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let is_error = line.contains("!") ||
+                              line.contains("Error") ||
+                              line.contains("error") ||
+                              line.starts_with("l.");
+                let is_warning = line.contains("Warning") ||
+                                line.contains("warning") ||
+                                line.contains("Overfull") ||
+                                line.contains("Underfull");
+
+                let event = CompileOutputEvent {
+                    line,
+                    is_error,
+                    is_warning,
+                };
+                let _ = app.emit("latex-compile-output", &event);
+            }
+        }))
+    } else {
+        None
+    };
+
+    let stderr_handle = if let Some(stderr) = stderr {
+        let app = app_clone;
+        Some(tokio::spawn(async move {
+            let reader = BufReader::new(stderr);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let event = CompileOutputEvent {
+                    line,
+                    is_error: true,
+                    is_warning: false,
+                };
+                let _ = app.emit("latex-compile-output", &event);
+            }
+        }))
+    } else {
+        None
+    };
+
+    // Wait for output streams to finish
+    if let Some(handle) = stdout_handle {
+        let _ = handle.await;
+    }
+    if let Some(handle) = stderr_handle {
+        let _ = handle.await;
+    }
+
+    // Wait for the process to complete
+    let exit_code;
+    {
+        let mut process_guard = state.current_process.lock().await;
+        if let Some(mut child) = process_guard.take() {
+            match child.wait().await {
+                Ok(status) => {
+                    exit_code = status.code();
+                }
+                Err(e) => {
+                    return Err(format!("Failed to wait for compiler: {}", e));
+                }
+            }
+        } else {
+            return Err("Process was terminated".to_string());
+        }
+    }
+
+    // Determine the PDF path
+    let pdf_name = main_file
+        .strip_suffix(".tex")
+        .unwrap_or(&main_file);
+    let pdf_path = format!("{}/{}.pdf", directory, pdf_name);
+
+    let pdf_exists = std::path::Path::new(&pdf_path).exists();
+
+    let success = exit_code == Some(0) && pdf_exists;
+
+    Ok(CompilationResult {
+        success,
+        exit_code,
+        pdf_path: if pdf_exists { Some(pdf_path) } else { None },
+        error: if !success && !pdf_exists {
+            Some("PDF was not generated".to_string())
+        } else if !success {
+            Some(format!("Compilation failed with exit code {:?}", exit_code))
+        } else {
+            None
+        },
+    })
+}
+
+#[tauri::command]
+pub async fn latex_stop_compilation(
+    state: State<'_, LaTeXCompilationState>,
+) -> Result<(), String> {
+    let mut process_guard = state.current_process.lock().await;
+    if let Some(mut child) = process_guard.take() {
+        child.kill().await.map_err(|e| format!("Failed to stop compilation: {}", e))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn latex_clean_aux_files(
+    directory: String,
+    main_file: String,
+) -> Result<(), String> {
+    let base_name = main_file
+        .strip_suffix(".tex")
+        .unwrap_or(&main_file);
+
+    let aux_extensions = [
+        ".aux", ".log", ".out", ".toc", ".lof", ".lot",
+        ".fls", ".fdb_latexmk", ".synctex.gz", ".synctex",
+        ".bbl", ".blg", ".nav", ".snm", ".vrb",
+    ];
+
+    for ext in &aux_extensions {
+        let file_path = format!("{}/{}{}", directory, base_name, ext);
+        if std::path::Path::new(&file_path).exists() {
+            let _ = std::fs::remove_file(&file_path);
+        }
+    }
+
+    Ok(())
+}
+
+/// Get recommended LaTeX distributions for the current platform
+#[tauri::command]
+pub async fn latex_get_distributions() -> Result<Vec<LaTeXDistribution>, String> {
+    let mut distributions = Vec::new();
+
+    #[cfg(target_os = "windows")]
+    {
+        distributions.push(LaTeXDistribution {
+            name: "MiKTeX".to_string(),
+            id: "miktex".to_string(),
+            description: "Recommended for Windows. Lightweight with on-demand package installation.".to_string(),
+            install_command: Some("winget install MiKTeX.MiKTeX".to_string()),
+            download_url: Some("https://miktex.org/download".to_string()),
+        });
+        distributions.push(LaTeXDistribution {
+            name: "TeX Live".to_string(),
+            id: "texlive".to_string(),
+            description: "Full-featured distribution, larger download size.".to_string(),
+            install_command: None,
+            download_url: Some("https://tug.org/texlive/acquire-netinstall.html".to_string()),
+        });
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        distributions.push(LaTeXDistribution {
+            name: "MacTeX".to_string(),
+            id: "mactex".to_string(),
+            description: "Recommended for macOS. Full TeX Live distribution with Mac-specific tools.".to_string(),
+            install_command: Some("brew install --cask mactex".to_string()),
+            download_url: Some("https://tug.org/mactex/".to_string()),
+        });
+        distributions.push(LaTeXDistribution {
+            name: "BasicTeX".to_string(),
+            id: "basictex".to_string(),
+            description: "Smaller installation (~100MB). May need to install additional packages manually.".to_string(),
+            install_command: Some("brew install --cask basictex".to_string()),
+            download_url: Some("https://tug.org/mactex/morepackages.html".to_string()),
+        });
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        distributions.push(LaTeXDistribution {
+            name: "TeX Live (Full)".to_string(),
+            id: "texlive-full".to_string(),
+            description: "Complete TeX Live installation with all packages.".to_string(),
+            install_command: Some(get_linux_install_command("texlive-full")),
+            download_url: Some("https://tug.org/texlive/".to_string()),
+        });
+        distributions.push(LaTeXDistribution {
+            name: "TeX Live (Basic + CJK)".to_string(),
+            id: "texlive-cjk".to_string(),
+            description: "Basic installation with CJK (Chinese/Japanese/Korean) support.".to_string(),
+            install_command: Some(get_linux_install_command("texlive-cjk")),
+            download_url: None,
+        });
+    }
+
+    Ok(distributions)
+}
+
+#[cfg(target_os = "linux")]
+fn get_linux_install_command(package: &str) -> String {
+    // Try to detect the package manager
+    if std::path::Path::new("/usr/bin/apt").exists() {
+        // Debian/Ubuntu
+        match package {
+            "texlive-full" => "sudo apt install -y texlive-full".to_string(),
+            "texlive-cjk" => "sudo apt install -y texlive-base texlive-xetex texlive-lang-chinese texlive-lang-japanese texlive-lang-korean".to_string(),
+            _ => format!("sudo apt install -y {}", package),
+        }
+    } else if std::path::Path::new("/usr/bin/dnf").exists() {
+        // Fedora/RHEL
+        match package {
+            "texlive-full" => "sudo dnf install -y texlive-scheme-full".to_string(),
+            "texlive-cjk" => "sudo dnf install -y texlive-scheme-basic texlive-xetex texlive-ctex".to_string(),
+            _ => format!("sudo dnf install -y {}", package),
+        }
+    } else if std::path::Path::new("/usr/bin/pacman").exists() {
+        // Arch Linux
+        match package {
+            "texlive-full" => "sudo pacman -S --noconfirm texlive".to_string(),
+            "texlive-cjk" => "sudo pacman -S --noconfirm texlive-basic texlive-xetex texlive-langchinese texlive-langjapanese texlive-langkorean".to_string(),
+            _ => format!("sudo pacman -S --noconfirm {}", package),
+        }
+    } else {
+        "# Please install TeX Live manually from https://tug.org/texlive/".to_string()
+    }
+}
+
+/// Install LaTeX distribution
+#[tauri::command]
+pub async fn latex_install(
+    app: AppHandle,
+    distribution_id: String,
+) -> Result<InstallResult, String> {
+    // Emit initial progress
+    let _ = app.emit("latex-install-progress", InstallProgress {
+        stage: "starting".to_string(),
+        message: "Preparing installation...".to_string(),
+        progress: Some(0.0),
+    });
+
+    #[cfg(target_os = "windows")]
+    {
+        return install_windows(&app, &distribution_id).await;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        return install_macos(&app, &distribution_id).await;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        return install_linux(&app, &distribution_id).await;
+    }
+
+    #[allow(unreachable_code)]
+    Err("Unsupported platform".to_string())
+}
+
+#[cfg(target_os = "windows")]
+async fn install_windows(app: &AppHandle, distribution_id: &str) -> Result<InstallResult, String> {
+    if distribution_id != "miktex" {
+        return Ok(InstallResult {
+            success: false,
+            message: "Please download and install TeX Live manually from the official website.".to_string(),
+            needs_restart: false,
+        });
+    }
+
+    // Check if winget is available
+    let _ = app.emit("latex-install-progress", InstallProgress {
+        stage: "checking".to_string(),
+        message: "Checking for winget...".to_string(),
+        progress: Some(0.1),
+    });
+
+    let winget_check = Command::new("winget")
+        .arg("--version")
+        .output()
+        .await;
+
+    if winget_check.is_err() || !winget_check.unwrap().status.success() {
+        return Ok(InstallResult {
+            success: false,
+            message: "winget is not available. Please install MiKTeX manually from https://miktex.org/download".to_string(),
+            needs_restart: false,
+        });
+    }
+
+    // Install MiKTeX via winget
+    let _ = app.emit("latex-install-progress", InstallProgress {
+        stage: "installing".to_string(),
+        message: "Installing MiKTeX via winget... This may take several minutes.".to_string(),
+        progress: Some(0.2),
+    });
+
+    let mut child = Command::new("winget")
+        .args(["install", "MiKTeX.MiKTeX", "--accept-package-agreements", "--accept-source-agreements"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to start winget: {}", e))?;
+
+    // Stream output
+    if let Some(stdout) = child.stdout.take() {
+        let app_clone = app.clone();
+        tokio::spawn(async move {
+            let reader = BufReader::new(stdout);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = app_clone.emit("latex-install-progress", InstallProgress {
+                    stage: "installing".to_string(),
+                    message: line,
+                    progress: None,
+                });
+            }
+        });
+    }
+
+    let status = child.wait().await.map_err(|e| format!("Installation failed: {}", e))?;
+
+    if status.success() {
+        let _ = app.emit("latex-install-progress", InstallProgress {
+            stage: "complete".to_string(),
+            message: "MiKTeX installed successfully!".to_string(),
+            progress: Some(1.0),
+        });
+
+        Ok(InstallResult {
+            success: true,
+            message: "MiKTeX installed successfully. Please restart the application to detect the new installation.".to_string(),
+            needs_restart: true,
+        })
+    } else {
+        Ok(InstallResult {
+            success: false,
+            message: "Installation failed. Please try installing MiKTeX manually from https://miktex.org/download".to_string(),
+            needs_restart: false,
+        })
+    }
+}
+
+#[cfg(target_os = "macos")]
+async fn install_macos(app: &AppHandle, distribution_id: &str) -> Result<InstallResult, String> {
+    // Check if Homebrew is available
+    let _ = app.emit("latex-install-progress", InstallProgress {
+        stage: "checking".to_string(),
+        message: "Checking for Homebrew...".to_string(),
+        progress: Some(0.1),
+    });
+
+    let brew_check = Command::new("brew")
+        .arg("--version")
+        .output()
+        .await;
+
+    if brew_check.is_err() || !brew_check.unwrap().status.success() {
+        return Ok(InstallResult {
+            success: false,
+            message: "Homebrew is not installed. Please install Homebrew first (https://brew.sh) or download MacTeX manually from https://tug.org/mactex/".to_string(),
+            needs_restart: false,
+        });
+    }
+
+    let cask = match distribution_id {
+        "mactex" => "mactex",
+        "basictex" => "basictex",
+        _ => {
+            return Ok(InstallResult {
+                success: false,
+                message: "Unknown distribution".to_string(),
+                needs_restart: false,
+            });
+        }
+    };
+
+    let _ = app.emit("latex-install-progress", InstallProgress {
+        stage: "installing".to_string(),
+        message: format!("Installing {} via Homebrew... This may take a while.", cask),
+        progress: Some(0.2),
+    });
+
+    let mut child = Command::new("brew")
+        .args(["install", "--cask", cask])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to start brew: {}", e))?;
+
+    // Stream output
+    if let Some(stdout) = child.stdout.take() {
+        let app_clone = app.clone();
+        tokio::spawn(async move {
+            let reader = BufReader::new(stdout);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = app_clone.emit("latex-install-progress", InstallProgress {
+                    stage: "installing".to_string(),
+                    message: line,
+                    progress: None,
+                });
+            }
+        });
+    }
+
+    let status = child.wait().await.map_err(|e| format!("Installation failed: {}", e))?;
+
+    if status.success() {
+        let _ = app.emit("latex-install-progress", InstallProgress {
+            stage: "complete".to_string(),
+            message: format!("{} installed successfully!", cask),
+            progress: Some(1.0),
+        });
+
+        Ok(InstallResult {
+            success: true,
+            message: format!("{} installed successfully. Please restart the application to detect the new installation.", cask),
+            needs_restart: true,
+        })
+    } else {
+        Ok(InstallResult {
+            success: false,
+            message: format!("Installation failed. Please try installing {} manually.", cask),
+            needs_restart: false,
+        })
+    }
+}
+
+#[cfg(target_os = "linux")]
+async fn install_linux(app: &AppHandle, distribution_id: &str) -> Result<InstallResult, String> {
+    let install_cmd = get_linux_install_command(distribution_id);
+
+    if install_cmd.starts_with('#') {
+        return Ok(InstallResult {
+            success: false,
+            message: "Could not detect package manager. Please install TeX Live manually.".to_string(),
+            needs_restart: false,
+        });
+    }
+
+    let _ = app.emit("latex-install-progress", InstallProgress {
+        stage: "installing".to_string(),
+        message: format!("Running: {}", install_cmd),
+        progress: Some(0.1),
+    });
+
+    // For Linux, we need to show the user the command since it requires sudo
+    // We can't run sudo directly from the app without a proper privilege escalation mechanism
+    Ok(InstallResult {
+        success: false,
+        message: format!(
+            "Please run the following command in your terminal to install LaTeX:\n\n{}\n\nAfter installation, restart the application.",
+            install_cmd
+        ),
+        needs_restart: true,
+    })
+}
+
+/// Open the download URL for manual installation
+#[tauri::command]
+pub async fn latex_open_download_page(
+    app: AppHandle,
+    url: String,
+) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_url(&url, None::<&str>)
+        .map_err(|e| format!("Failed to open URL: {}", e))
+}

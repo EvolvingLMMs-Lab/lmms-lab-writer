@@ -14,6 +14,8 @@ import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { LoginForm, UserDropdown } from "@/components/auth";
+import { useLatexSettings, useLatexCompiler, findTexFiles, findMainTexFile, isTexFile, getPdfPathFromTex } from "@/lib/latex";
+import { CompileButton, CompilationOutputPanel, LaTeXSettingsDialog, LaTeXInstallPrompt } from "@/components/latex";
 
 function throttle<T extends (...args: Parameters<T>) => void>(
   fn: T,
@@ -121,6 +123,8 @@ export default function EditorPage() {
     useState<OpenCodeDaemonStatus>("stopped");
   const [opencodePort, setOpencodePort] = useState(4096);
   const [showDisconnectedDialog, setShowDisconnectedDialog] = useState(false);
+  const [showLatexSettings, setShowLatexSettings] = useState(false);
+  const [pendingOpenCodeMessage, setPendingOpenCodeMessage] = useState<string | null>(null);
 
   const contentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const opencodeStartedForPathRef = useRef<string | null>(null);
@@ -142,6 +146,72 @@ export default function EditorPage() {
       gitStatus?.changes.filter((c: { staged: boolean }) => !c.staged) ?? [],
     [gitStatus?.changes],
   );
+
+  // LaTeX compilation
+  const latexSettings = useLatexSettings();
+  const texFiles = useMemo(
+    () => findTexFiles(daemon.files),
+    [daemon.files],
+  );
+
+  // Ref for handleFileSelect to break circular dependency
+  const handleFileSelectRef = useRef<(path: string) => void>(() => {});
+
+  // Auto-detect main file when project opens
+  useEffect(() => {
+    if (daemon.files.length > 0 && !latexSettings.settings.mainFile) {
+      const mainFile = findMainTexFile(daemon.files);
+      if (mainFile) {
+        latexSettings.setMainFile(mainFile);
+      }
+    }
+  }, [daemon.files, latexSettings.settings.mainFile, latexSettings]);
+
+  const handleCompileSuccess = useCallback(
+    (result: { pdf_path: string | null }) => {
+      toast("Compilation successful", "success");
+      // Auto-open PDF if enabled
+      if (latexSettings.settings.autoOpenPdf && result.pdf_path && daemon.projectPath) {
+        // Convert absolute path to relative path for handleFileSelect
+        // Handle both forward slash and backslash for cross-platform
+        const normalizedPdfPath = result.pdf_path.replace(/\\/g, "/");
+        const normalizedProjectPath = daemon.projectPath.replace(/\\/g, "/");
+        const relativePath = normalizedPdfPath.replace(normalizedProjectPath + "/", "");
+        handleFileSelectRef.current(relativePath);
+      }
+    },
+    [latexSettings.settings.autoOpenPdf, daemon.projectPath, toast],
+  );
+
+  const handleCompileError = useCallback(
+    (error: string) => {
+      toast(`Compilation failed: ${error}`, "error");
+    },
+    [toast],
+  );
+
+  const latexCompiler = useLatexCompiler({
+    settings: latexSettings.settings,
+    projectPath: daemon.projectPath,
+    onCompileSuccess: handleCompileSuccess,
+    onCompileError: handleCompileError,
+  });
+
+  // Check if any LaTeX compiler is available
+  const hasAnyCompiler = latexCompiler.compilersStatus && (
+    latexCompiler.compilersStatus.pdflatex.available ||
+    latexCompiler.compilersStatus.xelatex.available ||
+    latexCompiler.compilersStatus.lualatex.available ||
+    latexCompiler.compilersStatus.latexmk.available
+  );
+
+  const handleCompile = useCallback(() => {
+    latexCompiler.compile();
+  }, [latexCompiler]);
+
+  const handleStopCompile = useCallback(() => {
+    latexCompiler.stopCompilation();
+  }, [latexCompiler]);
 
   const checkOpencodeStatus = useCallback(async () => {
     try {
@@ -193,6 +263,24 @@ export default function EditorPage() {
       return;
     }
 
+    // If status is "unavailable", re-check if OpenCode is now installed
+    if (opencodeDaemonStatus === "unavailable") {
+      const status = await checkOpencodeStatus();
+      if (!status?.installed) {
+        toast(
+          "OpenCode is still not installed. Please install it first:\nnpm i -g opencode-ai@latest\nor\nbrew install sst/tap/opencode",
+          "error",
+        );
+        return;
+      }
+      // OpenCode is now installed, proceed to start it
+      if (!status.running) {
+        await startOpencode(daemon.projectPath);
+        toast("OpenCode started successfully!", "success");
+      }
+      return;
+    }
+
     try {
       setOpencodeDaemonStatus("starting");
       const currentStatus = await invoke<OpenCodeStatus>("opencode_status");
@@ -220,7 +308,7 @@ export default function EditorPage() {
         "error",
       );
     }
-  }, [daemon.projectPath, toast]);
+  }, [daemon.projectPath, opencodeDaemonStatus, toast, checkOpencodeStatus, startOpencode]);
 
   const handleMaxReconnectFailed = useCallback(() => {
     setShowDisconnectedDialog(true);
@@ -272,6 +360,28 @@ export default function EditorPage() {
       opencodeStartedForPathRef.current = null;
     }
   }, [daemon.projectPath]);
+
+  // Listen for opencode logs from Tauri backend
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    import("@tauri-apps/api/event").then(({ listen }) => {
+      listen<{ type: string; message: string }>("opencode-log", (event) => {
+        const { type, message } = event.payload;
+        if (type === "stderr") {
+          console.error("[OpenCode]", message);
+        } else {
+          console.log("[OpenCode]", message);
+        }
+      }).then((fn) => {
+        unlisten = fn;
+      });
+    });
+
+    return () => {
+      unlisten?.();
+    };
+  }, []);
 
   useEffect(() => {
     if (!resizing) return;
@@ -433,6 +543,11 @@ export default function EditorPage() {
     [daemon, getFileType, toast],
   );
 
+  // Update ref for circular dependency
+  useEffect(() => {
+    handleFileSelectRef.current = handleFileSelect;
+  }, [handleFileSelect]);
+
   useEffect(() => {
     if (selectedFile && !openTabs.includes(selectedFile)) {
       setOpenTabs((prev) => [...prev, selectedFile]);
@@ -514,6 +629,10 @@ export default function EditorPage() {
         if (fileToSave) {
           try {
             await daemon.writeFile(fileToSave, content);
+            // Auto-compile on save if enabled and file is .tex
+            if (latexSettings.settings.autoCompileOnSave && isTexFile(fileToSave) && !latexCompiler.isCompiling) {
+              latexCompiler.compile();
+            }
           } catch (error) {
             console.error("Failed to save file:", error);
           }
@@ -525,7 +644,7 @@ export default function EditorPage() {
         setIsSaving(false);
       }, 500);
     },
-    [selectedFile, daemon],
+    [selectedFile, daemon, latexSettings.settings.autoCompileOnSave, latexCompiler],
   );
 
   const handleOpenFolder = useCallback(async () => {
@@ -617,12 +736,28 @@ export default function EditorPage() {
         }
         return;
       }
+
+      // Compile: Cmd/Ctrl+Shift+B
+      if (isMod && e.shiftKey && key === "b") {
+        e.preventDefault();
+        if (daemon.projectPath && !latexCompiler.isCompiling) {
+          handleCompile();
+        }
+        return;
+      }
+
+      // Stop compilation: Escape
+      if (key === "escape" && latexCompiler.isCompiling) {
+        e.preventDefault();
+        handleStopCompile();
+        return;
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown, { capture: true });
     return () =>
       window.removeEventListener("keydown", handleKeyDown, { capture: true });
-  }, [daemon, handleOpenFolder, selectedFile, handleCloseTab]);
+  }, [daemon, handleOpenFolder, selectedFile, handleCloseTab, handleCompile, handleStopCompile, latexCompiler.isCompiling]);
 
   return (
     <div className="h-dvh flex flex-col">
@@ -661,6 +796,16 @@ export default function EditorPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            {daemon.projectPath && (
+              <CompileButton
+                status={latexCompiler.status}
+                onCompile={handleCompile}
+                onStop={handleStopCompile}
+                onSettingsClick={() => setShowLatexSettings(true)}
+                disabled={!latexSettings.settings.mainFile}
+              />
+            )}
+
             <button
               onClick={handleToggleRightPanel}
               className={`btn btn-sm border-2 border-black transition-all flex items-center gap-2 bg-white text-black ${
@@ -1152,11 +1297,10 @@ export default function EditorPage() {
                 return (
                   <div
                     key={tab}
-                    className={`group flex items-center border-r border-border transition-colors ${
-                      isActive
+                    className={`group flex items-center border-r border-border transition-colors ${isActive
                         ? "bg-white text-black"
                         : "text-muted hover:text-black hover:bg-white/50"
-                    }`}
+                      }`}
                     title={tab}
                   >
                     <button
@@ -1167,11 +1311,10 @@ export default function EditorPage() {
                     </button>
                     <button
                       onClick={(e) => handleCloseTab(tab, e)}
-                      className={`w-6 h-full flex items-center justify-center hover:bg-neutral-200 ${
-                        isActive
+                      className={`w-6 h-full flex items-center justify-center hover:bg-neutral-200 ${isActive
                           ? "opacity-100"
                           : "opacity-0 group-hover:opacity-100"
-                      }`}
+                        }`}
                       aria-label="Close tab"
                     >
                       <svg
@@ -1261,6 +1404,28 @@ export default function EditorPage() {
               )}
             </div>
           )}
+
+          {/* LaTeX Install Prompt - shown when no compiler is detected */}
+          {daemon.projectPath && latexCompiler.compilersStatus && !hasAnyCompiler && !latexCompiler.isDetecting && (
+            <div className="border-t border-border">
+              <LaTeXInstallPrompt onInstallComplete={latexCompiler.detectCompilers} />
+            </div>
+          )}
+
+          {/* Compilation Output Panel */}
+          {daemon.projectPath && (
+            <CompilationOutputPanel
+              output={latexCompiler.output}
+              status={latexCompiler.status}
+              errorCount={latexCompiler.errorCount}
+              warningCount={latexCompiler.warningCount}
+              onClear={latexCompiler.clearOutput}
+              onFixWithAI={(errorMessage) => {
+                setShowRightPanel(true);
+                setPendingOpenCodeMessage(errorMessage);
+              }}
+            />
+          )}
         </div>
 
         <AnimatePresence>
@@ -1315,6 +1480,8 @@ export default function EditorPage() {
                     onRestartOpenCode={restartOpencode}
                     onMaxReconnectFailed={handleMaxReconnectFailed}
                     onFileClick={handleFileSelect}
+                    pendingMessage={pendingOpenCodeMessage}
+                    onPendingMessageSent={() => setPendingOpenCodeMessage(null)}
                   />
                 </OpenCodeErrorBoundary>
               </aside>
@@ -1338,6 +1505,17 @@ export default function EditorPage() {
           validator={validateFileName}
         />
       )}
+
+      <LaTeXSettingsDialog
+        open={showLatexSettings}
+        onClose={() => setShowLatexSettings(false)}
+        settings={latexSettings.settings}
+        onUpdateSettings={latexSettings.updateSettings}
+        compilersStatus={latexCompiler.compilersStatus}
+        isDetecting={latexCompiler.isDetecting}
+        onDetectCompilers={latexCompiler.detectCompilers}
+        texFiles={texFiles}
+      />
     </div>
   );
 }

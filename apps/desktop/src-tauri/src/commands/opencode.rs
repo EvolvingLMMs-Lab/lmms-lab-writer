@@ -2,6 +2,7 @@ use std::process::Stdio;
 use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child as TokioChild, Command as TokioCommand};
 use tokio::time::{sleep, Duration};
 
@@ -95,7 +96,7 @@ async fn find_opencode() -> Option<String> {
 
 #[tauri::command]
 pub async fn opencode_status(state: tauri::State<'_, OpenCodeState>) -> Result<OpenCodeStatus, String> {
-    let running = state
+    let process_running = state
         .process
         .lock()
         .map_err(|e| e.to_string())?
@@ -103,8 +104,22 @@ pub async fn opencode_status(state: tauri::State<'_, OpenCodeState>) -> Result<O
         .map(|_| true)
         .unwrap_or(false);
 
-    let port = *state.port.lock().map_err(|e| e.to_string())?;
+    let mut port = *state.port.lock().map_err(|e| e.to_string())?;
     let installed = find_opencode().await.is_some();
+
+    // If no process is tracked by this app, check if daemon is running externally
+    let running = if process_running {
+        true
+    } else if let Some(detected_port) = find_running_opencode_port(4096, 10).await {
+        // Found an externally running daemon, update the port
+        port = detected_port;
+        if let Ok(mut port_guard) = state.port.lock() {
+            *port_guard = detected_port;
+        }
+        true
+    } else {
+        false
+    };
 
     Ok(OpenCodeStatus {
         running,
@@ -116,6 +131,44 @@ pub async fn opencode_status(state: tauri::State<'_, OpenCodeState>) -> Result<O
 async fn check_port_in_use(port: u16) -> bool {
     use std::net::TcpListener;
     TcpListener::bind(("127.0.0.1", port)).is_err()
+}
+
+/// Check if OpenCode daemon is running on a specific port by making an HTTP request
+async fn check_opencode_running_on_port(port: u16) -> bool {
+    let url = format!("http://127.0.0.1:{}/agent", port);
+    let client = match reqwest::Client::builder()
+        .timeout(Duration::from_millis(500))
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+
+    match client.get(&url).send().await {
+        Ok(resp) => resp.status().is_success(),
+        Err(_) => false,
+    }
+}
+
+/// Find a running OpenCode daemon on common ports
+async fn find_running_opencode_port(start_port: u16, max_attempts: u16) -> Option<u16> {
+    for offset in 0..max_attempts {
+        let port = start_port + offset;
+        if check_opencode_running_on_port(port).await {
+            return Some(port);
+        }
+    }
+    None
+}
+
+async fn find_available_port(start_port: u16, max_attempts: u16) -> Option<u16> {
+    for offset in 0..max_attempts {
+        let port = start_port + offset;
+        if !check_port_in_use(port).await {
+            return Some(port);
+        }
+    }
+    None
 }
 
 #[tauri::command]
@@ -134,15 +187,16 @@ pub async fn opencode_start(
 
     let opencode_path = find_opencode().await.ok_or("OpenCode not found. Please install it from https://opencode.ai/ or run: npm i -g opencode-ai@latest")?;
 
-    let port = port.unwrap_or(4096);
-    
-    if check_port_in_use(port).await {
-        return Err(format!(
-            "Port {} is already in use. Kill the existing process or use a different port.\n\
-            Try: lsof -i :{} | grep LISTEN",
-            port, port
-        ));
-    }
+    let requested_port = port.unwrap_or(4096);
+
+    // Try to find an available port, starting from the requested port
+    let port = find_available_port(requested_port, 10).await.ok_or_else(|| {
+        format!(
+            "Could not find an available port in range {}-{}. Please close some applications or specify a different port.",
+            requested_port,
+            requested_port + 9
+        )
+    })?;
 
     let dir_path = std::path::Path::new(&directory);
     if !dir_path.exists() {
@@ -163,44 +217,73 @@ pub async fn opencode_start(
         .spawn()
         .map_err(|e| format!("Failed to spawn OpenCode process: {}", e))?;
 
-    sleep(Duration::from_millis(800)).await;
+    // Spawn tasks to stream stdout/stderr to frontend
+    if let Some(stdout) = child.stdout.take() {
+        let app_clone = app.clone();
+        tokio::spawn(async move {
+            let reader = BufReader::new(stdout);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = app_clone.emit("opencode-log", serde_json::json!({
+                    "type": "stdout",
+                    "message": line
+                }));
+            }
+        });
+    }
 
-    if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
-        let stderr = if let Some(mut stderr_handle) = child.stderr.take() {
-            use tokio::io::AsyncReadExt;
-            let mut buffer = Vec::new();
-            stderr_handle.read_to_end(&mut buffer).await.ok();
-            String::from_utf8_lossy(&buffer).to_string()
-        } else {
-            String::new()
-        };
+    if let Some(stderr) = child.stderr.take() {
+        let app_clone = app.clone();
+        tokio::spawn(async move {
+            let reader = BufReader::new(stderr);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = app_clone.emit("opencode-log", serde_json::json!({
+                    "type": "stderr",
+                    "message": line
+                }));
+            }
+        });
+    }
 
-        let stdout = if let Some(mut stdout_handle) = child.stdout.take() {
-            use tokio::io::AsyncReadExt;
-            let mut buffer = Vec::new();
-            stdout_handle.read_to_end(&mut buffer).await.ok();
-            String::from_utf8_lossy(&buffer).to_string()
-        } else {
-            String::new()
-        };
+    // Wait for the process to start listening on the port
+    let start_time = std::time::Instant::now();
+    let timeout = Duration::from_secs(10);
+    let mut started = false;
 
-        let mut error_msg = format!(
-            "OpenCode exited immediately (exit code: {})\n\
-            Path: {}\n\
-            Directory: {}",
-            status.code().map(|c| c.to_string()).unwrap_or_else(|| "signal".to_string()),
-            opencode_path,
-            directory
-        );
-
-        if !stderr.trim().is_empty() {
-            error_msg.push_str(&format!("\n\nStderr:\n{}", stderr.trim()));
+    while start_time.elapsed() < timeout {
+        // Check if process is still running
+        if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
+            let error_msg = format!(
+                "OpenCode exited immediately (exit code: {})\n\
+                Path: {}\n\
+                Directory: {}\n\n\
+                Check the opencode-log events for detailed output.",
+                status.code().map(|c| c.to_string()).unwrap_or_else(|| "signal".to_string()),
+                opencode_path,
+                directory
+            );
+            return Err(error_msg);
         }
-        if !stdout.trim().is_empty() {
-            error_msg.push_str(&format!("\n\nStdout:\n{}", stdout.trim()));
+
+        // Check if port is in use (meaning it started listening)
+        if check_port_in_use(port).await {
+            started = true;
+            break;
         }
 
-        return Err(error_msg);
+        sleep(Duration::from_millis(200)).await;
+    }
+
+    if !started {
+        // Kill the process if it timed out
+        let _ = child.kill().await;
+        return Err(format!(
+            "OpenCode failed to start within {} seconds (port {} not listening).\n\
+            Check the opencode-log events for detailed output.",
+            timeout.as_secs(),
+            port
+        ));
     }
 
     *state.process.lock().map_err(|e| e.to_string())? = Some(child);

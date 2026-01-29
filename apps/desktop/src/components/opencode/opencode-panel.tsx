@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOpenCode } from "@/lib/opencode/use-opencode";
 import type {
   Message,
@@ -24,6 +24,8 @@ type Props = {
   onRestartOpenCode?: () => void;
   onMaxReconnectFailed?: () => void;
   onFileClick?: (path: string) => void;
+  pendingMessage?: string | null;
+  onPendingMessageSent?: () => void;
 };
 
 export const OpenCodePanel = memo(function OpenCodePanel({
@@ -35,15 +37,50 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   onRestartOpenCode,
   onMaxReconnectFailed,
   onFileClick,
+  pendingMessage,
+  onPendingMessageSent,
 }: Props) {
   const opencode = useOpenCode({ baseUrl, directory, autoConnect });
   const [input, setInput] = useState("");
   const [showSessionList, setShowSessionList] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pendingMessageSentRef = useRef(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [opencode.messages, opencode.parts]);
+
+  // Handle pending message from external source (e.g., "Fix with AI" button)
+  useEffect(() => {
+    const sendPendingMessage = async () => {
+      if (
+        pendingMessage &&
+        !pendingMessageSentRef.current &&
+        opencode.connected &&
+        opencode.currentSessionId
+      ) {
+        pendingMessageSentRef.current = true;
+        try {
+          await opencode.sendMessage(pendingMessage);
+        } finally {
+          onPendingMessageSent?.();
+        }
+      }
+    };
+
+    if (pendingMessage) {
+      // If not connected or no session, create one first
+      if (opencode.connected && !opencode.currentSessionId) {
+        opencode.createSession().then(() => {
+          sendPendingMessage();
+        });
+      } else {
+        sendPendingMessage();
+      }
+    } else {
+      pendingMessageSentRef.current = false;
+    }
+  }, [pendingMessage, opencode.connected, opencode.currentSessionId, opencode.sendMessage, opencode.createSession, onPendingMessageSent]);
 
   useEffect(() => {
     if (opencode.maxReconnectFailed && onMaxReconnectFailed) {
@@ -84,7 +121,41 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   }, [opencode]);
 
   const isWorking =
-    opencode.status.type === "running" || opencode.status.type === "retry";
+    opencode.status.type === "running" || opencode.status.type === "busy" || opencode.status.type === "retry";
+
+  // Compute the current working status from parts
+  const workingStatus = useMemo(() => {
+    if (!isWorking) return undefined;
+
+    // Get all parts from all messages
+    const allParts: Part[] = [];
+    for (const msg of opencode.messages) {
+      const msgParts = opencode.getPartsForMessage(msg.id);
+      allParts.push(...msgParts);
+    }
+
+    // Find running tool
+    const runningTool = allParts.find(
+      (p): p is ToolPart => p.type === "tool" && (p as ToolPart).state?.status === "running"
+    );
+
+    if (runningTool) {
+      const info = getToolInfo(runningTool.tool, runningTool.state.input);
+      return `${info.title}${info.subtitle ? ` - ${info.subtitle}` : ""}`;
+    }
+
+    // Check for pending tools
+    const pendingTool = allParts.find(
+      (p): p is ToolPart => p.type === "tool" && (p as ToolPart).state?.status === "pending"
+    );
+
+    if (pendingTool) {
+      const info = getToolInfo(pendingTool.tool, pendingTool.state.input);
+      return `Preparing: ${info.title}`;
+    }
+
+    return "Thinking...";
+  }, [isWorking, opencode.messages, opencode.getPartsForMessage]);
 
   if (!opencode.connected) {
     return (
@@ -150,6 +221,16 @@ export const OpenCodePanel = memo(function OpenCodePanel({
         />
       ) : opencode.currentSessionId ? (
         <>
+          {/* Error banner */}
+          {opencode.error && (
+            <div className="px-3 py-2 bg-red-50 border-b border-red-200 text-xs text-red-700 flex items-start gap-2">
+              <svg className="size-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="flex-1">{opencode.error}</span>
+            </div>
+          )}
+
           <div className="flex-1 min-h-0 overflow-y-auto p-3">
             <MessageList
               messages={opencode.messages}
@@ -166,6 +247,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
             onSend={handleSend}
             onAbort={handleAbort}
             isWorking={isWorking}
+            workingStatus={workingStatus}
             agents={opencode.agents}
             providers={opencode.providers}
             selectedAgent={opencode.selectedAgent}
@@ -712,9 +794,10 @@ function MessageTurn({
     }
   }
 
-  const lastTextPart = assistantTextParts.at(-1);
+  // Combine all text parts into one response
+  const combinedResponseText = assistantTextParts.map(p => p.text).join("");
   const isWorking =
-    isLast && (status.type === "running" || status.type === "retry");
+    isLast && (status.type === "running" || status.type === "busy" || status.type === "retry");
 
   const completedToolParts = toolParts.filter(
     (p) => p.state.status === "completed",
@@ -817,13 +900,13 @@ function MessageTurn({
         </div>
       )}
 
-      {lastTextPart && (
+      {combinedResponseText && (
         <div>
           <p className="text-[10px] uppercase tracking-wider font-medium text-neutral-400 mb-1.5">
             Response
           </p>
           <div className="text-[13px] leading-relaxed whitespace-pre-wrap break-words max-w-none text-neutral-700">
-            <MarkdownText text={lastTextPart.text} onFileClick={onFileClick} />
+            <MarkdownText text={combinedResponseText} onFileClick={onFileClick} />
           </div>
         </div>
       )}
@@ -1173,13 +1256,31 @@ function ToolDisplay({
       info.subtitle,
     );
 
-  const hasExpandableContent =
-    isComplete &&
-    (part.tool === "bash" ||
-      part.tool === "read" ||
-      part.tool === "grep" ||
-      part.tool === "glob");
+  // All tools are expandable to show details
   const output = (part.state as { output?: string }).output;
+  const input = part.state.input;
+  const hasDetails = Object.keys(input).length > 0 || output;
+
+  // Format input for display
+  const formatInput = (inp: Record<string, unknown>) => {
+    const entries = Object.entries(inp);
+    if (entries.length === 0) return null;
+
+    return entries.map(([key, value]) => {
+      let displayValue: string;
+      if (typeof value === "string") {
+        displayValue = value.length > 500 ? value.slice(0, 500) + "..." : value;
+      } else if (value === null || value === undefined) {
+        displayValue = String(value);
+      } else {
+        const json = JSON.stringify(value, null, 2);
+        displayValue = json.length > 500 ? json.slice(0, 500) + "..." : json;
+      }
+      return { key, value: displayValue };
+    });
+  };
+
+  const inputEntries = formatInput(input);
 
   return (
     <div
@@ -1187,9 +1288,8 @@ function ToolDisplay({
     >
       <button
         type="button"
-        onClick={() => hasExpandableContent && setExpanded(!expanded)}
-        disabled={!hasExpandableContent}
-        className={`w-full flex items-center gap-2 px-2 py-1.5 text-left ${hasExpandableContent ? "cursor-pointer" : "cursor-default"}`}
+        onClick={() => hasDetails && setExpanded(!expanded)}
+        className={`w-full flex items-center gap-2 px-2 py-1.5 text-left ${hasDetails ? "cursor-pointer" : "cursor-default"}`}
       >
         {isRunning ? (
           <Spinner className="size-4 flex-shrink-0" />
@@ -1204,7 +1304,7 @@ function ToolDisplay({
         {info.subtitle && (
           <>
             <span className="text-neutral-300">/</span>
-            {isClickableFile && !hasExpandableContent ? (
+            {isClickableFile ? (
               <span
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1232,7 +1332,7 @@ function ToolDisplay({
           />
         )}
 
-        {hasExpandableContent && (
+        {hasDetails && (
           <svg
             className={`size-3 text-neutral-400 transition-transform flex-shrink-0 ${expanded ? "rotate-90" : ""}`}
             fill="none"
@@ -1249,11 +1349,37 @@ function ToolDisplay({
         )}
       </button>
 
-      {expanded && output && (
-        <div className="border-t border-border px-2 py-2 max-h-48 overflow-auto">
-          <pre className="text-[10px] text-neutral-600 whitespace-pre-wrap break-all font-mono">
-            {output.length > 2000 ? output.slice(0, 2000) + "..." : output}
-          </pre>
+      {expanded && (
+        <div className="border-t border-border">
+          {/* Input parameters */}
+          {inputEntries && inputEntries.length > 0 && (
+            <div className="px-2 py-2 space-y-1.5">
+              <div className="text-[9px] uppercase tracking-wider text-neutral-400 font-medium">
+                Input
+              </div>
+              {inputEntries.map(({ key, value }) => (
+                <div key={key} className="font-mono">
+                  <span className="text-blue-600">{key}</span>
+                  <span className="text-neutral-400">: </span>
+                  <span className="text-neutral-700 whitespace-pre-wrap break-all">
+                    {value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Output */}
+          {output && (
+            <div className="px-2 py-2 border-t border-border">
+              <div className="text-[9px] uppercase tracking-wider text-neutral-400 font-medium mb-1">
+                Output
+              </div>
+              <pre className="text-[10px] text-neutral-600 whitespace-pre-wrap break-all font-mono max-h-48 overflow-auto">
+                {output.length > 3000 ? output.slice(0, 3000) + "..." : output}
+              </pre>
+            </div>
+          )}
         </div>
       )}
 
@@ -1615,6 +1741,7 @@ type InputAreaProps = {
   onSend: () => void;
   onAbort: () => void;
   isWorking: boolean;
+  workingStatus?: string;
   agents: { id: string; name: string; description?: string }[];
   providers: {
     id: string;
@@ -1635,6 +1762,7 @@ function InputArea({
   onSend,
   onAbort,
   isWorking,
+  workingStatus,
   agents,
   providers,
   selectedAgent,
@@ -1675,6 +1803,17 @@ function InputArea({
 
   return (
     <div className="border-t border-border flex-shrink-0 bg-white relative z-20">
+      {isWorking && (
+        <div className="px-3 py-2 bg-neutral-50 border-b border-border flex items-center gap-2">
+          <div className="relative flex items-center justify-center">
+            <span className="absolute size-2 bg-black/60 animate-ping rounded-full" />
+            <span className="size-2 bg-black rounded-full" />
+          </div>
+          <span className="text-xs text-neutral-600 truncate">
+            {workingStatus || "Agent is working..."}
+          </span>
+        </div>
+      )}
       {isExpanded && (
         <div className="px-3 pt-3 pb-2 border-b border-border bg-neutral-50">
           <div className="flex gap-2">
