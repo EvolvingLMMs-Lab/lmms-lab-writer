@@ -40,6 +40,7 @@ export function LaTeXSettingsDialog({
   );
 
   // Sync custom args input with settings
+   
   useEffect(() => {
     setCustomArgsInput(settings.arguments.join(" "));
   }, [settings.arguments]);

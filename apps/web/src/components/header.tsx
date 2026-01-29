@@ -18,6 +18,7 @@ function AuthButtonFallback() {
 export function Header() {
   const [user, setUser] = useState<CachedUser | null | undefined>(undefined);
 
+   
   useEffect(() => {
     setUser(getUserCacheFromCookie());
   }, []);

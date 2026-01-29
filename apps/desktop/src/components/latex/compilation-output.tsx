@@ -37,6 +37,7 @@ export function CompilationOutputPanel({
   const heightRef = useRef(height);
 
   // Auto-expand on compilation start
+   
   useEffect(() => {
     if (status === "compiling") {
       setIsExpanded(true);

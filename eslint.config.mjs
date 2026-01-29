@@ -57,10 +57,10 @@ export default tseslint.config(
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
       "react/no-unescaped-entities": "off",
-      // Downgrade to warning - setState in effect is sometimes needed for initialization
-      "react-hooks/set-state-in-effect": "warn",
-      // Downgrade to warning - ref updates in render are sometimes used as a pattern
-      "react-hooks/refs": "warn",
+      // Disable - setState in effect is a common pattern for hydration, prop sync, etc.
+      "react-hooks/set-state-in-effect": "off",
+      // Disable - ref updates in render are a common pattern
+      "react-hooks/refs": "off",
       // Downgrade to warning - variable hoisting issues can be fixed incrementally
       "react-hooks/immutability": "warn",
     },

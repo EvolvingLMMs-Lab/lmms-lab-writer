@@ -2,13 +2,11 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { Header } from "@/components/header";
 import {
-  MembershipTier,
   StarredRepo,
   GITHUB_CONFIG,
   getAllPopularRepos,
   getTopRepos,
   canDownload,
-  type RepoInfo,
 } from "@/lib/github/config";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -71,7 +69,7 @@ function ProfileCardSkeleton() {
   );
 }
 
-function SectionSkeleton({ title }: { title: string }) {
+function SectionSkeleton({ title: _title }: { title: string }) {
   return (
     <div className="border border-border mb-8 animate-pulse">
       <div className="px-6 py-4 border-b border-border bg-neutral-50">

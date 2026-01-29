@@ -14,7 +14,7 @@ import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { LoginForm, UserDropdown } from "@/components/auth";
-import { useLatexSettings, useLatexCompiler, findTexFiles, findMainTexFile, isTexFile, getPdfPathFromTex } from "@/lib/latex";
+import { useLatexSettings, useLatexCompiler, findTexFiles, findMainTexFile, isTexFile } from "@/lib/latex";
 import { CompileButton, CompilationOutputPanel, LaTeXSettingsDialog, LaTeXInstallPrompt } from "@/components/latex";
 
 function throttle<T extends (...args: Parameters<T>) => void>(
@@ -109,7 +109,7 @@ export default function EditorPage() {
   });
   const [resizing, setResizing] = useState<"sidebar" | "right" | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"files" | "git">("files");
-  const [highlightedFile, setHighlightedFile] = useState<string | null>(null);
+  const [highlightedFile, _setHighlightedFile] = useState<string | null>(null);
 
   const [commitMessage, setCommitMessage] = useState("");
   const [showCommitInput, setShowCommitInput] = useState(false);

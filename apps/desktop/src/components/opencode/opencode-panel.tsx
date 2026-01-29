@@ -79,6 +79,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     } else {
       pendingMessageSentRef.current = false;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- using specific opencode properties to avoid re-renders
   }, [pendingMessage, opencode.connected, opencode.currentSessionId, opencode.sendMessage, opencode.createSession, onPendingMessageSent]);
 
   useEffect(() => {

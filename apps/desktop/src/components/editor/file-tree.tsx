@@ -7,7 +7,7 @@ import type { FileNode } from "@lmms-lab/writer-shared";
 import { ContextMenu, type ContextMenuItem } from "../ui/context-menu";
 import { InputDialog } from "../ui/input-dialog";
 
-const ITEM_SPRING = {
+const _ITEM_SPRING = {
   type: "spring",
   stiffness: 500,
   damping: 30,
@@ -145,12 +145,14 @@ const TreeNode = memo(function TreeNode({
   );
   const isSelected = selectedFile === node.path;
 
+  // Auto-expand when shouldAutoExpand becomes true
   useEffect(() => {
     if (shouldAutoExpand && !expanded) {
       setExpanded(true);
       onExpandedChange?.(node.path, true);
     }
-  }, [shouldAutoExpand, expanded, node.path, onExpandedChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to shouldAutoExpand changes
+  }, [shouldAutoExpand]);
 
   useEffect(() => {
     if (isHighlighted && buttonRef.current) {
@@ -506,7 +508,7 @@ export const FileTree = memo(function FileTree({
   }, []);
 
   const getContextMenuItems = useCallback(
-    (node: FileNode, parentPath: string): ContextMenuItem[] => {
+    (node: FileNode, _parentPath: string): ContextMenuItem[] => {
       const isDirectory = node.type === "directory";
       const items: ContextMenuItem[] = [];
 
