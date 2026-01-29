@@ -10,7 +10,7 @@ import {
   COMPILER_DESCRIPTIONS,
   DEFAULT_LATEX_SETTINGS,
 } from "@/lib/latex/types";
-import { EditorSettings, MinimapSettings, DEFAULT_EDITOR_SETTINGS } from "@/lib/editor/types";
+import { EditorSettings, MinimapSettings, DEFAULT_EDITOR_SETTINGS, EDITOR_THEMES } from "@/lib/editor/types";
 import { Spinner } from "@/components/ui/spinner";
 import { LaTeXInstallPrompt } from "./latex-install-prompt";
 
@@ -413,6 +413,81 @@ export function LaTeXSettingsDialog({
                 {/* ===== EDITOR TAB ===== */}
                 {activeTab === "editor" && (
                   <>
+                    <SectionHeader>Theme</SectionHeader>
+
+                    {/* Theme Selection */}
+                    <div>
+                      <label className="text-sm font-medium block mb-2">
+                        Color Theme
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {EDITOR_THEMES.map((theme) => {
+                          const isSelected = editorSettings.theme === theme.value;
+                          const isDark = ["one-dark", "dracula", "nord"].includes(theme.value);
+
+                          return (
+                            <button
+                              key={theme.value}
+                              onClick={() =>
+                                onUpdateEditorSettings({ theme: theme.value })
+                              }
+                              className={`flex items-center gap-2 p-2.5 border text-left transition-all ${
+                                isSelected
+                                  ? "border-black bg-neutral-50"
+                                  : "border-border hover:border-neutral-400"
+                              }`}
+                            >
+                              {/* Theme preview swatch */}
+                              <div
+                                className={`w-6 h-6 rounded border flex-shrink-0 ${
+                                  isDark ? "border-neutral-600" : "border-neutral-300"
+                                }`}
+                                style={{
+                                  background: isDark ? "#282c34" : "#ffffff",
+                                }}
+                              >
+                                <div
+                                  className="w-full h-1/3"
+                                  style={{
+                                    background:
+                                      theme.value === "monochrome" ? "#0a0a0a" :
+                                      theme.value === "github-light" ? "#cf222e" :
+                                      theme.value === "solarized-light" ? "#859900" :
+                                      theme.value === "one-dark" ? "#c678dd" :
+                                      theme.value === "dracula" ? "#ff79c6" :
+                                      theme.value === "nord" ? "#81a1c1" : "#0a0a0a",
+                                  }}
+                                />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <span className="text-sm font-medium block truncate">
+                                  {theme.label}
+                                </span>
+                                <span className="text-xs text-muted truncate block">
+                                  {theme.description}
+                                </span>
+                              </div>
+                              {isSelected && (
+                                <svg
+                                  className="size-4 flex-shrink-0 text-black"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M5 13l4 4L19 7"
+                                  />
+                                </svg>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
                     <SectionHeader>Display</SectionHeader>
 
                     <div className="flex items-center justify-between py-2">
