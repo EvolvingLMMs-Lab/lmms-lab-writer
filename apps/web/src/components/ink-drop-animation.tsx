@@ -17,6 +17,11 @@ export function InkDropAnimation({
   const [isVisible, setIsVisible] = useState(false);
   const prefersReducedMotion = useReducedMotion();
 
+  const dismiss = useCallback(() => {
+    setIsVisible(false);
+    localStorage.setItem(STORAGE_KEY, "true");
+  }, []);
+
   useEffect(() => {
     if (!triggerOnInks || inks <= 0) return;
 
@@ -30,12 +35,7 @@ export function InkDropAnimation({
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [triggerOnInks, inks]);
-
-  const dismiss = useCallback(() => {
-    setIsVisible(false);
-    localStorage.setItem(STORAGE_KEY, "true");
-  }, []);
+  }, [triggerOnInks, inks, dismiss]);
 
   return (
     <AnimatePresence>

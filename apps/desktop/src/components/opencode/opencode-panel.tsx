@@ -79,7 +79,14 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     } else {
       pendingMessageSentRef.current = false;
     }
-  }, [pendingMessage, opencode.connected, opencode.currentSessionId, opencode.sendMessage, opencode.createSession, onPendingMessageSent]);
+  }, [
+    pendingMessage,
+    opencode.connected,
+    opencode.currentSessionId,
+    opencode.sendMessage,
+    opencode.createSession,
+    onPendingMessageSent,
+  ]);
 
   useEffect(() => {
     if (opencode.maxReconnectFailed && onMaxReconnectFailed) {
@@ -99,10 +106,13 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     }
   }, [opencode]);
 
-  const handleSelectSession = useCallback(async (sessionId: string) => {
-    await opencode.selectSession(sessionId);
-    setShowSessionList(false);
-  }, [opencode]);
+  const handleSelectSession = useCallback(
+    async (sessionId: string) => {
+      await opencode.selectSession(sessionId);
+      setShowSessionList(false);
+    },
+    [opencode],
+  );
 
   const handleSend = useCallback(async () => {
     const content = input.trim();
@@ -115,7 +125,10 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     await opencode.abort();
   }, [opencode]);
 
-  const isWorking = opencode.status.type === "running" || opencode.status.type === "busy" || opencode.status.type === "retry";
+  const isWorking =
+    opencode.status.type === "running" ||
+    opencode.status.type === "busy" ||
+    opencode.status.type === "retry";
 
   // Not connected - show onboarding
   if (!opencode.connected) {
@@ -138,13 +151,20 @@ export const OpenCodePanel = memo(function OpenCodePanel({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="size-2 flex-shrink-0 bg-green-500" title="Connected" />
+          <span
+            className="size-2 flex-shrink-0 bg-green-500"
+            title="Connected"
+          />
           <button
             onClick={() => setShowSessionList(!showSessionList)}
             className="flex items-center gap-1 text-xs hover:bg-neutral-100 px-1 py-0.5 transition-colors min-w-0"
           >
-            <span className="truncate">{opencode.currentSession?.title || "Select Session"}</span>
-            <ChevronIcon className={`size-3 flex-shrink-0 transition-transform ${showSessionList ? "rotate-180" : ""}`} />
+            <span className="truncate">
+              {opencode.currentSession?.title || "Select Session"}
+            </span>
+            <ChevronIcon
+              className={`size-3 flex-shrink-0 transition-transform ${showSessionList ? "rotate-180" : ""}`}
+            />
           </button>
         </div>
         <button
@@ -198,7 +218,10 @@ export const OpenCodePanel = memo(function OpenCodePanel({
           />
         </>
       ) : (
-        <EmptyState onNewSession={handleNewSession} hasOtherSessions={opencode.sessions.length > 0} />
+        <EmptyState
+          onNewSession={handleNewSession}
+          hasOtherSessions={opencode.sessions.length > 0}
+        />
       )}
     </div>
   );
@@ -224,7 +247,7 @@ function SessionList({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const sortedSessions = useMemo(
     () => [...sessions].sort((a, b) => b.time.updated - a.time.updated),
-    [sessions]
+    [sessions],
   );
 
   if (sortedSessions.length === 0) {
@@ -251,17 +274,25 @@ function SessionList({
             key={session.id}
             className={`w-full flex items-center border-b border-border hover:bg-neutral-50 transition-colors ${isActive ? "bg-neutral-100" : ""}`}
           >
-            <button onClick={() => onSelect(session.id)} className="flex-1 text-left px-3 py-2">
+            <button
+              onClick={() => onSelect(session.id)}
+              className="flex-1 text-left px-3 py-2"
+            >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm truncate">{session.title || "Untitled"}</p>
+                  <p className="text-sm truncate">
+                    {session.title || "Untitled"}
+                  </p>
                   {session.summary?.files !== undefined && (
                     <p className="text-xs text-muted mt-0.5">
-                      {session.summary.files} file{session.summary.files !== 1 ? "s" : ""} modified
+                      {session.summary.files} file
+                      {session.summary.files !== 1 ? "s" : ""} modified
                     </p>
                   )}
                 </div>
-                <span className="text-xs text-muted flex-shrink-0">{timeStr}</span>
+                <span className="text-xs text-muted flex-shrink-0">
+                  {timeStr}
+                </span>
               </div>
             </button>
             <button
@@ -292,12 +323,20 @@ function SessionList({
   );
 }
 
-function EmptyState({ onNewSession, hasOtherSessions }: { onNewSession: () => void; hasOtherSessions: boolean }) {
+function EmptyState({
+  onNewSession,
+  hasOtherSessions,
+}: {
+  onNewSession: () => void;
+  hasOtherSessions: boolean;
+}) {
   return (
     <div className="flex-1 flex items-center justify-center p-4">
       <div className="text-center space-y-3">
         <p className="text-sm text-muted">
-          {hasOtherSessions ? "Select a session or create a new one" : "No sessions yet"}
+          {hasOtherSessions
+            ? "Select a session or create a new one"
+            : "No sessions yet"}
         </p>
         <button onClick={onNewSession} className="btn-brutalist">
           New Session
@@ -316,15 +355,8 @@ function MessageList({
   getPartsForMessage: (messageId: string) => Part[];
   onFileClick?: (path: string) => void;
 }) {
-  if (messages.length === 0) {
-    return (
-      <div className="h-full flex items-center justify-center text-muted text-xs">
-        <p>Send a message to get started</p>
-      </div>
-    );
-  }
-
   // Group messages into turns (user + assistant responses)
+  // useMemo must be called before any early returns (React hooks rule)
   const turns = useMemo(() => {
     const result: { user: Message; assistantParts: Part[] }[] = [];
     let currentTurn: { user: Message; assistantParts: Part[] } | null = null;
@@ -342,11 +374,20 @@ function MessageList({
     return result;
   }, [messages, getPartsForMessage]);
 
+  if (messages.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center text-muted text-xs">
+        <p>Send a message to get started</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {turns.map((turn) => {
         const userParts = getPartsForMessage(turn.user.id);
-        const userText = userParts.find((p): p is TextPart => p.type === "text")?.text || "";
+        const userText =
+          userParts.find((p): p is TextPart => p.type === "text")?.text || "";
 
         return (
           <MessageTurn
@@ -401,7 +442,8 @@ function MessageTurn({
   }, [dedupedParts]);
 
   const combinedText = textParts.map((p) => p.text).join("");
-  const hasReasoningContent = reasoningParts.length > 0 && reasoningParts.some(p => p.text.trim());
+  const hasReasoningContent =
+    reasoningParts.length > 0 && reasoningParts.some((p) => p.text.trim());
   const hasSteps = toolParts.length > 0 || hasReasoningContent;
 
   return (
@@ -420,7 +462,9 @@ function MessageTurn({
           onClick={() => setShowSteps(!showSteps)}
           className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
         >
-          <ChevronRightIcon className={`size-3 transition-transform ${showSteps ? "rotate-90" : ""}`} />
+          <ChevronRightIcon
+            className={`size-3 transition-transform ${showSteps ? "rotate-90" : ""}`}
+          />
           <span>{showSteps ? "Hide" : "Show"} steps</span>
         </button>
       )}
@@ -435,7 +479,11 @@ function MessageTurn({
           {toolParts.length > 0 && (
             <div className="space-y-1.5">
               {toolParts.map((part) => (
-                <ToolDisplay key={part.id} part={part} onFileClick={onFileClick} />
+                <ToolDisplay
+                  key={part.id}
+                  part={part}
+                  onFileClick={onFileClick}
+                />
               ))}
             </div>
           )}
@@ -470,36 +518,61 @@ function ReasoningDisplay({ parts }: { parts: ReasoningPart[] }) {
         onClick={() => setExpanded(!expanded)}
         className="flex items-center gap-1.5 text-neutral-500 hover:text-neutral-700 w-full text-left"
       >
-        <ChevronRightIcon className={`size-3 transition-transform ${expanded ? "rotate-90" : ""}`} />
+        <ChevronRightIcon
+          className={`size-3 transition-transform ${expanded ? "rotate-90" : ""}`}
+        />
         <span className="font-medium">Thinking</span>
         {!expanded && needsExpand && (
           <span className="text-neutral-400 truncate flex-1">{preview}...</span>
         )}
       </button>
-      {expanded && <div className="mt-2 text-neutral-600 whitespace-pre-wrap">{combinedText}</div>}
+      {expanded && (
+        <div className="mt-2 text-neutral-600 whitespace-pre-wrap">
+          {combinedText}
+        </div>
+      )}
     </div>
   );
 }
 
-function ToolDisplay({ part, onFileClick }: { part: ToolPart; onFileClick?: (path: string) => void }) {
+function ToolDisplay({
+  part,
+  onFileClick,
+}: {
+  part: ToolPart;
+  onFileClick?: (path: string) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const info = getToolInfo(part.tool, part.state.input);
   const isRunning = part.state.status === "running";
   const isError = part.state.status === "error";
 
-  const isClickableFile = onFileClick && info.subtitle && /\.(tex|bib|cls|sty|txt|md|json|yaml|yml|py|js|ts|tsx|css|html)$/i.test(info.subtitle);
+  const isClickableFile =
+    onFileClick &&
+    info.subtitle &&
+    /\.(tex|bib|cls|sty|txt|md|json|yaml|yml|py|js|ts|tsx|css|html)$/i.test(
+      info.subtitle,
+    );
   const output = (part.state as { output?: string }).output;
   const hasDetails = Object.keys(part.state.input).length > 0 || output;
 
   return (
-    <div className={`text-[11px] border bg-neutral-50 hover:bg-neutral-100 transition-colors ${isError ? "border-red-200 bg-red-50" : "border-border"}`}>
+    <div
+      className={`text-[11px] border bg-neutral-50 hover:bg-neutral-100 transition-colors ${isError ? "border-red-200 bg-red-50" : "border-border"}`}
+    >
       <button
         type="button"
         onClick={() => hasDetails && setExpanded(!expanded)}
         className={`w-full flex items-center gap-2 px-2 py-1.5 text-left ${hasDetails ? "cursor-pointer" : "cursor-default"}`}
       >
-        {isRunning ? <Spinner className="size-4 flex-shrink-0" /> : <ToolIcon tool={part.tool} />}
-        <span className="font-medium text-neutral-600 uppercase tracking-wide text-[10px]">{info.title}</span>
+        {isRunning ? (
+          <Spinner className="size-4 flex-shrink-0" />
+        ) : (
+          <ToolIcon tool={part.tool} />
+        )}
+        <span className="font-medium text-neutral-600 uppercase tracking-wide text-[10px]">
+          {info.title}
+        </span>
         {info.subtitle && (
           <>
             <span className="text-neutral-300">/</span>
@@ -514,19 +587,27 @@ function ToolDisplay({ part, onFileClick }: { part: ToolPart; onFileClick?: (pat
                 {info.subtitle}
               </span>
             ) : (
-              <span className="text-neutral-700 font-medium truncate">{info.subtitle}</span>
+              <span className="text-neutral-700 font-medium truncate">
+                {info.subtitle}
+              </span>
             )}
           </>
         )}
         <div className="flex-1" />
-        {hasDetails && <ChevronRightIcon className={`size-3 text-neutral-400 transition-transform ${expanded ? "rotate-90" : ""}`} />}
+        {hasDetails && (
+          <ChevronRightIcon
+            className={`size-3 text-neutral-400 transition-transform ${expanded ? "rotate-90" : ""}`}
+          />
+        )}
       </button>
 
       {expanded && (
         <div className="border-t border-border">
           {Object.keys(part.state.input).length > 0 && (
             <div className="px-2 py-2 space-y-1">
-              <div className="text-[9px] uppercase tracking-wider text-neutral-400 font-medium">Input</div>
+              <div className="text-[9px] uppercase tracking-wider text-neutral-400 font-medium">
+                Input
+              </div>
               {Object.entries(part.state.input).map(([key, value]) => (
                 <div key={key} className="font-mono">
                   <span className="text-blue-600">{key}</span>
@@ -540,7 +621,9 @@ function ToolDisplay({ part, onFileClick }: { part: ToolPart; onFileClick?: (pat
           )}
           {output && (
             <div className="px-2 py-2 border-t border-border">
-              <div className="text-[9px] uppercase tracking-wider text-neutral-400 font-medium mb-1">Output</div>
+              <div className="text-[9px] uppercase tracking-wider text-neutral-400 font-medium mb-1">
+                Output
+              </div>
               <pre className="text-[10px] text-neutral-600 whitespace-pre-wrap break-all font-mono max-h-48 overflow-auto">
                 {output.length > 2000 ? output.slice(0, 2000) + "..." : output}
               </pre>
@@ -551,7 +634,9 @@ function ToolDisplay({ part, onFileClick }: { part: ToolPart; onFileClick?: (pat
 
       {isError && (
         <div className="border-t border-red-200 px-2 py-1.5">
-          <p className="text-red-600">{(part.state as { error: string }).error}</p>
+          <p className="text-red-600">
+            {(part.state as { error: string }).error}
+          </p>
         </div>
       )}
     </div>
@@ -586,7 +671,11 @@ function InputArea({
   onAbort: () => void;
   isWorking: boolean;
   status: SessionStatus;
-  providers: { id: string; name: string; models: { id: string; name: string }[] }[];
+  providers: {
+    id: string;
+    name: string;
+    models: { id: string; name: string }[];
+  }[];
   selectedModel: { providerId: string; modelId: string } | null;
   onSelectModel: (m: { providerId: string; modelId: string } | null) => void;
 }) {
@@ -603,14 +692,17 @@ function InputArea({
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + "px";
+      textareaRef.current.style.height =
+        Math.min(textareaRef.current.scrollHeight, 200) + "px";
     }
   }, [input]);
 
   const selectedModelName = useMemo(() => {
     if (!selectedModel) return "Model";
     for (const provider of providers) {
-      const model = provider.models?.find((m) => m.id === selectedModel.modelId);
+      const model = provider.models?.find(
+        (m) => m.id === selectedModel.modelId,
+      );
       if (model) return model.name;
     }
     return "Model";
@@ -626,7 +718,9 @@ function InputArea({
             <span className="size-2 bg-black rounded-full" />
           </div>
           <span className="text-xs text-neutral-600 truncate">
-            {status.type === "retry" ? `Retrying... (attempt ${(status as { attempt: number }).attempt})` : "Agent is working..."}
+            {status.type === "retry"
+              ? `Retrying... (attempt ${(status as { attempt: number }).attempt})`
+              : "Agent is working..."}
           </span>
         </div>
       )}
@@ -634,9 +728,15 @@ function InputArea({
       {/* Model selector */}
       {showOptions && (
         <div className="px-3 pt-3 pb-2 border-b border-border bg-neutral-50">
-          <label className="text-[10px] uppercase tracking-wider text-muted font-medium block mb-1">Model</label>
+          <label className="text-[10px] uppercase tracking-wider text-muted font-medium block mb-1">
+            Model
+          </label>
           <select
-            value={selectedModel ? `${selectedModel.providerId}:${selectedModel.modelId}` : ""}
+            value={
+              selectedModel
+                ? `${selectedModel.providerId}:${selectedModel.modelId}`
+                : ""
+            }
             onChange={(e) => {
               const [providerId, modelId] = e.target.value.split(":");
               if (providerId && modelId) {
@@ -647,12 +747,16 @@ function InputArea({
             }}
             className="w-full text-xs border border-border bg-white px-2 py-1.5 focus:outline-none focus:border-black"
           >
-            {providers.flatMap((provider) =>
-              provider.models?.map((model) => (
-                <option key={`${provider.id}:${model.id}`} value={`${provider.id}:${model.id}`}>
-                  {model.name} ({provider.name})
-                </option>
-              )) || []
+            {providers.flatMap(
+              (provider) =>
+                provider.models?.map((model) => (
+                  <option
+                    key={`${provider.id}:${model.id}`}
+                    value={`${provider.id}:${model.id}`}
+                  >
+                    {model.name} ({provider.name})
+                  </option>
+                )) || [],
             )}
           </select>
         </div>
@@ -676,12 +780,20 @@ function InputArea({
               onClick={() => setShowOptions(!showOptions)}
               className={`flex items-center gap-1.5 text-xs px-2 py-1 transition-colors ${showOptions ? "text-black bg-neutral-100" : "text-neutral-500 hover:text-black hover:bg-neutral-50"}`}
             >
-              <span className="truncate max-w-[120px]">{selectedModelName}</span>
-              <ChevronIcon className={`size-3 transition-transform ${showOptions ? "rotate-180" : ""}`} />
+              <span className="truncate max-w-[120px]">
+                {selectedModelName}
+              </span>
+              <ChevronIcon
+                className={`size-3 transition-transform ${showOptions ? "rotate-180" : ""}`}
+              />
             </button>
             <div className="flex items-center gap-1">
               {isWorking ? (
-                <button onClick={onAbort} className="p-1.5 text-neutral-600 hover:text-black transition-colors" title="Stop">
+                <button
+                  onClick={onAbort}
+                  className="p-1.5 text-neutral-600 hover:text-black transition-colors"
+                  title="Stop"
+                >
                   <StopIcon className="size-4" />
                 </button>
               ) : (
@@ -742,7 +854,9 @@ function OnboardingState({
               <FolderIcon className="size-6 text-muted" />
             </div>
             <h3 className="text-sm mb-1">Open a Project</h3>
-            <p className="text-xs text-muted">Open a LaTeX project folder to use AI features</p>
+            <p className="text-xs text-muted">
+              Open a LaTeX project folder to use AI features
+            </p>
           </div>
         </div>
       </div>
@@ -750,9 +864,40 @@ function OnboardingState({
   }
 
   const steps = [
-    { id: "install", label: "Install OpenCode", status: daemonStatus === "unavailable" ? "current" : daemonStatus ? "complete" : "pending" },
-    { id: "start", label: "Start OpenCode", status: daemonStatus === "unavailable" ? "pending" : daemonStatus === "stopped" ? "current" : daemonStatus === "starting" ? "loading" : daemonStatus === "running" ? "complete" : "pending" },
-    { id: "connect", label: "Connect", status: daemonStatus === "running" ? (connecting ? "loading" : "current") : "pending" },
+    {
+      id: "install",
+      label: "Install OpenCode",
+      status:
+        daemonStatus === "unavailable"
+          ? "current"
+          : daemonStatus
+            ? "complete"
+            : "pending",
+    },
+    {
+      id: "start",
+      label: "Start OpenCode",
+      status:
+        daemonStatus === "unavailable"
+          ? "pending"
+          : daemonStatus === "stopped"
+            ? "current"
+            : daemonStatus === "starting"
+              ? "loading"
+              : daemonStatus === "running"
+                ? "complete"
+                : "pending",
+    },
+    {
+      id: "connect",
+      label: "Connect",
+      status:
+        daemonStatus === "running"
+          ? connecting
+            ? "loading"
+            : "current"
+          : "pending",
+    },
   ];
 
   return (
@@ -763,23 +908,39 @@ function OnboardingState({
             <TerminalIcon className="size-6 text-muted" />
           </div>
           <h3 className="text-sm mb-1">Setup Agent Mode</h3>
-          <p className="text-xs text-muted">Connect to OpenCode to use AI features</p>
+          <p className="text-xs text-muted">
+            Connect to OpenCode to use AI features
+          </p>
         </div>
 
         <div className="space-y-2">
           {steps.map((step, index) => (
             <div key={step.id} className="flex items-center gap-3">
-              <div className={`size-5 flex items-center justify-center text-xs border ${step.status === "complete" ? "border-black bg-white" : step.status === "current" || step.status === "loading" ? "border-black" : "border-border text-muted"}`}>
-                {step.status === "complete" ? <CheckIcon className="size-3" /> : step.status === "loading" ? <Spinner className="size-3" /> : index + 1}
+              <div
+                className={`size-5 flex items-center justify-center text-xs border ${step.status === "complete" ? "border-black bg-white" : step.status === "current" || step.status === "loading" ? "border-black" : "border-border text-muted"}`}
+              >
+                {step.status === "complete" ? (
+                  <CheckIcon className="size-3" />
+                ) : step.status === "loading" ? (
+                  <Spinner className="size-3" />
+                ) : (
+                  index + 1
+                )}
               </div>
-              <span className={`text-xs ${step.status === "complete" ? "text-muted line-through" : step.status === "current" || step.status === "loading" ? "text-black" : "text-muted"}`}>
+              <span
+                className={`text-xs ${step.status === "complete" ? "text-muted line-through" : step.status === "current" || step.status === "loading" ? "text-black" : "text-muted"}`}
+              >
                 {step.label}
               </span>
             </div>
           ))}
         </div>
 
-        {error && <div className="p-2 border border-red-200 bg-red-50 text-xs text-red-600">{error}</div>}
+        {error && (
+          <div className="p-2 border border-red-200 bg-red-50 text-xs text-red-600">
+            {error}
+          </div>
+        )}
 
         {daemonStatus === "unavailable" && (
           <div className="space-y-3">
@@ -788,24 +949,41 @@ function OnboardingState({
               <div className="border border-border p-2">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs text-muted">npm</span>
-                  <button onClick={() => copyToClipboard("npm i -g opencode-ai@latest", "npm")} className="text-xs text-muted hover:text-black">
+                  <button
+                    onClick={() =>
+                      copyToClipboard("npm i -g opencode-ai@latest", "npm")
+                    }
+                    className="text-xs text-muted hover:text-black"
+                  >
                     {copiedNpm ? "Copied!" : "Copy"}
                   </button>
                 </div>
-                <code className="text-xs block font-mono">npm i -g opencode-ai@latest</code>
+                <code className="text-xs block font-mono">
+                  npm i -g opencode-ai@latest
+                </code>
               </div>
               <div className="border border-border p-2">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs text-muted">Homebrew</span>
-                  <button onClick={() => copyToClipboard("brew install sst/tap/opencode", "brew")} className="text-xs text-muted hover:text-black">
+                  <button
+                    onClick={() =>
+                      copyToClipboard("brew install sst/tap/opencode", "brew")
+                    }
+                    className="text-xs text-muted hover:text-black"
+                  >
                     {copiedBrew ? "Copied!" : "Copy"}
                   </button>
                 </div>
-                <code className="text-xs block font-mono">brew install sst/tap/opencode</code>
+                <code className="text-xs block font-mono">
+                  brew install sst/tap/opencode
+                </code>
               </div>
             </div>
             {onRestartOpenCode && (
-              <button onClick={onRestartOpenCode} className="btn-brutalist w-full">
+              <button
+                onClick={onRestartOpenCode}
+                className="btn-brutalist w-full"
+              >
                 I've installed OpenCode
               </button>
             )}
@@ -826,8 +1004,18 @@ function OnboardingState({
         )}
 
         {daemonStatus === "running" && (
-          <button onClick={onConnect} disabled={connecting} className="btn-brutalist w-full disabled:opacity-50">
-            {connecting ? <><Spinner className="size-4" /> Connecting...</> : "Connect to OpenCode"}
+          <button
+            onClick={onConnect}
+            disabled={connecting}
+            className="btn-brutalist w-full disabled:opacity-50"
+          >
+            {connecting ? (
+              <>
+                <Spinner className="size-4" /> Connecting...
+              </>
+            ) : (
+              "Connect to OpenCode"
+            )}
           </button>
         )}
       </div>
@@ -835,23 +1023,48 @@ function OnboardingState({
   );
 }
 
-function ConfirmDialog({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
+function ConfirmDialog({
+  message,
+  onConfirm,
+  onCancel,
+}: {
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white border border-border p-4 max-w-xs w-full mx-4 shadow-[4px_4px_0_0_#000]">
         <p className="text-sm mb-4">{message}</p>
         <div className="flex justify-end gap-2">
-          <button onClick={onCancel} className="px-3 py-1.5 text-sm border border-border hover:bg-neutral-100 transition-colors">Cancel</button>
-          <button onClick={onConfirm} className="btn-brutalist text-sm">Delete</button>
+          <button
+            onClick={onCancel}
+            className="px-3 py-1.5 text-sm border border-border hover:bg-neutral-100 transition-colors"
+          >
+            Cancel
+          </button>
+          <button onClick={onConfirm} className="btn-brutalist text-sm">
+            Delete
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function MarkdownText({ text, onFileClick }: { text: string; onFileClick?: (path: string) => void }) {
+function MarkdownText({
+  text,
+  onFileClick,
+}: {
+  text: string;
+  onFileClick?: (path: string) => void;
+}) {
   const parts = text.split(/(```[\s\S]*?```)/g);
-  const isClickableFile = (content: string) => onFileClick && /\.(tex|bib|cls|sty|txt|md|json|yaml|yml|py|js|ts|tsx|css|html|pdf|png|jpg)$/i.test(content);
+  const isClickableFile = (content: string) =>
+    onFileClick &&
+    /\.(tex|bib|cls|sty|txt|md|json|yaml|yml|py|js|ts|tsx|css|html|pdf|png|jpg)$/i.test(
+      content,
+    );
 
   return (
     <>
@@ -861,7 +1074,10 @@ function MarkdownText({ text, onFileClick }: { text: string; onFileClick?: (path
           if (match) {
             const [, , code] = match;
             return (
-              <pre key={i} className="bg-neutral-50 border border-neutral-200 p-3 overflow-x-auto text-[11px] my-3 font-mono leading-relaxed">
+              <pre
+                key={i}
+                className="bg-neutral-50 border border-neutral-200 p-3 overflow-x-auto text-[11px] my-3 font-mono leading-relaxed"
+              >
                 <code>{code?.trim() || ""}</code>
               </pre>
             );
@@ -875,12 +1091,23 @@ function MarkdownText({ text, onFileClick }: { text: string; onFileClick?: (path
                 const content = p.slice(1, -1);
                 if (isClickableFile(content)) {
                   return (
-                    <button key={j} onClick={() => onFileClick!(content)} className="text-[#006656] font-medium font-mono text-[12px] hover:underline cursor-pointer">
+                    <button
+                      key={j}
+                      onClick={() => onFileClick!(content)}
+                      className="text-[#006656] font-medium font-mono text-[12px] hover:underline cursor-pointer"
+                    >
                       {content}
                     </button>
                   );
                 }
-                return <code key={j} className="text-[#006656] font-medium font-mono text-[12px]">{content}</code>;
+                return (
+                  <code
+                    key={j}
+                    className="text-[#006656] font-medium font-mono text-[12px]"
+                  >
+                    {content}
+                  </code>
+                );
               }
               return p;
             })}
@@ -897,71 +1124,153 @@ function MarkdownText({ text, onFileClick }: { text: string; onFileClick?: (path
 
 function ChevronIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+        strokeWidth={2}
+        d="M19 9l-7 7-7-7"
+      />
     </svg>
   );
 }
 
 function ChevronRightIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={2} d="M9 5l7 7-7 7" />
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+        strokeWidth={2}
+        d="M9 5l7 7-7 7"
+      />
     </svg>
   );
 }
 
 function WarningIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+      />
     </svg>
   );
 }
 
 function TrashIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+        strokeWidth={1.5}
+        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+      />
     </svg>
   );
 }
 
 function CheckIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={2} d="M5 13l4 4L19 7" />
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+        strokeWidth={2}
+        d="M5 13l4 4L19 7"
+      />
     </svg>
   );
 }
 
 function FolderIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+        strokeWidth={1.5}
+        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+      />
     </svg>
   );
 }
 
 function TerminalIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1.5} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+        strokeWidth={1.5}
+        d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+      />
     </svg>
   );
 }
 
 function SendIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+        strokeWidth={2}
+        d="M5 10l7-7m0 0l7 7m-7-7v18"
+      />
     </svg>
   );
 }
 
 function StopIcon({ className }: { className?: string }) {
   return (
-    <div className={`${className} border-2 border-current flex items-center justify-center`}>
+    <div
+      className={`${className} border-2 border-current flex items-center justify-center`}
+    >
       <div className="size-2 bg-current" />
     </div>
   );
@@ -974,13 +1283,55 @@ function ToolIcon({ tool }: { tool: string }) {
       return <TerminalIcon className={className} />;
     case "glob":
     case "grep":
-      return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
+      return (
+        <svg
+          className={className}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+      );
     case "read":
     case "write":
     case "edit":
-      return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
+      return (
+        <svg
+          className={className}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
+        </svg>
+      );
     default:
-      return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>;
+      return (
+        <svg
+          className={className}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+          />
+        </svg>
+      );
   }
 }
 
