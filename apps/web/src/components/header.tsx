@@ -63,7 +63,7 @@ export function Header() {
             </Link>
           )}
           <Link
-            href="https://github.com/Luodian/latex-writer/issues"
+            href="https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/issues"
             target="_blank"
             rel="noopener noreferrer"
             className="text-muted/60 hover:text-muted transition-colors flex items-center gap-1 sm:gap-1.5 text-xs"

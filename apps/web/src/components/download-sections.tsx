@@ -143,7 +143,7 @@ export function BuildSection() {
     <FadeIn className="mt-10 pt-8 border-t border-border max-w-2xl">
       <h2 className="text-sm font-medium mb-3">Build from source</h2>
       <pre className="text-sm text-muted bg-neutral-50 p-4 overflow-x-auto border border-border">
-        {`git clone https://github.com/Luodian/latex-writer.git
+        {`git clone https://github.com/EvolvingLMMs-Lab/lmms-lab-writer.git
 cd latex-writer
 pnpm install
 pnpm tauri:build`}

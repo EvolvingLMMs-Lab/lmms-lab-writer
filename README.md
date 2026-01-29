@@ -7,9 +7,9 @@
 Let Claude, Cursor, and Codex write your papers while you focus on what matters - your research.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](https://opensource.org/licenses/MIT)
-[![macOS](https://img.shields.io/badge/macOS-black.svg)](https://github.com/Luodian/latex-writer/releases)
+[![macOS](https://img.shields.io/badge/macOS-black.svg)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
 
-[Download](https://github.com/Luodian/latex-writer/releases) | [GitHub](https://github.com/Luodian/latex-writer)
+[Download](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases) | [GitHub](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer)
 
 </div>
 
@@ -53,7 +53,7 @@ Your laptop
 
 ### 1. Download the App
 
-Download the latest release from [GitHub Releases](https://github.com/Luodian/latex-writer/releases):
+Download the latest release from [GitHub Releases](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases):
 
 - **macOS**: `LMMs-Lab Writer_x.x.x_aarch64.dmg` (Apple Silicon) or `_x64.dmg` (Intel)
 - **Windows**: `LMMs-Lab Writer_x.x.x_x64-setup.exe`
@@ -101,7 +101,7 @@ The editor shows real-time changes. Hit compile. Done.
 
 ```bash
 # Clone
-git clone https://github.com/Luodian/latex-writer.git
+git clone https://github.com/EvolvingLMMs-Lab/lmms-lab-writer.git
 cd latex-writer
 
 # Install

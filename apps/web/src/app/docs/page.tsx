@@ -37,7 +37,7 @@ export default function DocsPage() {
       <footer className="border-t border-border px-6">
         <div className="max-w-5xl mx-auto py-6 text-sm text-muted">
           <Link
-            href="https://github.com/Luodian/latex-writer"
+            href="https://github.com/EvolvingLMMs-Lab/lmms-lab-writer"
             className="hover:text-foreground transition-colors"
             target="_blank"
           >
