@@ -1032,6 +1032,8 @@ export default function EditorPage() {
                               renamePath: daemon.renamePath,
                               deletePath: daemon.deletePath,
                             }}
+                            projectPath={daemon.projectPath ?? undefined}
+                            onRefresh={daemon.refreshFiles}
                           />
                         </EditorErrorBoundary>
                       </>

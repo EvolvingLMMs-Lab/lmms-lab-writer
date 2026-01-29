@@ -4,6 +4,8 @@ import { useState, useCallback, memo, useRef, useEffect, useMemo } from "react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ask } from "@tauri-apps/plugin-dialog";
+import { open as shellOpen } from "@tauri-apps/plugin-shell";
+import { platform } from "@tauri-apps/plugin-os";
 import type { FileNode } from "@lmms-lab/writer-shared";
 import { ContextMenu, type ContextMenuItem } from "../ui/context-menu";
 import { InputDialog } from "../ui/input-dialog";
@@ -51,6 +53,8 @@ type Props = {
   highlightedFile?: string | null;
   className?: string;
   fileOperations?: FileOperations;
+  projectPath?: string;
+  onRefresh?: () => void;
 };
 
 interface ContextMenuState {
@@ -435,6 +439,8 @@ export const FileTree = memo(function FileTree({
   highlightedFile,
   className = "",
   fileOperations,
+  projectPath,
+  onRefresh,
 }: Props) {
   const [focusedPath, setFocusedPath] = useState<string | null>(null);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => {
@@ -637,6 +643,26 @@ export const FileTree = memo(function FileTree({
           }
           break;
         }
+
+        // F5 - Refresh file list
+        case "F5": {
+          e.preventDefault();
+          onRefresh?.();
+          break;
+        }
+
+        // R - Reveal in Explorer/Finder (when a file/folder is focused)
+        case "r":
+        case "R": {
+          if (!currentNode || !projectPath) break;
+          e.preventDefault();
+          const fullPath = `${projectPath}/${currentNode.path}`;
+          const pathToOpen = currentNode.type === "directory"
+            ? fullPath
+            : projectPath + "/" + (getParentPath(currentNode.path) || "");
+          shellOpen(pathToOpen).catch(console.error);
+          break;
+        }
       }
     },
     [
@@ -646,6 +672,8 @@ export const FileTree = memo(function FileTree({
       handleExpandedChange,
       onFileSelect,
       fileOperations,
+      onRefresh,
+      projectPath,
     ],
   );
 
@@ -769,9 +797,58 @@ export const FileTree = memo(function FileTree({
         ),
       });
 
+      // Separator before utility actions
+      if (projectPath) {
+        items.push({
+          label: "-", // separator
+          onClick: () => {},
+        });
+
+        items.push({
+          label: platform() === "macos" ? "Reveal in Finder" : "Reveal in Explorer",
+          onClick: async () => {
+            const fullPath = `${projectPath}/${node.path}`;
+            // Open the parent directory for files, or the directory itself for folders
+            const pathToOpen = isDirectory ? fullPath : projectPath + "/" + (getParentPath(node.path) || "");
+            try {
+              await shellOpen(pathToOpen);
+            } catch (error) {
+              console.error("Failed to reveal in explorer:", error);
+            }
+          },
+          icon: (
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+              />
+            </svg>
+          ),
+        });
+      }
+
+      if (onRefresh) {
+        items.push({
+          label: "Refresh",
+          onClick: onRefresh,
+          icon: (
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+          ),
+        });
+      }
+
       return items;
     },
-    [fileOperations],
+    [fileOperations, projectPath, onRefresh],
   );
 
   const validateFileName = useCallback((name: string): string | null => {
