@@ -1,5 +1,7 @@
 "use client";
 
+import "@/lib/monaco/config";
+
 import { useRef, memo, useCallback } from "react";
 import Editor, { Monaco, OnMount, OnChange } from "@monaco-editor/react";
 import type { editor, languages } from "monaco-editor";
@@ -37,7 +39,11 @@ const defineMonochromeTheme = (monaco: Monaco) => {
       { token: "variable.other", foreground: "0a0a0a" },
 
       // Functions
-      { token: "entity.name.function", foreground: "0a0a0a", fontStyle: "bold" },
+      {
+        token: "entity.name.function",
+        foreground: "0a0a0a",
+        fontStyle: "bold",
+      },
       { token: "support.function", foreground: "0a0a0a", fontStyle: "bold" },
 
       // Types and classes
@@ -62,12 +68,28 @@ const defineMonochromeTheme = (monaco: Monaco) => {
 
       // LaTeX specific tokens
       { token: "keyword.latex", foreground: "0a0a0a", fontStyle: "bold" },
-      { token: "keyword.control.latex", foreground: "0a0a0a", fontStyle: "bold" },
-      { token: "support.function.latex", foreground: "0a0a0a", fontStyle: "bold" },
+      {
+        token: "keyword.control.latex",
+        foreground: "0a0a0a",
+        fontStyle: "bold",
+      },
+      {
+        token: "support.function.latex",
+        foreground: "0a0a0a",
+        fontStyle: "bold",
+      },
       { token: "variable.parameter.latex", foreground: "404040" },
       { token: "punctuation.definition.latex", foreground: "0a0a0a" },
-      { token: "markup.heading.latex", foreground: "0a0a0a", fontStyle: "bold" },
-      { token: "markup.italic.latex", foreground: "0a0a0a", fontStyle: "italic" },
+      {
+        token: "markup.heading.latex",
+        foreground: "0a0a0a",
+        fontStyle: "bold",
+      },
+      {
+        token: "markup.italic.latex",
+        foreground: "0a0a0a",
+        fontStyle: "italic",
+      },
       { token: "markup.bold.latex", foreground: "0a0a0a", fontStyle: "bold" },
 
       // Markdown
@@ -179,7 +201,10 @@ const defineMonochromeTheme = (monaco: Monaco) => {
 // Register LaTeX language support
 const registerLaTeXLanguage = (monaco: Monaco) => {
   // Register the LaTeX language
-  monaco.languages.register({ id: "latex", extensions: [".tex", ".sty", ".cls", ".bib"] });
+  monaco.languages.register({
+    id: "latex",
+    extensions: [".tex", ".sty", ".cls", ".bib"],
+  });
 
   // Set language configuration
   monaco.languages.setLanguageConfiguration("latex", {
@@ -366,10 +391,16 @@ const registerLaTeXLanguage = (monaco: Monaco) => {
         ],
 
         // Reference commands
-        [/\\(ref|cite|label|pageref|eqref)\s*\{/, { token: "keyword", next: "@braceArg" }],
+        [
+          /\\(ref|cite|label|pageref|eqref)\s*\{/,
+          { token: "keyword", next: "@braceArg" },
+        ],
 
         // Text formatting
-        [/\\(textbf|textit|texttt|emph|underline)\s*\{/, { token: "keyword", next: "@braceArg" }],
+        [
+          /\\(textbf|textit|texttt|emph|underline)\s*\{/,
+          { token: "keyword", next: "@braceArg" },
+        ],
 
         // Other commands
         [/\\[a-zA-Z@]+\*?/, "keyword"],
@@ -436,7 +467,10 @@ const registerLaTeXLanguage = (monaco: Monaco) => {
   // Register completions provider
   monaco.languages.registerCompletionItemProvider("latex", {
     triggerCharacters: ["\\", "{"],
-    provideCompletionItems: (model: editor.ITextModel, position: { lineNumber: number; column: number }) => {
+    provideCompletionItems: (
+      model: editor.ITextModel,
+      position: { lineNumber: number; column: number },
+    ) => {
       const word = model.getWordUntilPosition(position);
       const range = {
         startLineNumber: position.lineNumber,
@@ -455,39 +489,124 @@ const registerLaTeXLanguage = (monaco: Monaco) => {
         // Command completions
         const commands = [
           // Document structure
-          { label: "documentclass", insertText: "documentclass{${1:article}}", detail: "Document class" },
-          { label: "usepackage", insertText: "usepackage{${1:package}}", detail: "Import package" },
-          { label: "begin", insertText: "begin{${1:environment}}\n\t$0\n\\end{${1:environment}}", detail: "Begin environment" },
-          { label: "section", insertText: "section{${1:title}}", detail: "Section" },
-          { label: "subsection", insertText: "subsection{${1:title}}", detail: "Subsection" },
-          { label: "subsubsection", insertText: "subsubsection{${1:title}}", detail: "Subsubsection" },
-          { label: "chapter", insertText: "chapter{${1:title}}", detail: "Chapter" },
-          { label: "title", insertText: "title{${1:title}}", detail: "Document title" },
-          { label: "author", insertText: "author{${1:name}}", detail: "Author" },
+          {
+            label: "documentclass",
+            insertText: "documentclass{${1:article}}",
+            detail: "Document class",
+          },
+          {
+            label: "usepackage",
+            insertText: "usepackage{${1:package}}",
+            detail: "Import package",
+          },
+          {
+            label: "begin",
+            insertText:
+              "begin{${1:environment}}\n\t$0\n\\end{${1:environment}}",
+            detail: "Begin environment",
+          },
+          {
+            label: "section",
+            insertText: "section{${1:title}}",
+            detail: "Section",
+          },
+          {
+            label: "subsection",
+            insertText: "subsection{${1:title}}",
+            detail: "Subsection",
+          },
+          {
+            label: "subsubsection",
+            insertText: "subsubsection{${1:title}}",
+            detail: "Subsubsection",
+          },
+          {
+            label: "chapter",
+            insertText: "chapter{${1:title}}",
+            detail: "Chapter",
+          },
+          {
+            label: "title",
+            insertText: "title{${1:title}}",
+            detail: "Document title",
+          },
+          {
+            label: "author",
+            insertText: "author{${1:name}}",
+            detail: "Author",
+          },
           { label: "date", insertText: "date{${1:\\today}}", detail: "Date" },
           { label: "maketitle", insertText: "maketitle", detail: "Make title" },
-          { label: "tableofcontents", insertText: "tableofcontents", detail: "Table of contents" },
+          {
+            label: "tableofcontents",
+            insertText: "tableofcontents",
+            detail: "Table of contents",
+          },
 
           // Text formatting
-          { label: "textbf", insertText: "textbf{${1:text}}", detail: "Bold text" },
-          { label: "textit", insertText: "textit{${1:text}}", detail: "Italic text" },
-          { label: "texttt", insertText: "texttt{${1:text}}", detail: "Monospace text" },
-          { label: "emph", insertText: "emph{${1:text}}", detail: "Emphasized text" },
-          { label: "underline", insertText: "underline{${1:text}}", detail: "Underlined text" },
+          {
+            label: "textbf",
+            insertText: "textbf{${1:text}}",
+            detail: "Bold text",
+          },
+          {
+            label: "textit",
+            insertText: "textit{${1:text}}",
+            detail: "Italic text",
+          },
+          {
+            label: "texttt",
+            insertText: "texttt{${1:text}}",
+            detail: "Monospace text",
+          },
+          {
+            label: "emph",
+            insertText: "emph{${1:text}}",
+            detail: "Emphasized text",
+          },
+          {
+            label: "underline",
+            insertText: "underline{${1:text}}",
+            detail: "Underlined text",
+          },
 
           // References
           { label: "label", insertText: "label{${1:key}}", detail: "Label" },
           { label: "ref", insertText: "ref{${1:key}}", detail: "Reference" },
           { label: "cite", insertText: "cite{${1:key}}", detail: "Citation" },
-          { label: "footnote", insertText: "footnote{${1:text}}", detail: "Footnote" },
-          { label: "caption", insertText: "caption{${1:text}}", detail: "Caption" },
+          {
+            label: "footnote",
+            insertText: "footnote{${1:text}}",
+            detail: "Footnote",
+          },
+          {
+            label: "caption",
+            insertText: "caption{${1:text}}",
+            detail: "Caption",
+          },
 
           // Math
-          { label: "frac", insertText: "frac{${1:num}}{${2:den}}", detail: "Fraction" },
+          {
+            label: "frac",
+            insertText: "frac{${1:num}}{${2:den}}",
+            detail: "Fraction",
+          },
           { label: "sqrt", insertText: "sqrt{${1:x}}", detail: "Square root" },
-          { label: "sum", insertText: "sum_{${1:i=1}}^{${2:n}}", detail: "Summation" },
-          { label: "int", insertText: "int_{${1:a}}^{${2:b}}", detail: "Integral" },
-          { label: "lim", insertText: "lim_{${1:x \\to \\infty}}", detail: "Limit" },
+          {
+            label: "sum",
+            insertText: "sum_{${1:i=1}}^{${2:n}}",
+            detail: "Summation",
+          },
+          {
+            label: "int",
+            insertText: "int_{${1:a}}^{${2:b}}",
+            detail: "Integral",
+          },
+          {
+            label: "lim",
+            insertText: "lim_{${1:x \\to \\infty}}",
+            detail: "Limit",
+          },
 
           // Greek letters
           { label: "alpha", insertText: "alpha", detail: "Greek alpha" },
@@ -504,8 +623,16 @@ const registerLaTeXLanguage = (monaco: Monaco) => {
           { label: "infty", insertText: "infty", detail: "Infinity" },
 
           // Spacing
-          { label: "hspace", insertText: "hspace{${1:1cm}}", detail: "Horizontal space" },
-          { label: "vspace", insertText: "vspace{${1:1cm}}", detail: "Vertical space" },
+          {
+            label: "hspace",
+            insertText: "hspace{${1:1cm}}",
+            detail: "Horizontal space",
+          },
+          {
+            label: "vspace",
+            insertText: "vspace{${1:1cm}}",
+            detail: "Vertical space",
+          },
           { label: "newline", insertText: "newline", detail: "New line" },
           { label: "newpage", insertText: "newpage", detail: "New page" },
 
@@ -513,8 +640,16 @@ const registerLaTeXLanguage = (monaco: Monaco) => {
           { label: "item", insertText: "item ", detail: "List item" },
 
           // Includes
-          { label: "input", insertText: "input{${1:file}}", detail: "Input file" },
-          { label: "include", insertText: "include{${1:file}}", detail: "Include file" },
+          {
+            label: "input",
+            insertText: "input{${1:file}}",
+            detail: "Input file",
+          },
+          {
+            label: "include",
+            insertText: "include{${1:file}}",
+            detail: "Include file",
+          },
         ];
 
         commands.forEach((cmd) => {
@@ -522,7 +657,8 @@ const registerLaTeXLanguage = (monaco: Monaco) => {
             label: cmd.label,
             kind: monaco.languages.CompletionItemKind.Function,
             insertText: cmd.insertText,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            insertTextRules:
+              monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
             detail: cmd.detail,
             range,
           });
@@ -564,7 +700,8 @@ const registerLaTeXLanguage = (monaco: Monaco) => {
             label: env.label,
             kind: monaco.languages.CompletionItemKind.Snippet,
             insertText: `${env.label}}\n\t$0\n\\\\end{${env.label}}`,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            insertTextRules:
+              monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
             detail: env.detail,
             range,
           });
@@ -625,7 +762,11 @@ export const MonacoEditor = memo(function MonacoEditor({
 
         const edits: editor.IIdentifiedSingleEditOperation[] = [];
 
-        for (let lineNumber = selection.startLineNumber; lineNumber <= selection.endLineNumber; lineNumber++) {
+        for (
+          let lineNumber = selection.startLineNumber;
+          lineNumber <= selection.endLineNumber;
+          lineNumber++
+        ) {
           const lineContent = model.getLineContent(lineNumber);
           const trimmedLine = lineContent.trimStart();
           const leadingSpaces = lineContent.length - trimmedLine.length;
@@ -669,7 +810,7 @@ export const MonacoEditor = memo(function MonacoEditor({
         onContentChange?.(value);
       }
     },
-    [onContentChange]
+    [onContentChange],
   );
 
   // Handle external content updates
@@ -713,7 +854,8 @@ export const MonacoEditor = memo(function MonacoEditor({
         options={{
           readOnly,
           fontSize: editorSettings?.fontSize ?? 14,
-          fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace',
+          fontFamily:
+            'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace',
           fontLigatures: false,
           lineNumbers: editorSettings?.lineNumbers ?? "on",
           lineHeight: editorSettings?.lineHeight ?? 1.6,
@@ -730,7 +872,8 @@ export const MonacoEditor = memo(function MonacoEditor({
             side: editorSettings?.minimap?.side ?? "right",
             size: editorSettings?.minimap?.size ?? "proportional",
             maxColumn: 120,
-            renderCharacters: editorSettings?.minimap?.renderCharacters ?? false,
+            renderCharacters:
+              editorSettings?.minimap?.renderCharacters ?? false,
             scale: editorSettings?.minimap?.scale ?? 1,
             showSlider: editorSettings?.minimap?.showSlider ?? "mouseover",
           },
@@ -742,8 +885,10 @@ export const MonacoEditor = memo(function MonacoEditor({
           cursorWidth: 2,
           formatOnPaste: editorSettings?.formatOnPaste ?? false,
           formatOnType: editorSettings?.formatOnSave ?? false,
-          autoClosingBrackets: editorSettings?.autoClosingBrackets ?? "languageDefined",
-          autoClosingQuotes: editorSettings?.autoClosingQuotes ?? "languageDefined",
+          autoClosingBrackets:
+            editorSettings?.autoClosingBrackets ?? "languageDefined",
+          autoClosingQuotes:
+            editorSettings?.autoClosingQuotes ?? "languageDefined",
           renderLineHighlight: "line",
           renderLineHighlightOnlyWhenFocus: false,
           selectOnLineNumbers: true,

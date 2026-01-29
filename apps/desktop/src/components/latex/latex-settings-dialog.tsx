@@ -590,16 +590,14 @@ export function LaTeXSettingsDialog({
                       </button>
                     </div>
 
-                    {/* Minimap Options - only show when enabled */}
                     {editorSettings.minimap.enabled && (
-                      <div className="space-y-4 pl-3 border-l-2 border-border">
-                        {/* Side Selector */}
-                        <div>
-                          <label className="text-sm font-medium block mb-1.5">
+                      <div className="space-y-1 pl-4 border-l-2 border-neutral-200 ml-1">
+                        <div className="flex items-center justify-between py-2">
+                          <label className="text-sm font-medium text-neutral-700">
                             Position
                           </label>
-                          <div className="flex gap-2">
-                            {(["left", "right"] as const).map((side) => (
+                          <div className="flex">
+                            {(["left", "right"] as const).map((side, index) => (
                               <button
                                 key={side}
                                 onClick={() =>
@@ -607,10 +605,11 @@ export function LaTeXSettingsDialog({
                                     minimap: { ...editorSettings.minimap, side },
                                   })
                                 }
-                                className={`flex-1 px-3 py-2 text-sm border transition-all ${editorSettings.minimap.side === side
-                                    ? "border-black bg-black text-white"
-                                    : "border-border hover:border-neutral-400"
-                                  }`}
+                                className={`px-4 py-1.5 text-sm border transition-all ${
+                                  editorSettings.minimap.side === side
+                                    ? "bg-black text-white border-black"
+                                    : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
+                                } ${index === 0 ? "" : "-ml-px"}`}
                               >
                                 {side === "left" ? "Left" : "Right"}
                               </button>
@@ -746,22 +745,24 @@ export function LaTeXSettingsDialog({
                     />
 
                     {editorSettings.wordWrap === "wordWrapColumn" && (
-                      <div className="ml-4 pl-3 border-l-2 border-border">
-                        <label className="text-sm font-medium block mb-1.5">
-                          Wrap Column
-                        </label>
-                        <input
-                          type="number"
-                          min="40"
-                          max="200"
-                          value={editorSettings.wordWrapColumn}
-                          onChange={(e) =>
-                            onUpdateEditorSettings({
-                              wordWrapColumn: parseInt(e.target.value) || 80,
-                            })
-                          }
-                          className="w-full px-3 py-2 text-sm border border-border focus:outline-none focus:border-black"
-                        />
+                      <div className="pl-4 border-l-2 border-neutral-200 ml-1 py-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-medium text-neutral-700">
+                            Wrap Column
+                          </label>
+                          <input
+                            type="number"
+                            min="40"
+                            max="200"
+                            value={editorSettings.wordWrapColumn}
+                            onChange={(e) =>
+                              onUpdateEditorSettings({
+                                wordWrapColumn: parseInt(e.target.value) || 80,
+                              })
+                            }
+                            className="w-20 px-3 py-2 text-sm text-center border border-neutral-200 hover:border-neutral-400 focus:outline-none focus:border-black font-mono"
+                          />
+                        </div>
                       </div>
                     )}
 
@@ -836,12 +837,14 @@ export function LaTeXSettingsDialog({
                   <>
                     <SectionHeader>Main File</SectionHeader>
 
-                    <div>
-                      <label className="text-sm font-medium block mb-1.5">
-                        Main .tex File
-                      </label>
+                    <div className="py-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-medium text-neutral-700">
+                          Main .tex File
+                        </label>
+                      </div>
                       {texFiles.length === 0 ? (
-                        <p className="text-sm text-muted py-2">
+                        <p className="text-sm text-neutral-400 py-2">
                           No .tex files found in project
                         </p>
                       ) : (
@@ -852,7 +855,7 @@ export function LaTeXSettingsDialog({
                               mainFile: e.target.value || null,
                             })
                           }
-                          className="w-full px-3 py-2 text-sm border border-border focus:outline-none focus:border-black bg-white"
+                          className="w-full px-3 py-2.5 text-sm border border-neutral-200 hover:border-neutral-400 focus:outline-none focus:border-black bg-white cursor-pointer"
                         >
                           <option value="">Select main .tex file...</option>
                           {texFiles.map((file) => (
@@ -862,7 +865,7 @@ export function LaTeXSettingsDialog({
                           ))}
                         </select>
                       )}
-                      <p className="text-xs text-muted mt-1">
+                      <p className="text-xs text-neutral-400 mt-1.5">
                         The entry point for LaTeX compilation
                       </p>
                     </div>
