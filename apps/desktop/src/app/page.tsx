@@ -124,6 +124,7 @@ export default function EditorPage() {
   const [opencodePort, setOpencodePort] = useState(4096);
   const [showDisconnectedDialog, setShowDisconnectedDialog] = useState(false);
   const [showLatexSettings, setShowLatexSettings] = useState(false);
+  const [pendingOpenCodeMessage, setPendingOpenCodeMessage] = useState<string | null>(null);
 
   const contentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const opencodeStartedForPathRef = useRef<string | null>(null);
@@ -1404,6 +1405,10 @@ export default function EditorPage() {
               errorCount={latexCompiler.errorCount}
               warningCount={latexCompiler.warningCount}
               onClear={latexCompiler.clearOutput}
+              onFixWithAI={(errorMessage) => {
+                setShowRightPanel(true);
+                setPendingOpenCodeMessage(errorMessage);
+              }}
             />
           )}
         </div>
@@ -1460,6 +1465,8 @@ export default function EditorPage() {
                     onRestartOpenCode={restartOpencode}
                     onMaxReconnectFailed={handleMaxReconnectFailed}
                     onFileClick={handleFileSelect}
+                    pendingMessage={pendingOpenCodeMessage}
+                    onPendingMessageSent={() => setPendingOpenCodeMessage(null)}
                   />
                 </OpenCodeErrorBoundary>
               </aside>

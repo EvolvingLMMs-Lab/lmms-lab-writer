@@ -11,6 +11,7 @@ interface CompilationOutputPanelProps {
   errorCount: number;
   warningCount: number;
   onClear: () => void;
+  onFixWithAI?: (errorMessage: string) => void;
   className?: string;
 }
 
@@ -20,6 +21,7 @@ export function CompilationOutputPanel({
   errorCount,
   warningCount,
   onClear,
+  onFixWithAI,
   className = "",
 }: CompilationOutputPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -85,6 +87,30 @@ export function CompilationOutputPanel({
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isResizing]);
+
+  // Extract error/warning lines for AI fix
+  const handleFixWithAI = useCallback(() => {
+    if (!onFixWithAI) return;
+
+    // Get error and warning lines
+    const errorLines = output
+      .filter((line) => line.isError || line.isWarning)
+      .map((line) => line.line)
+      .join("\n");
+
+    // Also get some context lines around errors
+    const allOutput = output.map((line) => line.line).join("\n");
+
+    const prompt = `LaTeX compilation failed with the following errors:
+
+\`\`\`
+${errorLines || allOutput.slice(-2000)}
+\`\`\`
+
+Please analyze these LaTeX compilation errors and fix them in the source files.`;
+
+    onFixWithAI(prompt);
+  }, [output, onFixWithAI]);
 
   const getStatusBadge = () => {
     if (status === "compiling") {
@@ -152,6 +178,17 @@ export function CompilationOutputPanel({
           )}
         </div>
         <div className="flex items-center gap-2">
+          {status === "error" && onFixWithAI && (
+            <button
+              onClick={handleFixWithAI}
+              className="text-xs px-2 py-0.5 bg-black text-white hover:bg-neutral-800 transition-colors flex items-center gap-1"
+            >
+              <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Fix with AI
+            </button>
+          )}
           {output.length > 0 && (
             <button
               onClick={onClear}
