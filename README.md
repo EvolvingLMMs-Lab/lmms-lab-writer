@@ -2,90 +2,84 @@
 
 # LMMs-Lab Writer
 
-**Stop writing LaTeX. Start thinking.**
+### Think Deep, Write Easy.
 
-Let Claude, Cursor, and Codex write your papers while you focus on what matters - your research.
+Stop manually writing LaTeX. Let agents handle the syntax while you focus on outlier science.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](https://opensource.org/licenses/MIT)
 [![macOS](https://img.shields.io/badge/macOS-black.svg)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
 
-[Download](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases) | [GitHub](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer)
+[Download](https://writer.lmms-lab.com/download) | [Documentation](https://writer.lmms-lab.com/docs) | [Website](https://writer.lmms-lab.com)
 
 </div>
 
 ---
 
-## The Problem
+## There's a reason you're still frustrated.
 
-You're a researcher. You should be thinking about your next breakthrough - not wrestling with LaTeX syntax, citation formatting, or figure placement.
+| Feature | Overleaf | LMMs-Lab Writer |
+|---------|----------|-----------------|
+| File storage | Cloud only | Local (your machine) |
+| AI editing | Built-in grammar help | OpenCode & More AI Agents |
+| Compilation | Their servers | Local (faster, offline) |
+| Git integration | Paid plans only | First-class |
+| Offline work | Not available | Full support |
+| Price | $21-42/month | Free & Very Cheap |
 
-Every hour spent on `\begin{figure}[htbp]` is an hour not spent on your actual work.
+## How it works
 
-## The Solution
-
-**LMMs-Lab Writer** is a local-first LaTeX editor designed for AI pair-programming. Your files stay on your machine. AI tools edit directly. You compile and commit locally.
+Your files stay on your machine. AI tools edit directly. You compile and commit locally.
 
 ```
 Your laptop
-┌────────────────────────────────┐
-│  ~/papers/neurips-2025/        │
-│  ├── main.tex  <-- AI edits    │
-│  ├── figures/                  │
-│  └── refs.bib                  │
-│                                │
-│  Claude Code / Cursor / Codex  │
-│  ↕ Direct file access          │
-│  LMMs-Lab Writer (Tauri app)   │
-└────────────────────────────────┘
++---------------------------------+
+|  ~/papers/neurips-2025/         |
+|  +-- main.tex    <-- AI edits   |
+|  +-- figures/                   |
+|  +-- refs.bib                   |
+|                                 |
+|  Claude Code / Cursor / Codex   |
+|       | Direct file access      |
+|  LMMs-Lab Writer (Tauri app)    |
++---------------------------------+
 ```
-
-## Why Local-First?
-
-| Overleaf                     | LMMs-Lab Writer          |
-| ---------------------------- | ------------------------ |
-| Files locked in cloud        | Your files, your machine |
-| AI can't access your project | AI edits directly        |
-| Compile on their servers     | Compile locally (faster) |
-| Git sync is an afterthought  | Git is first-class       |
-| $15/month for "features"     | Free and open source     |
 
 ## Quick Start
 
-### 1. Download the App
+**1. Download**
 
-Download the latest release from [GitHub Releases](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases):
+```bash
+# macOS (Homebrew)
+brew tap EvolvingLMMs-Lab/tap && brew install --cask lmms-lab-writer
 
-- **macOS**: `LMMs-Lab Writer_x.x.x_aarch64.dmg` (Apple Silicon) or `_x64.dmg` (Intel)
-- **Windows**: `LMMs-Lab Writer_x.x.x_x64-setup.exe`
-- **Linux**: `LMMs-Lab Writer_x.x.x_amd64.AppImage`
+# Or download directly from releases
+```
 
-### 2. Open Your Project
+[Download for macOS](https://writer.lmms-lab.com/download) | [All Releases](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
 
-Launch the app and click "Open Folder" to select your LaTeX project directory.
+**2. Open your project**
 
-### 3. Write with AI
+Launch the app. Click "Open Folder". Select your LaTeX project.
 
-Any AI tool with file access can now edit your LaTeX:
+**3. Write with AI**
 
-- **Claude Code**: "Add a related work section comparing our method to LoRA"
-- **Cursor**: "Fix the table formatting in Section 3"
-- **Codex**: "Generate a figure showing the training curves"
+```
+Claude Code: "Add a related work section comparing our method to LoRA"
+Cursor:      "Fix the table formatting in Section 3"  
+Codex:       "Generate a figure showing the training curves"
+```
 
 The editor shows real-time changes. Hit compile. Done.
 
-## Works With
+## Works with any AI editor
 
-<div align="center">
-
-| Tool          | Status      | How it works                   |
-| ------------- | ----------- | ------------------------------ |
-| Claude Code   | Recommended | Direct file editing via MCP    |
-| Cursor        | Supported   | Edit in Cursor, preview in app |
-| Codex CLI     | Supported   | Batch edits via command line   |
-| OpenCode      | Supported   | Integrated panel in app        |
-| Any AI Editor | Supported   | If it can edit files, it works |
-
-</div>
+| Tool | How it works |
+|------|--------------|
+| Claude Code | Direct file editing via MCP |
+| Cursor | Edit in Cursor, preview in app |
+| Codex CLI | Batch edits via command line |
+| OpenCode | Integrated panel in app |
+| Any AI Editor | If it can edit files, it works |
 
 ## Features
 
@@ -93,56 +87,45 @@ The editor shows real-time changes. Hit compile. Done.
 - **AI-Native** - Designed for Claude, Cursor, Codex, and any AI editor
 - **Real-time Preview** - See changes as AI writes them
 - **Git Integration** - Commit, diff, and push without leaving the editor
-- **Compilation** - Local `latexmk` with XeLaTeX/LuaLaTeX support
-- **Terminal** - Built-in terminal for advanced operations
-- **OpenCode Panel** - Integrated AI chat panel
-
-## Development
-
-```bash
-# Clone
-git clone https://github.com/EvolvingLMMs-Lab/lmms-lab-writer.git
-cd latex-writer
-
-# Install
-pnpm install
-
-# Development
-pnpm tauri:dev
-
-# Build
-pnpm tauri:build
-```
+- **Local Compilation** - `latexmk` with XeLaTeX/LuaLaTeX support
+- **Built-in Terminal** - For advanced operations
+- **OpenCode Panel** - Integrated AI chat
 
 ## Requirements
 
-- LaTeX distribution (MacTeX, TeX Live, or MiKTeX)
+- LaTeX distribution ([MacTeX](https://www.tug.org/mactex/), [TeX Live](https://www.tug.org/texlive/), or [MiKTeX](https://miktex.org/))
 - Git (for version control features)
 
 ## FAQ
 
-**Q: Do I need an account?**
-A: No. Everything runs locally on your machine.
+**Do I need an account?**
+No. Everything runs locally.
 
-**Q: Is my data sent anywhere?**
-A: No. All files stay on your machine.
+**Is my data sent anywhere?**
+No. All files stay on your machine.
 
-**Q: Can I use this with Overleaf projects?**
-A: Yes. Clone your Overleaf git repo locally and use this for editing.
+**Can I use this with Overleaf projects?**
+Yes. Clone your Overleaf git repo locally and edit here.
 
-**Q: Why not just use Overleaf?**
-A: You can't give Claude direct access to Overleaf. With local files, AI tools work naturally.
+## Development
+
+```bash
+git clone https://github.com/EvolvingLMMs-Lab/lmms-lab-writer.git
+cd latex-writer
+pnpm install
+pnpm tauri:dev
+```
 
 ## License
 
-MIT - Use it however you want.
+MIT
 
 ---
 
 <div align="center">
 
-**Built by [LMMs-Lab](https://github.com/LMMs-Lab)**
+**Built by [LMMs-Lab](https://lmms-lab.com)**
 
-_Stop formatting. Start discovering._
+Every legendary paper started somewhere. Yours starts here.
 
 </div>
