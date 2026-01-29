@@ -2,7 +2,7 @@
 
 import { useRef, memo, useCallback } from "react";
 import Editor, { Monaco, OnMount, OnChange } from "@monaco-editor/react";
-import type { editor } from "monaco-editor";
+import type { editor, languages } from "monaco-editor";
 import type { EditorSettings } from "@/lib/editor/types";
 
 // Monochrome theme definition matching the project's design system
@@ -436,7 +436,7 @@ const registerLaTeXLanguage = (monaco: Monaco) => {
   // Register completions provider
   monaco.languages.registerCompletionItemProvider("latex", {
     triggerCharacters: ["\\", "{"],
-    provideCompletionItems: (model, position) => {
+    provideCompletionItems: (model: editor.ITextModel, position: { lineNumber: number; column: number }) => {
       const word = model.getWordUntilPosition(position);
       const range = {
         startLineNumber: position.lineNumber,
@@ -449,7 +449,7 @@ const registerLaTeXLanguage = (monaco: Monaco) => {
       const lineContent = model.getLineContent(position.lineNumber);
       const charBefore = lineContent[position.column - 2];
 
-      const suggestions: editor.languages.CompletionItem[] = [];
+      const suggestions: languages.CompletionItem[] = [];
 
       if (charBefore === "\\") {
         // Command completions
