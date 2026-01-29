@@ -31,36 +31,20 @@ export function CompileButton({
     }
   }, [isCompiling, onCompile, onStop]);
 
-  const getStatusColor = () => {
-    switch (status) {
-      case "success":
-        return "bg-green-500";
-      case "error":
-        return "bg-red-500";
-      case "compiling":
-        return "bg-yellow-500";
-      default:
-        return "bg-neutral-300";
-    }
-  };
-
   return (
     <div className={`flex items-center gap-2 h-8 ${className}`}>
       <button
         onClick={handleClick}
         disabled={disabled}
-        className={`h-8 w-8 border-2 border-black transition-all flex items-center justify-center bg-white text-black relative ${
+        className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-white text-black ${
           disabled
             ? "opacity-50 cursor-not-allowed"
-            : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] active:shadow-none active:translate-x-[3px] active:translate-y-[3px]"
+            : "hover:bg-neutral-50 hover:border-neutral-400"
         }`}
         title={
           isCompiling ? "Stop compilation (Esc)" : "Compile (Ctrl+Shift+B)"
         }
       >
-        <span
-          className={`absolute top-1 left-1 size-1.5 rounded-full ${getStatusColor()}`}
-        />
         {isCompiling ? (
           <Spinner className="size-4" />
         ) : (
@@ -88,7 +72,7 @@ export function CompileButton({
 
       <button
         onClick={onSettingsClick}
-        className="h-8 w-8 border-2 border-black bg-white text-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] active:shadow-none active:translate-x-[3px] active:translate-y-[3px] transition-all flex items-center justify-center"
+        className="h-8 w-8 border border-border bg-white text-black hover:bg-neutral-50 hover:border-neutral-400 transition-colors flex items-center justify-center"
         title="LaTeX Settings"
         aria-label="LaTeX Settings"
       >
