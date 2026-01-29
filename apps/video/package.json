@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "npx remotion studio",
-    "build": "npx remotion render",
+    "build": "tsc --noEmit",
     "render": "npx remotion render MarketingVideo out/marketing.mp4"
   },
   "dependencies": {
