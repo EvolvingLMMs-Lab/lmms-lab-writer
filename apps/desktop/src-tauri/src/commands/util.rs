@@ -13,8 +13,7 @@ pub trait CommandExt {
 impl CommandExt for TokioCommand {
     #[cfg(target_os = "windows")]
     fn hide_window(&mut self) -> &mut Self {
-        use std::os::windows::process::CommandExt as WinCommandExt;
-        WinCommandExt::creation_flags(self, CREATE_NO_WINDOW);
+        self.creation_flags(CREATE_NO_WINDOW);
         self
     }
 
