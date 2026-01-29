@@ -37,7 +37,7 @@ export function CompilationOutputPanel({
   const heightRef = useRef(height);
 
   // Auto-expand on compilation start
-   
+
   useEffect(() => {
     if (status === "compiling") {
       setIsExpanded(true);
@@ -70,7 +70,7 @@ export function CompilationOutputPanel({
       heightRef.current = newHeight;
       document.documentElement.style.setProperty(
         "--output-height",
-        `${newHeight}px`
+        `${newHeight}px`,
       );
     };
 
@@ -106,7 +106,7 @@ export function CompilationOutputPanel({
     const isFailed = status === "error";
     const issueType = isFailed
       ? "errors"
-      : (errorCount > 0 && warningCount > 0)
+      : errorCount > 0 && warningCount > 0
         ? "errors and warnings"
         : errorCount > 0
           ? "errors"
@@ -197,17 +197,30 @@ Please analyze these ${issueType} and suggest how to fix or suppress them. If th
           )}
         </div>
         <div className="flex items-center gap-2">
-          {onFixWithAI && (status === "error" || (status === "success" && (errorCount > 0 || warningCount > 0))) && (
-            <button
-              onClick={handleFixWithAI}
-              className="text-xs px-2 py-0.5 bg-black text-white hover:bg-neutral-800 transition-colors flex items-center gap-1"
-            >
-              <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              Fix with AI
-            </button>
-          )}
+          {onFixWithAI &&
+            (status === "error" ||
+              (status === "success" &&
+                (errorCount > 0 || warningCount > 0))) && (
+              <button
+                onClick={handleFixWithAI}
+                className="text-xs px-2 py-0.5 bg-white text-black border border-black hover:bg-neutral-100 transition-colors flex items-center gap-1"
+              >
+                <svg
+                  className="size-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  />
+                </svg>
+                Fix with AI
+              </button>
+            )}
           {output.length > 0 && (
             <button
               onClick={onClear}
@@ -241,7 +254,8 @@ Please analyze these ${issueType} and suggest how to fix or suppress them. If th
             >
               {output.length === 0 ? (
                 <div className="text-neutral-500 italic">
-                  No compilation output yet. Press Compile or Ctrl+Shift+B to start.
+                  No compilation output yet. Press Compile or Ctrl+Shift+B to
+                  start.
                 </div>
               ) : (
                 output.map((line, index) => (

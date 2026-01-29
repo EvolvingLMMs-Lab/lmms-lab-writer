@@ -909,10 +909,10 @@ export default function EditorPage() {
           <div className="flex items-center gap-3 h-8">
             <button
               onClick={handleToggleRightPanel}
-              className={`h-8 px-3 text-sm border-2 border-black transition-all flex items-center gap-2 font-medium shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] ${
+              className={`h-8 px-3 text-sm border-2 border-black transition-all flex items-center gap-2 font-medium bg-white text-black ${
                 showRightPanel
-                  ? "bg-black text-white"
-                  : "bg-white text-black"
+                  ? "shadow-[1px_1px_0_0_#000] translate-x-[2px] translate-y-[2px]"
+                  : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px]"
               }`}
             >
               Agent Mode
