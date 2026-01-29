@@ -906,20 +906,10 @@ export default function EditorPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {daemon.projectPath && (
-              <CompileButton
-                status={latexCompiler.status}
-                onCompile={handleCompile}
-                onStop={handleStopCompile}
-                onSettingsClick={() => setShowLatexSettings(true)}
-                disabled={!latexSettings.settings.mainFile}
-              />
-            )}
-
+          <div className="flex items-center gap-3 h-8">
             <button
               onClick={handleToggleRightPanel}
-              className={`btn btn-sm border-2 border-black transition-all flex items-center gap-2 bg-white text-black ${
+              className={`h-8 px-3 text-sm border-2 border-black transition-all flex items-center gap-2 bg-white text-black font-medium ${
                 showRightPanel
                   ? "shadow-none translate-x-[3px] translate-y-[3px]"
                   : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px]"
@@ -928,8 +918,22 @@ export default function EditorPage() {
               Agent Mode
             </button>
 
+            {daemon.projectPath && (
+              <>
+                <span className="text-neutral-300 text-lg select-none">/</span>
+                <CompileButton
+                  status={latexCompiler.status}
+                  onCompile={handleCompile}
+                  onStop={handleStopCompile}
+                  onSettingsClick={() => setShowLatexSettings(true)}
+                  disabled={!latexSettings.settings.mainFile}
+                />
+              </>
+            )}
+
             {auth.isConfigured && !auth.loading && (
               <>
+                <span className="text-neutral-300 text-lg select-none">/</span>
                 {auth.profile ? (
                   <UserDropdown profile={auth.profile} />
                 ) : (
@@ -939,7 +943,7 @@ export default function EditorPage() {
                         open("https://writer.lmms-lab.com/login");
                       });
                     }}
-                    className="btn btn-sm border-2 border-black bg-white text-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+                    className="h-8 px-3 text-sm border-2 border-black bg-white text-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center"
                   >
                     Login
                   </button>

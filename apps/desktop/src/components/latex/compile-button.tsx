@@ -45,11 +45,11 @@ export function CompileButton({
   };
 
   return (
-    <div className={`flex items-center gap-1 ${className}`}>
+    <div className={`flex items-center gap-1 h-8 ${className}`}>
       <button
         onClick={handleClick}
         disabled={disabled}
-        className={`btn btn-sm border-2 border-black transition-all flex items-center gap-2 bg-white text-black ${
+        className={`h-8 px-3 text-sm border-2 border-black transition-all flex items-center gap-2 bg-white text-black ${
           disabled
             ? "opacity-50 cursor-not-allowed"
             : "shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px]"
@@ -90,7 +90,7 @@ export function CompileButton({
 
       <button
         onClick={onSettingsClick}
-        className="btn btn-sm border-2 border-black bg-white text-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all px-2"
+        className="h-8 w-8 border-2 border-black bg-white text-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center justify-center"
         title="LaTeX Settings"
         aria-label="LaTeX Settings"
       >
