@@ -713,7 +713,7 @@ export const MonacoEditor = memo(function MonacoEditor({
         options={{
           readOnly,
           fontSize: editorSettings?.fontSize ?? 14,
-          fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
+          fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace',
           fontLigatures: false,
           lineNumbers: editorSettings?.lineNumbers ?? "on",
           lineHeight: editorSettings?.lineHeight ?? 1.6,
@@ -730,7 +730,7 @@ export const MonacoEditor = memo(function MonacoEditor({
             side: editorSettings?.minimap?.side ?? "right",
             size: editorSettings?.minimap?.size ?? "proportional",
             maxColumn: 120,
-            renderCharacters: false, // Always use color blocks for better CJK support
+            renderCharacters: editorSettings?.minimap?.renderCharacters ?? false,
             scale: editorSettings?.minimap?.scale ?? 1,
             showSlider: editorSettings?.minimap?.showSlider ?? "mouseover",
           },

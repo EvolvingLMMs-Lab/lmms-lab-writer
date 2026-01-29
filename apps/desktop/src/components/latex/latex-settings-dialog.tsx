@@ -227,11 +227,10 @@ export function LaTeXSettingsDialog({
                   <button
                     key={tab.key}
                     onClick={() => setActiveTab(tab.key)}
-                    className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-                      activeTab === tab.key
+                    className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${activeTab === tab.key
                         ? "text-black border-b-2 border-black -mb-px"
                         : "text-muted hover:text-black"
-                    }`}
+                      }`}
                   >
                     {tab.label}
                   </button>
@@ -293,11 +292,10 @@ export function LaTeXSettingsDialog({
                           return (
                             <label
                               key={compiler}
-                              className={`flex items-start gap-3 p-2.5 border cursor-pointer transition-all ${
-                                isSelected
+                              className={`flex items-start gap-3 p-2.5 border cursor-pointer transition-all ${isSelected
                                   ? "border-black bg-neutral-50"
                                   : "border-border hover:border-neutral-400"
-                              } ${!isAvailable ? "opacity-50 cursor-not-allowed" : ""}`}
+                                } ${!isAvailable ? "opacity-50 cursor-not-allowed" : ""}`}
                             >
                               <input
                                 type="radio"
@@ -535,18 +533,16 @@ export function LaTeXSettingsDialog({
                             },
                           })
                         }
-                        className={`relative w-11 h-6 rounded-full transition-colors ${
-                          editorSettings.minimap.enabled
+                        className={`relative w-11 h-6 rounded-full transition-colors ${editorSettings.minimap.enabled
                             ? "bg-black"
                             : "bg-neutral-300"
-                        }`}
+                          }`}
                       >
                         <span
-                          className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                            editorSettings.minimap.enabled
+                          className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${editorSettings.minimap.enabled
                               ? "translate-x-5"
                               : "translate-x-0"
-                          }`}
+                            }`}
                         />
                       </button>
                     </div>
@@ -568,11 +564,10 @@ export function LaTeXSettingsDialog({
                                     minimap: { ...editorSettings.minimap, side },
                                   })
                                 }
-                                className={`flex-1 px-3 py-2 text-sm border transition-all ${
-                                  editorSettings.minimap.side === side
+                                className={`flex-1 px-3 py-2 text-sm border transition-all ${editorSettings.minimap.side === side
                                     ? "border-black bg-black text-white"
                                     : "border-border hover:border-neutral-400"
-                                }`}
+                                  }`}
                               >
                                 {side === "left" ? "Left" : "Right"}
                               </button>
@@ -619,6 +614,23 @@ export function LaTeXSettingsDialog({
                           description="When to show the viewport indicator"
                         />
 
+
+                        {/* Render Characters */}
+                        <div className="pt-2">
+                          <CheckboxItem
+                            checked={editorSettings.minimap.renderCharacters}
+                            onChange={(v) =>
+                              onUpdateEditorSettings({
+                                minimap: {
+                                  ...editorSettings.minimap,
+                                  renderCharacters: v,
+                                },
+                              })
+                            }
+                            label="Render Characters"
+                            description="Show actual characters instead of blocks"
+                          />
+                        </div>
                       </div>
                     )}
 
