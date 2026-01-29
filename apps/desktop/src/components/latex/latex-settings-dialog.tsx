@@ -10,7 +10,7 @@ import {
   COMPILER_DESCRIPTIONS,
   DEFAULT_LATEX_SETTINGS,
 } from "@/lib/latex/types";
-import { EditorSettings, DEFAULT_EDITOR_SETTINGS } from "@/lib/editor/types";
+import { EditorSettings, MinimapSettings, DEFAULT_EDITOR_SETTINGS, DEFAULT_MINIMAP_SETTINGS } from "@/lib/editor/types";
 import { Spinner } from "@/components/ui/spinner";
 import { LaTeXInstallPrompt } from "./latex-install-prompt";
 
@@ -509,12 +509,6 @@ export function LaTeXSettingsDialog({
 
                     <div className="space-y-3 pt-1">
                       <CheckboxItem
-                        checked={editorSettings.minimap}
-                        onChange={(v) => onUpdateEditorSettings({ minimap: v })}
-                        label="Show Minimap"
-                        description="Display code overview on the right side"
-                      />
-                      <CheckboxItem
                         checked={editorSettings.smoothScrolling}
                         onChange={(v) =>
                           onUpdateEditorSettings({ smoothScrolling: v })
@@ -523,6 +517,124 @@ export function LaTeXSettingsDialog({
                         description="Enable smooth scroll animation"
                       />
                     </div>
+
+                    <SectionHeader>Minimap</SectionHeader>
+
+                    {/* Minimap Enable Toggle */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-sm font-medium">Enable Minimap</span>
+                        <p className="text-xs text-muted">Code overview panel</p>
+                      </div>
+                      <button
+                        onClick={() =>
+                          onUpdateEditorSettings({
+                            minimap: {
+                              ...editorSettings.minimap,
+                              enabled: !editorSettings.minimap.enabled,
+                            },
+                          })
+                        }
+                        className={`relative w-11 h-6 rounded-full transition-colors ${
+                          editorSettings.minimap.enabled
+                            ? "bg-black"
+                            : "bg-neutral-300"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                            editorSettings.minimap.enabled
+                              ? "translate-x-5"
+                              : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Minimap Options - only show when enabled */}
+                    {editorSettings.minimap.enabled && (
+                      <div className="space-y-4 pl-3 border-l-2 border-border">
+                        {/* Side Selector */}
+                        <div>
+                          <label className="text-sm font-medium block mb-1.5">
+                            Position
+                          </label>
+                          <div className="flex gap-2">
+                            {(["left", "right"] as const).map((side) => (
+                              <button
+                                key={side}
+                                onClick={() =>
+                                  onUpdateEditorSettings({
+                                    minimap: { ...editorSettings.minimap, side },
+                                  })
+                                }
+                                className={`flex-1 px-3 py-2 text-sm border transition-all ${
+                                  editorSettings.minimap.side === side
+                                    ? "border-black bg-black text-white"
+                                    : "border-border hover:border-neutral-400"
+                                }`}
+                              >
+                                {side === "left" ? "Left" : "Right"}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Size Mode */}
+                        <SelectField
+                          label="Size Mode"
+                          value={editorSettings.minimap.size}
+                          onChange={(v) =>
+                            onUpdateEditorSettings({
+                              minimap: {
+                                ...editorSettings.minimap,
+                                size: v as MinimapSettings["size"],
+                              },
+                            })
+                          }
+                          options={[
+                            { value: "proportional", label: "Proportional" },
+                            { value: "fill", label: "Fill" },
+                            { value: "fit", label: "Fit" },
+                          ]}
+                          description="How the minimap scales relative to content"
+                        />
+
+                        {/* Show Slider */}
+                        <SelectField
+                          label="Show Slider"
+                          value={editorSettings.minimap.showSlider}
+                          onChange={(v) =>
+                            onUpdateEditorSettings({
+                              minimap: {
+                                ...editorSettings.minimap,
+                                showSlider: v as MinimapSettings["showSlider"],
+                              },
+                            })
+                          }
+                          options={[
+                            { value: "mouseover", label: "On Hover" },
+                            { value: "always", label: "Always" },
+                          ]}
+                          description="When to show the viewport indicator"
+                        />
+
+                        {/* Render Characters */}
+                        <CheckboxItem
+                          checked={editorSettings.minimap.renderCharacters}
+                          onChange={(v) =>
+                            onUpdateEditorSettings({
+                              minimap: {
+                                ...editorSettings.minimap,
+                                renderCharacters: v,
+                              },
+                            })
+                          }
+                          label="Render Characters"
+                          description="Show actual text instead of color blocks"
+                        />
+                      </div>
+                    )}
 
                     <SectionHeader>Cursor</SectionHeader>
 

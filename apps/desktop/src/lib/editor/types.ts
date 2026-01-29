@@ -1,3 +1,13 @@
+// Minimap configuration matching Monaco Editor API
+export interface MinimapSettings {
+  enabled: boolean;
+  side: "left" | "right";
+  showSlider: "always" | "mouseover";
+  renderCharacters: boolean;
+  size: "proportional" | "fill" | "fit";
+  scale: number;
+}
+
 export interface EditorSettings {
   // Display
   fontSize: number;
@@ -12,7 +22,7 @@ export interface EditorSettings {
   autoClosingQuotes: "always" | "languageDefined" | "beforeWhitespace" | "never";
 
   // Features
-  minimap: boolean;
+  minimap: MinimapSettings;
   lineNumbers: "on" | "off" | "relative" | "interval";
   renderWhitespace: "none" | "boundary" | "selection" | "trailing" | "all";
   smoothScrolling: boolean;
@@ -23,6 +33,15 @@ export interface EditorSettings {
   formatOnSave: boolean;
   formatOnPaste: boolean;
 }
+
+export const DEFAULT_MINIMAP_SETTINGS: MinimapSettings = {
+  enabled: true,
+  side: "right",
+  showSlider: "mouseover",
+  renderCharacters: true,
+  size: "proportional",
+  scale: 1,
+};
 
 export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
   // Display
@@ -38,7 +57,7 @@ export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
   autoClosingQuotes: "languageDefined",
 
   // Features
-  minimap: true,
+  minimap: DEFAULT_MINIMAP_SETTINGS,
   lineNumbers: "on",
   renderWhitespace: "selection",
   smoothScrolling: true,
