@@ -31,19 +31,17 @@ const COMPILERS: LaTeXCompiler[] = ["pdflatex", "xelatex", "lualatex", "latexmk"
 
 type SettingsTab = "compiler" | "editor" | "build";
 
-// Section header component for visual grouping
+// Section header component for visual grouping - editorial style
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 pt-2 pb-1">
-      <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
+    <div className="pt-6 pb-2 border-t border-neutral-200 mt-4 first:mt-0 first:border-t-0 first:pt-2">
+      <h3 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
         {children}
       </h3>
-      <div className="flex-1 h-px bg-border" />
     </div>
   );
 }
 
-// Checkbox item component for consistent styling
 function CheckboxItem({
   checked,
   onChange,
@@ -56,24 +54,40 @@ function CheckboxItem({
   description: string;
 }) {
   return (
-    <label className="flex items-start gap-3 cursor-pointer group">
+    <label className="flex items-start gap-3 cursor-pointer group py-2">
+      <div
+        onClick={(e) => {
+          e.preventDefault();
+          onChange(!checked);
+        }}
+        className={`size-4 mt-0.5 border flex items-center justify-center transition-colors cursor-pointer ${
+          checked
+            ? "bg-black border-black"
+            : "border-neutral-300 group-hover:border-black"
+        }`}
+      >
+        {checked && (
+          <svg className="size-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={3} d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+      </div>
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="size-4 mt-0.5 accent-black"
+        className="sr-only"
       />
       <div className="flex-1">
-        <span className="text-sm font-medium group-hover:text-black transition-colors">
+        <span className="text-sm font-medium text-neutral-700 group-hover:text-black transition-colors">
           {label}
         </span>
-        <p className="text-xs text-muted">{description}</p>
+        <p className="text-xs text-neutral-500 mt-0.5">{description}</p>
       </div>
     </label>
   );
 }
 
-// Select field component for consistent styling
 function SelectField({
   label,
   value,
@@ -88,12 +102,15 @@ function SelectField({
   description?: string;
 }) {
   return (
-    <div>
-      <label className="text-sm font-medium block mb-1.5">{label}</label>
+    <div className="flex items-center justify-between py-2 gap-8">
+      <div className="shrink-0">
+        <label className="text-sm font-medium text-neutral-700 block">{label}</label>
+        {description && <p className="text-xs text-neutral-400 mt-0.5">{description}</p>}
+      </div>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 text-sm border border-border focus:outline-none focus:border-black bg-white"
+        className="px-3 py-2 text-sm border border-neutral-200 hover:border-neutral-400 focus:outline-none focus:border-black bg-white min-w-[140px] cursor-pointer"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -101,7 +118,6 @@ function SelectField({
           </option>
         ))}
       </select>
-      {description && <p className="text-xs text-muted mt-1">{description}</p>}
     </div>
   );
 }
@@ -187,27 +203,27 @@ export function LaTeXSettingsDialog({
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold">Settings</h2>
-                  <span className="text-xs text-muted bg-neutral-100 px-1.5 py-0.5 rounded">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-bold tracking-tight">Settings</h2>
+                  <span className="text-[10px] text-neutral-400 uppercase tracking-wider">
                     Auto-saved
                   </span>
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-1 hover:bg-neutral-100 transition-colors rounded"
+                  className="p-1.5 hover:bg-neutral-100 transition-colors border border-transparent hover:border-neutral-200"
                   aria-label="Close"
                 >
                   <svg
-                    className="size-5"
+                    className="size-4"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
                     <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
                       strokeWidth={2}
                       d="M6 18L18 6M6 6l12 12"
                     />
@@ -216,7 +232,7 @@ export function LaTeXSettingsDialog({
               </div>
 
               {/* Tabs */}
-              <div className="flex border-b border-border">
+              <div className="flex border-b border-neutral-200">
                 {(
                   [
                     { key: "compiler", label: "Compiler" },
@@ -227,18 +243,22 @@ export function LaTeXSettingsDialog({
                   <button
                     key={tab.key}
                     onClick={() => setActiveTab(tab.key)}
-                    className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${activeTab === tab.key
-                        ? "text-black border-b-2 border-black -mb-px"
-                        : "text-muted hover:text-black"
-                      }`}
+                    className={`flex-1 px-4 py-3 text-sm font-medium transition-colors relative ${
+                      activeTab === tab.key
+                        ? "text-black"
+                        : "text-neutral-400 hover:text-black"
+                    }`}
                   >
                     {tab.label}
+                    {activeTab === tab.key && (
+                      <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-black" />
+                    )}
                   </button>
                 ))}
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1">
                 {/* ===== COMPILER TAB ===== */}
                 {activeTab === "compiler" && (
                   <>
@@ -249,41 +269,40 @@ export function LaTeXSettingsDialog({
                       />
                     )}
 
-                    {/* Compiler Selection */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-sm font-medium">Compiler</label>
+                    <div className="py-2">
+                      <div className="flex items-center justify-between mb-4">
+                        <label className="text-sm font-medium text-neutral-700">Compiler</label>
                         <button
                           onClick={onDetectCompilers}
                           disabled={isDetecting}
-                          className="text-xs text-muted hover:text-black flex items-center gap-1 transition-colors"
+                          className="text-xs text-neutral-500 hover:text-black flex items-center gap-1.5 transition-colors group"
                         >
                           {isDetecting ? (
                             <>
                               <Spinner className="size-3" />
-                              Detecting...
+                              <span>Detecting...</span>
                             </>
                           ) : (
                             <>
                               <svg
-                                className="size-3"
+                                className="size-3 group-hover:rotate-[-45deg] transition-transform"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
                               >
                                 <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
+                                  strokeLinecap="square"
+                                  strokeLinejoin="miter"
                                   strokeWidth={2}
                                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                                 />
                               </svg>
-                              Refresh
+                              <span>Refresh</span>
                             </>
                           )}
                         </button>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         {COMPILERS.map((compiler) => {
                           const info = compilersStatus?.[compiler];
                           const isAvailable = info?.available ?? false;
@@ -292,11 +311,23 @@ export function LaTeXSettingsDialog({
                           return (
                             <label
                               key={compiler}
-                              className={`flex items-start gap-3 p-2.5 border cursor-pointer transition-all ${isSelected
-                                  ? "border-black bg-neutral-50"
-                                  : "border-border hover:border-neutral-400"
-                                } ${!isAvailable ? "opacity-50 cursor-not-allowed" : ""}`}
+                              className={`flex items-start gap-3 p-3 border cursor-pointer transition-all ${
+                                isSelected
+                                  ? "border-black"
+                                  : "border-neutral-200 hover:border-neutral-400"
+                              } ${!isAvailable ? "opacity-50 cursor-not-allowed" : ""}`}
                             >
+                              <div
+                                className={`size-4 mt-0.5 border flex items-center justify-center transition-colors ${
+                                  isSelected
+                                    ? "bg-black border-black"
+                                    : "border-neutral-300"
+                                }`}
+                              >
+                                {isSelected && (
+                                  <div className="size-2 bg-white" />
+                                )}
+                              </div>
                               <input
                                 type="radio"
                                 name="compiler"
@@ -304,28 +335,28 @@ export function LaTeXSettingsDialog({
                                 checked={isSelected}
                                 onChange={() => onUpdateSettings({ compiler })}
                                 disabled={!isAvailable}
-                                className="mt-0.5 accent-black"
+                                className="sr-only"
                               />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-medium text-sm">
+                                  <span className="font-medium text-sm text-neutral-700">
                                     {COMPILER_DISPLAY_NAMES[compiler]}
                                   </span>
                                   {isAvailable ? (
-                                    <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">
+                                    <span className="text-[10px] px-1.5 py-0.5 bg-black text-white font-medium uppercase tracking-wider">
                                       Installed
                                     </span>
                                   ) : (
-                                    <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-700 rounded">
+                                    <span className="text-[10px] px-1.5 py-0.5 border border-neutral-300 text-neutral-400 font-medium uppercase tracking-wider">
                                       Not found
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-xs text-muted mt-0.5">
+                                <p className="text-xs text-neutral-500 mt-0.5">
                                   {COMPILER_DESCRIPTIONS[compiler]}
                                 </p>
                                 {info?.version && (
-                                  <p className="text-xs text-muted/70 mt-0.5 truncate font-mono">
+                                  <p className="text-[10px] text-neutral-400 mt-1 truncate font-mono">
                                     {info.version}
                                   </p>
                                 )}
@@ -338,43 +369,43 @@ export function LaTeXSettingsDialog({
 
                     <SectionHeader>Advanced</SectionHeader>
 
-                    {/* Custom Path */}
-                    <div>
-                      <label className="text-sm font-medium block mb-1.5">
-                        Custom Compiler Path
-                      </label>
-                      <input
-                        type="text"
-                        value={settings.customPath || ""}
-                        onChange={(e) =>
-                          onUpdateSettings({
-                            customPath: e.target.value || null,
-                          })
-                        }
-                        placeholder="/usr/local/bin/pdflatex"
-                        className="w-full px-3 py-2 text-sm border border-border focus:outline-none focus:border-black font-mono"
-                      />
-                      <p className="text-xs text-muted mt-1">
-                        Override the default compiler path if needed
-                      </p>
-                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium text-neutral-700 block mb-2">
+                          Custom Compiler Path
+                        </label>
+                        <input
+                          type="text"
+                          value={settings.customPath || ""}
+                          onChange={(e) =>
+                            onUpdateSettings({
+                              customPath: e.target.value || null,
+                            })
+                          }
+                          placeholder="/usr/local/bin/pdflatex"
+                          className="w-full px-3 py-2.5 text-sm border border-neutral-200 hover:border-neutral-400 focus:outline-none focus:border-black font-mono placeholder:text-neutral-300"
+                        />
+                        <p className="text-xs text-neutral-400 mt-1.5">
+                          Override the default compiler path if needed
+                        </p>
+                      </div>
 
-                    {/* Additional Arguments */}
-                    <div>
-                      <label className="text-sm font-medium block mb-1.5">
-                        Additional Arguments
-                      </label>
-                      <input
-                        type="text"
-                        value={customArgsInput}
-                        onChange={(e) => setCustomArgsInput(e.target.value)}
-                        onBlur={handleArgsBlur}
-                        placeholder="-shell-escape -output-directory=build"
-                        className="w-full px-3 py-2 text-sm border border-border focus:outline-none focus:border-black font-mono"
-                      />
-                      <p className="text-xs text-muted mt-1">
-                        Space-separated arguments passed to the compiler
-                      </p>
+                      <div>
+                        <label className="text-sm font-medium text-neutral-700 block mb-2">
+                          Additional Arguments
+                        </label>
+                        <input
+                          type="text"
+                          value={customArgsInput}
+                          onChange={(e) => setCustomArgsInput(e.target.value)}
+                          onBlur={handleArgsBlur}
+                          placeholder="-shell-escape -output-directory=build"
+                          className="w-full px-3 py-2.5 text-sm border border-neutral-200 hover:border-neutral-400 focus:outline-none focus:border-black font-mono placeholder:text-neutral-300"
+                        />
+                        <p className="text-xs text-neutral-400 mt-1.5">
+                          Space-separated arguments passed to the compiler
+                        </p>
+                      </div>
                     </div>
                   </>
                 )}
@@ -459,22 +490,23 @@ export function LaTeXSettingsDialog({
 
                     <SectionHeader>Display</SectionHeader>
 
-                    {/* Font Size */}
-                    <div>
-                      <label className="text-sm font-medium block mb-1.5">
+                    <div className="flex items-center justify-between py-2">
+                      <label className="text-sm font-medium text-neutral-700">
                         Font Size
                       </label>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center border border-neutral-200 hover:border-neutral-400 transition-colors">
                         <button
                           onClick={() =>
                             onUpdateEditorSettings({
                               fontSize: Math.max(8, editorSettings.fontSize - 1),
                             })
                           }
-                          className="size-8 flex items-center justify-center border border-border hover:border-black hover:bg-neutral-50 transition-colors text-lg font-medium"
+                          className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-r border-neutral-200"
                           aria-label="Decrease font size"
                         >
-                          -
+                          <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="square" strokeWidth={2} d="M20 12H4" />
+                          </svg>
                         </button>
                         <input
                           type="number"
@@ -486,7 +518,7 @@ export function LaTeXSettingsDialog({
                               fontSize: Math.min(32, Math.max(8, parseInt(e.target.value) || 14)),
                             })
                           }
-                          className="w-16 px-2 py-1.5 text-sm text-center border border-border focus:outline-none focus:border-black font-mono"
+                          className="w-12 h-8 text-sm text-center border-0 focus:outline-none focus:ring-0 font-mono bg-transparent"
                         />
                         <button
                           onClick={() =>
@@ -494,31 +526,34 @@ export function LaTeXSettingsDialog({
                               fontSize: Math.min(32, editorSettings.fontSize + 1),
                             })
                           }
-                          className="size-8 flex items-center justify-center border border-border hover:border-black hover:bg-neutral-50 transition-colors text-lg font-medium"
+                          className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-l border-neutral-200"
                           aria-label="Increase font size"
                         >
-                          +
+                          <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="square" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
                         </button>
-                        <span className="text-sm text-muted ml-1">px</span>
+                        <span className="text-xs text-neutral-400 px-2 border-l border-neutral-200">px</span>
                       </div>
                     </div>
 
-                    {/* Line Height */}
-                    <div>
-                      <label className="text-sm font-medium block mb-1.5">
+                    <div className="flex items-center justify-between py-2">
+                      <label className="text-sm font-medium text-neutral-700">
                         Line Height
                       </label>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center border border-neutral-200 hover:border-neutral-400 transition-colors">
                         <button
                           onClick={() =>
                             onUpdateEditorSettings({
                               lineHeight: Math.max(1.0, Math.round((editorSettings.lineHeight - 0.1) * 10) / 10),
                             })
                           }
-                          className="size-8 flex items-center justify-center border border-border hover:border-black hover:bg-neutral-50 transition-colors text-lg font-medium"
+                          className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-r border-neutral-200"
                           aria-label="Decrease line height"
                         >
-                          -
+                          <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="square" strokeWidth={2} d="M20 12H4" />
+                          </svg>
                         </button>
                         <input
                           type="number"
@@ -531,7 +566,7 @@ export function LaTeXSettingsDialog({
                               lineHeight: Math.min(3.0, Math.max(1.0, parseFloat(e.target.value) || 1.6)),
                             })
                           }
-                          className="w-16 px-2 py-1.5 text-sm text-center border border-border focus:outline-none focus:border-black font-mono"
+                          className="w-12 h-8 text-sm text-center border-0 focus:outline-none focus:ring-0 font-mono bg-transparent"
                         />
                         <button
                           onClick={() =>
@@ -539,10 +574,12 @@ export function LaTeXSettingsDialog({
                               lineHeight: Math.min(3.0, Math.round((editorSettings.lineHeight + 0.1) * 10) / 10),
                             })
                           }
-                          className="size-8 flex items-center justify-center border border-border hover:border-black hover:bg-neutral-50 transition-colors text-lg font-medium"
+                          className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-l border-neutral-200"
                           aria-label="Increase line height"
                         >
-                          +
+                          <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="square" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
                         </button>
                       </div>
                     </div>
@@ -593,16 +630,15 @@ export function LaTeXSettingsDialog({
 
                     <SectionHeader>Minimap</SectionHeader>
 
-                    {/* Minimap Enable Toggle */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between py-2">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">Enable Minimap</span>
-                          <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-medium">
+                          <span className="text-sm font-medium text-neutral-700">Enable Minimap</span>
+                          <span className="text-[10px] px-1.5 py-0.5 border border-neutral-300 text-neutral-500 font-medium uppercase tracking-wider">
                             Preview
                           </span>
                         </div>
-                        <p className="text-xs text-muted">Code overview panel</p>
+                        <p className="text-xs text-neutral-500 mt-0.5">Code overview panel</p>
                       </div>
                       <button
                         onClick={() =>
@@ -613,30 +649,30 @@ export function LaTeXSettingsDialog({
                             },
                           })
                         }
-                        className={`relative w-11 h-6 rounded-full transition-colors ${editorSettings.minimap.enabled
-                            ? "bg-black"
-                            : "bg-neutral-300"
-                          }`}
+                        className={`relative w-10 h-5 border transition-colors ${
+                          editorSettings.minimap.enabled
+                            ? "bg-black border-black"
+                            : "bg-neutral-100 border-neutral-300 hover:border-neutral-400"
+                        }`}
                       >
                         <span
-                          className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${editorSettings.minimap.enabled
-                              ? "translate-x-5"
-                              : "translate-x-0"
-                            }`}
+                          className={`absolute top-0.5 w-4 h-4 transition-all ${
+                            editorSettings.minimap.enabled
+                              ? "left-[calc(100%-18px)] bg-white"
+                              : "left-0.5 bg-neutral-400"
+                          }`}
                         />
                       </button>
                     </div>
 
-                    {/* Minimap Options - only show when enabled */}
                     {editorSettings.minimap.enabled && (
-                      <div className="space-y-4 pl-3 border-l-2 border-border">
-                        {/* Side Selector */}
-                        <div>
-                          <label className="text-sm font-medium block mb-1.5">
+                      <div className="space-y-1 pl-4 border-l-2 border-neutral-200 ml-1">
+                        <div className="flex items-center justify-between py-2">
+                          <label className="text-sm font-medium text-neutral-700">
                             Position
                           </label>
-                          <div className="flex gap-2">
-                            {(["left", "right"] as const).map((side) => (
+                          <div className="flex">
+                            {(["left", "right"] as const).map((side, index) => (
                               <button
                                 key={side}
                                 onClick={() =>
@@ -644,10 +680,11 @@ export function LaTeXSettingsDialog({
                                     minimap: { ...editorSettings.minimap, side },
                                   })
                                 }
-                                className={`flex-1 px-3 py-2 text-sm border transition-all ${editorSettings.minimap.side === side
-                                    ? "border-black bg-black text-white"
-                                    : "border-border hover:border-neutral-400"
-                                  }`}
+                                className={`px-4 py-1.5 text-sm border transition-all ${
+                                  editorSettings.minimap.side === side
+                                    ? "bg-black text-white border-black"
+                                    : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
+                                } ${index === 0 ? "" : "-ml-px"}`}
                               >
                                 {side === "left" ? "Left" : "Right"}
                               </button>
@@ -783,22 +820,24 @@ export function LaTeXSettingsDialog({
                     />
 
                     {editorSettings.wordWrap === "wordWrapColumn" && (
-                      <div className="ml-4 pl-3 border-l-2 border-border">
-                        <label className="text-sm font-medium block mb-1.5">
-                          Wrap Column
-                        </label>
-                        <input
-                          type="number"
-                          min="40"
-                          max="200"
-                          value={editorSettings.wordWrapColumn}
-                          onChange={(e) =>
-                            onUpdateEditorSettings({
-                              wordWrapColumn: parseInt(e.target.value) || 80,
-                            })
-                          }
-                          className="w-full px-3 py-2 text-sm border border-border focus:outline-none focus:border-black"
-                        />
+                      <div className="pl-4 border-l-2 border-neutral-200 ml-1 py-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-medium text-neutral-700">
+                            Wrap Column
+                          </label>
+                          <input
+                            type="number"
+                            min="40"
+                            max="200"
+                            value={editorSettings.wordWrapColumn}
+                            onChange={(e) =>
+                              onUpdateEditorSettings({
+                                wordWrapColumn: parseInt(e.target.value) || 80,
+                              })
+                            }
+                            className="w-20 px-3 py-2 text-sm text-center border border-neutral-200 hover:border-neutral-400 focus:outline-none focus:border-black font-mono"
+                          />
+                        </div>
                       </div>
                     )}
 
@@ -873,12 +912,14 @@ export function LaTeXSettingsDialog({
                   <>
                     <SectionHeader>Main File</SectionHeader>
 
-                    <div>
-                      <label className="text-sm font-medium block mb-1.5">
-                        Main .tex File
-                      </label>
+                    <div className="py-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-medium text-neutral-700">
+                          Main .tex File
+                        </label>
+                      </div>
                       {texFiles.length === 0 ? (
-                        <p className="text-sm text-muted py-2">
+                        <p className="text-sm text-neutral-400 py-2">
                           No .tex files found in project
                         </p>
                       ) : (
@@ -889,7 +930,7 @@ export function LaTeXSettingsDialog({
                               mainFile: e.target.value || null,
                             })
                           }
-                          className="w-full px-3 py-2 text-sm border border-border focus:outline-none focus:border-black bg-white"
+                          className="w-full px-3 py-2.5 text-sm border border-neutral-200 hover:border-neutral-400 focus:outline-none focus:border-black bg-white cursor-pointer"
                         >
                           <option value="">Select main .tex file...</option>
                           {texFiles.map((file) => (
@@ -899,7 +940,7 @@ export function LaTeXSettingsDialog({
                           ))}
                         </select>
                       )}
-                      <p className="text-xs text-muted mt-1">
+                      <p className="text-xs text-neutral-400 mt-1.5">
                         The entry point for LaTeX compilation
                       </p>
                     </div>
@@ -946,24 +987,24 @@ export function LaTeXSettingsDialog({
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-neutral-50">
+              <div className="flex items-center justify-between px-5 py-4 border-t border-neutral-200">
                 <button
                   onClick={
                     activeTab === "editor"
                       ? handleResetEditorSettings
                       : handleResetLatexSettings
                   }
-                  className="text-xs text-muted hover:text-black transition-colors flex items-center gap-1"
+                  className="text-xs text-neutral-500 hover:text-black transition-colors flex items-center gap-1.5 group"
                 >
                   <svg
-                    className="size-3"
+                    className="size-3.5 group-hover:rotate-[-45deg] transition-transform"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
                     <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
                       strokeWidth={2}
                       d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                     />
@@ -972,7 +1013,7 @@ export function LaTeXSettingsDialog({
                 </button>
                 <button
                   onClick={onClose}
-                  className="px-4 py-1.5 text-sm font-medium border-2 border-black bg-white text-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+                  className="px-6 py-2 text-sm font-medium bg-black text-white hover:bg-neutral-800 transition-colors"
                 >
                   Done
                 </button>
