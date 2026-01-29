@@ -9,6 +9,7 @@ import {
   COMPILER_DISPLAY_NAMES,
   COMPILER_DESCRIPTIONS,
 } from "@/lib/latex/types";
+import { EditorSettings } from "@/lib/editor/types";
 import { Spinner } from "@/components/ui/spinner";
 import { LaTeXInstallPrompt } from "./latex-install-prompt";
 
@@ -17,6 +18,8 @@ interface LaTeXSettingsDialogProps {
   onClose: () => void;
   settings: LaTeXSettings;
   onUpdateSettings: (updates: Partial<LaTeXSettings>) => void;
+  editorSettings: EditorSettings;
+  onUpdateEditorSettings: (updates: Partial<EditorSettings>) => void;
   compilersStatus: LaTeXCompilersStatus | null;
   isDetecting: boolean;
   onDetectCompilers: () => void;
@@ -25,22 +28,27 @@ interface LaTeXSettingsDialogProps {
 
 const COMPILERS: LaTeXCompiler[] = ["pdflatex", "xelatex", "lualatex", "latexmk"];
 
+type SettingsTab = "latex" | "editor";
+
 export function LaTeXSettingsDialog({
   open,
   onClose,
   settings,
   onUpdateSettings,
+  editorSettings,
+  onUpdateEditorSettings,
   compilersStatus,
   isDetecting,
   onDetectCompilers,
   texFiles,
 }: LaTeXSettingsDialogProps) {
+  const [activeTab, setActiveTab] = useState<SettingsTab>("latex");
   const [customArgsInput, setCustomArgsInput] = useState(
     settings.arguments.join(" ")
   );
 
   // Sync custom args input with settings
-   
+
   useEffect(() => {
     setCustomArgsInput(settings.arguments.join(" "));
   }, [settings.arguments]);
@@ -99,7 +107,7 @@ export function LaTeXSettingsDialog({
             >
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                <h2 className="text-lg font-bold">LaTeX Settings</h2>
+                <h2 className="text-lg font-bold">Settings</h2>
                 <button
                   onClick={onClose}
                   className="p-1 hover:bg-neutral-100 transition-colors"
@@ -121,12 +129,38 @@ export function LaTeXSettingsDialog({
                 </button>
               </div>
 
+              {/* Tabs */}
+              <div className="flex border-b border-border">
+                <button
+                  onClick={() => setActiveTab("latex")}
+                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                    activeTab === "latex"
+                      ? "text-black border-b-2 border-black -mb-px"
+                      : "text-muted hover:text-black"
+                  }`}
+                >
+                  LaTeX
+                </button>
+                <button
+                  onClick={() => setActiveTab("editor")}
+                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                    activeTab === "editor"
+                      ? "text-black border-b-2 border-black -mb-px"
+                      : "text-muted hover:text-black"
+                  }`}
+                >
+                  Editor
+                </button>
+              </div>
+
               {/* Content */}
               <div className="flex-1 overflow-y-auto p-4 space-y-5">
-                {/* Install Prompt - shown when no compiler is detected */}
-                {compilersStatus && !hasAnyCompiler && !isDetecting && (
-                  <LaTeXInstallPrompt onRefreshCompilers={onDetectCompilers} />
-                )}
+                {activeTab === "latex" && (
+                  <>
+                    {/* Install Prompt - shown when no compiler is detected */}
+                    {compilersStatus && !hasAnyCompiler && !isDetecting && (
+                      <LaTeXInstallPrompt onRefreshCompilers={onDetectCompilers} />
+                    )}
 
                 {/* Compiler Selection */}
                 <div>
@@ -360,6 +394,247 @@ export function LaTeXSettingsDialog({
                     </div>
                   </label>
                 </div>
+                  </>
+                )}
+
+                {activeTab === "editor" && (
+                  <>
+                    {/* Font Size */}
+                    <div>
+                      <label className="text-sm font-medium block mb-2">
+                        Font Size
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min="10"
+                          max="24"
+                          value={editorSettings.fontSize}
+                          onChange={(e) =>
+                            onUpdateEditorSettings({ fontSize: parseInt(e.target.value) })
+                          }
+                          className="flex-1"
+                        />
+                        <span className="text-sm font-mono w-8 text-right">
+                          {editorSettings.fontSize}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Line Height */}
+                    <div>
+                      <label className="text-sm font-medium block mb-2">
+                        Line Height
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min="1.0"
+                          max="2.5"
+                          step="0.1"
+                          value={editorSettings.lineHeight}
+                          onChange={(e) =>
+                            onUpdateEditorSettings({ lineHeight: parseFloat(e.target.value) })
+                          }
+                          className="flex-1"
+                        />
+                        <span className="text-sm font-mono w-8 text-right">
+                          {editorSettings.lineHeight.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Word Wrap */}
+                    <div>
+                      <label className="text-sm font-medium block mb-2">
+                        Word Wrap
+                      </label>
+                      <select
+                        value={editorSettings.wordWrap}
+                        onChange={(e) =>
+                          onUpdateEditorSettings({
+                            wordWrap: e.target.value as EditorSettings["wordWrap"],
+                          })
+                        }
+                        className="w-full px-3 py-2 text-sm border border-border focus:outline-none focus:border-black"
+                      >
+                        <option value="off">Off</option>
+                        <option value="on">On</option>
+                        <option value="wordWrapColumn">Wrap at Column</option>
+                        <option value="bounded">Bounded</option>
+                      </select>
+                      {editorSettings.wordWrap === "wordWrapColumn" && (
+                        <div className="mt-2">
+                          <label className="text-xs text-muted block mb-1">
+                            Wrap Column
+                          </label>
+                          <input
+                            type="number"
+                            min="40"
+                            max="200"
+                            value={editorSettings.wordWrapColumn}
+                            onChange={(e) =>
+                              onUpdateEditorSettings({
+                                wordWrapColumn: parseInt(e.target.value) || 80,
+                              })
+                            }
+                            className="w-full px-3 py-2 text-sm border border-border focus:outline-none focus:border-black"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tab Size */}
+                    <div>
+                      <label className="text-sm font-medium block mb-2">
+                        Tab Size
+                      </label>
+                      <select
+                        value={editorSettings.tabSize}
+                        onChange={(e) =>
+                          onUpdateEditorSettings({ tabSize: parseInt(e.target.value) })
+                        }
+                        className="w-full px-3 py-2 text-sm border border-border focus:outline-none focus:border-black"
+                      >
+                        <option value={2}>2 spaces</option>
+                        <option value={4}>4 spaces</option>
+                        <option value={8}>8 spaces</option>
+                      </select>
+                    </div>
+
+                    {/* Line Numbers */}
+                    <div>
+                      <label className="text-sm font-medium block mb-2">
+                        Line Numbers
+                      </label>
+                      <select
+                        value={editorSettings.lineNumbers}
+                        onChange={(e) =>
+                          onUpdateEditorSettings({
+                            lineNumbers: e.target.value as EditorSettings["lineNumbers"],
+                          })
+                        }
+                        className="w-full px-3 py-2 text-sm border border-border focus:outline-none focus:border-black"
+                      >
+                        <option value="on">On</option>
+                        <option value="off">Off</option>
+                        <option value="relative">Relative</option>
+                        <option value="interval">Interval (every 10)</option>
+                      </select>
+                    </div>
+
+                    {/* Cursor Style */}
+                    <div>
+                      <label className="text-sm font-medium block mb-2">
+                        Cursor Style
+                      </label>
+                      <select
+                        value={editorSettings.cursorStyle}
+                        onChange={(e) =>
+                          onUpdateEditorSettings({
+                            cursorStyle: e.target.value as EditorSettings["cursorStyle"],
+                          })
+                        }
+                        className="w-full px-3 py-2 text-sm border border-border focus:outline-none focus:border-black"
+                      >
+                        <option value="line">Line</option>
+                        <option value="line-thin">Line (Thin)</option>
+                        <option value="block">Block</option>
+                        <option value="block-outline">Block Outline</option>
+                        <option value="underline">Underline</option>
+                        <option value="underline-thin">Underline (Thin)</option>
+                      </select>
+                    </div>
+
+                    {/* Checkboxes */}
+                    <div className="space-y-3">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editorSettings.minimap}
+                          onChange={(e) =>
+                            onUpdateEditorSettings({ minimap: e.target.checked })
+                          }
+                          className="size-4"
+                        />
+                        <div>
+                          <span className="text-sm font-medium">Show Minimap</span>
+                          <p className="text-xs text-muted">
+                            Display code overview on the right side
+                          </p>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editorSettings.smoothScrolling}
+                          onChange={(e) =>
+                            onUpdateEditorSettings({ smoothScrolling: e.target.checked })
+                          }
+                          className="size-4"
+                        />
+                        <div>
+                          <span className="text-sm font-medium">Smooth Scrolling</span>
+                          <p className="text-xs text-muted">
+                            Enable smooth scroll animation
+                          </p>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editorSettings.insertSpaces}
+                          onChange={(e) =>
+                            onUpdateEditorSettings({ insertSpaces: e.target.checked })
+                          }
+                          className="size-4"
+                        />
+                        <div>
+                          <span className="text-sm font-medium">Insert Spaces</span>
+                          <p className="text-xs text-muted">
+                            Use spaces instead of tabs for indentation
+                          </p>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editorSettings.formatOnSave}
+                          onChange={(e) =>
+                            onUpdateEditorSettings({ formatOnSave: e.target.checked })
+                          }
+                          className="size-4"
+                        />
+                        <div>
+                          <span className="text-sm font-medium">Format on Save</span>
+                          <p className="text-xs text-muted">
+                            Automatically format code when saving
+                          </p>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editorSettings.formatOnPaste}
+                          onChange={(e) =>
+                            onUpdateEditorSettings({ formatOnPaste: e.target.checked })
+                          }
+                          className="size-4"
+                        />
+                        <div>
+                          <span className="text-sm font-medium">Format on Paste</span>
+                          <p className="text-xs text-muted">
+                            Automatically format pasted code
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Footer */}

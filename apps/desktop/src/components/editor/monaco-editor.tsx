@@ -3,6 +3,7 @@
 import { useRef, memo, useCallback } from "react";
 import Editor, { Monaco, OnMount, OnChange } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
+import type { EditorSettings } from "@/lib/editor/types";
 
 // Monochrome theme definition matching the project's design system
 const defineMonochromeTheme = (monaco: Monaco) => {
@@ -580,6 +581,7 @@ type Props = {
   readOnly?: boolean;
   className?: string;
   language?: string;
+  editorSettings?: Partial<EditorSettings>;
   onContentChange?: (content: string) => void;
 };
 
@@ -588,6 +590,7 @@ export const MonacoEditor = memo(function MonacoEditor({
   readOnly = false,
   className = "",
   language = "latex",
+  editorSettings,
   onContentChange,
 }: Props) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -709,30 +712,38 @@ export const MonacoEditor = memo(function MonacoEditor({
         onChange={handleChange}
         options={{
           readOnly,
-          fontSize: 14,
+          fontSize: editorSettings?.fontSize ?? 14,
           fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
           fontLigatures: false,
-          lineNumbers: "on",
-          lineHeight: 1.6,
+          lineNumbers: editorSettings?.lineNumbers ?? "on",
+          lineHeight: editorSettings?.lineHeight ?? 1.6,
           letterSpacing: 0,
-          renderWhitespace: "selection",
-          tabSize: 2,
-          insertSpaces: true,
-          wordWrap: "off",
+          renderWhitespace: editorSettings?.renderWhitespace ?? "selection",
+          tabSize: editorSettings?.tabSize ?? 2,
+          insertSpaces: editorSettings?.insertSpaces ?? true,
+          wordWrap: editorSettings?.wordWrap ?? "off",
+          wordWrapColumn: editorSettings?.wordWrapColumn ?? 80,
           wrappingIndent: "indent",
           automaticLayout: true,
           minimap: {
-            enabled: true,
-            maxColumn: 80,
-            renderCharacters: false,
+            enabled: editorSettings?.minimap ?? true,
+            side: "right",
+            size: "proportional",
+            maxColumn: 120,
+            renderCharacters: true,  // 渲染实际字符而不是色块
+            scale: 1,
             showSlider: "mouseover",
           },
           scrollBeyondLastLine: false,
-          smoothScrolling: true,
-          cursorBlinking: "smooth",
+          smoothScrolling: editorSettings?.smoothScrolling ?? true,
+          cursorBlinking: editorSettings?.cursorBlinking ?? "smooth",
           cursorSmoothCaretAnimation: "on",
-          cursorStyle: "line",
+          cursorStyle: editorSettings?.cursorStyle ?? "line",
           cursorWidth: 2,
+          formatOnPaste: editorSettings?.formatOnPaste ?? false,
+          formatOnType: editorSettings?.formatOnSave ?? false,
+          autoClosingBrackets: editorSettings?.autoClosingBrackets ?? "languageDefined",
+          autoClosingQuotes: editorSettings?.autoClosingQuotes ?? "languageDefined",
           renderLineHighlight: "line",
           renderLineHighlightOnlyWhenFocus: false,
           selectOnLineNumbers: true,

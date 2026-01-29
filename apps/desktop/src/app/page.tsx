@@ -21,6 +21,7 @@ import {
   findMainTexFile,
   isTexFile,
 } from "@/lib/latex";
+import { useEditorSettings } from "@/lib/editor";
 import {
   CompileButton,
   CompilationOutputPanel,
@@ -171,6 +172,7 @@ export default function EditorPage() {
 
   // LaTeX compilation
   const latexSettings = useLatexSettings();
+  const editorSettings = useEditorSettings();
   const texFiles = useMemo(() => findTexFiles(daemon.files), [daemon.files]);
 
   // Ref for handleFileSelect to break circular dependency
@@ -1482,6 +1484,7 @@ export default function EditorPage() {
                     readOnly={false}
                     onContentChange={handleContentChange}
                     language={getFileLanguage(selectedFile)}
+                    editorSettings={editorSettings.settings}
                     className="h-full"
                   />
                 </EditorErrorBoundary>
@@ -1638,6 +1641,8 @@ export default function EditorPage() {
         onClose={() => setShowLatexSettings(false)}
         settings={latexSettings.settings}
         onUpdateSettings={latexSettings.updateSettings}
+        editorSettings={editorSettings.settings}
+        onUpdateEditorSettings={editorSettings.updateSettings}
         compilersStatus={latexCompiler.compilersStatus}
         isDetecting={latexCompiler.isDetecting}
         onDetectCompilers={latexCompiler.detectCompilers}
