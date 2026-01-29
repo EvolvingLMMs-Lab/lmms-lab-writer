@@ -1,3 +1,21 @@
+// Editor theme options
+export type EditorTheme =
+  | "monochrome"
+  | "github-light"
+  | "solarized-light"
+  | "one-dark"
+  | "dracula"
+  | "nord";
+
+export const EDITOR_THEMES: { value: EditorTheme; label: string; description: string }[] = [
+  { value: "monochrome", label: "Monochrome", description: "Clean black and white" },
+  { value: "github-light", label: "GitHub Light", description: "Classic GitHub style" },
+  { value: "solarized-light", label: "Solarized Light", description: "Easy on the eyes" },
+  { value: "one-dark", label: "One Dark", description: "Atom's iconic dark theme" },
+  { value: "dracula", label: "Dracula", description: "Popular dark theme" },
+  { value: "nord", label: "Nord", description: "Arctic, bluish colors" },
+];
+
 // Minimap configuration matching Monaco Editor API
 export interface MinimapSettings {
   enabled: boolean;
@@ -9,6 +27,9 @@ export interface MinimapSettings {
 }
 
 export interface EditorSettings {
+  // Theme
+  theme: EditorTheme;
+
   // Display
   fontSize: number;
   lineHeight: number;
@@ -44,6 +65,9 @@ export const DEFAULT_MINIMAP_SETTINGS: MinimapSettings = {
 };
 
 export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
+  // Theme
+  theme: "monochrome",
+
   // Display
   fontSize: 14,
   lineHeight: 1.6,
