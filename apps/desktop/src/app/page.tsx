@@ -15,7 +15,7 @@ import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { LoginForm, UserDropdown } from "@/components/auth";
 import { useLatexSettings, useLatexCompiler, findTexFiles, findMainTexFile, isTexFile, getPdfPathFromTex } from "@/lib/latex";
-import { CompileButton, CompilationOutputPanel, LaTeXSettingsDialog } from "@/components/latex";
+import { CompileButton, CompilationOutputPanel, LaTeXSettingsDialog, LaTeXInstallPrompt } from "@/components/latex";
 
 function throttle<T extends (...args: Parameters<T>) => void>(
   fn: T,
@@ -196,6 +196,14 @@ export default function EditorPage() {
     onCompileSuccess: handleCompileSuccess,
     onCompileError: handleCompileError,
   });
+
+  // Check if any LaTeX compiler is available
+  const hasAnyCompiler = latexCompiler.compilersStatus && (
+    latexCompiler.compilersStatus.pdflatex.available ||
+    latexCompiler.compilersStatus.xelatex.available ||
+    latexCompiler.compilersStatus.lualatex.available ||
+    latexCompiler.compilersStatus.latexmk.available
+  );
 
   const handleCompile = useCallback(() => {
     latexCompiler.compile();
@@ -1394,6 +1402,13 @@ export default function EditorPage() {
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* LaTeX Install Prompt - shown when no compiler is detected */}
+          {daemon.projectPath && latexCompiler.compilersStatus && !hasAnyCompiler && !latexCompiler.isDetecting && (
+            <div className="border-t border-border">
+              <LaTeXInstallPrompt onInstallComplete={latexCompiler.detectCompilers} />
             </div>
           )}
 

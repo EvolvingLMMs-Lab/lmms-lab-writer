@@ -7,6 +7,29 @@ use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LaTeXDistribution {
+    pub name: String,
+    pub id: String,
+    pub description: String,
+    pub install_command: Option<String>,
+    pub download_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstallProgress {
+    pub stage: String,
+    pub message: String,
+    pub progress: Option<f32>, // 0.0 to 1.0
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstallResult {
+    pub success: bool,
+    pub message: String,
+    pub needs_restart: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompilerInfo {
     pub name: String,
     pub path: Option<String>,
@@ -395,4 +418,338 @@ pub async fn latex_clean_aux_files(
     }
 
     Ok(())
+}
+
+/// Get recommended LaTeX distributions for the current platform
+#[tauri::command]
+pub async fn latex_get_distributions() -> Result<Vec<LaTeXDistribution>, String> {
+    let mut distributions = Vec::new();
+
+    #[cfg(target_os = "windows")]
+    {
+        distributions.push(LaTeXDistribution {
+            name: "MiKTeX".to_string(),
+            id: "miktex".to_string(),
+            description: "Recommended for Windows. Lightweight with on-demand package installation.".to_string(),
+            install_command: Some("winget install MiKTeX.MiKTeX".to_string()),
+            download_url: Some("https://miktex.org/download".to_string()),
+        });
+        distributions.push(LaTeXDistribution {
+            name: "TeX Live".to_string(),
+            id: "texlive".to_string(),
+            description: "Full-featured distribution, larger download size.".to_string(),
+            install_command: None,
+            download_url: Some("https://tug.org/texlive/acquire-netinstall.html".to_string()),
+        });
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        distributions.push(LaTeXDistribution {
+            name: "MacTeX".to_string(),
+            id: "mactex".to_string(),
+            description: "Recommended for macOS. Full TeX Live distribution with Mac-specific tools.".to_string(),
+            install_command: Some("brew install --cask mactex".to_string()),
+            download_url: Some("https://tug.org/mactex/".to_string()),
+        });
+        distributions.push(LaTeXDistribution {
+            name: "BasicTeX".to_string(),
+            id: "basictex".to_string(),
+            description: "Smaller installation (~100MB). May need to install additional packages manually.".to_string(),
+            install_command: Some("brew install --cask basictex".to_string()),
+            download_url: Some("https://tug.org/mactex/morepackages.html".to_string()),
+        });
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        distributions.push(LaTeXDistribution {
+            name: "TeX Live (Full)".to_string(),
+            id: "texlive-full".to_string(),
+            description: "Complete TeX Live installation with all packages.".to_string(),
+            install_command: Some(get_linux_install_command("texlive-full")),
+            download_url: Some("https://tug.org/texlive/".to_string()),
+        });
+        distributions.push(LaTeXDistribution {
+            name: "TeX Live (Basic + CJK)".to_string(),
+            id: "texlive-cjk".to_string(),
+            description: "Basic installation with CJK (Chinese/Japanese/Korean) support.".to_string(),
+            install_command: Some(get_linux_install_command("texlive-cjk")),
+            download_url: None,
+        });
+    }
+
+    Ok(distributions)
+}
+
+#[cfg(target_os = "linux")]
+fn get_linux_install_command(package: &str) -> String {
+    // Try to detect the package manager
+    if std::path::Path::new("/usr/bin/apt").exists() {
+        // Debian/Ubuntu
+        match package {
+            "texlive-full" => "sudo apt install -y texlive-full".to_string(),
+            "texlive-cjk" => "sudo apt install -y texlive-base texlive-xetex texlive-lang-chinese texlive-lang-japanese texlive-lang-korean".to_string(),
+            _ => format!("sudo apt install -y {}", package),
+        }
+    } else if std::path::Path::new("/usr/bin/dnf").exists() {
+        // Fedora/RHEL
+        match package {
+            "texlive-full" => "sudo dnf install -y texlive-scheme-full".to_string(),
+            "texlive-cjk" => "sudo dnf install -y texlive-scheme-basic texlive-xetex texlive-ctex".to_string(),
+            _ => format!("sudo dnf install -y {}", package),
+        }
+    } else if std::path::Path::new("/usr/bin/pacman").exists() {
+        // Arch Linux
+        match package {
+            "texlive-full" => "sudo pacman -S --noconfirm texlive".to_string(),
+            "texlive-cjk" => "sudo pacman -S --noconfirm texlive-basic texlive-xetex texlive-langchinese texlive-langjapanese texlive-langkorean".to_string(),
+            _ => format!("sudo pacman -S --noconfirm {}", package),
+        }
+    } else {
+        "# Please install TeX Live manually from https://tug.org/texlive/".to_string()
+    }
+}
+
+/// Install LaTeX distribution
+#[tauri::command]
+pub async fn latex_install(
+    app: AppHandle,
+    distribution_id: String,
+) -> Result<InstallResult, String> {
+    // Emit initial progress
+    let _ = app.emit("latex-install-progress", InstallProgress {
+        stage: "starting".to_string(),
+        message: "Preparing installation...".to_string(),
+        progress: Some(0.0),
+    });
+
+    #[cfg(target_os = "windows")]
+    {
+        return install_windows(&app, &distribution_id).await;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        return install_macos(&app, &distribution_id).await;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        return install_linux(&app, &distribution_id).await;
+    }
+
+    #[allow(unreachable_code)]
+    Err("Unsupported platform".to_string())
+}
+
+#[cfg(target_os = "windows")]
+async fn install_windows(app: &AppHandle, distribution_id: &str) -> Result<InstallResult, String> {
+    if distribution_id != "miktex" {
+        return Ok(InstallResult {
+            success: false,
+            message: "Please download and install TeX Live manually from the official website.".to_string(),
+            needs_restart: false,
+        });
+    }
+
+    // Check if winget is available
+    let _ = app.emit("latex-install-progress", InstallProgress {
+        stage: "checking".to_string(),
+        message: "Checking for winget...".to_string(),
+        progress: Some(0.1),
+    });
+
+    let winget_check = Command::new("winget")
+        .arg("--version")
+        .output()
+        .await;
+
+    if winget_check.is_err() || !winget_check.unwrap().status.success() {
+        return Ok(InstallResult {
+            success: false,
+            message: "winget is not available. Please install MiKTeX manually from https://miktex.org/download".to_string(),
+            needs_restart: false,
+        });
+    }
+
+    // Install MiKTeX via winget
+    let _ = app.emit("latex-install-progress", InstallProgress {
+        stage: "installing".to_string(),
+        message: "Installing MiKTeX via winget... This may take several minutes.".to_string(),
+        progress: Some(0.2),
+    });
+
+    let mut child = Command::new("winget")
+        .args(["install", "MiKTeX.MiKTeX", "--accept-package-agreements", "--accept-source-agreements"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to start winget: {}", e))?;
+
+    // Stream output
+    if let Some(stdout) = child.stdout.take() {
+        let app_clone = app.clone();
+        tokio::spawn(async move {
+            let reader = BufReader::new(stdout);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = app_clone.emit("latex-install-progress", InstallProgress {
+                    stage: "installing".to_string(),
+                    message: line,
+                    progress: None,
+                });
+            }
+        });
+    }
+
+    let status = child.wait().await.map_err(|e| format!("Installation failed: {}", e))?;
+
+    if status.success() {
+        let _ = app.emit("latex-install-progress", InstallProgress {
+            stage: "complete".to_string(),
+            message: "MiKTeX installed successfully!".to_string(),
+            progress: Some(1.0),
+        });
+
+        Ok(InstallResult {
+            success: true,
+            message: "MiKTeX installed successfully. Please restart the application to detect the new installation.".to_string(),
+            needs_restart: true,
+        })
+    } else {
+        Ok(InstallResult {
+            success: false,
+            message: "Installation failed. Please try installing MiKTeX manually from https://miktex.org/download".to_string(),
+            needs_restart: false,
+        })
+    }
+}
+
+#[cfg(target_os = "macos")]
+async fn install_macos(app: &AppHandle, distribution_id: &str) -> Result<InstallResult, String> {
+    // Check if Homebrew is available
+    let _ = app.emit("latex-install-progress", InstallProgress {
+        stage: "checking".to_string(),
+        message: "Checking for Homebrew...".to_string(),
+        progress: Some(0.1),
+    });
+
+    let brew_check = Command::new("brew")
+        .arg("--version")
+        .output()
+        .await;
+
+    if brew_check.is_err() || !brew_check.unwrap().status.success() {
+        return Ok(InstallResult {
+            success: false,
+            message: "Homebrew is not installed. Please install Homebrew first (https://brew.sh) or download MacTeX manually from https://tug.org/mactex/".to_string(),
+            needs_restart: false,
+        });
+    }
+
+    let cask = match distribution_id {
+        "mactex" => "mactex",
+        "basictex" => "basictex",
+        _ => {
+            return Ok(InstallResult {
+                success: false,
+                message: "Unknown distribution".to_string(),
+                needs_restart: false,
+            });
+        }
+    };
+
+    let _ = app.emit("latex-install-progress", InstallProgress {
+        stage: "installing".to_string(),
+        message: format!("Installing {} via Homebrew... This may take a while.", cask),
+        progress: Some(0.2),
+    });
+
+    let mut child = Command::new("brew")
+        .args(["install", "--cask", cask])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to start brew: {}", e))?;
+
+    // Stream output
+    if let Some(stdout) = child.stdout.take() {
+        let app_clone = app.clone();
+        tokio::spawn(async move {
+            let reader = BufReader::new(stdout);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = app_clone.emit("latex-install-progress", InstallProgress {
+                    stage: "installing".to_string(),
+                    message: line,
+                    progress: None,
+                });
+            }
+        });
+    }
+
+    let status = child.wait().await.map_err(|e| format!("Installation failed: {}", e))?;
+
+    if status.success() {
+        let _ = app.emit("latex-install-progress", InstallProgress {
+            stage: "complete".to_string(),
+            message: format!("{} installed successfully!", cask),
+            progress: Some(1.0),
+        });
+
+        Ok(InstallResult {
+            success: true,
+            message: format!("{} installed successfully. Please restart the application to detect the new installation.", cask),
+            needs_restart: true,
+        })
+    } else {
+        Ok(InstallResult {
+            success: false,
+            message: format!("Installation failed. Please try installing {} manually.", cask),
+            needs_restart: false,
+        })
+    }
+}
+
+#[cfg(target_os = "linux")]
+async fn install_linux(app: &AppHandle, distribution_id: &str) -> Result<InstallResult, String> {
+    let install_cmd = get_linux_install_command(distribution_id);
+
+    if install_cmd.starts_with('#') {
+        return Ok(InstallResult {
+            success: false,
+            message: "Could not detect package manager. Please install TeX Live manually.".to_string(),
+            needs_restart: false,
+        });
+    }
+
+    let _ = app.emit("latex-install-progress", InstallProgress {
+        stage: "installing".to_string(),
+        message: format!("Running: {}", install_cmd),
+        progress: Some(0.1),
+    });
+
+    // For Linux, we need to show the user the command since it requires sudo
+    // We can't run sudo directly from the app without a proper privilege escalation mechanism
+    Ok(InstallResult {
+        success: false,
+        message: format!(
+            "Please run the following command in your terminal to install LaTeX:\n\n{}\n\nAfter installation, restart the application.",
+            install_cmd
+        ),
+        needs_restart: true,
+    })
+}
+
+/// Open the download URL for manual installation
+#[tauri::command]
+pub async fn latex_open_download_page(
+    app: AppHandle,
+    url: String,
+) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_url(&url, None::<&str>)
+        .map_err(|e| format!("Failed to open URL: {}", e))
 }

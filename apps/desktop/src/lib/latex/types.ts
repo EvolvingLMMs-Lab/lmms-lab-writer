@@ -41,7 +41,7 @@ export interface CompileOutputEvent {
 }
 
 export const DEFAULT_LATEX_SETTINGS: LaTeXSettings = {
-  compiler: "pdflatex",
+  compiler: "xelatex",
   customPath: null,
   arguments: [],
   mainFile: null,
@@ -59,8 +59,29 @@ export const COMPILER_DISPLAY_NAMES: Record<LaTeXCompiler, string> = {
 };
 
 export const COMPILER_DESCRIPTIONS: Record<LaTeXCompiler, string> = {
-  pdflatex: "Standard LaTeX compiler, fast and widely compatible",
-  xelatex: "Supports Unicode and system fonts natively",
-  lualatex: "Modern Lua-based compiler with advanced scripting",
+  pdflatex: "Standard LaTeX compiler, fast but limited CJK support",
+  xelatex: "Recommended for CJK - native Unicode and system fonts support",
+  lualatex: "Modern Lua-based compiler with Unicode support, slower than XeLaTeX",
   latexmk: "Automated build tool that runs LaTeX the right number of times",
 };
+
+// LaTeX Installation Types
+export interface LaTeXDistribution {
+  name: string;
+  id: string;
+  description: string;
+  install_command: string | null;
+  download_url: string | null;
+}
+
+export interface InstallProgress {
+  stage: "starting" | "checking" | "installing" | "complete" | "error";
+  message: string;
+  progress: number | null;
+}
+
+export interface InstallResult {
+  success: boolean;
+  message: string;
+  needs_restart: boolean;
+}

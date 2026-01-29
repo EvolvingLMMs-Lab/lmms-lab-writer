@@ -10,6 +10,7 @@ import {
   COMPILER_DESCRIPTIONS,
 } from "@/lib/latex/types";
 import { Spinner } from "@/components/ui/spinner";
+import { LaTeXInstallPrompt } from "./latex-install-prompt";
 
 interface LaTeXSettingsDialogProps {
   open: boolean;
@@ -57,6 +58,14 @@ export function LaTeXSettingsDialog({
       }
     },
     [onClose]
+  );
+
+  // Check if any compiler is available
+  const hasAnyCompiler = compilersStatus && (
+    compilersStatus.pdflatex.available ||
+    compilersStatus.xelatex.available ||
+    compilersStatus.lualatex.available ||
+    compilersStatus.latexmk.available
   );
 
   if (!open) return null;
@@ -113,6 +122,11 @@ export function LaTeXSettingsDialog({
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto p-4 space-y-5">
+                {/* Install Prompt - shown when no compiler is detected */}
+                {compilersStatus && !hasAnyCompiler && !isDetecting && (
+                  <LaTeXInstallPrompt onInstallComplete={onDetectCompilers} />
+                )}
+
                 {/* Compiler Selection */}
                 <div>
                   <div className="flex items-center justify-between mb-2">

@@ -80,6 +80,9 @@ pub fn run() {
             commands::latex::latex_compile,
             commands::latex::latex_stop_compilation,
             commands::latex::latex_clean_aux_files,
+            commands::latex::latex_get_distributions,
+            commands::latex::latex_install,
+            commands::latex::latex_open_download_page,
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
