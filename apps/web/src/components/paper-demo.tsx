@@ -132,6 +132,7 @@ export function PaperDemo() {
   const content = currentPaper.content;
   const prompt = currentPaper.prompt;
 
+   
   useEffect(() => {
     if (phase === "user-typing") {
       if (userTypedText.length >= prompt.length) {

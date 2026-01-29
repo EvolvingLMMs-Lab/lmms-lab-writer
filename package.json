@@ -13,17 +13,25 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "clean": "turbo clean && rm -rf node_modules",
-    "lint": "turbo lint",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "tauri:dev": "pnpm --filter @lmms-lab/writer-desktop tauri:dev",
     "tauri:build": "pnpm --filter @lmms-lab/writer-desktop tauri:build"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
+    "@eslint/js": "^9.39.2",
+    "@next/eslint-plugin-next": "^16.1.6",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
+    "eslint": "^9.39.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^17.2.0",
     "prettier": "^3.8.1",
     "turbo": "^2.7.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.54.0"
   }
 }

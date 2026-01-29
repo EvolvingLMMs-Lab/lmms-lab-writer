@@ -30,6 +30,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   const [position, setPosition] = useState({ x, y });
 
   // Adjust position when x/y props change, keeping menu within viewport
+   
   useLayoutEffect(() => {
     if (!menuRef.current) {
       setPosition({ x, y });

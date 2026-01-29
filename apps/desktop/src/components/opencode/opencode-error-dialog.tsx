@@ -82,7 +82,9 @@ export function OpenCodeErrorDialog({
       await navigator.clipboard.writeText(error);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    } catch {
+      // Silently ignore clipboard errors
+    }
   }, [error]);
 
   const handleKillPort = useCallback(async () => {
