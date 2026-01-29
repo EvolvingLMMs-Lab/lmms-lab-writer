@@ -262,6 +262,44 @@ kbd {
   transform: none;
 }
 
+/* Brutalist button - compact version with sharp shadow */
+.btn-brutalist {
+  padding: 0.5rem 1rem;
+  font-family: var(--font-family-mono), monospace;
+  font-size: 0.875rem;
+  background-color: #ffffff;
+  color: #0a0a0a;
+  border: 2px solid #0a0a0a;
+  transition: all 100ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 0 #0a0a0a;
+}
+
+.btn-brutalist:hover {
+  box-shadow: 1px 1px 0 0 #0a0a0a;
+  transform: translate(2px, 2px);
+}
+
+.btn-brutalist:active {
+  box-shadow: 0 0 0 0 #0a0a0a;
+  transform: translate(3px, 3px);
+}
+
+.btn-brutalist:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.3);
+}
+
+.btn-brutalist:disabled:hover {
+  transform: none;
+  box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.3);
+}
+
 /* Ensure consistent number widths in UI */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
