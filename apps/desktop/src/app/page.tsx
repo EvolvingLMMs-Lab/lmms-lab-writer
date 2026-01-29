@@ -20,7 +20,6 @@ import {
   findTexFiles,
   findMainTexFile,
   isTexFile,
-  getPdfPathFromTex,
 } from "@/lib/latex";
 import {
   CompileButton,
@@ -129,7 +128,7 @@ export default function EditorPage() {
   });
   const [resizing, setResizing] = useState<"sidebar" | "right" | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"files" | "git">("files");
-  const [highlightedFile, setHighlightedFile] = useState<string | null>(null);
+  const [highlightedFile, _setHighlightedFile] = useState<string | null>(null);
 
   const [commitMessage, setCommitMessage] = useState("");
   const [showCommitInput, setShowCommitInput] = useState(false);

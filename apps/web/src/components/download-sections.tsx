@@ -95,8 +95,20 @@ export function InstallationSection() {
           <p className="font-medium text-foreground">To install:</p>
           <ol className="list-decimal list-inside space-y-2">
             <li>Download the .pkg file</li>
+            <li>Run in Terminal:</li>
+          </ol>
+          <pre className="bg-white p-3 overflow-x-auto border border-border text-xs">
+            xattr -cr ~/Downloads/LMMs-Lab_Writer_*.pkg
+          </pre>
+          <p className="text-xs">Then double-click to install normally.</p>
+        </div>
+        <details className="cursor-pointer">
+          <summary className="font-medium text-foreground hover:underline">
+            Alternative: Right-click method
+          </summary>
+          <ol className="mt-2 list-decimal list-inside space-y-2 text-sm">
             <li>
-              <span className="font-medium">Right-click</span> the file and
+              <span className="font-medium">Right-click</span> the .pkg file and
               select <span className="font-medium">Open</span>
             </li>
             <li>
@@ -104,15 +116,6 @@ export function InstallationSection() {
             </li>
             <li>Follow the installer</li>
           </ol>
-        </div>
-        <details className="cursor-pointer">
-          <summary className="font-medium text-foreground hover:underline">
-            Alternative: Terminal
-          </summary>
-          <pre className="mt-2 bg-neutral-50 p-3 overflow-x-auto border border-border text-xs">
-            xattr -cr ~/Downloads/LMMs-Lab_Writer_*.pkg
-          </pre>
-          <p className="mt-1 text-xs">Then double-click to install normally.</p>
         </details>
       </div>
     </FadeIn>

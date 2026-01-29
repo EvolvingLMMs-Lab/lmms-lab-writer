@@ -147,7 +147,11 @@ export const LaTeXEditor = memo(function LaTeXEditor({
   const contentRef = useRef(content);
   const isExternalUpdateRef = useRef(false);
   const onContentChangeRef = useRef(onContentChange);
-  onContentChangeRef.current = onContentChange;
+
+  // Update ref in effect to avoid render-phase side effects
+  useEffect(() => {
+    onContentChangeRef.current = onContentChange;
+  }, [onContentChange]);
 
   useEffect(() => {
     setMounted(true);
@@ -246,6 +250,7 @@ export const LaTeXEditor = memo(function LaTeXEditor({
       view.destroy();
       viewRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- content is handled by separate effect below
   }, [mounted, readOnly]);
 
   useEffect(() => {
