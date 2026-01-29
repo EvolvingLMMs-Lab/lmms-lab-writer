@@ -56,4 +56,4 @@ CLAUDE.md
 marketing-assets/
 apps/video/out/
 *.local.json
-.temp
+supabase/
