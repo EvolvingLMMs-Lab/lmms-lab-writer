@@ -11,10 +11,18 @@ export type UseOpenCodeOptions = {
 };
 
 export type Agent = { id: string; name: string; description?: string };
+export type Model = {
+  id: string;
+  name: string;
+  options?: {
+    max?: boolean;
+    reasoning?: boolean;
+  };
+};
 export type Provider = {
   id: string;
   name: string;
-  models: { id: string; name: string }[];
+  models: Model[];
 };
 
 export type UseOpenCodeReturn = {
@@ -62,7 +70,7 @@ const PREFERRED_PROVIDER_ORDER = [
   "openrouter",
   "azure",
   "aws-bedrock",
-  "google",  // Put Google last since it often lacks API key
+  "google", // Put Google last since it often lacks API key
 ];
 
 export function useOpenCode(
@@ -107,7 +115,7 @@ export function useOpenCode(
   selectedModelRef.current = selectedModel;
 
   // Sync messages and parts only (not status) - used after sending messages
-  const syncMessagesAndPartsRef = useRef<() => void>(() => { });
+  const syncMessagesAndPartsRef = useRef<() => void>(() => {});
   syncMessagesAndPartsRef.current = () => {
     const client = clientRef.current;
     if (!client) return;
@@ -132,7 +140,7 @@ export function useOpenCode(
     }
   };
 
-  const syncFromStoreRef = useRef<() => void>(() => { });
+  const syncFromStoreRef = useRef<() => void>(() => {});
   syncFromStoreRef.current = () => {
     const client = clientRef.current;
     if (!client) return;
@@ -168,7 +176,7 @@ export function useOpenCode(
     syncFromStoreRef.current();
   }, []);
 
-  const handleEventRef = useRef<(event: Event) => void>(() => { });
+  const handleEventRef = useRef<(event: Event) => void>(() => {});
   handleEventRef.current = (event: Event) => {
     console.log("[OpenCode] Event received:", event.type, event);
 
@@ -195,9 +203,15 @@ export function useOpenCode(
       }
 
       // Handle session.status events immediately for responsive UI
-      if (event.type === "session.status" && eventSessionId === currentSessionIdRef.current) {
+      if (
+        event.type === "session.status" &&
+        eventSessionId === currentSessionIdRef.current
+      ) {
         const statusData = props.status as SessionStatus | undefined;
-        console.log("[OpenCode] Status update for current session:", statusData);
+        console.log(
+          "[OpenCode] Status update for current session:",
+          statusData,
+        );
         if (statusData) {
           setStatus(statusData);
         }
@@ -208,10 +222,16 @@ export function useOpenCode(
         const errorSessionId = event.properties.sessionID;
         if (errorSessionId === currentSessionIdRef.current) {
           const errorData = event.properties.error;
-          console.log("[OpenCode] Session error for current session:", errorData);
+          console.log(
+            "[OpenCode] Session error for current session:",
+            errorData,
+          );
           if (errorData) {
-            const errorMessage = errorData.data?.message || errorData.name || "Unknown error";
-            const providerInfo = errorData.data?.providerID ? ` (Provider: ${errorData.data.providerID})` : "";
+            const errorMessage =
+              errorData.data?.message || errorData.name || "Unknown error";
+            const providerInfo = errorData.data?.providerID
+              ? ` (Provider: ${errorData.data.providerID})`
+              : "";
             setError(`${errorMessage}${providerInfo}`);
           }
         }
@@ -315,8 +335,8 @@ export function useOpenCode(
       const safeProviders = Array.isArray(providerList) ? providerList : [];
 
       console.log("[OpenCode] Loaded config:", {
-        agents: safeAgents.map(a => ({ id: a.id, name: a.name })),
-        providers: safeProviders.map(p => ({
+        agents: safeAgents.map((a) => ({ id: a.id, name: a.name })),
+        providers: safeProviders.map((p) => ({
           id: p.id,
           name: p.name,
           modelCount: p.models?.length || 0,
@@ -341,7 +361,7 @@ export function useOpenCode(
 
       // Agent selection: prefer saved, then first available
       if (!selectedAgentRef.current) {
-        if (savedAgent && safeAgents.some(a => a.id === savedAgent)) {
+        if (savedAgent && safeAgents.some((a) => a.id === savedAgent)) {
           console.log("[OpenCode] Restoring saved agent:", savedAgent);
           setSelectedAgent(savedAgent);
         } else {
@@ -357,8 +377,12 @@ export function useOpenCode(
       if (!selectedModelRef.current) {
         // Check if saved model is still valid
         if (savedModel) {
-          const savedProvider = safeProviders.find(p => p.id === savedModel!.providerId);
-          const savedModelValid = savedProvider?.models?.some(m => m.id === savedModel!.modelId);
+          const savedProvider = safeProviders.find(
+            (p) => p.id === savedModel!.providerId,
+          );
+          const savedModelValid = savedProvider?.models?.some(
+            (m) => m.id === savedModel!.modelId,
+          );
           if (savedModelValid) {
             console.log("[OpenCode] Restoring saved model:", savedModel);
             setSelectedModel(savedModel);
@@ -371,10 +395,14 @@ export function useOpenCode(
         let selectedProviderModel: { id: string; name: string } | undefined;
 
         for (const preferredId of PREFERRED_PROVIDER_ORDER) {
-          const provider = safeProviders.find(p =>
-            p.id.toLowerCase().includes(preferredId.toLowerCase())
+          const provider = safeProviders.find((p) =>
+            p.id.toLowerCase().includes(preferredId.toLowerCase()),
           );
-          if (provider && Array.isArray(provider.models) && provider.models.length > 0) {
+          if (
+            provider &&
+            Array.isArray(provider.models) &&
+            provider.models.length > 0
+          ) {
             selectedProvider = provider;
             selectedProviderModel = provider.models[0];
             break;
@@ -383,8 +411,8 @@ export function useOpenCode(
 
         // Fallback to first provider with models if none of the preferred ones found
         if (!selectedProvider) {
-          selectedProvider = safeProviders.find(p =>
-            Array.isArray(p.models) && p.models.length > 0
+          selectedProvider = safeProviders.find(
+            (p) => Array.isArray(p.models) && p.models.length > 0,
           );
           selectedProviderModel = selectedProvider?.models?.[0];
         }
@@ -425,9 +453,7 @@ export function useOpenCode(
           loadSessions();
           loadConfig();
         } else {
-          console.error(
-            "[OpenCode] API not ready, skipping initial data load",
-          );
+          console.error("[OpenCode] API not ready, skipping initial data load");
         }
       };
 
@@ -561,8 +587,8 @@ export function useOpenCode(
         content: content.slice(0, 50) + (content.length > 50 ? "..." : ""),
         selectedAgent,
         selectedModel,
-        availableAgents: agents.map(a => a.id),
-        availableProviders: providers.map(p => p.id),
+        availableAgents: agents.map((a) => a.id),
+        availableProviders: providers.map((p) => p.id),
       });
 
       if (!client || !connected || !currentSessionId) {
@@ -571,7 +597,9 @@ export function useOpenCode(
       }
 
       // Clear previous error and set optimistic "running" status
-      console.log("[OpenCode] Clearing error and setting optimistic running status");
+      console.log(
+        "[OpenCode] Clearing error and setting optimistic running status",
+      );
       setError(null);
       setStatus({ type: "running" });
 
@@ -588,16 +616,18 @@ export function useOpenCode(
           agent: agentToUse,
           model: selectedModel
             ? {
-              providerID: selectedModel.providerId,
-              modelID: selectedModel.modelId,
-            }
+                providerID: selectedModel.providerId,
+                modelID: selectedModel.modelId,
+              }
             : undefined,
         });
         console.log("[OpenCode] client.chat completed successfully");
         // Sync messages/parts after a short delay, but NOT status
         // Status will be updated by session.status events from server
         setTimeout(() => {
-          console.log("[OpenCode] Running delayed syncMessagesAndParts (not status)");
+          console.log(
+            "[OpenCode] Running delayed syncMessagesAndParts (not status)",
+          );
           syncMessagesAndParts();
         }, 500);
       } catch (err) {
@@ -607,7 +637,15 @@ export function useOpenCode(
         setError(err instanceof Error ? err.message : "Failed to send message");
       }
     },
-    [connected, currentSessionId, syncMessagesAndParts, selectedAgent, selectedModel, agents, providers],
+    [
+      connected,
+      currentSessionId,
+      syncMessagesAndParts,
+      selectedAgent,
+      selectedModel,
+      agents,
+      providers,
+    ],
   );
 
   const abort = useCallback(async () => {

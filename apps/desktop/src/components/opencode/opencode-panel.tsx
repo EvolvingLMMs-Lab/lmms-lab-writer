@@ -386,7 +386,7 @@ function MessageList({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {turns.map((turn) => {
         const userParts = getPartsForMessage(turn.user.id);
         const userText =
@@ -398,6 +398,7 @@ function MessageList({
             userText={userText}
             assistantParts={turn.assistantParts}
             onFileClick={onFileClick}
+            startTime={turn.user.time?.created}
           />
         );
       })}
@@ -409,12 +410,14 @@ function MessageTurn({
   userText,
   assistantParts,
   onFileClick,
+  startTime,
 }: {
   userText: string;
   assistantParts: Part[];
   onFileClick?: (path: string) => void;
+  startTime?: number;
 }) {
-  const [showSteps, setShowSteps] = useState(true);
+  const [showSteps, setShowSteps] = useState(false);
 
   // Deduplicate parts
   const dedupedParts = useMemo(() => {
@@ -449,38 +452,48 @@ function MessageTurn({
     reasoningParts.length > 0 && reasoningParts.some((p) => p.text.trim());
   const hasSteps = toolParts.length > 0 || hasReasoningContent;
 
+  // Calculate elapsed time for steps
+  const elapsedTime = useMemo(() => {
+    if (!startTime) return null;
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    return `${elapsed}s`;
+  }, [startTime]);
+
   return (
     <div className="space-y-3">
-      {/* User message */}
-      <div className="bg-[#e8f5f2] border border-[#c5e4dd] px-3 py-2">
-        <p className="text-[13px] leading-relaxed whitespace-pre-wrap break-words text-neutral-800">
+      {/* User message - teal/sage rounded bubble */}
+      <div className="bg-[#8B9F8C] rounded-lg px-4 py-3">
+        <p className="text-[13px] leading-relaxed whitespace-pre-wrap break-words text-white">
           {userText}
         </p>
       </div>
 
-      {/* Steps toggle */}
+      {/* Steps toggle - disclosure triangle style */}
       {hasSteps && (
         <button
           type="button"
           onClick={() => setShowSteps(!showSteps)}
           className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
         >
-          <ChevronRightIcon
-            className={`size-3 transition-transform ${showSteps ? "rotate-90" : ""}`}
-          />
-          <span>{showSteps ? "Hide" : "Show"} steps</span>
+          <DisclosureTriangle open={showSteps} />
+          <span>
+            {showSteps ? "Hide" : "Show"} steps
+            {elapsedTime && (
+              <span className="text-neutral-400"> · {elapsedTime}</span>
+            )}
+          </span>
         </button>
       )}
 
       {/* Steps content */}
       {showSteps && (
-        <div className="space-y-2">
+        <div className="space-y-1">
           {/* Reasoning - only show if has actual content */}
           {hasReasoningContent && <ReasoningDisplay parts={reasoningParts} />}
 
-          {/* Tools */}
+          {/* Tools as file list */}
           {toolParts.length > 0 && (
-            <div className="space-y-1.5">
+            <div className="space-y-0">
               {toolParts.map((part) => (
                 <ToolDisplay
                   key={part.id}
@@ -493,12 +506,10 @@ function MessageTurn({
         </div>
       )}
 
-      {/* Response text */}
+      {/* Response label and text */}
       {combinedText && (
-        <div>
-          <p className="text-[10px] uppercase tracking-wider font-medium text-neutral-400 mb-1.5">
-            Response
-          </p>
+        <div className="space-y-1">
+          <div className="text-xs text-neutral-400">Response</div>
           <div className="text-[13px] leading-relaxed whitespace-pre-wrap break-words text-neutral-700">
             <MarkdownText text={combinedText} onFileClick={onFileClick} />
           </div>
@@ -679,14 +690,17 @@ function InputArea({
   providers: {
     id: string;
     name: string;
-    models: { id: string; name: string }[];
+    models: {
+      id: string;
+      name: string;
+      options?: { max?: boolean; reasoning?: boolean };
+    }[];
   }[];
   selectedAgent: string | null;
   selectedModel: { providerId: string; modelId: string } | null;
   onSelectAgent: (agentId: string | null) => void;
   onSelectModel: (m: { providerId: string; modelId: string } | null) => void;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -704,148 +718,121 @@ function InputArea({
     }
   }, [input]);
 
-  const selectedModelName = useMemo(() => {
-    if (!selectedModel) return "Model";
+  const selectedAgentName = useMemo(() => {
+    return agents.find((a) => a.id === selectedAgent)?.name || "Agent";
+  }, [selectedAgent, agents]);
+
+  const selectedModelInfo = useMemo(() => {
+    if (!selectedModel) return { name: "Model", provider: "", isMax: false };
     for (const provider of providers) {
       const model = provider.models?.find(
         (m) => m.id === selectedModel.modelId,
       );
-      if (model) return model.name;
+      if (model) {
+        return {
+          name: model.name,
+          provider: provider.name,
+          isMax: model.options?.max ?? false,
+        };
+      }
     }
-    return "Model";
+    return { name: "Model", provider: "", isMax: false };
   }, [selectedModel, providers]);
 
   return (
-    <div className="border-t border-border flex-shrink-0 bg-white relative z-20">
-      {isExpanded && (
-        <div className="px-3 pt-3 pb-2 border-b border-border bg-neutral-50">
-          <div className="flex gap-2">
-            <div className="flex-1 space-y-1">
-              <label className="text-[10px] uppercase tracking-wider text-muted font-medium">
-                Agent
-              </label>
-              <div className="relative">
-                <select
-                  value={selectedAgent || ""}
-                  onChange={(e) => onSelectAgent(e.target.value || null)}
-                  className="w-full text-xs border border-border bg-white pl-2 pr-6 py-1.5 focus:outline-none focus:border-black appearance-none"
-                >
-                  {!Array.isArray(agents) || agents.length === 0 ? (
-                    <option value="">No agents</option>
-                  ) : (
-                    agents
-                      .filter((agent) => agent?.id)
-                      .map((agent) => (
-                        <option key={agent.id} value={agent.id}>
-                          {agent.name}
-                        </option>
-                      ))
-                  )}
-                </select>
-                <ChevronIcon className="size-3 text-muted absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-            <div className="flex-1 space-y-1">
-              <label className="text-[10px] uppercase tracking-wider text-muted font-medium">
-                Model
-              </label>
-              <div className="relative">
-                <select
-                  value={
-                    selectedModel
-                      ? `${selectedModel.providerId}:${selectedModel.modelId}`
-                      : ""
-                  }
-                  onChange={(e) => {
-                    const [providerId, modelId] = e.target.value.split(":");
-                    if (providerId && modelId) {
-                      onSelectModel({ providerId, modelId });
-                    } else {
-                      onSelectModel(null);
-                    }
-                  }}
-                  className="w-full text-xs border border-border bg-white pl-2 pr-6 py-1.5 focus:outline-none focus:border-black appearance-none"
-                >
-                  {!Array.isArray(providers) || providers.length === 0 ? (
-                    <option value="">No models</option>
-                  ) : (
-                    providers
-                      .filter((provider) => provider?.id)
-                      .flatMap((provider) =>
-                        Array.isArray(provider?.models)
-                          ? provider.models
-                              .filter((model) => model?.id)
-                              .map((model) => (
-                                <option
-                                  key={`${provider.id}:${model.id}`}
-                                  value={`${provider.id}:${model.id}`}
-                                >
-                                  {model.name} ({provider.name})
-                                </option>
-                              ))
-                          : [],
-                      )
-                  )}
-                </select>
-                <ChevronIcon className="size-3 text-muted absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Input */}
-      <div className="p-3">
-        <div className="relative border border-border bg-white focus-within:border-black transition-all">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder='Ask anything... "Help me debug this issue"'
-            disabled={isWorking}
-            className="w-full min-h-[60px] max-h-[200px] px-3 py-2.5 resize-none focus:outline-none text-sm bg-transparent placeholder:text-neutral-400"
-            rows={1}
-          />
-          <div className="flex items-center justify-between px-2 pb-2">
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className={`flex items-center gap-1.5 text-xs px-2 py-1 transition-colors ${
-                isExpanded
-                  ? "text-black bg-neutral-100"
-                  : "text-neutral-500 hover:text-black hover:bg-neutral-50"
-              }`}
-              title={isExpanded ? "Hide Options" : "Show Options"}
+    <div className="border-t border-border flex-shrink-0 bg-white p-3">
+      <div className="border border-border bg-white focus-within:border-black transition-colors">
+        <textarea
+          ref={textareaRef}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder='Ask anything... "Add unit tests for the user service"'
+          disabled={isWorking}
+          className="w-full min-h-[60px] max-h-[200px] px-3 py-2.5 resize-none focus:outline-none text-sm bg-transparent placeholder:text-neutral-400"
+          rows={1}
+        />
+        <div className="flex items-center gap-3 px-3 py-2 border-t border-border">
+          <div className="relative">
+            <select
+              value={selectedAgent || ""}
+              onChange={(e) => onSelectAgent(e.target.value || null)}
+              className="text-xs bg-transparent pr-5 py-0.5 focus:outline-none appearance-none cursor-pointer text-neutral-700 hover:text-black"
             >
-              <ProviderIcon providerId={selectedModel?.providerId} />
-              <span className="truncate max-w-[120px]">
-                {selectedModelName}
-              </span>
-              <ChevronIcon
-                className={`size-3 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-              />
-            </button>
-            <div className="flex items-center gap-1">
-              {isWorking ? (
-                <button
-                  onClick={onAbort}
-                  className="p-1.5 text-neutral-600 hover:text-black transition-colors"
-                  title="Stop"
-                >
-                  <StopIcon className="size-4" />
-                </button>
-              ) : (
-                <button
-                  onClick={onSend}
-                  disabled={!input.trim()}
-                  className="p-1.5 text-neutral-400 hover:text-black transition-colors disabled:opacity-30"
-                  title="Send"
-                >
-                  <SendIcon className="size-4" />
-                </button>
-              )}
-            </div>
+              {agents
+                .filter((a) => a?.id)
+                .map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.name}
+                  </option>
+                ))}
+            </select>
+            <ChevronIcon className="size-3 text-neutral-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
+
+          <div className="flex items-center gap-1.5">
+            <ProviderIcon providerId={selectedModel?.providerId} />
+            <div className="relative">
+              <select
+                value={
+                  selectedModel
+                    ? `${selectedModel.providerId}:${selectedModel.modelId}`
+                    : ""
+                }
+                onChange={(e) => {
+                  const [providerId, modelId] = e.target.value.split(":");
+                  if (providerId && modelId) {
+                    onSelectModel({ providerId, modelId });
+                  } else {
+                    onSelectModel(null);
+                  }
+                }}
+                className="text-xs bg-transparent pr-5 py-0.5 focus:outline-none appearance-none cursor-pointer text-neutral-700 hover:text-black"
+              >
+                {providers
+                  .filter((p) => p?.id)
+                  .flatMap((provider) =>
+                    (provider.models || [])
+                      .filter((m) => m?.id)
+                      .map((model) => (
+                        <option
+                          key={`${provider.id}:${model.id}`}
+                          value={`${provider.id}:${model.id}`}
+                        >
+                          {model.name} ({provider.name})
+                        </option>
+                      )),
+                  )}
+              </select>
+              <ChevronIcon className="size-3 text-neutral-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+            {selectedModelInfo.isMax && (
+              <span className="text-[10px] text-neutral-500 font-medium">
+                Max
+              </span>
+            )}
+          </div>
+
+          <div className="flex-1" />
+
+          {isWorking ? (
+            <button
+              onClick={onAbort}
+              className="p-1 text-neutral-500 hover:text-black transition-colors"
+              title="Stop"
+            >
+              <StopIcon className="size-4" />
+            </button>
+          ) : (
+            <button
+              onClick={onSend}
+              disabled={!input.trim()}
+              className="p-1 text-neutral-400 hover:text-black transition-colors disabled:opacity-30"
+              title="Send"
+            >
+              <SendIcon className="size-4" />
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -1134,7 +1121,7 @@ function MarkdownText({
                     <button
                       key={j}
                       onClick={() => onFileClick!(content)}
-                      className="text-[#006656] font-medium font-mono text-[12px] hover:underline cursor-pointer"
+                      className="text-black font-medium font-mono text-[12px] hover:underline cursor-pointer bg-neutral-100 px-1"
                     >
                       {content}
                     </button>
@@ -1143,7 +1130,7 @@ function MarkdownText({
                 return (
                   <code
                     key={j}
-                    className="text-[#006656] font-medium font-mono text-[12px]"
+                    className="text-black font-medium font-mono text-[12px] bg-neutral-100 px-1"
                   >
                     {content}
                   </code>
@@ -1360,6 +1347,48 @@ function StopIcon({ className }: { className?: string }) {
     >
       <div className="size-2 bg-current" />
     </div>
+  );
+}
+
+function SettingsIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+        strokeWidth={1.5}
+        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+      />
+      <path
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+        strokeWidth={1.5}
+        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+      />
+    </svg>
+  );
+}
+
+function DisclosureTriangle({
+  open,
+  className,
+}: {
+  open: boolean;
+  className?: string;
+}) {
+  return (
+    <svg
+      className={`size-3 transition-transform ${open ? "rotate-90" : ""} ${className || ""}`}
+      fill="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path d="M8 5v14l11-7z" />
+    </svg>
   );
 }
 
