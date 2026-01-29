@@ -16,7 +16,9 @@ async function revealInFileManager(path: string): Promise<void> {
     await Command.create("open", ["-R", path]).execute();
   } else if (os === "windows") {
     // Windows: explorer /select, highlights the item
-    await Command.create("explorer", ["/select,", path]).execute();
+    // Convert forward slashes to backslashes for Windows
+    const winPath = path.replace(/\//g, "\\");
+    await Command.create("explorer", [`/select,${winPath}`]).execute();
   } else {
     // Linux: xdg-open opens the containing folder
     const parentPath = path.replace(/\/[^/]*$/, "") || path;
@@ -811,13 +813,7 @@ export const FileTree = memo(function FileTree({
         ),
       });
 
-      // Separator before utility actions
       if (projectPath) {
-        items.push({
-          label: "-", // separator
-          onClick: () => {},
-        });
-
         items.push({
           label: platform() === "macos" ? "Reveal in Finder" : "Reveal in Explorer",
           onClick: async () => {
