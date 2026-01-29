@@ -472,8 +472,8 @@ async function SuggestedReposSection() {
                         {repo.name}
                       </a>
                       {isEligible && (
-                        <span className="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 bg-black text-white flex-shrink-0">
-                          Top 5
+                        <span className="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 border border-border text-muted flex-shrink-0">
+                          Recommended
                         </span>
                       )}
                     </div>

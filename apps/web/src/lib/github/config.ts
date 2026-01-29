@@ -1,9 +1,18 @@
 export const GITHUB_CONFIG = {
   ORG: "EvolvingLMMs-Lab",
-  MAX_ELIGIBLE_REPOS: 5,
+  MAX_ELIGIBLE_REPOS: 6,
   MIN_STARS_TO_SHOW: 100,
   INKS_PER_STAR: 6,
   INKS_TO_DOWNLOAD: 15,
+  // Priority repos shown first (order matters)
+  PRIORITY_REPOS: [
+    "lmms-lab-writer",
+    "lmms-eval",
+    "Video-LLaVA",
+    "LLaVA-NeXT",
+    "lmms-finetune",
+    "MoE-LLaVA",
+  ],
 } as const;
 
 export type RepoInfo = {
@@ -80,11 +89,28 @@ async function fetchAllOrgRepos(): Promise<RepoInfo[]> {
 }
 
 /**
- * Fetch top repos by stars (used for membership calculation)
+ * Fetch recommended repos (priority list first, then by stars)
  */
 export async function getTopRepos(): Promise<RepoInfo[]> {
   const allRepos = await fetchAllOrgRepos();
-  return allRepos.slice(0, GITHUB_CONFIG.MAX_ELIGIBLE_REPOS);
+  const repoMap = new Map(allRepos.map((r) => [r.name, r]));
+
+  const result: RepoInfo[] = [];
+
+  for (const name of GITHUB_CONFIG.PRIORITY_REPOS) {
+    const repo = repoMap.get(name);
+    if (repo) {
+      result.push(repo);
+      repoMap.delete(name);
+    }
+  }
+
+  const remaining = Array.from(repoMap.values()).sort(
+    (a, b) => b.stargazers_count - a.stargazers_count,
+  );
+  result.push(...remaining);
+
+  return result.slice(0, GITHUB_CONFIG.MAX_ELIGIBLE_REPOS);
 }
 
 /**
