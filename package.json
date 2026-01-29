@@ -19,6 +19,7 @@
     "tauri:build": "pnpm --filter @lmms-lab/writer-desktop tauri:build"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
     "prettier": "^3.8.1",
