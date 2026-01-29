@@ -76,6 +76,7 @@ pub fn run() {
             commands::opencode::opencode_start,
             commands::opencode::opencode_stop,
             commands::opencode::opencode_restart,
+            commands::opencode::kill_port_process,
             commands::latex::latex_detect_compilers,
             commands::latex::latex_compile,
             commands::latex::latex_stop_compilation,

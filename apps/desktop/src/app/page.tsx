@@ -14,8 +14,19 @@ import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { LoginForm, UserDropdown } from "@/components/auth";
-import { useLatexSettings, useLatexCompiler, findTexFiles, findMainTexFile, isTexFile } from "@/lib/latex";
-import { CompileButton, CompilationOutputPanel, LaTeXSettingsDialog, LaTeXInstallPrompt } from "@/components/latex";
+import {
+  useLatexSettings,
+  useLatexCompiler,
+  findTexFiles,
+  findMainTexFile,
+  isTexFile,
+} from "@/lib/latex";
+import {
+  CompileButton,
+  CompilationOutputPanel,
+  LaTeXSettingsDialog,
+  LaTeXInstallPrompt,
+} from "@/components/latex";
 
 function throttle<T extends (...args: Parameters<T>) => void>(
   fn: T,
@@ -72,6 +83,14 @@ const OpenCodeErrorBoundary = dynamic(
   { ssr: false },
 );
 
+const OpenCodeErrorDialog = dynamic(
+  () =>
+    import("@/components/opencode/opencode-error-dialog").then(
+      (mod) => mod.OpenCodeErrorDialog,
+    ),
+  { ssr: false },
+);
+
 const PANEL_SPRING = {
   type: "spring",
   stiffness: 400,
@@ -124,7 +143,10 @@ export default function EditorPage() {
   const [opencodePort, setOpencodePort] = useState(4096);
   const [showDisconnectedDialog, setShowDisconnectedDialog] = useState(false);
   const [showLatexSettings, setShowLatexSettings] = useState(false);
-  const [pendingOpenCodeMessage, setPendingOpenCodeMessage] = useState<string | null>(null);
+  const [pendingOpenCodeMessage, setPendingOpenCodeMessage] = useState<
+    string | null
+  >(null);
+  const [opencodeError, setOpencodeError] = useState<string | null>(null);
 
   const contentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const opencodeStartedForPathRef = useRef<string | null>(null);
@@ -149,10 +171,7 @@ export default function EditorPage() {
 
   // LaTeX compilation
   const latexSettings = useLatexSettings();
-  const texFiles = useMemo(
-    () => findTexFiles(daemon.files),
-    [daemon.files],
-  );
+  const texFiles = useMemo(() => findTexFiles(daemon.files), [daemon.files]);
 
   // Ref for handleFileSelect to break circular dependency
   const handleFileSelectRef = useRef<(path: string) => void>(() => {});
@@ -171,12 +190,19 @@ export default function EditorPage() {
     (result: { pdf_path: string | null }) => {
       toast("Compilation successful", "success");
       // Auto-open PDF if enabled
-      if (latexSettings.settings.autoOpenPdf && result.pdf_path && daemon.projectPath) {
+      if (
+        latexSettings.settings.autoOpenPdf &&
+        result.pdf_path &&
+        daemon.projectPath
+      ) {
         // Convert absolute path to relative path for handleFileSelect
         // Handle both forward slash and backslash for cross-platform
         const normalizedPdfPath = result.pdf_path.replace(/\\/g, "/");
         const normalizedProjectPath = daemon.projectPath.replace(/\\/g, "/");
-        const relativePath = normalizedPdfPath.replace(normalizedProjectPath + "/", "");
+        const relativePath = normalizedPdfPath.replace(
+          normalizedProjectPath + "/",
+          "",
+        );
         handleFileSelectRef.current(relativePath);
       }
     },
@@ -198,12 +224,12 @@ export default function EditorPage() {
   });
 
   // Check if any LaTeX compiler is available
-  const hasAnyCompiler = latexCompiler.compilersStatus && (
-    latexCompiler.compilersStatus.pdflatex.available ||
-    latexCompiler.compilersStatus.xelatex.available ||
-    latexCompiler.compilersStatus.lualatex.available ||
-    latexCompiler.compilersStatus.latexmk.available
-  );
+  const hasAnyCompiler =
+    latexCompiler.compilersStatus &&
+    (latexCompiler.compilersStatus.pdflatex.available ||
+      latexCompiler.compilersStatus.xelatex.available ||
+      latexCompiler.compilersStatus.lualatex.available ||
+      latexCompiler.compilersStatus.latexmk.available);
 
   const handleCompile = useCallback(() => {
     latexCompiler.compile();
@@ -283,13 +309,13 @@ export default function EditorPage() {
 
     try {
       setOpencodeDaemonStatus("starting");
+      setOpencodeError(null);
       const currentStatus = await invoke<OpenCodeStatus>("opencode_status");
 
       if (!currentStatus.installed) {
         setOpencodeDaemonStatus("unavailable");
-        toast(
-          "OpenCode is not installed. Please install it first:\nnpm i -g opencode-ai@latest\nor\nbrew install sst/tap/opencode",
-          "error",
+        setOpencodeError(
+          "OpenCode is not installed. Please install it first using npm or Homebrew.",
         );
         return;
       }
@@ -302,13 +328,17 @@ export default function EditorPage() {
       toast("OpenCode started successfully!", "success");
     } catch (err) {
       console.error("Failed to start OpenCode:", err);
-      setOpencodeDaemonStatus("unavailable");
-      toast(
-        `Failed to start OpenCode: ${err instanceof Error ? err.message : String(err)}`,
-        "error",
-      );
+      setOpencodeDaemonStatus("stopped");
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setOpencodeError(errorMessage);
     }
-  }, [daemon.projectPath, opencodeDaemonStatus, toast, checkOpencodeStatus, startOpencode]);
+  }, [
+    daemon.projectPath,
+    opencodeDaemonStatus,
+    toast,
+    checkOpencodeStatus,
+    startOpencode,
+  ]);
 
   const handleMaxReconnectFailed = useCallback(() => {
     setShowDisconnectedDialog(true);
@@ -322,6 +352,19 @@ export default function EditorPage() {
     setShowDisconnectedDialog(false);
     restartOpencode();
   }, [restartOpencode]);
+
+  const handleCloseErrorDialog = useCallback(() => {
+    setOpencodeError(null);
+  }, []);
+
+  const handleKillPort = useCallback(
+    async (port: number) => {
+      await invoke("kill_port_process", { port });
+      setOpencodeError(null);
+      await restartOpencode();
+    },
+    [restartOpencode],
+  );
 
   const handleToggleRightPanel = useCallback(async () => {
     const willOpen = !showRightPanel;
@@ -630,7 +673,11 @@ export default function EditorPage() {
           try {
             await daemon.writeFile(fileToSave, content);
             // Auto-compile on save if enabled and file is .tex
-            if (latexSettings.settings.autoCompileOnSave && isTexFile(fileToSave) && !latexCompiler.isCompiling) {
+            if (
+              latexSettings.settings.autoCompileOnSave &&
+              isTexFile(fileToSave) &&
+              !latexCompiler.isCompiling
+            ) {
               latexCompiler.compile();
             }
           } catch (error) {
@@ -644,7 +691,12 @@ export default function EditorPage() {
         setIsSaving(false);
       }, 500);
     },
-    [selectedFile, daemon, latexSettings.settings.autoCompileOnSave, latexCompiler],
+    [
+      selectedFile,
+      daemon,
+      latexSettings.settings.autoCompileOnSave,
+      latexCompiler,
+    ],
   );
 
   const handleOpenFolder = useCallback(async () => {
@@ -757,7 +809,15 @@ export default function EditorPage() {
     window.addEventListener("keydown", handleKeyDown, { capture: true });
     return () =>
       window.removeEventListener("keydown", handleKeyDown, { capture: true });
-  }, [daemon, handleOpenFolder, selectedFile, handleCloseTab, handleCompile, handleStopCompile, latexCompiler.isCompiling]);
+  }, [
+    daemon,
+    handleOpenFolder,
+    selectedFile,
+    handleCloseTab,
+    handleCompile,
+    handleStopCompile,
+    latexCompiler.isCompiling,
+  ]);
 
   return (
     <div className="h-dvh flex flex-col">
@@ -1297,10 +1357,11 @@ export default function EditorPage() {
                 return (
                   <div
                     key={tab}
-                    className={`group flex items-center border-r border-border transition-colors ${isActive
+                    className={`group flex items-center border-r border-border transition-colors ${
+                      isActive
                         ? "bg-white text-black"
                         : "text-muted hover:text-black hover:bg-white/50"
-                      }`}
+                    }`}
                     title={tab}
                   >
                     <button
@@ -1311,10 +1372,11 @@ export default function EditorPage() {
                     </button>
                     <button
                       onClick={(e) => handleCloseTab(tab, e)}
-                      className={`w-6 h-full flex items-center justify-center hover:bg-neutral-200 ${isActive
+                      className={`w-6 h-full flex items-center justify-center hover:bg-neutral-200 ${
+                        isActive
                           ? "opacity-100"
                           : "opacity-0 group-hover:opacity-100"
-                        }`}
+                      }`}
                       aria-label="Close tab"
                     >
                       <svg
@@ -1406,11 +1468,16 @@ export default function EditorPage() {
           )}
 
           {/* LaTeX Install Prompt - shown when no compiler is detected */}
-          {daemon.projectPath && latexCompiler.compilersStatus && !hasAnyCompiler && !latexCompiler.isDetecting && (
-            <div className="border-t border-border">
-              <LaTeXInstallPrompt onRefreshCompilers={latexCompiler.detectCompilers} />
-            </div>
-          )}
+          {daemon.projectPath &&
+            latexCompiler.compilersStatus &&
+            !hasAnyCompiler &&
+            !latexCompiler.isDetecting && (
+              <div className="border-t border-border">
+                <LaTeXInstallPrompt
+                  onRefreshCompilers={latexCompiler.detectCompilers}
+                />
+              </div>
+            )}
 
           {/* Compilation Output Panel */}
           {daemon.projectPath && (
@@ -1494,6 +1561,14 @@ export default function EditorPage() {
         open={showDisconnectedDialog}
         onClose={handleCloseDisconnectedDialog}
         onRestart={handleRestartFromDialog}
+      />
+
+      <OpenCodeErrorDialog
+        open={!!opencodeError}
+        error={opencodeError ?? ""}
+        onClose={handleCloseErrorDialog}
+        onRetry={restartOpencode}
+        onKillPort={handleKillPort}
       />
 
       {createDialog && (

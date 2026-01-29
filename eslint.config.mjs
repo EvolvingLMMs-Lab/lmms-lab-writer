@@ -20,6 +20,7 @@ export default tseslint.config(
       "**/*.config.cjs",
       // Generated files
       "**/next-env.d.ts",
+      "**/*.d.ts",
     ],
   },
 
@@ -49,6 +50,9 @@ export default tseslint.config(
     settings: {
       react: {
         version: "detect",
+      },
+      next: {
+        rootDir: ["apps/web", "apps/desktop"],
       },
     },
     rules: {

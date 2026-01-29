@@ -25,8 +25,8 @@ const platforms = [
     variants: [
       {
         label: "Apple Silicon",
-        file: "LMMs-Lab_Writer_0.1.0_aarch64.dmg",
-        url: `${BLOB_URL}/LMMs-Lab_Writer_0.1.0_aarch64.dmg`,
+        file: "LMMs-Lab_Writer_0.1.0_aarch64.pkg",
+        url: `${BLOB_URL}/LMMs-Lab_Writer_0.1.0_aarch64.pkg`,
       },
     ],
   },
@@ -63,9 +63,46 @@ export function DownloadSection() {
   );
 }
 
+export function InstallationSection() {
+  return (
+    <FadeIn className="mt-10 pt-8 border-t border-border max-w-2xl">
+      <h2 className="text-sm font-medium mb-3">Installation</h2>
+      <div className="text-sm text-muted space-y-4">
+        <p>
+          The app is not signed with an Apple Developer certificate. macOS will
+          show a security warning when you first open the installer.
+        </p>
+        <div className="bg-neutral-50 border border-border p-4 space-y-3">
+          <p className="font-medium text-foreground">To install:</p>
+          <ol className="list-decimal list-inside space-y-2">
+            <li>Download the .pkg file</li>
+            <li>
+              <span className="font-medium">Right-click</span> the file and
+              select <span className="font-medium">Open</span>
+            </li>
+            <li>
+              Click <span className="font-medium">Open</span> in the dialog
+            </li>
+            <li>Follow the installer</li>
+          </ol>
+        </div>
+        <details className="cursor-pointer">
+          <summary className="font-medium text-foreground hover:underline">
+            Alternative: Terminal
+          </summary>
+          <pre className="mt-2 bg-neutral-50 p-3 overflow-x-auto border border-border text-xs">
+            xattr -cr ~/Downloads/LMMs-Lab_Writer_*.pkg
+          </pre>
+          <p className="mt-1 text-xs">Then double-click to install normally.</p>
+        </details>
+      </div>
+    </FadeIn>
+  );
+}
+
 export function RequirementsSection() {
   return (
-    <FadeIn className="mt-16 pt-8 border-t border-border max-w-2xl">
+    <FadeIn className="mt-10 pt-8 border-t border-border max-w-2xl">
       <h2 className="text-sm font-medium mb-3">Requirements</h2>
       <ul className="text-sm text-muted space-y-1">
         <li>

@@ -6,11 +6,12 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "tauri:build:nice": "nice -n 10 tauri build"
+    "tauri:build:nice": "nice -n 10 tauri build",
+    "tauri:pkg": "tauri build && ./src-tauri/scripts/build-pkg.sh"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.0",
