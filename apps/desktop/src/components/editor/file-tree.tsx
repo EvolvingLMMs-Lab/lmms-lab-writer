@@ -227,6 +227,7 @@ const TreeNode = memo(function TreeNode({
   defaultExpanded = false,
   focusedPath,
   onExpandedChange,
+  onFocusChange,
   onContextMenu,
   parentPath = "",
 }: {
@@ -238,6 +239,7 @@ const TreeNode = memo(function TreeNode({
   defaultExpanded?: boolean;
   focusedPath?: string | null;
   onExpandedChange?: (path: string, expanded: boolean) => void;
+  onFocusChange?: (path: string) => void;
   onContextMenu?: (
     e: React.MouseEvent,
     node: FileNode,
@@ -278,6 +280,9 @@ const TreeNode = memo(function TreeNode({
   }, [isHighlighted]);
 
   const handleClick = useCallback(() => {
+    // Sync keyboard focus with mouse click
+    onFocusChange?.(node.path);
+
     if (isDirectory) {
       setExpanded((prev) => {
         const newExpanded = !prev;
@@ -287,7 +292,7 @@ const TreeNode = memo(function TreeNode({
     } else {
       onFileSelect?.(node.path);
     }
-  }, [isDirectory, node.path, onFileSelect, onExpandedChange]);
+  }, [isDirectory, node.path, onFileSelect, onExpandedChange, onFocusChange]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -381,6 +386,7 @@ const TreeNode = memo(function TreeNode({
                 highlightedFile={highlightedFile}
                 focusedPath={focusedPath}
                 onExpandedChange={onExpandedChange}
+                onFocusChange={onFocusChange}
                 onContextMenu={onContextMenu}
                 parentPath={node.path}
               />
@@ -460,6 +466,8 @@ export const FileTree = memo(function FileTree({
     [],
   );
 
+  const [dialog, setDialog] = useState<DialogState | null>(null);
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (visibleItems.length === 0) return;
@@ -467,6 +475,8 @@ export const FileTree = memo(function FileTree({
       const currentIndex = focusedPath
         ? visibleItems.findIndex((item) => item.node.path === focusedPath)
         : -1;
+
+      const currentNode = currentIndex >= 0 ? visibleItems[currentIndex]?.node : null;
 
       switch (e.key) {
         case "ArrowDown": {
@@ -569,6 +579,56 @@ export const FileTree = memo(function FileTree({
           }
           break;
         }
+
+        // F2 - Rename
+        case "F2": {
+          e.preventDefault();
+          if (currentNode && fileOperations) {
+            setDialog({ type: "rename", node: currentNode });
+          }
+          break;
+        }
+
+        // Delete or Backspace - Delete file/folder
+        case "Delete":
+        case "Backspace": {
+          e.preventDefault();
+          if (currentNode && fileOperations) {
+            const isDirectory = currentNode.type === "directory";
+            if (
+              confirm(
+                `Are you sure you want to delete "${currentNode.name}"?${isDirectory ? " This will delete all files inside." : ""}`,
+              )
+            ) {
+              fileOperations.deletePath(currentNode.path).catch((error) => {
+                alert(`Failed to delete: ${error}`);
+              });
+            }
+          }
+          break;
+        }
+
+        // N - New file (Shift+N for new folder)
+        case "n":
+        case "N": {
+          if (!fileOperations) break;
+          e.preventDefault();
+          // Determine parent path: if current is directory use it, otherwise use parent
+          const parentPath = currentNode
+            ? currentNode.type === "directory"
+              ? currentNode.path
+              : getParentPath(currentNode.path) || ""
+            : "";
+
+          if (e.shiftKey) {
+            // Shift+N: New folder
+            setDialog({ type: "create-directory", parentPath });
+          } else {
+            // N: New file
+            setDialog({ type: "create-file", parentPath });
+          }
+          break;
+        }
       }
     },
     [
@@ -577,6 +637,7 @@ export const FileTree = memo(function FileTree({
       expandedPaths,
       handleExpandedChange,
       onFileSelect,
+      fileOperations,
     ],
   );
 
@@ -597,7 +658,6 @@ export const FileTree = memo(function FileTree({
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(
     null,
   );
-  const [dialog, setDialog] = useState<DialogState | null>(null);
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, node: FileNode, parentPath: string) => {
@@ -783,6 +843,7 @@ export const FileTree = memo(function FileTree({
             defaultExpanded
             focusedPath={focusedPath}
             onExpandedChange={handleExpandedChange}
+            onFocusChange={setFocusedPath}
           />
         ))}
       </OverlayScrollbarsComponent>
