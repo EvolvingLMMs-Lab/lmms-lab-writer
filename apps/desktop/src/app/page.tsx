@@ -954,7 +954,7 @@ export default function EditorPage() {
         </div>
       </header>
 
-      <main className="flex-1 min-h-0 flex">
+      <main className="flex-1 min-h-0 flex relative overflow-hidden">
         <AnimatePresence mode="wait">
           {showSidebar && (
             <motion.div
@@ -1401,12 +1401,7 @@ export default function EditorPage() {
           )}
         </AnimatePresence>
 
-        <motion.div
-          layout
-          transition={prefersReducedMotion ? INSTANT_TRANSITION : PANEL_SPRING}
-          className="flex-1 min-w-0 flex flex-col overflow-hidden"
-          style={{ willChange: prefersReducedMotion ? undefined : "width" }}
-        >
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
           {selectedFile && (
             <div className="flex items-center border-b border-border bg-neutral-50 overflow-x-auto min-h-[34px]">
               {openTabs.map((tab) => {
@@ -1553,23 +1548,27 @@ export default function EditorPage() {
               }}
             />
           )}
-        </motion.div>
+        </div>
 
         <AnimatePresence>
           {showRightPanel && (
             <motion.div
               key="right-panel-container"
               initial={
-                prefersReducedMotion ? { opacity: 1 } : { x: 300, opacity: 0 }
+                prefersReducedMotion
+                  ? { opacity: 1 }
+                  : { x: "100%", opacity: 0 }
               }
               animate={{ x: 0, opacity: 1 }}
               exit={
-                prefersReducedMotion ? { opacity: 0 } : { x: 300, opacity: 0 }
+                prefersReducedMotion
+                  ? { opacity: 0 }
+                  : { x: "100%", opacity: 0 }
               }
               transition={
                 prefersReducedMotion ? INSTANT_TRANSITION : PANEL_SPRING
               }
-              className="flex flex-shrink-0"
+              className="absolute right-0 top-0 bottom-0 flex bg-white z-10"
               style={{
                 willChange: prefersReducedMotion
                   ? undefined

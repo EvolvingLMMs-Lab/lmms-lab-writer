@@ -158,13 +158,20 @@ export class OpenCodeClient {
 
     this.eventSource.onmessage = (event) => {
       try {
-        console.log("[OpenCode Client] Raw event received:", event.data.slice(0, 200));
+        console.log(
+          "[OpenCode Client] Raw event received:",
+          event.data.slice(0, 200),
+        );
         const data = JSON.parse(event.data) as Event;
         console.log("[OpenCode Client] Parsed event:", data.type);
         this.handleEvent(data);
         this.options.onEvent?.(data);
       } catch (error) {
-        console.error("[OpenCode Client] Failed to parse event:", error, event.data);
+        console.error(
+          "[OpenCode Client] Failed to parse event:",
+          error,
+          event.data,
+        );
       }
     };
 
@@ -223,7 +230,10 @@ export class OpenCodeClient {
         break;
 
       case "session.updated":
-        console.log("[OpenCode Client] Session updated:", event.properties.info.id);
+        console.log(
+          "[OpenCode Client] Session updated:",
+          event.properties.info.id,
+        );
         this.store.sessions.set(
           event.properties.info.id,
           event.properties.info,
@@ -231,7 +241,10 @@ export class OpenCodeClient {
         break;
 
       case "session.deleted":
-        console.log("[OpenCode Client] Session deleted:", event.properties.info.id);
+        console.log(
+          "[OpenCode Client] Session deleted:",
+          event.properties.info.id,
+        );
         this.store.sessions.delete(event.properties.info.id);
         this.store.messages.delete(event.properties.info.id);
         this.store.status.delete(event.properties.info.id);
@@ -276,7 +289,10 @@ export class OpenCodeClient {
       }
 
       case "message.removed": {
-        console.log("[OpenCode Client] Message removed:", event.properties.messageID);
+        console.log(
+          "[OpenCode Client] Message removed:",
+          event.properties.messageID,
+        );
         const messages =
           this.store.messages.get(event.properties.sessionID) || [];
         const filtered = messages.filter(
@@ -485,12 +501,17 @@ export class OpenCodeClient {
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
       console.error("[OpenCode Client] chat error response:", errorText);
-      throw new Error(`Failed to send message: ${response.statusText} - ${errorText}`);
+      throw new Error(
+        `Failed to send message: ${response.statusText} - ${errorText}`,
+      );
     }
 
     // Try to read response body for debugging
     const responseText = await response.text().catch(() => "");
-    console.log("[OpenCode Client] chat response body:", responseText.slice(0, 200));
+    console.log(
+      "[OpenCode Client] chat response body:",
+      responseText.slice(0, 200),
+    );
   }
 
   async abort(sessionID: string): Promise<void> {
@@ -532,16 +553,24 @@ export class OpenCodeClient {
       let agents: unknown[];
       if (Array.isArray(data)) {
         agents = data;
-      } else if (data && typeof data === 'object' && 'agents' in data && Array.isArray((data as {agents: unknown[]}).agents)) {
-        agents = (data as {agents: unknown[]}).agents;
-      } else if (data && typeof data === 'object') {
+      } else if (
+        data &&
+        typeof data === "object" &&
+        "agents" in data &&
+        Array.isArray((data as { agents: unknown[] }).agents)
+      ) {
+        agents = (data as { agents: unknown[] }).agents;
+      } else if (data && typeof data === "object") {
         // If it's an object with id/name, it might be a single agent
         const obj = data as Record<string, unknown>;
         if (obj.id && obj.name) {
           agents = [obj];
         } else {
           // Try to extract values if it's a map-like object
-          agents = Object.values(obj).filter(v => v && typeof v === 'object' && (v as Record<string, unknown>).id);
+          agents = Object.values(obj).filter(
+            (v) =>
+              v && typeof v === "object" && (v as Record<string, unknown>).id,
+          );
         }
       } else {
         agents = [];
@@ -549,15 +578,17 @@ export class OpenCodeClient {
 
       console.log("[OpenCode Client] getAgents parsed:", agents);
       // OpenCode agents use 'name' as identifier, not 'id'
-      return agents.map(a => {
-        const obj = a as Record<string, unknown>;
-        const name = String(obj?.name || '');
-        return {
-          id: String(obj?.id || name), // Use name as id if no id field
-          name: name,
-          description: obj?.description as string | undefined,
-        };
-      }).filter(a => a.id && !((a as Record<string, unknown>).hidden));
+      return agents
+        .map((a) => {
+          const obj = a as Record<string, unknown>;
+          const name = String(obj?.name || "");
+          return {
+            id: String(obj?.id || name), // Use name as id if no id field
+            name: name,
+            description: obj?.description as string | undefined,
+          };
+        })
+        .filter((a) => a.id && !(a as Record<string, unknown>).hidden);
     } catch (error) {
       if ((error as Error).name === "AbortError") return [];
       console.error("Failed to get agents:", error);
@@ -566,7 +597,15 @@ export class OpenCodeClient {
   }
 
   async getProviders(): Promise<
-    { id: string; name: string; models: { id: string; name: string }[] }[]
+    {
+      id: string;
+      name: string;
+      models: {
+        id: string;
+        name: string;
+        options?: { max?: boolean; reasoning?: boolean };
+      }[];
+    }[]
   > {
     try {
       const url = `${this.baseUrl}/provider${this.getQueryParams()}`;
@@ -592,14 +631,20 @@ export class OpenCodeClient {
         connected: data?.connected,
       });
       if (!data) return [];
-      const allProviders = (Array.isArray(data?.all) ? data.all : []) as Record<string, unknown>[];
+      const allProviders = (Array.isArray(data?.all) ? data.all : []) as Record<
+        string,
+        unknown
+      >[];
       const connectedIds = new Set(
         Array.isArray(data?.connected) ? data.connected : [],
       );
-      console.log("[OpenCode Client] Connected provider IDs:", Array.from(connectedIds));
+      console.log(
+        "[OpenCode Client] Connected provider IDs:",
+        Array.from(connectedIds),
+      );
 
-      const connectedProviders = allProviders.filter(
-        (p) => connectedIds.has(String(p?.id || "")),
+      const connectedProviders = allProviders.filter((p) =>
+        connectedIds.has(String(p?.id || "")),
       );
       const result = connectedProviders.map((provider) => {
         const modelsObj = provider?.models;
@@ -608,7 +653,14 @@ export class OpenCodeClient {
           typeof modelsObj === "object" &&
           !Array.isArray(modelsObj)
             ? Object.values(
-                modelsObj as Record<string, { id: string; name: string }>,
+                modelsObj as Record<
+                  string,
+                  {
+                    id: string;
+                    name: string;
+                    options?: { max?: boolean; reasoning?: boolean };
+                  }
+                >,
               )
             : [];
         return {
@@ -617,15 +669,19 @@ export class OpenCodeClient {
           models: modelsArray.map((m) => ({
             id: String(m?.id || ""),
             name: String(m?.name || ""),
+            options: m?.options,
           })),
         };
       });
-      console.log("[OpenCode Client] getProviders result:", result.map(p => ({
-        id: p.id,
-        name: p.name,
-        modelCount: p.models.length,
-        models: p.models.map(m => m.id),
-      })));
+      console.log(
+        "[OpenCode Client] getProviders result:",
+        result.map((p) => ({
+          id: p.id,
+          name: p.name,
+          modelCount: p.models.length,
+          models: p.models.map((m) => ({ id: m.id, options: m.options })),
+        })),
+      );
       return result;
     } catch (error) {
       if ((error as Error).name === "AbortError") return [];
