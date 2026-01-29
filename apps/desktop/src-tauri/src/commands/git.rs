@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use tokio::process::Command;
+use super::util::command;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GitFileChange {
@@ -30,7 +30,7 @@ pub struct GitLogEntry {
 }
 
 async fn run_git(cwd: &str, args: &[&str]) -> Result<String, String> {
-    let output = Command::new("git")
+    let output = command("git")
         .args(args)
         .current_dir(cwd)
         .output()
@@ -238,7 +238,7 @@ pub async fn git_clone(url: String, directory: String) -> Result<String, String>
         return Err("Invalid URL: cannot start with '-'".to_string());
     }
     
-    let output = Command::new("git")
+    let output = command("git")
         .args(["clone", "--", &url, &directory])
         .output()
         .await

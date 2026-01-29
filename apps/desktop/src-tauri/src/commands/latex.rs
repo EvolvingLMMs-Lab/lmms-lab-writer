@@ -3,8 +3,9 @@ use std::process::Stdio;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::{Child, Command};
+use tokio::process::Child;
 use tokio::sync::Mutex;
+use super::util::command;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LaTeXDistribution {
@@ -80,7 +81,7 @@ async fn find_compiler(name: &str) -> CompilerInfo {
     };
 
     // Try system PATH first
-    let output = Command::new(which_cmd)
+    let output = command(which_cmd)
         .arg(name)
         .output()
         .await;
@@ -169,7 +170,7 @@ fn get_common_paths(name: &str) -> Vec<String> {
 }
 
 async fn get_compiler_version(name: &str, path: &str) -> Option<String> {
-    let output = Command::new(path)
+    let output = command(path)
         .arg("--version")
         .output()
         .await
@@ -247,7 +248,7 @@ pub async fn latex_compile(
     cmd_args.push(main_file.clone());
 
     // Create the command
-    let mut cmd = Command::new(&compiler_path);
+    let mut cmd = command(&compiler_path);
     cmd.current_dir(&directory)
         .args(&cmd_args)
         .stdout(Stdio::piped())
@@ -560,7 +561,7 @@ async fn install_windows(app: &AppHandle, distribution_id: &str) -> Result<Insta
         progress: Some(0.1),
     });
 
-    let winget_check = Command::new("winget")
+    let winget_check = command("winget")
         .arg("--version")
         .output()
         .await;
@@ -580,7 +581,7 @@ async fn install_windows(app: &AppHandle, distribution_id: &str) -> Result<Insta
         progress: Some(0.2),
     });
 
-    let mut child = Command::new("winget")
+    let mut child = command("winget")
         .args(["install", "MiKTeX.MiKTeX", "--accept-package-agreements", "--accept-source-agreements"])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -635,7 +636,7 @@ async fn install_macos(app: &AppHandle, distribution_id: &str) -> Result<Install
         progress: Some(0.1),
     });
 
-    let brew_check = Command::new("brew")
+    let brew_check = command("brew")
         .arg("--version")
         .output()
         .await;
@@ -666,7 +667,7 @@ async fn install_macos(app: &AppHandle, distribution_id: &str) -> Result<Install
         progress: Some(0.2),
     });
 
-    let mut child = Command::new("brew")
+    let mut child = command("brew")
         .args(["install", "--cask", cask])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

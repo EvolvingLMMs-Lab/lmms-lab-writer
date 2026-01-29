@@ -3,8 +3,9 @@ use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::{Child as TokioChild, Command as TokioCommand};
+use tokio::process::Child as TokioChild;
 use tokio::time::{sleep, Duration};
+use super::util::command;
 
 pub struct OpenCodeState {
     pub process: Mutex<Option<TokioChild>>,
@@ -38,7 +39,7 @@ async fn find_opencode() -> Option<String> {
     let which_cmd = if cfg!(target_os = "windows") { "where" } else { "which" };
 
     for candidate in &candidates {
-        if let Ok(output) = TokioCommand::new(which_cmd).arg(candidate).output().await {
+        if let Ok(output) = command(which_cmd).arg(candidate).output().await {
             if output.status.success() {
                 let path = String::from_utf8_lossy(&output.stdout)
                     .lines()
@@ -208,7 +209,7 @@ pub async fn opencode_start(
 
     *state.port.lock().map_err(|e| e.to_string())? = port;
 
-    let mut child = TokioCommand::new(&opencode_path)
+    let mut child = command(&opencode_path)
         .args(["serve", "--port", &port.to_string()])
         .current_dir(&directory)
         .stdout(Stdio::piped())
@@ -328,7 +329,7 @@ pub async fn opencode_restart(
 pub async fn kill_port_process(port: u16) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        let output = TokioCommand::new("cmd")
+        let output = command("cmd")
             .args(["/C", &format!("for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :{} ^| findstr LISTENING') do taskkill /F /PID %a", port)])
             .output()
             .await
@@ -344,7 +345,7 @@ pub async fn kill_port_process(port: u16) -> Result<(), String> {
 
     #[cfg(not(target_os = "windows"))]
     {
-        let lsof_output = TokioCommand::new("lsof")
+        let lsof_output = command("lsof")
             .args(["-t", "-i", &format!(":{}", port)])
             .output()
             .await
@@ -361,7 +362,7 @@ pub async fn kill_port_process(port: u16) -> Result<(), String> {
             if pid.is_empty() {
                 continue;
             }
-            TokioCommand::new("kill")
+            command("kill")
                 .args(["-9", pid])
                 .output()
                 .await
