@@ -619,20 +619,6 @@ export function LaTeXSettingsDialog({
                           description="When to show the viewport indicator"
                         />
 
-                        {/* Render Characters */}
-                        <CheckboxItem
-                          checked={editorSettings.minimap.renderCharacters}
-                          onChange={(v) =>
-                            onUpdateEditorSettings({
-                              minimap: {
-                                ...editorSettings.minimap,
-                                renderCharacters: v,
-                              },
-                            })
-                          }
-                          label="Render Characters"
-                          description="Show actual text instead of color blocks"
-                        />
                       </div>
                     )}
 

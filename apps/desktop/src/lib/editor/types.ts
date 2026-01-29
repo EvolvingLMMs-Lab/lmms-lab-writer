@@ -38,7 +38,7 @@ export const DEFAULT_MINIMAP_SETTINGS: MinimapSettings = {
   enabled: true,
   side: "right",
   showSlider: "mouseover",
-  renderCharacters: true,
+  renderCharacters: false,
   size: "proportional",
   scale: 1,
 };

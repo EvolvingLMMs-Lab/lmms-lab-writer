@@ -730,7 +730,7 @@ export const MonacoEditor = memo(function MonacoEditor({
             side: editorSettings?.minimap?.side ?? "right",
             size: editorSettings?.minimap?.size ?? "proportional",
             maxColumn: 120,
-            renderCharacters: editorSettings?.minimap?.renderCharacters ?? true,
+            renderCharacters: false, // Always use color blocks for better CJK support
             scale: editorSettings?.minimap?.scale ?? 1,
             showSlider: editorSettings?.minimap?.showSlider ?? "mouseover",
           },
