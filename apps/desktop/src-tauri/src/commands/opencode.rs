@@ -324,6 +324,55 @@ pub async fn opencode_restart(
     opencode_start(app, state, directory, None).await
 }
 
+#[tauri::command]
+pub async fn kill_port_process(port: u16) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        let output = TokioCommand::new("cmd")
+            .args(["/C", &format!("for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :{} ^| findstr LISTENING') do taskkill /F /PID %a", port)])
+            .output()
+            .await
+            .map_err(|e| format!("Failed to run netstat: {}", e))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            if !stderr.trim().is_empty() {
+                return Err(format!("Failed to kill process: {}", stderr));
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let lsof_output = TokioCommand::new("lsof")
+            .args(["-t", "-i", &format!(":{}", port)])
+            .output()
+            .await
+            .map_err(|e| format!("Failed to run lsof: {}", e))?;
+
+        let pids = String::from_utf8_lossy(&lsof_output.stdout);
+        let pids: Vec<&str> = pids.trim().lines().collect();
+
+        if pids.is_empty() {
+            return Err(format!("No process found on port {}", port));
+        }
+
+        for pid in pids {
+            if pid.is_empty() {
+                continue;
+            }
+            TokioCommand::new("kill")
+                .args(["-9", pid])
+                .output()
+                .await
+                .map_err(|e| format!("Failed to kill PID {}: {}", pid, e))?;
+        }
+    }
+
+    sleep(Duration::from_millis(500)).await;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
