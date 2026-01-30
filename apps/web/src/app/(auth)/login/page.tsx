@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { m } from "framer-motion";
-import { createClient } from "@/lib/supabase/client";
 
 const LoginForm = dynamic(
   () => import("@/components/auth/login-form").then((m) => m.LoginForm),
@@ -46,30 +45,13 @@ function ErrorMessage() {
 }
 
 function LoginPageContent() {
-  const searchParams = useSearchParams();
-  const source = searchParams.get("source");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const checkSession = async () => {
-      if (source !== "desktop") {
-        setReady(true);
-        return;
-      }
-
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (session) {
-        // Already logged in - redirect to server-side endpoint to get full tokens
-        window.location.href = `/auth/desktop-token`;
-      } else {
-        setReady(true);
-      }
-    };
-
-    checkSession();
-  }, [source]);
+    // Always show the login form - even if logged in, user needs to go through
+    // OAuth flow to get fresh tokens for desktop app
+    setReady(true);
+  }, []);
 
   if (!ready) {
     return (
