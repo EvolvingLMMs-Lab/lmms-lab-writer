@@ -1,11 +1,12 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { m } from "framer-motion";
+import { createClient } from "@/lib/supabase/client";
 
 const LoginForm = dynamic(
   () => import("@/components/auth/login-form").then((m) => m.LoginForm),
@@ -44,7 +45,47 @@ function ErrorMessage() {
   );
 }
 
-export default function LoginPage() {
+function LoginPageContent() {
+  const searchParams = useSearchParams();
+  const source = searchParams.get("source");
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      if (source !== "desktop") {
+        setReady(true);
+        return;
+      }
+
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        // Already logged in, redirect to desktop-success with tokens
+        const params = new URLSearchParams({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        });
+        window.location.href = `/auth/desktop-success?${params}`;
+      } else {
+        setReady(true);
+      }
+    };
+
+    checkSession();
+  }, [source]);
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-black border-t-transparent animate-spin mx-auto mb-4" />
+          <p className="text-sm text-muted">Checking login status...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
@@ -93,5 +134,19 @@ export default function LoginPage() {
         </m.div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-black border-t-transparent animate-spin" />
+        </div>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   );
 }
