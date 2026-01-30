@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  DEFAULT_LATEX_SETTINGS,
-  LaTeXSettings,
-  LaTeXCompiler,
-} from "./types";
+import { DEFAULT_LATEX_SETTINGS, LaTeXSettings } from "./types";
 
 const STORAGE_KEY = "latex-settings";
 
@@ -38,36 +34,12 @@ export function useLatexSettings() {
     setSettings((prev) => ({ ...prev, ...updates }));
   }, []);
 
-  const setCompiler = useCallback((compiler: LaTeXCompiler) => {
-    updateSettings({ compiler });
-  }, [updateSettings]);
-
-  const setCustomPath = useCallback((customPath: string | null) => {
-    updateSettings({ customPath });
-  }, [updateSettings]);
-
-  const setArguments = useCallback((args: string[]) => {
-    updateSettings({ arguments: args });
-  }, [updateSettings]);
-
   const setMainFile = useCallback((mainFile: string | null) => {
     updateSettings({ mainFile });
   }, [updateSettings]);
 
-  const setSynctex = useCallback((synctex: boolean) => {
-    updateSettings({ synctex });
-  }, [updateSettings]);
-
-  const setCleanAuxFiles = useCallback((cleanAuxFiles: boolean) => {
-    updateSettings({ cleanAuxFiles });
-  }, [updateSettings]);
-
-  const setAutoCompileOnSave = useCallback((autoCompileOnSave: boolean) => {
-    updateSettings({ autoCompileOnSave });
-  }, [updateSettings]);
-
-  const setAutoOpenPdf = useCallback((autoOpenPdf: boolean) => {
-    updateSettings({ autoOpenPdf });
+  const setCompilePrompt = useCallback((compilePrompt: string) => {
+    updateSettings({ compilePrompt });
   }, [updateSettings]);
 
   const resetSettings = useCallback(() => {
@@ -77,14 +49,8 @@ export function useLatexSettings() {
   return {
     settings,
     updateSettings,
-    setCompiler,
-    setCustomPath,
-    setArguments,
     setMainFile,
-    setSynctex,
-    setCleanAuxFiles,
-    setAutoCompileOnSave,
-    setAutoOpenPdf,
+    setCompilePrompt,
     resetSettings,
   };
 }

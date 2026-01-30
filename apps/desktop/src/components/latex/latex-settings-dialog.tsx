@@ -1,18 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LaTeXSettings,
-  LaTeXCompiler,
-  LaTeXCompilersStatus,
-  COMPILER_DISPLAY_NAMES,
-  COMPILER_DESCRIPTIONS,
   DEFAULT_LATEX_SETTINGS,
 } from "@/lib/latex/types";
 import { EditorSettings, MinimapSettings, DEFAULT_EDITOR_SETTINGS, EDITOR_THEMES } from "@/lib/editor/types";
-import { Spinner } from "@/components/ui/spinner";
-import { LaTeXInstallPrompt } from "./latex-install-prompt";
 
 interface LaTeXSettingsDialogProps {
   open: boolean;
@@ -21,20 +15,10 @@ interface LaTeXSettingsDialogProps {
   onUpdateSettings: (updates: Partial<LaTeXSettings>) => void;
   editorSettings: EditorSettings;
   onUpdateEditorSettings: (updates: Partial<EditorSettings>) => void;
-  compilersStatus: LaTeXCompilersStatus | null;
-  isDetecting: boolean;
-  onDetectCompilers: () => void;
   texFiles: string[];
 }
 
-const COMPILERS: LaTeXCompiler[] = [
-  "pdflatex",
-  "xelatex",
-  "lualatex",
-  "latexmk",
-];
-
-type SettingsTab = "compiler" | "editor" | "build";
+type SettingsTab = "editor" | "build";
 
 // Section header component for visual grouping - editorial style
 function SectionHeader({ children }: { children: React.ReactNode }) {
@@ -148,26 +132,9 @@ export function LaTeXSettingsDialog({
   onUpdateSettings,
   editorSettings,
   onUpdateEditorSettings,
-  compilersStatus,
-  isDetecting,
-  onDetectCompilers,
   texFiles,
 }: LaTeXSettingsDialogProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("compiler");
-  const [customArgsInput, setCustomArgsInput] = useState(
-    settings.arguments.join(" "),
-  );
-
-  useEffect(() => {
-    setCustomArgsInput(settings.arguments.join(" "));
-  }, [settings.arguments]);
-
-  const handleArgsBlur = useCallback(() => {
-    const args = customArgsInput
-      .split(/\s+/)
-      .filter((arg) => arg.trim().length > 0);
-    onUpdateSettings({ arguments: args });
-  }, [customArgsInput, onUpdateSettings]);
+  const [activeTab, setActiveTab] = useState<SettingsTab>("build");
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -185,13 +152,6 @@ export function LaTeXSettingsDialog({
   const handleResetEditorSettings = useCallback(() => {
     onUpdateEditorSettings(DEFAULT_EDITOR_SETTINGS);
   }, [onUpdateEditorSettings]);
-
-  const hasAnyCompiler =
-    compilersStatus &&
-    (compilersStatus.pdflatex.available ||
-      compilersStatus.xelatex.available ||
-      compilersStatus.lualatex.available ||
-      compilersStatus.latexmk.available);
 
   if (!open) return null;
 
@@ -254,9 +214,8 @@ export function LaTeXSettingsDialog({
               <div className="flex border-b border-neutral-200">
                 {(
                   [
-                    { key: "compiler", label: "Compiler" },
-                    { key: "editor", label: "Editor" },
                     { key: "build", label: "Build" },
+                    { key: "editor", label: "Editor" },
                   ] as const
                 ).map((tab) => (
                   <button
@@ -278,159 +237,6 @@ export function LaTeXSettingsDialog({
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1">
-                {/* ===== COMPILER TAB ===== */}
-                {activeTab === "compiler" && (
-                  <>
-                    {/* Install Prompt */}
-                    {compilersStatus && !hasAnyCompiler && !isDetecting && (
-                      <LaTeXInstallPrompt
-                        onRefreshCompilers={onDetectCompilers}
-                      />
-                    )}
-
-                    <div className="py-2">
-                      <div className="flex items-center justify-between mb-4">
-                        <label className="text-sm font-medium text-neutral-700">
-                          Compiler
-                        </label>
-                        <button
-                          onClick={onDetectCompilers}
-                          disabled={isDetecting}
-                          className="text-xs text-neutral-500 hover:text-black flex items-center gap-1.5 transition-colors group"
-                        >
-                          {isDetecting ? (
-                            <>
-                              <Spinner className="size-3" />
-                              <span>Detecting...</span>
-                            </>
-                          ) : (
-                            <>
-                              <svg
-                                className="size-3 group-hover:rotate-[-45deg] transition-transform"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="square"
-                                  strokeLinejoin="miter"
-                                  strokeWidth={2}
-                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                />
-                              </svg>
-                              <span>Refresh</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                      <div className="space-y-1">
-                        {COMPILERS.map((compiler) => {
-                          const info = compilersStatus?.[compiler];
-                          const isAvailable = info?.available ?? false;
-                          const isSelected = settings.compiler === compiler;
-
-                          return (
-                            <label
-                              key={compiler}
-                              className={`flex items-start gap-3 p-3 border cursor-pointer transition-all ${
-                                isSelected
-                                  ? "border-black"
-                                  : "border-neutral-200 hover:border-neutral-400"
-                              } ${!isAvailable ? "opacity-50 cursor-not-allowed" : ""}`}
-                            >
-                              <div
-                                className={`size-4 mt-0.5 border flex items-center justify-center transition-colors ${
-                                  isSelected
-                                    ? "bg-black border-black"
-                                    : "border-neutral-300"
-                                }`}
-                              >
-                                {isSelected && (
-                                  <div className="size-2 bg-white" />
-                                )}
-                              </div>
-                              <input
-                                type="radio"
-                                name="compiler"
-                                value={compiler}
-                                checked={isSelected}
-                                onChange={() => onUpdateSettings({ compiler })}
-                                disabled={!isAvailable}
-                                className="sr-only"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium text-sm text-neutral-700">
-                                    {COMPILER_DISPLAY_NAMES[compiler]}
-                                  </span>
-                                  {isAvailable ? (
-                                    <span className="text-[10px] px-1.5 py-0.5 bg-black text-white font-medium uppercase tracking-wider">
-                                      Installed
-                                    </span>
-                                  ) : (
-                                    <span className="text-[10px] px-1.5 py-0.5 border border-neutral-300 text-neutral-400 font-medium uppercase tracking-wider">
-                                      Not found
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-xs text-neutral-500 mt-0.5">
-                                  {COMPILER_DESCRIPTIONS[compiler]}
-                                </p>
-                                {info?.version && (
-                                  <p className="text-[10px] text-neutral-400 mt-1 truncate font-mono">
-                                    {info.version}
-                                  </p>
-                                )}
-                              </div>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <SectionHeader>Advanced</SectionHeader>
-
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-sm font-medium text-neutral-700 block mb-2">
-                          Custom Compiler Path
-                        </label>
-                        <input
-                          type="text"
-                          value={settings.customPath || ""}
-                          onChange={(e) =>
-                            onUpdateSettings({
-                              customPath: e.target.value || null,
-                            })
-                          }
-                          placeholder="/usr/local/bin/pdflatex"
-                          className="w-full px-3 py-2.5 text-sm border border-neutral-200 hover:border-neutral-400 focus:outline-none focus:border-black font-mono placeholder:text-neutral-300"
-                        />
-                        <p className="text-xs text-neutral-400 mt-1.5">
-                          Override the default compiler path if needed
-                        </p>
-                      </div>
-
-                      <div>
-                        <label className="text-sm font-medium text-neutral-700 block mb-2">
-                          Additional Arguments
-                        </label>
-                        <input
-                          type="text"
-                          value={customArgsInput}
-                          onChange={(e) => setCustomArgsInput(e.target.value)}
-                          onBlur={handleArgsBlur}
-                          placeholder="-shell-escape -output-directory=build"
-                          className="w-full px-3 py-2.5 text-sm border border-neutral-200 hover:border-neutral-400 focus:outline-none focus:border-black font-mono placeholder:text-neutral-300"
-                        />
-                        <p className="text-xs text-neutral-400 mt-1.5">
-                          Space-separated arguments passed to the compiler
-                        </p>
-                      </div>
-                    </div>
-                  </>
-                )}
-
                 {/* ===== EDITOR TAB ===== */}
                 {activeTab === "editor" && (
                   <>
@@ -1044,40 +850,21 @@ export function LaTeXSettingsDialog({
                       </p>
                     </div>
 
-                    <SectionHeader>Compilation</SectionHeader>
+                    <SectionHeader>AI Compile Prompt</SectionHeader>
 
-                    <div className="space-y-3">
-                      <CheckboxItem
-                        checked={settings.synctex}
-                        onChange={(v) => onUpdateSettings({ synctex: v })}
-                        label="Enable SyncTeX"
-                        description="Generate sync data for PDF-source synchronization"
-                      />
-                      <CheckboxItem
-                        checked={settings.autoCompileOnSave}
-                        onChange={(v) =>
-                          onUpdateSettings({ autoCompileOnSave: v })
+                    <div className="py-2">
+                      <textarea
+                        value={settings.compilePrompt}
+                        onChange={(e) =>
+                          onUpdateSettings({ compilePrompt: e.target.value })
                         }
-                        label="Auto-compile on Save"
-                        description="Automatically compile when saving .tex files"
+                        placeholder="Please compile the LaTeX document..."
+                        rows={3}
+                        className="w-full px-3 py-2.5 text-sm border border-neutral-200 hover:border-neutral-400 focus:outline-none focus:border-black resize-none font-mono"
                       />
-                      <CheckboxItem
-                        checked={settings.autoOpenPdf}
-                        onChange={(v) => onUpdateSettings({ autoOpenPdf: v })}
-                        label="Auto-open PDF"
-                        description="Open the generated PDF after compilation"
-                      />
-                    </div>
-
-                    <SectionHeader>Cleanup</SectionHeader>
-
-                    <div className="space-y-3">
-                      <CheckboxItem
-                        checked={settings.cleanAuxFiles}
-                        onChange={(v) => onUpdateSettings({ cleanAuxFiles: v })}
-                        label="Clean Auxiliary Files"
-                        description="Remove .aux, .log, .toc and other temporary files after compilation"
-                      />
+                      <p className="text-xs text-neutral-400 mt-1.5">
+                        The prompt sent to AI when compiling. Use {"{mainFile}"} as placeholder for the main file path.
+                      </p>
                     </div>
                   </>
                 )}

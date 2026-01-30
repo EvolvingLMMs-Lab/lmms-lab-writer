@@ -15,14 +15,8 @@ export interface LaTeXCompilersStatus {
 }
 
 export interface LaTeXSettings {
-  compiler: LaTeXCompiler;
-  customPath: string | null;
-  arguments: string[];
   mainFile: string | null;
-  synctex: boolean;
-  cleanAuxFiles: boolean;
-  autoCompileOnSave: boolean;
-  autoOpenPdf: boolean;
+  compilePrompt: string;
 }
 
 export type CompilationStatus = "idle" | "compiling" | "success" | "error";
@@ -41,14 +35,8 @@ export interface CompileOutputEvent {
 }
 
 export const DEFAULT_LATEX_SETTINGS: LaTeXSettings = {
-  compiler: "xelatex",
-  customPath: null,
-  arguments: [],
   mainFile: null,
-  synctex: true,
-  cleanAuxFiles: false,
-  autoCompileOnSave: false,
-  autoOpenPdf: true,
+  compilePrompt: "Please compile the LaTeX document. The main file is: {mainFile}",
 };
 
 export const COMPILER_DISPLAY_NAMES: Record<LaTeXCompiler, string> = {

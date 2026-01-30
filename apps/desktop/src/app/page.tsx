@@ -19,12 +19,9 @@ import {
   useLatexCompiler,
   findTexFiles,
   findMainTexFile,
-  isTexFile,
 } from "@/lib/latex";
 import { useEditorSettings } from "@/lib/editor";
 import {
-  CompileButton,
-  CompilationOutputPanel,
   LaTeXSettingsDialog,
   LaTeXInstallPrompt,
 } from "@/components/latex";
@@ -170,13 +167,10 @@ export default function EditorPage() {
     [gitStatus?.changes],
   );
 
-  // LaTeX compilation
+  // LaTeX settings and editor settings
   const latexSettings = useLatexSettings();
   const editorSettings = useEditorSettings();
   const texFiles = useMemo(() => findTexFiles(daemon.files), [daemon.files]);
-
-  // Ref for handleFileSelect to break circular dependency
-  const handleFileSelectRef = useRef<(path: string) => void>(() => {});
 
   // Auto-detect main file when project opens
   useEffect(() => {
@@ -188,41 +182,9 @@ export default function EditorPage() {
     }
   }, [daemon.files, latexSettings.settings.mainFile, latexSettings]);
 
-  const handleCompileSuccess = useCallback(
-    (result: { pdf_path: string | null }) => {
-      toast("Compilation successful", "success");
-      // Auto-open PDF if enabled
-      if (
-        latexSettings.settings.autoOpenPdf &&
-        result.pdf_path &&
-        daemon.projectPath
-      ) {
-        // Convert absolute path to relative path for handleFileSelect
-        // Handle both forward slash and backslash for cross-platform
-        const normalizedPdfPath = result.pdf_path.replace(/\\/g, "/");
-        const normalizedProjectPath = daemon.projectPath.replace(/\\/g, "/");
-        const relativePath = normalizedPdfPath.replace(
-          normalizedProjectPath + "/",
-          "",
-        );
-        handleFileSelectRef.current(relativePath);
-      }
-    },
-    [latexSettings.settings.autoOpenPdf, daemon.projectPath, toast],
-  );
-
-  const handleCompileError = useCallback(
-    (error: string) => {
-      toast(`Compilation failed: ${error}`, "error");
-    },
-    [toast],
-  );
-
   const latexCompiler = useLatexCompiler({
     settings: latexSettings.settings,
     projectPath: daemon.projectPath,
-    onCompileSuccess: handleCompileSuccess,
-    onCompileError: handleCompileError,
   });
 
   // Check if any LaTeX compiler is available
@@ -232,14 +194,6 @@ export default function EditorPage() {
       latexCompiler.compilersStatus.xelatex.available ||
       latexCompiler.compilersStatus.lualatex.available ||
       latexCompiler.compilersStatus.latexmk.available);
-
-  const handleCompile = useCallback(() => {
-    latexCompiler.compile();
-  }, [latexCompiler]);
-
-  const handleStopCompile = useCallback(() => {
-    latexCompiler.stopCompilation();
-  }, [latexCompiler]);
 
   const checkOpencodeStatus = useCallback(async () => {
     try {
@@ -637,11 +591,6 @@ export default function EditorPage() {
     [daemon, getFileType, toast],
   );
 
-  // Update ref for circular dependency
-  useEffect(() => {
-    handleFileSelectRef.current = handleFileSelect;
-  }, [handleFileSelect]);
-
   useEffect(() => {
     if (selectedFile && !openTabs.includes(selectedFile)) {
       setOpenTabs((prev) => [...prev, selectedFile]);
@@ -723,14 +672,6 @@ export default function EditorPage() {
         if (fileToSave) {
           try {
             await daemon.writeFile(fileToSave, content);
-            // Auto-compile on save if enabled and file is .tex
-            if (
-              latexSettings.settings.autoCompileOnSave &&
-              isTexFile(fileToSave) &&
-              !latexCompiler.isCompiling
-            ) {
-              latexCompiler.compile();
-            }
           } catch (error) {
             console.error("Failed to save file:", error);
           }
@@ -742,12 +683,7 @@ export default function EditorPage() {
         setIsSaving(false);
       }, 500);
     },
-    [
-      selectedFile,
-      daemon,
-      latexSettings.settings.autoCompileOnSave,
-      latexCompiler,
-    ],
+    [selectedFile, daemon],
   );
 
   const handleOpenFolder = useCallback(async () => {
@@ -840,19 +776,18 @@ export default function EditorPage() {
         return;
       }
 
-      // Compile: Cmd/Ctrl+Shift+B
+      // Compile with AI: Cmd/Ctrl+Shift+B
       if (isMod && e.shiftKey && key === "b") {
         e.preventDefault();
-        if (daemon.projectPath && !latexCompiler.isCompiling) {
-          handleCompile();
+        if (daemon.projectPath && latexSettings.settings.mainFile) {
+          setShowRightPanel(true);
+          setPendingOpenCodeMessage(
+            latexSettings.settings.compilePrompt.replace(
+              "{mainFile}",
+              latexSettings.settings.mainFile
+            )
+          );
         }
-        return;
-      }
-
-      // Stop compilation: Escape
-      if (key === "escape" && latexCompiler.isCompiling) {
-        e.preventDefault();
-        handleStopCompile();
         return;
       }
     };
@@ -860,15 +795,7 @@ export default function EditorPage() {
     window.addEventListener("keydown", handleKeyDown, { capture: true });
     return () =>
       window.removeEventListener("keydown", handleKeyDown, { capture: true });
-  }, [
-    daemon,
-    handleOpenFolder,
-    selectedFile,
-    handleCloseTab,
-    handleCompile,
-    handleStopCompile,
-    latexCompiler.isCompiling,
-  ]);
+  }, [daemon, handleOpenFolder, selectedFile, handleCloseTab, latexSettings.settings.mainFile]);
 
   return (
     <div className="h-dvh flex flex-col">
@@ -921,13 +848,73 @@ export default function EditorPage() {
             {daemon.projectPath && (
               <>
                 <span className="text-neutral-300 text-lg select-none">/</span>
-                <CompileButton
-                  status={latexCompiler.status}
-                  onCompile={handleCompile}
-                  onStop={handleStopCompile}
-                  onSettingsClick={() => setShowLatexSettings(true)}
-                  disabled={!latexSettings.settings.mainFile}
-                />
+                <div className="flex items-center gap-2 h-8">
+                  <button
+                    onClick={() => {
+                      setShowRightPanel(true);
+                      setPendingOpenCodeMessage(
+                        latexSettings.settings.compilePrompt.replace(
+                          "{mainFile}",
+                          latexSettings.settings.mainFile || "main.tex"
+                        )
+                      );
+                    }}
+                    disabled={!latexSettings.settings.mainFile}
+                    className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-white text-black ${
+                      !latexSettings.settings.mainFile
+                        ? "opacity-50 cursor-not-allowed"
+                        : "hover:bg-neutral-50 hover:border-neutral-400"
+                    }`}
+                    title={latexSettings.settings.mainFile ? "Compile (Ctrl+Shift+B)" : "Set main file first"}
+                  >
+                    <svg
+                      className="size-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </button>
+
+                  <button
+                    onClick={() => setShowLatexSettings(true)}
+                    className="h-8 w-8 border border-border bg-white text-black hover:bg-neutral-50 hover:border-neutral-400 transition-colors flex items-center justify-center"
+                    title="LaTeX Settings"
+                    aria-label="LaTeX Settings"
+                  >
+                    <svg
+                      className="size-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </>
             )}
 
@@ -1534,20 +1521,6 @@ export default function EditorPage() {
               </div>
             )}
 
-          {/* Compilation Output Panel */}
-          {daemon.projectPath && (
-            <CompilationOutputPanel
-              output={latexCompiler.output}
-              status={latexCompiler.status}
-              errorCount={latexCompiler.errorCount}
-              warningCount={latexCompiler.warningCount}
-              onClear={latexCompiler.clearOutput}
-              onFixWithAI={(errorMessage) => {
-                setShowRightPanel(true);
-                setPendingOpenCodeMessage(errorMessage);
-              }}
-            />
-          )}
         </div>
 
         <AnimatePresence>
@@ -1647,9 +1620,6 @@ export default function EditorPage() {
         onUpdateSettings={latexSettings.updateSettings}
         editorSettings={editorSettings.settings}
         onUpdateEditorSettings={editorSettings.updateSettings}
-        compilersStatus={latexCompiler.compilersStatus}
-        isDetecting={latexCompiler.isDetecting}
-        onDetectCompilers={latexCompiler.detectCompilers}
         texFiles={texFiles}
       />
     </div>
