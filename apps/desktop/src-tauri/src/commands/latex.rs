@@ -134,6 +134,11 @@ fn get_common_paths(name: &str) -> Vec<String> {
 
     #[cfg(target_os = "windows")]
     {
+        // TinyTeX paths (most common for lightweight installs)
+        if let Ok(appdata) = std::env::var("APPDATA") {
+            paths.push(format!("{}\\TinyTeX\\bin\\windows\\{}.exe", appdata, name));
+            paths.push(format!("{}\\TinyTeX\\bin\\win32\\{}.exe", appdata, name));
+        }
         // TeX Live paths
         for year in (2020..=2030).rev() {
             paths.push(format!("C:\\texlive\\{}\\bin\\win32\\{}.exe", year, name));
@@ -150,6 +155,12 @@ fn get_common_paths(name: &str) -> Vec<String> {
 
     #[cfg(target_os = "macos")]
     {
+        // TinyTeX paths (check user home directory first)
+        if let Ok(home) = std::env::var("HOME") {
+            paths.push(format!("{}/Library/TinyTeX/bin/universal-darwin/{}", home, name));
+            paths.push(format!("{}/Library/TinyTeX/bin/x86_64-darwin/{}", home, name));
+            paths.push(format!("{}/Library/TinyTeX/bin/arm64-darwin/{}", home, name));
+        }
         paths.push(format!("/Library/TeX/texbin/{}", name));
         paths.push(format!("/opt/homebrew/bin/{}", name));
         paths.push(format!("/usr/local/bin/{}", name));
@@ -159,6 +170,11 @@ fn get_common_paths(name: &str) -> Vec<String> {
 
     #[cfg(target_os = "linux")]
     {
+        // TinyTeX paths
+        if let Ok(home) = std::env::var("HOME") {
+            paths.push(format!("{}/.TinyTeX/bin/x86_64-linux/{}", home, name));
+            paths.push(format!("{}/bin/{}", home, name));
+        }
         paths.push(format!("/usr/bin/{}", name));
         paths.push(format!("/usr/local/bin/{}", name));
         for year in (2020..=2030).rev() {
@@ -429,16 +445,23 @@ pub async fn latex_get_distributions() -> Result<Vec<LaTeXDistribution>, String>
     #[cfg(target_os = "windows")]
     {
         distributions.push(LaTeXDistribution {
+            name: "TinyTeX".to_string(),
+            id: "tinytex".to_string(),
+            description: "Recommended. Lightweight (~150MB), cross-platform, with on-demand package installation.".to_string(),
+            install_command: Some("tinytex-install".to_string()), // Special marker for our installer
+            download_url: Some("https://yihui.org/tinytex/".to_string()),
+        });
+        distributions.push(LaTeXDistribution {
             name: "MiKTeX".to_string(),
             id: "miktex".to_string(),
-            description: "Recommended for Windows. Lightweight with on-demand package installation.".to_string(),
+            description: "Popular Windows distribution with on-demand package installation.".to_string(),
             install_command: Some("winget install MiKTeX.MiKTeX".to_string()),
             download_url: Some("https://miktex.org/download".to_string()),
         });
         distributions.push(LaTeXDistribution {
             name: "TeX Live".to_string(),
             id: "texlive".to_string(),
-            description: "Full-featured distribution, larger download size.".to_string(),
+            description: "Full-featured distribution, larger download size (~4GB).".to_string(),
             install_command: None,
             download_url: Some("https://tug.org/texlive/acquire-netinstall.html".to_string()),
         });
@@ -447,27 +470,41 @@ pub async fn latex_get_distributions() -> Result<Vec<LaTeXDistribution>, String>
     #[cfg(target_os = "macos")]
     {
         distributions.push(LaTeXDistribution {
-            name: "MacTeX".to_string(),
-            id: "mactex".to_string(),
-            description: "Recommended for macOS. Full TeX Live distribution with Mac-specific tools.".to_string(),
-            install_command: Some("brew install --cask mactex".to_string()),
-            download_url: Some("https://tug.org/mactex/".to_string()),
+            name: "TinyTeX".to_string(),
+            id: "tinytex".to_string(),
+            description: "Recommended. Lightweight (~150MB), cross-platform, with on-demand package installation.".to_string(),
+            install_command: Some("tinytex-install".to_string()), // Special marker for our installer
+            download_url: Some("https://yihui.org/tinytex/".to_string()),
         });
         distributions.push(LaTeXDistribution {
             name: "BasicTeX".to_string(),
             id: "basictex".to_string(),
-            description: "Smaller installation (~100MB). May need to install additional packages manually.".to_string(),
+            description: "Smaller installation (~100MB). May need to install additional packages via tlmgr.".to_string(),
             install_command: Some("brew install --cask basictex".to_string()),
             download_url: Some("https://tug.org/mactex/morepackages.html".to_string()),
+        });
+        distributions.push(LaTeXDistribution {
+            name: "MacTeX".to_string(),
+            id: "mactex".to_string(),
+            description: "Full TeX Live distribution with Mac-specific tools (~5GB).".to_string(),
+            install_command: Some("brew install --cask mactex".to_string()),
+            download_url: Some("https://tug.org/mactex/".to_string()),
         });
     }
 
     #[cfg(target_os = "linux")]
     {
         distributions.push(LaTeXDistribution {
+            name: "TinyTeX".to_string(),
+            id: "tinytex".to_string(),
+            description: "Recommended. Lightweight (~150MB), cross-platform, with on-demand package installation.".to_string(),
+            install_command: Some("tinytex-install".to_string()), // Special marker for our installer
+            download_url: Some("https://yihui.org/tinytex/".to_string()),
+        });
+        distributions.push(LaTeXDistribution {
             name: "TeX Live (Full)".to_string(),
             id: "texlive-full".to_string(),
-            description: "Complete TeX Live installation with all packages.".to_string(),
+            description: "Complete TeX Live installation with all packages (~5GB).".to_string(),
             install_command: Some(get_linux_install_command("texlive-full")),
             download_url: Some("https://tug.org/texlive/".to_string()),
         });
@@ -546,14 +583,111 @@ pub async fn latex_install(
 
 #[cfg(target_os = "windows")]
 async fn install_windows(app: &AppHandle, distribution_id: &str) -> Result<InstallResult, String> {
-    if distribution_id != "miktex" {
+    match distribution_id {
+        "tinytex" => install_tinytex_windows(app).await,
+        "miktex" => install_miktex_windows(app).await,
+        _ => Ok(InstallResult {
+            success: false,
+            message: "Please download and install this distribution manually from the official website.".to_string(),
+            needs_restart: false,
+        }),
+    }
+}
+
+#[cfg(target_os = "windows")]
+async fn install_tinytex_windows(app: &AppHandle) -> Result<InstallResult, String> {
+    let _ = app.emit("latex-install-progress", InstallProgress {
+        stage: "downloading".to_string(),
+        message: "Downloading TinyTeX installer...".to_string(),
+        progress: Some(0.1),
+    });
+
+    // Download the install script
+    let temp_dir = std::env::temp_dir();
+    let script_path = temp_dir.join("install-tinytex.bat");
+
+    let mut child = command("powershell")
+        .args([
+            "-NoProfile",
+            "-Command",
+            &format!(
+                "Invoke-WebRequest -Uri 'https://yihui.org/tinytex/install-bin-windows.bat' -OutFile '{}'",
+                script_path.display()
+            ),
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to download installer: {}", e))?;
+
+    let status = child.wait().await.map_err(|e| format!("Download failed: {}", e))?;
+
+    if !status.success() {
         return Ok(InstallResult {
             success: false,
-            message: "Please download and install TeX Live manually from the official website.".to_string(),
+            message: "Failed to download TinyTeX installer. Please check your internet connection or download manually from https://yihui.org/tinytex/".to_string(),
             needs_restart: false,
         });
     }
 
+    let _ = app.emit("latex-install-progress", InstallProgress {
+        stage: "installing".to_string(),
+        message: "Installing TinyTeX... This may take a few minutes.".to_string(),
+        progress: Some(0.3),
+    });
+
+    // Run the install script
+    let mut child = command("cmd")
+        .args(["/c", &script_path.to_string_lossy()])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to run installer: {}", e))?;
+
+    // Stream output
+    if let Some(stdout) = child.stdout.take() {
+        let app_clone = app.clone();
+        tokio::spawn(async move {
+            let reader = BufReader::new(stdout);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = app_clone.emit("latex-install-progress", InstallProgress {
+                    stage: "installing".to_string(),
+                    message: line,
+                    progress: None,
+                });
+            }
+        });
+    }
+
+    let status = child.wait().await.map_err(|e| format!("Installation failed: {}", e))?;
+
+    // Clean up
+    let _ = std::fs::remove_file(&script_path);
+
+    if status.success() {
+        let _ = app.emit("latex-install-progress", InstallProgress {
+            stage: "complete".to_string(),
+            message: "TinyTeX installed successfully!".to_string(),
+            progress: Some(1.0),
+        });
+
+        Ok(InstallResult {
+            success: true,
+            message: "TinyTeX installed successfully. Please restart the application to detect the new installation.".to_string(),
+            needs_restart: true,
+        })
+    } else {
+        Ok(InstallResult {
+            success: false,
+            message: "Installation failed. Please try downloading TinyTeX manually from https://yihui.org/tinytex/".to_string(),
+            needs_restart: false,
+        })
+    }
+}
+
+#[cfg(target_os = "windows")]
+async fn install_miktex_windows(app: &AppHandle) -> Result<InstallResult, String> {
     // Check if winget is available
     let _ = app.emit("latex-install-progress", InstallProgress {
         stage: "checking".to_string(),
@@ -629,6 +763,93 @@ async fn install_windows(app: &AppHandle, distribution_id: &str) -> Result<Insta
 
 #[cfg(target_os = "macos")]
 async fn install_macos(app: &AppHandle, distribution_id: &str) -> Result<InstallResult, String> {
+    match distribution_id {
+        "tinytex" => install_tinytex_unix(app).await,
+        "mactex" | "basictex" => install_brew_cask(app, distribution_id).await,
+        _ => Ok(InstallResult {
+            success: false,
+            message: "Unknown distribution".to_string(),
+            needs_restart: false,
+        }),
+    }
+}
+
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+async fn install_tinytex_unix(app: &AppHandle) -> Result<InstallResult, String> {
+    let _ = app.emit("latex-install-progress", InstallProgress {
+        stage: "downloading".to_string(),
+        message: "Downloading and installing TinyTeX...".to_string(),
+        progress: Some(0.1),
+    });
+
+    // Use curl to download and execute the install script
+    let mut child = command("sh")
+        .args([
+            "-c",
+            "curl -sL 'https://yihui.org/tinytex/install-bin-unix.sh' | sh",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to start installer: {}", e))?;
+
+    // Stream stdout
+    if let Some(stdout) = child.stdout.take() {
+        let app_clone = app.clone();
+        tokio::spawn(async move {
+            let reader = BufReader::new(stdout);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = app_clone.emit("latex-install-progress", InstallProgress {
+                    stage: "installing".to_string(),
+                    message: line,
+                    progress: None,
+                });
+            }
+        });
+    }
+
+    // Stream stderr (TinyTeX installer outputs progress to stderr)
+    if let Some(stderr) = child.stderr.take() {
+        let app_clone = app.clone();
+        tokio::spawn(async move {
+            let reader = BufReader::new(stderr);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = app_clone.emit("latex-install-progress", InstallProgress {
+                    stage: "installing".to_string(),
+                    message: line,
+                    progress: None,
+                });
+            }
+        });
+    }
+
+    let status = child.wait().await.map_err(|e| format!("Installation failed: {}", e))?;
+
+    if status.success() {
+        let _ = app.emit("latex-install-progress", InstallProgress {
+            stage: "complete".to_string(),
+            message: "TinyTeX installed successfully!".to_string(),
+            progress: Some(1.0),
+        });
+
+        Ok(InstallResult {
+            success: true,
+            message: "TinyTeX installed successfully. Please restart the application to detect the new installation.".to_string(),
+            needs_restart: true,
+        })
+    } else {
+        Ok(InstallResult {
+            success: false,
+            message: "Installation failed. Please try downloading TinyTeX manually from https://yihui.org/tinytex/".to_string(),
+            needs_restart: false,
+        })
+    }
+}
+
+#[cfg(target_os = "macos")]
+async fn install_brew_cask(app: &AppHandle, distribution_id: &str) -> Result<InstallResult, String> {
     // Check if Homebrew is available
     let _ = app.emit("latex-install-progress", InstallProgress {
         stage: "checking".to_string(),
@@ -644,7 +865,7 @@ async fn install_macos(app: &AppHandle, distribution_id: &str) -> Result<Install
     if brew_check.is_err() || !brew_check.unwrap().status.success() {
         return Ok(InstallResult {
             success: false,
-            message: "Homebrew is not installed. Please install Homebrew first (https://brew.sh) or download MacTeX manually from https://tug.org/mactex/".to_string(),
+            message: "Homebrew is not installed. Please install Homebrew first (https://brew.sh) or download manually.".to_string(),
             needs_restart: false,
         });
     }
@@ -715,6 +936,11 @@ async fn install_macos(app: &AppHandle, distribution_id: &str) -> Result<Install
 
 #[cfg(target_os = "linux")]
 async fn install_linux(app: &AppHandle, distribution_id: &str) -> Result<InstallResult, String> {
+    // TinyTeX can be installed without sudo
+    if distribution_id == "tinytex" {
+        return install_tinytex_unix(app).await;
+    }
+
     let install_cmd = get_linux_install_command(distribution_id);
 
     if install_cmd.starts_with('#') {

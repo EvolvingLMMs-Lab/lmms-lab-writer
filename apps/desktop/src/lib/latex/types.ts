@@ -75,7 +75,7 @@ export interface LaTeXDistribution {
 }
 
 export interface InstallProgress {
-  stage: "starting" | "checking" | "installing" | "complete" | "error";
+  stage: "starting" | "checking" | "downloading" | "installing" | "complete" | "error";
   message: string;
   progress: number | null;
 }

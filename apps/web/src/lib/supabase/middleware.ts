@@ -6,6 +6,7 @@ import {
   COOKIE_MAX_AGE,
   type CachedUser,
 } from "@/lib/user-cache";
+import { GITHUB_CONFIG } from "@/lib/github/config";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -54,8 +55,8 @@ export async function updateSession(request: NextRequest) {
       .single();
 
     const totalStars = membership?.total_star_count || 0;
-    const inks = totalStars * 7;
-    const canDownload = inks >= 30;
+    const inks = totalStars * GITHUB_CONFIG.INKS_PER_STAR;
+    const canDownload = inks >= GITHUB_CONFIG.MIN_INKS_TO_DOWNLOAD;
 
     const cachedUser: CachedUser = {
       email: user.email ?? "",
