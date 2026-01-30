@@ -13,7 +13,7 @@ import { EditorSkeleton } from "@/components/editor/editor-skeleton";
 import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { LoginForm, UserDropdown, LoginCodeModal } from "@/components/auth";
+import { UserDropdown, LoginCodeModal } from "@/components/auth";
 import {
   useLatexSettings,
   useLatexCompiler,
@@ -1496,19 +1496,10 @@ export default function EditorPage() {
                   </p>
                   <button
                     onClick={handleOpenFolder}
-                    className="btn btn-primary mb-8"
+                    className="btn btn-primary"
                   >
                     Open Folder
                   </button>
-
-                  {!auth.loading && !auth.profile && (
-                    <div className="border-t border-border pt-8 w-full max-w-sm">
-                      <p className="text-muted text-xs mb-6 uppercase tracking-wider">
-                        Sign in for cloud features
-                      </p>
-                      <LoginForm />
-                    </div>
-                  )}
                 </div>
               )}
             </div>
