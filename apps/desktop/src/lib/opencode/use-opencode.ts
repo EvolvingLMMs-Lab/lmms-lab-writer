@@ -227,8 +227,25 @@ export function useOpenCode(
             errorData,
           );
           if (errorData) {
-            const errorMessage =
+            // Try to parse nested JSON error (e.g., from CreditsError)
+            let errorMessage =
               errorData.data?.message || errorData.name || "Unknown error";
+
+            // Check if the error message contains JSON with billing info
+            if (errorMessage.includes("CreditsError") || errorMessage.includes("No payment method")) {
+              try {
+                const jsonMatch = errorMessage.match(/\{.*\}/s);
+                if (jsonMatch) {
+                  const parsed = JSON.parse(jsonMatch[0]);
+                  if (parsed.error?.message) {
+                    errorMessage = parsed.error.message;
+                  }
+                }
+              } catch {
+                // Keep original error message if parsing fails
+              }
+            }
+
             const providerInfo = errorData.data?.providerID
               ? ` (Provider: ${errorData.data.providerID})`
               : "";
