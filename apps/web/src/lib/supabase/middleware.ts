@@ -94,7 +94,13 @@ export async function updateSession(request: NextRequest) {
 
   if (user && isAuthPath) {
     const url = request.nextUrl.clone();
-    url.pathname = "/profile";
+    // If from desktop app, redirect to desktop-success instead of profile
+    if (request.nextUrl.searchParams.get("source") === "desktop") {
+      url.pathname = "/auth/desktop-success";
+      url.searchParams.delete("source");
+    } else {
+      url.pathname = "/profile";
+    }
     return NextResponse.redirect(url);
   }
 
