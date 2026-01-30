@@ -1,103 +1,129 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, Check, Loader2 } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase";
 
 interface LoginCodeModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-export function LoginCodeModal({ isOpen, onClose }: LoginCodeModalProps) {
+type LoginState = "idle" | "loading" | "success" | "error";
+
+export function LoginCodeModal({ isOpen, onClose, onSuccess }: LoginCodeModalProps) {
   const [loginCode, setLoginCode] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [state, setState] = useState<LoginState>("idle");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
       setLoginCode("");
       setError(null);
-      setLoading(false);
+      setState("idle");
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
 
   // Handle ESC key to close modal
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen && !loading) {
+      if (e.key === "Escape" && isOpen && state !== "loading") {
         onClose();
       }
     };
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [isOpen, loading, onClose]);
+  }, [isOpen, state, onClose]);
 
   const handleCodeLogin = async () => {
+    if (!loginCode.trim() || state === "loading") return;
+
     setError(null);
-    setLoading(true);
+    setState("loading");
+
+    // Step 1: Decode and validate
+    let accessToken: string;
+    let refreshToken: string;
 
     try {
-      // Decode the login code (base64 encoded JSON)
-      console.log("[login-code-modal] Decoding login code...");
-      let decoded: string;
-      try {
-        decoded = atob(loginCode.trim());
-      } catch {
-        throw new Error("Invalid login code format (not valid base64)");
-      }
-
-      let tokens: { accessToken?: string; refreshToken?: string };
-      try {
-        tokens = JSON.parse(decoded);
-      } catch {
-        throw new Error("Invalid login code format (not valid JSON)");
-      }
-
-      const { accessToken, refreshToken } = tokens;
+      const decoded = atob(loginCode.trim());
+      const tokens = JSON.parse(decoded);
+      accessToken = tokens.accessToken;
+      refreshToken = tokens.refreshToken;
 
       if (!accessToken || !refreshToken) {
-        throw new Error("Invalid login code: missing tokens");
+        throw new Error("missing tokens");
       }
+    } catch {
+      setError("Invalid login code format. Please copy the code again.");
+      setState("error");
+      return;
+    }
 
-      console.log("[login-code-modal] Tokens extracted, accessToken length:", accessToken.length);
-      console.log("[login-code-modal] Getting Supabase client...");
-
+    // Step 2: Set session
+    try {
       const supabase = getSupabaseClient();
-      console.log("[login-code-modal] Setting session...");
 
-      const { data, error: sessionError } = await supabase.auth.setSession({
+      const { error: setSessionError } = await supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
       });
 
-      if (sessionError) {
-        console.error("[login-code-modal] Session error:", sessionError);
-        throw sessionError;
+      if (setSessionError) {
+        // Try refresh as fallback
+        const { error: refreshError } = await supabase.auth.refreshSession({
+          refresh_token: refreshToken,
+        });
+
+        if (refreshError) {
+          throw new Error("expired");
+        }
       }
 
-      console.log("[login-code-modal] Session set successfully, user:", data.user?.email);
-      // Force a small delay then reload to ensure state is persisted
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      window.location.reload();
-    } catch (err) {
-      console.error("[login-code-modal] Login error:", err);
-      setError(err instanceof Error ? err.message : "Login failed");
-    } finally {
-      if (document.visibilityState === "visible") {
-        setLoading(false);
+      // Step 3: Verify session is actually set
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error("no session");
       }
+
+      // Success!
+      setState("success");
+
+      setTimeout(() => {
+        onClose();
+        onSuccess?.();
+      }, 500);
+
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "unknown";
+
+      if (message === "expired" || message.includes("Refresh Token")) {
+        setError("Login code expired. Please get a new code from the web page.");
+      } else if (message === "no session") {
+        setError("Failed to establish session. Please try again.");
+      } else {
+        setError("Login failed. Please try again with a new code.");
+      }
+
+      setState("error");
     }
   };
 
   if (!isOpen) return null;
 
+  const isLoading = state === "loading";
+  const isSuccess = state === "success";
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={(e) => {
-        if (e.target === e.currentTarget && !loading) {
+        if (e.target === e.currentTarget && !isLoading) {
           onClose();
         }
       }}
@@ -108,7 +134,7 @@ export function LoginCodeModal({ isOpen, onClose }: LoginCodeModalProps) {
           <h2 className="text-lg font-medium">Login with Code</h2>
           <button
             onClick={onClose}
-            disabled={loading}
+            disabled={isLoading}
             className="p-1 hover:bg-neutral-100 transition-colors disabled:opacity-50"
           >
             <X className="w-5 h-5" />
@@ -121,14 +147,21 @@ export function LoginCodeModal({ isOpen, onClose }: LoginCodeModalProps) {
             Complete the login in your browser, then paste the login code here.
           </p>
           <input
+            ref={inputRef}
             type="text"
             value={loginCode}
-            onChange={(e) => setLoginCode(e.target.value)}
+            onChange={(e) => {
+              setLoginCode(e.target.value);
+              if (state === "error") {
+                setState("idle");
+                setError(null);
+              }
+            }}
             placeholder="Paste login code here..."
             className="w-full px-3 py-2 text-sm font-mono border border-border focus:outline-none focus:border-black"
-            autoFocus
+            disabled={isLoading || isSuccess}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && loginCode.trim() && !loading) {
+              if (e.key === "Enter") {
                 handleCodeLogin();
               }
             }}
@@ -139,17 +172,33 @@ export function LoginCodeModal({ isOpen, onClose }: LoginCodeModalProps) {
           <div className="flex gap-3 pt-2">
             <button
               onClick={onClose}
-              disabled={loading}
+              disabled={isLoading}
               className="flex-1 px-4 py-2 text-sm border border-border hover:bg-neutral-50 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={handleCodeLogin}
-              disabled={loading || !loginCode.trim()}
-              className="flex-1 px-4 py-2 text-sm border border-black bg-black text-white hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading || isSuccess || !loginCode.trim()}
+              className={`flex-1 px-4 py-2 text-sm border transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+                isSuccess
+                  ? "border-green-600 bg-green-600 text-white"
+                  : "border-black bg-black text-white hover:bg-neutral-800 disabled:opacity-50"
+              }`}
             >
-              {loading ? "Logging in..." : "Login"}
+              {isSuccess ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  Success!
+                </>
+              ) : isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Logging in...
+                </>
+              ) : (
+                "Login"
+              )}
             </button>
           </div>
         </div>

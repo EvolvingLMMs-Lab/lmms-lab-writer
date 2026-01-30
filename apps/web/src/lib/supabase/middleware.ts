@@ -56,7 +56,7 @@ export async function updateSession(request: NextRequest) {
 
     const totalStars = membership?.total_star_count || 0;
     const inks = totalStars * GITHUB_CONFIG.INKS_PER_STAR;
-    const canDownload = inks >= GITHUB_CONFIG.MIN_INKS_TO_DOWNLOAD;
+    const canDownload = inks >= GITHUB_CONFIG.INKS_TO_DOWNLOAD;
 
     const cachedUser: CachedUser = {
       email: user.email ?? "",
@@ -76,6 +76,7 @@ export async function updateSession(request: NextRequest) {
     supabaseResponse.cookies.delete(COOKIE_NAME);
   }
 
+  // Protect certain paths - require login
   const protectedPaths = ["/profile"];
   const isProtectedPath = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path),
@@ -87,20 +88,19 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Redirect logged-in users away from auth pages
   const authPaths = ["/login", "/signup"];
   const isAuthPath = authPaths.some(
     (path) => request.nextUrl.pathname === path,
   );
 
   if (user && isAuthPath) {
-    const url = request.nextUrl.clone();
-    // If from desktop app, redirect to desktop-success instead of profile
+    // Don't redirect if source=desktop - let the login page handle it
     if (request.nextUrl.searchParams.get("source") === "desktop") {
-      url.pathname = "/auth/desktop-success";
-      url.searchParams.delete("source");
-    } else {
-      url.pathname = "/profile";
+      return supabaseResponse;
     }
+    const url = request.nextUrl.clone();
+    url.pathname = "/profile";
     return NextResponse.redirect(url);
   }
 

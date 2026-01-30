@@ -260,6 +260,36 @@ export function useAuth() {
     setState((prev) => ({ ...prev, profile }));
   }, [state.session, fetchProfile]);
 
+  const refreshAuth = useCallback(async () => {
+    try {
+      const supabase = getSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        const profile = await fetchProfile(session);
+        setState({
+          user: session.user,
+          session,
+          profile,
+          loading: false,
+          error: null,
+          isConfigured: true,
+        });
+      } else {
+        setState({
+          user: null,
+          session: null,
+          profile: null,
+          loading: false,
+          error: null,
+          isConfigured: true,
+        });
+      }
+    } catch {
+      // Silently fail - auth state remains unchanged
+    }
+  }, [fetchProfile]);
+
   return {
     ...state,
     signInWithGitHub,
@@ -267,5 +297,6 @@ export function useAuth() {
     signUp,
     signOut,
     refreshProfile,
+    refreshAuth,
   };
 }

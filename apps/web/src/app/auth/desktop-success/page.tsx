@@ -8,15 +8,10 @@ function DesktopSuccessContent() {
   const searchParams = useSearchParams();
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tokens, setTokens] = useState<{
-    accessToken: string;
-    refreshToken: string;
-  } | null>(null);
+  const [loginCode, setLoginCode] = useState<string | null>(null);
 
   useEffect(() => {
     const loadTokens = async () => {
-      const accessToken = searchParams.get("access_token");
-      const refreshToken = searchParams.get("refresh_token");
       const errorParam = searchParams.get("error");
 
       if (errorParam) {
@@ -24,21 +19,25 @@ function DesktopSuccessContent() {
         return;
       }
 
-      // If tokens are in URL, use them
-      if (accessToken && refreshToken) {
-        setTokens({ accessToken, refreshToken });
-        return;
+      // Try to get tokens from URL first
+      let accessToken = searchParams.get("access_token");
+      let refreshToken = searchParams.get("refresh_token");
+
+      // If not in URL, get from current session
+      if (!accessToken || !refreshToken) {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session) {
+          accessToken = session.access_token;
+          refreshToken = session.refresh_token;
+        }
       }
 
-      // Otherwise, try to get from current session
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (session) {
-        setTokens({
-          accessToken: session.access_token,
-          refreshToken: session.refresh_token,
-        });
+      if (accessToken && refreshToken) {
+        // Create login code from tokens
+        const code = btoa(JSON.stringify({ accessToken, refreshToken }));
+        setLoginCode(code);
       } else {
         setError("No active session found. Please login again.");
       }
@@ -47,16 +46,8 @@ function DesktopSuccessContent() {
     loadTokens();
   }, [searchParams]);
 
-  const handleOpenApp = () => {
-    if (!tokens) return;
-    const deepLinkUrl = `lmms-writer://auth/callback?access_token=${encodeURIComponent(tokens.accessToken)}&refresh_token=${encodeURIComponent(tokens.refreshToken)}`;
-    window.location.href = deepLinkUrl;
-  };
-
-  const handleCopyToken = async () => {
-    if (!tokens) return;
-    // Create a simple login code from tokens
-    const loginCode = btoa(JSON.stringify(tokens));
+  const handleCopy = async () => {
+    if (!loginCode) return;
     await navigator.clipboard.writeText(loginCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -94,7 +85,7 @@ function DesktopSuccessContent() {
     );
   }
 
-  if (!tokens) {
+  if (!loginCode) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="max-w-md w-full p-8 text-center">
@@ -127,49 +118,38 @@ function DesktopSuccessContent() {
           </div>
           <h1 className="text-xl font-medium mb-2">Login Successful!</h1>
           <p className="text-muted text-sm">
-            Choose one of the options below to continue to the app.
+            Copy the login code below and paste it in the desktop app.
           </p>
         </div>
 
-        {/* Option 1: Open App (Deep Link) */}
-        <div className="border-2 border-black p-4 mb-4">
-          <h2 className="font-medium mb-2">Option 1: Open App Directly</h2>
-          <p className="text-sm text-muted mb-3">
-            Click the button below to open LMMs-Lab Writer automatically.
-          </p>
-          <button
-            onClick={handleOpenApp}
-            className="w-full px-4 py-2 border-2 border-black bg-black text-white hover:bg-neutral-800 transition-colors font-medium"
-          >
-            Open LMMs-Lab Writer
-          </button>
-        </div>
-
-        {/* Option 2: Copy Login Code */}
-        <div className="border border-neutral-300 p-4">
-          <h2 className="font-medium mb-2">Option 2: Use Login Code</h2>
-          <p className="text-sm text-muted mb-3">
-            If the app doesn&apos;t open, copy this code and paste it in the app.
-          </p>
-          <div className="flex gap-2">
+        {/* Login Code */}
+        <div className="border-2 border-black p-4">
+          <div className="flex gap-2 mb-3">
             <input
               type="text"
               readOnly
-              value={btoa(JSON.stringify(tokens)).slice(0, 20) + "..."}
+              value={loginCode.slice(0, 30) + "..."}
               className="flex-1 px-3 py-2 text-sm font-mono bg-neutral-100 border border-neutral-200 truncate"
             />
             <button
-              onClick={handleCopyToken}
-              className="px-4 py-2 border border-black bg-white hover:bg-neutral-50 transition-colors text-sm whitespace-nowrap"
+              onClick={handleCopy}
+              className={`px-4 py-2 border-2 transition-colors text-sm whitespace-nowrap font-medium ${
+                copied
+                  ? "border-green-600 bg-green-600 text-white"
+                  : "border-black bg-black text-white hover:bg-neutral-800"
+              }`}
             >
               {copied ? "Copied!" : "Copy Code"}
             </button>
           </div>
+          <p className="text-xs text-muted">
+            This code expires when your session expires. Get a new code if login fails.
+          </p>
         </div>
 
         {/* Footer */}
         <p className="text-xs text-muted text-center mt-6">
-          You can close this window after returning to the app.
+          You can close this window after pasting the code in the app.
         </p>
       </div>
     </div>

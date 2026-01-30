@@ -1622,6 +1622,7 @@ export default function EditorPage() {
       <LoginCodeModal
         isOpen={showLoginCodeModal}
         onClose={() => setShowLoginCodeModal(false)}
+        onSuccess={() => auth.refreshAuth()}
       />
     </div>
   );
