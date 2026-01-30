@@ -13,7 +13,7 @@ import { EditorSkeleton } from "@/components/editor/editor-skeleton";
 import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { LoginForm, UserDropdown } from "@/components/auth";
+import { LoginForm, UserDropdown, LoginCodeModal } from "@/components/auth";
 import {
   useLatexSettings,
   useLatexCompiler,
@@ -98,6 +98,9 @@ const PANEL_SPRING = {
 
 const INSTANT_TRANSITION = { duration: 0 } as const;
 
+const WEB_URL =
+  process.env.NEXT_PUBLIC_WEB_URL || "https://writer.lmms-lab.com";
+
 export default function EditorPage() {
   const daemon = useTauriDaemon();
   const prefersReducedMotion = useReducedMotion();
@@ -141,6 +144,7 @@ export default function EditorPage() {
   const [opencodePort, setOpencodePort] = useState(4096);
   const [showDisconnectedDialog, setShowDisconnectedDialog] = useState(false);
   const [showLatexSettings, setShowLatexSettings] = useState(false);
+  const [showLoginCodeModal, setShowLoginCodeModal] = useState(false);
   const [pendingOpenCodeMessage, setPendingOpenCodeMessage] = useState<
     string | null
   >(null);
@@ -927,8 +931,9 @@ export default function EditorPage() {
                   <button
                     onClick={() => {
                       import("@tauri-apps/plugin-shell").then(({ open }) => {
-                        open("https://writer.lmms-lab.com/login?source=desktop");
+                        open(`${WEB_URL}/login?source=desktop`);
                       });
+                      setShowLoginCodeModal(true);
                     }}
                     className="h-8 px-3 text-sm border-2 border-black bg-white text-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center"
                   >
@@ -1621,6 +1626,11 @@ export default function EditorPage() {
         editorSettings={editorSettings.settings}
         onUpdateEditorSettings={editorSettings.updateSettings}
         texFiles={texFiles}
+      />
+
+      <LoginCodeModal
+        isOpen={showLoginCodeModal}
+        onClose={() => setShowLoginCodeModal(false)}
       />
     </div>
   );
