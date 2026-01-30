@@ -4,6 +4,9 @@ import { useState } from "react";
 import { Github } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase";
 
+const WEB_URL =
+  process.env.NEXT_PUBLIC_WEB_URL || "https://writer.lmms-lab.com";
+
 export function LoginForm() {
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [loginCode, setLoginCode] = useState("");
@@ -12,7 +15,7 @@ export function LoginForm() {
 
   const handleLogin = () => {
     import("@tauri-apps/plugin-shell").then(({ open }) => {
-      open("https://writer.lmms-lab.com/login?source=desktop");
+      open(`${WEB_URL}/login?source=desktop`);
     });
   };
 

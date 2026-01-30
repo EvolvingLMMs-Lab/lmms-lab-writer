@@ -58,9 +58,14 @@ export function LoginForm() {
     try {
       const supabase = createClient();
       // Preserve source parameter (e.g., desktop) through OAuth flow
+      // Store in sessionStorage as backup since Supabase may not preserve query params
+      if (source) {
+        sessionStorage.setItem("auth_source", source);
+      }
       const callbackUrl = source
         ? `${window.location.origin}/auth/callback?source=${source}`
         : `${window.location.origin}/auth/callback`;
+      console.log("[LoginForm] source:", source, "callbackUrl:", callbackUrl);
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "github",
         options: {

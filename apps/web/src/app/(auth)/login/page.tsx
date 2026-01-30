@@ -87,7 +87,9 @@ export default function LoginPage() {
           custom={0.2}
           variants={fadeIn}
         >
-          <LoginForm />
+          <Suspense fallback={null}>
+            <LoginForm />
+          </Suspense>
         </m.div>
       </div>
     </div>

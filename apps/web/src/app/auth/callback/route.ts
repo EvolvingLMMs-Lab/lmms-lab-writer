@@ -10,6 +10,9 @@ export async function GET(request: Request) {
   const next = searchParams.get("next") ?? "/profile";
   const source = searchParams.get("source");
 
+  console.log("[auth/callback] Full URL:", request.url);
+  console.log("[auth/callback] source:", source, "code exists:", !!code);
+
   if (error_param) {
     console.error("OAuth error:", error_param, error_description);
     const errorMsg = encodeURIComponent(error_description || error_param);
@@ -73,7 +76,7 @@ export async function GET(request: Request) {
       );
     }
 
-    // If from desktop, redirect to intermediate page that handles deep link
+    // If source param is present (from URL), redirect to desktop-success
     if (source === "desktop" && session) {
       const params = new URLSearchParams({
         access_token: session.access_token,
@@ -82,7 +85,9 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/auth/desktop-success?${params}`);
     }
 
-    return NextResponse.redirect(`${origin}${next}`);
+    // Redirect to post-login page which checks sessionStorage for desktop source
+    // This handles cases where source param wasn't preserved through OAuth
+    return NextResponse.redirect(`${origin}/auth/post-login`);
   }
 
   return NextResponse.redirect(`${origin}/login?error=no_code`);
