@@ -45,12 +45,15 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess }: LoginCodeModalPro
     setError(null);
     setState("loading");
 
+    console.log("[LoginCode] Step 1: Decoding login code...");
+
     // Step 1: Decode and validate
     let accessToken: string;
     let refreshToken: string;
 
     try {
       const decoded = atob(loginCode.trim());
+      console.log("[LoginCode] Decoded base64, parsing JSON...");
       const tokens = JSON.parse(decoded);
       accessToken = tokens.accessToken;
       refreshToken = tokens.refreshToken;
@@ -58,7 +61,11 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess }: LoginCodeModalPro
       if (!accessToken || !refreshToken) {
         throw new Error("missing tokens");
       }
-    } catch {
+      console.log("[LoginCode] Tokens extracted successfully");
+      console.log("[LoginCode] Access token length:", accessToken.length);
+      console.log("[LoginCode] Refresh token length:", refreshToken.length);
+    } catch (err) {
+      console.error("[LoginCode] Decode error:", err);
       setError("Invalid login code format. Please copy the code again.");
       setState("error");
       return;
@@ -66,17 +73,31 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess }: LoginCodeModalPro
 
     // Step 2: Set session
     try {
+      console.log("[LoginCode] Step 2: Getting Supabase client...");
       const supabase = getSupabaseClient();
+      console.log("[LoginCode] Supabase client obtained");
 
-      const { error: setSessionError } = await supabase.auth.setSession({
+      console.log("[LoginCode] Calling setSession...");
+      const { data: setSessionData, error: setSessionError } = await supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
       });
+      console.log("[LoginCode] setSession returned:", {
+        hasData: !!setSessionData,
+        hasSession: !!setSessionData?.session,
+        error: setSessionError?.message
+      });
 
       if (setSessionError) {
+        console.log("[LoginCode] setSession failed, trying refreshSession...");
         // Try refresh as fallback
-        const { error: refreshError } = await supabase.auth.refreshSession({
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
           refresh_token: refreshToken,
+        });
+        console.log("[LoginCode] refreshSession returned:", {
+          hasData: !!refreshData,
+          hasSession: !!refreshData?.session,
+          error: refreshError?.message
         });
 
         if (refreshError) {
@@ -85,21 +106,29 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess }: LoginCodeModalPro
       }
 
       // Step 3: Verify session is actually set
+      console.log("[LoginCode] Step 3: Verifying session...");
       const { data: { session } } = await supabase.auth.getSession();
+      console.log("[LoginCode] getSession returned:", {
+        hasSession: !!session,
+        userEmail: session?.user?.email
+      });
 
       if (!session) {
         throw new Error("no session");
       }
 
       // Success!
+      console.log("[LoginCode] Success! Setting success state...");
       setState("success");
 
       setTimeout(() => {
+        console.log("[LoginCode] Closing modal and calling onSuccess...");
         onClose();
         onSuccess?.();
       }, 500);
 
     } catch (err) {
+      console.error("[LoginCode] Error:", err);
       const message = err instanceof Error ? err.message : "unknown";
 
       if (message === "expired" || message.includes("Refresh Token")) {

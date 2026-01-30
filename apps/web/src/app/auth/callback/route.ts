@@ -47,9 +47,13 @@ export async function GET(request: Request) {
       }
     }
 
-    // Desktop flow: redirect to desktop-success page
-    if (source === "desktop") {
-      return NextResponse.redirect(`${origin}/auth/desktop-success`);
+    // Desktop flow: redirect to desktop-success page with tokens
+    if (source === "desktop" && session) {
+      const params = new URLSearchParams({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      });
+      return NextResponse.redirect(`${origin}/auth/desktop-success?${params}`);
     }
 
     // Check sessionStorage backup (handled by post-login page)

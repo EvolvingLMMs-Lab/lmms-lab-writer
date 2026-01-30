@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 function DesktopSuccessContent() {
   const searchParams = useSearchParams();
@@ -19,28 +18,24 @@ function DesktopSuccessContent() {
         return;
       }
 
-      // Try to get tokens from URL first
-      let accessToken = searchParams.get("access_token");
-      let refreshToken = searchParams.get("refresh_token");
+      // Get tokens from URL (passed from auth callback)
+      const accessToken = searchParams.get("access_token");
+      const refreshToken = searchParams.get("refresh_token");
 
-      // If not in URL, get from current session
+      // Validate tokens - refresh token should be at least 20 chars
       if (!accessToken || !refreshToken) {
-        const supabase = createClient();
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (session) {
-          accessToken = session.access_token;
-          refreshToken = session.refresh_token;
-        }
+        setError("Missing authentication tokens. Please try logging in again from the desktop app.");
+        return;
       }
 
-      if (accessToken && refreshToken) {
-        // Create login code from tokens
-        const code = btoa(JSON.stringify({ accessToken, refreshToken }));
-        setLoginCode(code);
-      } else {
-        setError("No active session found. Please login again.");
+      if (refreshToken.length < 20) {
+        setError("Invalid authentication tokens. Please try logging in again from the desktop app.");
+        return;
       }
+
+      // Create login code from tokens
+      const code = btoa(JSON.stringify({ accessToken, refreshToken }));
+      setLoginCode(code);
     };
 
     loadTokens();
