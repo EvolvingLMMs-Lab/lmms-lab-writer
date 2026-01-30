@@ -5,8 +5,8 @@ import { Github } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export function LoginForm() {
-  const [showManual, setShowManual] = useState(false);
-  const [tokenInput, setTokenInput] = useState("");
+  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [loginCode, setLoginCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -16,16 +16,17 @@ export function LoginForm() {
     });
   };
 
-  const handleManualLogin = async () => {
+  const handleCodeLogin = async () => {
     setError(null);
     setLoading(true);
 
     try {
-      const parsed = JSON.parse(tokenInput);
-      const { accessToken, refreshToken } = parsed;
+      // Decode the login code (base64 encoded JSON)
+      const decoded = atob(loginCode.trim());
+      const { accessToken, refreshToken } = JSON.parse(decoded);
 
       if (!accessToken || !refreshToken) {
-        throw new Error("Invalid token format");
+        throw new Error("Invalid login code");
       }
 
       const supabase = getSupabaseClient();
@@ -41,7 +42,11 @@ export function LoginForm() {
       // Reload to update auth state
       window.location.reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to parse tokens");
+      if (err instanceof SyntaxError) {
+        setError("Invalid login code format");
+      } else {
+        setError(err instanceof Error ? err.message : "Login failed");
+      }
     } finally {
       setLoading(false);
     }
@@ -49,6 +54,7 @@ export function LoginForm() {
 
   return (
     <div className="w-full max-w-sm">
+      {/* Primary: GitHub Login */}
       <button
         onClick={handleLogin}
         className="btn btn-secondary w-full flex items-center justify-center gap-2"
@@ -61,37 +67,58 @@ export function LoginForm() {
         You&apos;ll be redirected to sign in via browser
       </p>
 
-      {/* Manual token paste for development */}
-      <div className="border-t border-border pt-4 mt-4">
-        <button
-          onClick={() => setShowManual(!showManual)}
-          className="text-xs text-muted hover:text-foreground underline w-full text-center"
-        >
-          {showManual ? "Hide manual login" : "Manual login (Dev mode)"}
-        </button>
+      {/* Divider */}
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-background px-3 text-xs text-muted">or</span>
+        </div>
+      </div>
 
-        {showManual && (
-          <div className="mt-4">
-            <p className="text-xs text-muted mb-2">
-              Paste the tokens from the web login page:
-            </p>
-            <textarea
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-              placeholder='{"accessToken": "...", "refreshToken": "..."}'
-              className="w-full px-3 py-2 text-xs font-mono border border-border focus:outline-none focus:border-black resize-none h-20"
-            />
-            {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+      {/* Secondary: Login Code */}
+      {!showCodeInput ? (
+        <button
+          onClick={() => setShowCodeInput(true)}
+          className="w-full text-sm text-muted hover:text-foreground transition-colors"
+        >
+          Use login code
+        </button>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs text-muted">
+            Paste the login code from the web page:
+          </p>
+          <input
+            type="text"
+            value={loginCode}
+            onChange={(e) => setLoginCode(e.target.value)}
+            placeholder="Paste login code here..."
+            className="w-full px-3 py-2 text-sm font-mono border border-border focus:outline-none focus:border-black"
+          />
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <div className="flex gap-2">
             <button
-              onClick={handleManualLogin}
-              disabled={loading || !tokenInput.trim()}
-              className="mt-2 px-3 py-1.5 text-xs border border-black bg-white hover:bg-neutral-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full"
+              onClick={() => {
+                setShowCodeInput(false);
+                setLoginCode("");
+                setError(null);
+              }}
+              className="flex-1 px-3 py-2 text-sm border border-border hover:bg-neutral-50 transition-colors"
             >
-              {loading ? "Logging in..." : "Login with Tokens"}
+              Cancel
+            </button>
+            <button
+              onClick={handleCodeLogin}
+              disabled={loading || !loginCode.trim()}
+              className="flex-1 px-3 py-2 text-sm border border-black bg-black text-white hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? "Logging in..." : "Login"}
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
