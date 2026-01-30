@@ -2,12 +2,14 @@
 
 import { startTransition, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Github } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const source = searchParams.get("source");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,6 +32,21 @@ export function LoginForm() {
       return;
     }
 
+    // If from desktop, redirect to desktop-success page with tokens
+    if (source === "desktop") {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        const params = new URLSearchParams({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        });
+        window.location.href = `/auth/desktop-success?${params}`;
+        return;
+      }
+    }
+
     startTransition(() => {
       router.push("/profile");
     });
@@ -40,10 +57,14 @@ export function LoginForm() {
     setError(null);
     try {
       const supabase = createClient();
+      // Preserve source parameter (e.g., desktop) through OAuth flow
+      const callbackUrl = source
+        ? `${window.location.origin}/auth/callback?source=${source}`
+        : `${window.location.origin}/auth/callback`;
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "github",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: callbackUrl,
         },
       });
       if (error) {
