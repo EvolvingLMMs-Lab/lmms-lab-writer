@@ -60,8 +60,7 @@ export default function PostLoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="max-w-md w-full p-8 text-center">
-        <div className="w-8 h-8 border-2 border-black border-t-transparent animate-spin mx-auto mb-4" />
-        <h1 className="text-xl font-medium">Redirecting...</h1>
+        <p className="text-muted">Redirecting...</p>
       </div>
     </div>
   );
