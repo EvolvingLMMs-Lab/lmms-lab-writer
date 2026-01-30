@@ -11,7 +11,11 @@ function DesktopSuccessContent() {
 
   useEffect(() => {
     const loadTokens = async () => {
+      console.log("=== [desktop-success] Page Loaded ===");
+      console.log("[desktop-success] Full URL:", window.location.href);
+
       const errorParam = searchParams.get("error");
+      console.log("[desktop-success] Error param:", errorParam);
 
       if (errorParam) {
         setError(decodeURIComponent(errorParam));
@@ -22,19 +26,28 @@ function DesktopSuccessContent() {
       const accessToken = searchParams.get("access_token");
       const refreshToken = searchParams.get("refresh_token");
 
+      console.log("[desktop-success] access_token exists:", !!accessToken);
+      console.log("[desktop-success] access_token length:", accessToken?.length);
+      console.log("[desktop-success] refresh_token exists:", !!refreshToken);
+      console.log("[desktop-success] refresh_token length:", refreshToken?.length);
+
       // Validate tokens - refresh token should be at least 20 chars
       if (!accessToken || !refreshToken) {
+        console.log("[desktop-success] ERROR: Missing tokens");
         setError("Missing authentication tokens. Please try logging in again from the desktop app.");
         return;
       }
 
       if (refreshToken.length < 20) {
+        console.log("[desktop-success] ERROR: refresh_token too short:", refreshToken.length);
         setError("Invalid authentication tokens. Please try logging in again from the desktop app.");
         return;
       }
 
       // Create login code from tokens
+      console.log("[desktop-success] Creating login code...");
       const code = btoa(JSON.stringify({ accessToken, refreshToken }));
+      console.log("[desktop-success] Login code created, length:", code.length);
       setLoginCode(code);
     };
 

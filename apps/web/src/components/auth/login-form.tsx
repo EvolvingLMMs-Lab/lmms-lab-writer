@@ -55,29 +55,41 @@ export function LoginForm() {
   const handleGitHubLogin = async () => {
     setLoading(true);
     setError(null);
+
+    console.log("=== [LoginForm] GitHub Login Started ===");
+    console.log("[LoginForm] Current URL:", window.location.href);
+    console.log("[LoginForm] source param:", source);
+
     try {
       const supabase = createClient();
+
       // Preserve source parameter (e.g., desktop) through OAuth flow
       // Store in cookie as backup since Supabase may not preserve query params
       if (source === "desktop") {
         document.cookie = "auth_source=desktop; path=/; max-age=300; samesite=lax";
         sessionStorage.setItem("auth_source", source);
+        console.log("[LoginForm] Set auth_source cookie and sessionStorage to 'desktop'");
       } else {
         // Clear any stale auth_source from previous attempts
         document.cookie = "auth_source=; path=/; max-age=0";
         sessionStorage.removeItem("auth_source");
+        console.log("[LoginForm] Cleared auth_source (source is not desktop)");
       }
+
       const callbackUrl = source
         ? `${window.location.origin}/auth/callback?source=${source}`
         : `${window.location.origin}/auth/callback`;
-      console.log("[LoginForm] source:", source);
-      console.log("[LoginForm] callbackUrl:", callbackUrl);
+      console.log("[LoginForm] Callback URL:", callbackUrl);
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "github",
         options: {
           redirectTo: callbackUrl,
         },
       });
+
+      console.log("[LoginForm] signInWithOAuth result:", { hasData: !!data, hasUrl: !!data?.url, error: error?.message });
+
       if (error) {
         setError(`GitHub OAuth error: ${error.message}`);
         setLoading(false);
@@ -90,8 +102,11 @@ export function LoginForm() {
         setLoading(false);
         return;
       }
+
+      console.log("[LoginForm] Redirecting to Supabase OAuth URL...");
       window.location.href = data.url;
     } catch (e) {
+      console.error("[LoginForm] Exception:", e);
       setError(e instanceof Error ? e.message : "GitHub login failed");
       setLoading(false);
     }
