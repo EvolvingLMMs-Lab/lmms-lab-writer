@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { getGitHubUser, storeGitHubToken } from "@/lib/github/stars";
 
 export async function GET(request: Request) {
@@ -20,9 +21,9 @@ export async function GET(request: Request) {
   console.log("[auth/callback] Source from URL:", source);
 
   if (!source) {
-    const cookies = request.headers.get("cookie") || "";
-    console.log("[auth/callback] Cookies:", cookies);
-    const authSourceMatch = cookies.match(/auth_source=([^;]+)/);
+    const cookieHeader = request.headers.get("cookie") || "";
+    console.log("[auth/callback] Cookies:", cookieHeader);
+    const authSourceMatch = cookieHeader.match(/auth_source=([^;]+)/);
     if (authSourceMatch) {
       source = authSourceMatch[1] ?? null;
       console.log("[auth/callback] Source from cookie:", source);
@@ -40,7 +41,68 @@ export async function GET(request: Request) {
   }
 
   if (code) {
-    // Use SSR client for all flows (it has access to the PKCE code_verifier in cookies)
+    // For desktop flow, call Supabase Auth API directly to get full tokens
+    if (source === "desktop") {
+      console.log("[auth/callback] Desktop flow - calling Supabase API directly");
+
+      // Get the code_verifier from cookies (stored by Supabase during OAuth init)
+      const cookieStore = await cookies();
+      const allCookies = cookieStore.getAll();
+      console.log("[auth/callback] All cookies:", allCookies.map(c => c.name));
+
+      // Find the code verifier cookie (format: sb-<ref>-auth-token-code-verifier)
+      const codeVerifierCookie = allCookies.find(c => c.name.includes("code-verifier"));
+      const codeVerifier = codeVerifierCookie?.value;
+      console.log("[auth/callback] Code verifier found:", !!codeVerifier, "length:", codeVerifier?.length);
+
+      if (!codeVerifier) {
+        console.log("[auth/callback] ERROR: No code verifier found");
+        return NextResponse.redirect(`${origin}/auth/desktop-success?error=${encodeURIComponent("Missing code verifier. Please try again.")}`);
+      }
+
+      // Call Supabase Auth API directly
+      const tokenUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=pkce`;
+      console.log("[auth/callback] Calling token endpoint:", tokenUrl);
+
+      const tokenResponse = await fetch(tokenUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        },
+        body: JSON.stringify({
+          auth_code: code,
+          code_verifier: codeVerifier,
+        }),
+      });
+
+      const tokenData = await tokenResponse.json();
+      console.log("[auth/callback] Token response status:", tokenResponse.status);
+      console.log("[auth/callback] Token response has access_token:", !!tokenData.access_token);
+      console.log("[auth/callback] Token response has refresh_token:", !!tokenData.refresh_token);
+      console.log("[auth/callback] refresh_token length:", tokenData.refresh_token?.length);
+
+      if (!tokenResponse.ok || !tokenData.access_token) {
+        console.log("[auth/callback] Token error:", tokenData);
+        return NextResponse.redirect(`${origin}/auth/desktop-success?error=${encodeURIComponent(tokenData.error_description || tokenData.error || "Failed to get tokens")}`);
+      }
+
+      // Redirect to desktop-success with full tokens
+      const params = new URLSearchParams({
+        access_token: tokenData.access_token,
+        refresh_token: tokenData.refresh_token,
+      });
+
+      const response = NextResponse.redirect(`${origin}/auth/desktop-success?${params}`);
+      response.cookies.set("auth_source", "", { path: "/", maxAge: 0 });
+      // Clear the code verifier cookie
+      if (codeVerifierCookie) {
+        response.cookies.set(codeVerifierCookie.name, "", { path: "/", maxAge: 0 });
+      }
+      return response;
+    }
+
+    // For non-desktop flow, use SSR client (stores session in cookies)
     const supabase = await createClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
@@ -68,21 +130,6 @@ export async function GET(request: Request) {
       } catch {
         // Silently fail - not critical
       }
-    }
-
-    // Desktop flow: redirect to desktop-success page with tokens
-    if (source === "desktop" && session) {
-      console.log("[auth/callback] Desktop flow - redirecting to desktop-success");
-      console.log("[auth/callback] refresh_token from SSR client:", session.refresh_token?.length, "chars");
-
-      const params = new URLSearchParams({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-      });
-
-      const response = NextResponse.redirect(`${origin}/auth/desktop-success?${params}`);
-      response.cookies.set("auth_source", "", { path: "/", maxAge: 0 });
-      return response;
     }
 
     console.log("[auth/callback] Non-desktop flow - redirecting to post-login");

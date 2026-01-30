@@ -77,43 +77,63 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess }: LoginCodeModalPro
       const supabase = getSupabaseClient();
       console.log("[LoginCode] Supabase client obtained");
 
-      console.log("[LoginCode] Calling setSession...");
-      const { data: setSessionData, error: setSessionError } = await supabase.auth.setSession({
+      // Try setSession with timeout (the short refresh token from SSR may cause hanging)
+      console.log("[LoginCode] Calling setSession with 10s timeout...");
+
+      const setSessionPromise = supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
       });
+
+      const timeoutPromise = new Promise<{ data: { session: null }; error: Error }>((resolve) => {
+        setTimeout(() => {
+          resolve({ data: { session: null }, error: new Error("timeout") });
+        }, 10000);
+      });
+
+      const { data: setSessionData, error: setSessionError } = await Promise.race([
+        setSessionPromise,
+        timeoutPromise,
+      ]);
+
       console.log("[LoginCode] setSession returned:", {
         hasData: !!setSessionData,
         hasSession: !!setSessionData?.session,
         error: setSessionError?.message
       });
 
-      if (setSessionError) {
-        console.log("[LoginCode] setSession failed, trying refreshSession...");
-        // Try refresh as fallback
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
-          refresh_token: refreshToken,
-        });
-        console.log("[LoginCode] refreshSession returned:", {
-          hasData: !!refreshData,
-          hasSession: !!refreshData?.session,
-          error: refreshError?.message
+      if (setSessionError || !setSessionData?.session) {
+        // setSession failed - the refresh token from SSR is invalid
+        // Try to use just the access token by setting it directly
+        console.log("[LoginCode] setSession failed, trying getUser with access token...");
+
+        const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
+        console.log("[LoginCode] getUser returned:", {
+          hasUser: !!userData?.user,
+          error: userError?.message
         });
 
-        if (refreshError) {
-          throw new Error("expired");
+        if (userError || !userData?.user) {
+          throw new Error("invalid_token");
         }
+
+        // Access token is valid - user is authenticated
+        // Note: Without valid refresh token, session won't auto-refresh
+        console.log("[LoginCode] Access token valid, user:", userData.user.email);
       }
 
-      // Step 3: Verify session is actually set
-      console.log("[LoginCode] Step 3: Verifying session...");
+      // Step 3: Verify session or user
+      console.log("[LoginCode] Step 3: Verifying...");
       const { data: { session } } = await supabase.auth.getSession();
-      console.log("[LoginCode] getSession returned:", {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      console.log("[LoginCode] Verification:", {
         hasSession: !!session,
-        userEmail: session?.user?.email
+        hasUser: !!user,
+        userEmail: user?.email || session?.user?.email
       });
 
-      if (!session) {
+      if (!session && !user) {
         throw new Error("no session");
       }
 
@@ -131,7 +151,11 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess }: LoginCodeModalPro
       console.error("[LoginCode] Error:", err);
       const message = err instanceof Error ? err.message : "unknown";
 
-      if (message === "expired" || message.includes("Refresh Token")) {
+      if (message === "timeout") {
+        setError("Login timed out. The login code may be invalid.");
+      } else if (message === "invalid_token") {
+        setError("Invalid or expired login code. Please get a new code.");
+      } else if (message === "expired" || message.includes("Refresh Token")) {
         setError("Login code expired. Please get a new code from the web page.");
       } else if (message === "no session") {
         setError("Failed to establish session. Please try again.");
