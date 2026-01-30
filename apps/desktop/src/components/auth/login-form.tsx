@@ -2,135 +2,123 @@
 
 import { useState } from "react";
 import { Github } from "lucide-react";
-import { useAuth } from "@/lib/auth";
+import { getSupabaseClient } from "@/lib/supabase";
 
-type Props = {
-  onSuccess?: () => void;
-};
+export function LoginForm() {
+  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [loginCode, setLoginCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-export function LoginForm({ onSuccess }: Props) {
-  const { signInWithGitHub, signInWithEmail, signUp, error, loading } =
-    useAuth();
-  const [mode, setMode] = useState<"login" | "signup">("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [signupMessage, setSignupMessage] = useState<string | null>(null);
+  const handleLogin = () => {
+    import("@tauri-apps/plugin-shell").then(({ open }) => {
+      open("https://writer.lmms-lab.com/login?source=desktop");
+    });
+  };
 
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLocalError(null);
-    setSignupMessage(null);
+  const handleCodeLogin = async () => {
+    setError(null);
+    setLoading(true);
 
-    if (mode === "signup") {
-      const result = await signUp(email, password);
-      if (result.success) {
-        setSignupMessage(result.message);
-      } else {
-        setLocalError(result.message);
+    try {
+      // Decode the login code (base64 encoded JSON)
+      const decoded = atob(loginCode.trim());
+      const { accessToken, refreshToken } = JSON.parse(decoded);
+
+      if (!accessToken || !refreshToken) {
+        throw new Error("Invalid login code");
       }
-    } else {
-      await signInWithEmail(email, password);
-      onSuccess?.();
+
+      const supabase = getSupabaseClient();
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+
+      if (sessionError) {
+        throw sessionError;
+      }
+
+      // Reload to update auth state
+      window.location.reload();
+    } catch (err) {
+      if (err instanceof SyntaxError) {
+        setError("Invalid login code format");
+      } else {
+        setError(err instanceof Error ? err.message : "Login failed");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  const displayError = localError || error;
-
   return (
     <div className="w-full max-w-sm">
+      {/* Primary: GitHub Login */}
       <button
-        onClick={signInWithGitHub}
-        disabled={loading}
-        className="btn btn-secondary w-full mb-6 flex items-center justify-center gap-2"
+        onClick={handleLogin}
+        className="btn btn-secondary w-full flex items-center justify-center gap-2"
       >
         <Github className="w-4 h-4" />
         Continue with GitHub
       </button>
 
-      <div className="relative mb-6">
+      <p className="text-xs text-muted text-center mt-4">
+        You&apos;ll be redirected to sign in via browser
+      </p>
+
+      {/* Divider */}
+      <div className="relative my-6">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-border" />
         </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted">Or</span>
+        <div className="relative flex justify-center">
+          <span className="bg-background px-3 text-xs text-muted">or</span>
         </div>
       </div>
 
-      <form onSubmit={handleEmailSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium mb-2">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-3 py-2 border border-border focus:outline-none focus:border-black"
-            placeholder="you@example.com"
-            required
-            disabled={loading}
-          />
-        </div>
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium mb-2">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3 py-2 border border-border focus:outline-none focus:border-black"
-            placeholder="Your password"
-            required
-            disabled={loading}
-          />
-        </div>
-
-        {displayError && <p className="text-sm text-red-600">{displayError}</p>}
-
-        {signupMessage && (
-          <p className="text-sm text-green-600">{signupMessage}</p>
-        )}
-
+      {/* Secondary: Login Code */}
+      {!showCodeInput ? (
         <button
-          type="submit"
-          disabled={loading}
-          className="btn btn-secondary w-full"
+          onClick={() => setShowCodeInput(true)}
+          className="w-full text-sm text-muted hover:text-foreground transition-colors"
         >
-          {loading
-            ? "Loading..."
-            : mode === "signup"
-              ? "Sign up with Email"
-              : "Sign in with Email"}
+          Use login code
         </button>
-      </form>
-
-      <p className="text-sm text-muted text-center mt-6">
-        {mode === "login" ? (
-          <>
-            Don&apos;t have an account?{" "}
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs text-muted">
+            Paste the login code from the web page:
+          </p>
+          <input
+            type="text"
+            value={loginCode}
+            onChange={(e) => setLoginCode(e.target.value)}
+            placeholder="Paste login code here..."
+            className="w-full px-3 py-2 text-sm font-mono border border-border focus:outline-none focus:border-black"
+          />
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <div className="flex gap-2">
             <button
-              onClick={() => setMode("signup")}
-              className="underline underline-offset-2 hover:text-foreground"
+              onClick={() => {
+                setShowCodeInput(false);
+                setLoginCode("");
+                setError(null);
+              }}
+              className="flex-1 px-3 py-2 text-sm border border-border hover:bg-neutral-50 transition-colors"
             >
-              Sign up
+              Cancel
             </button>
-          </>
-        ) : (
-          <>
-            Already have an account?{" "}
             <button
-              onClick={() => setMode("login")}
-              className="underline underline-offset-2 hover:text-foreground"
+              onClick={handleCodeLogin}
+              disabled={loading || !loginCode.trim()}
+              className="flex-1 px-3 py-2 text-sm border border-black bg-black text-white hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign in
+              {loading ? "Logging in..." : "Login"}
             </button>
-          </>
-        )}
-      </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

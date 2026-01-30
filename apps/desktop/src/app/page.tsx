@@ -918,7 +918,7 @@ export default function EditorPage() {
               </>
             )}
 
-            {auth.isConfigured && !auth.loading && (
+            {!auth.loading && (
               <>
                 <span className="text-neutral-300 text-lg select-none">/</span>
                 {auth.profile ? (
@@ -927,7 +927,7 @@ export default function EditorPage() {
                   <button
                     onClick={() => {
                       import("@tauri-apps/plugin-shell").then(({ open }) => {
-                        open("https://writer.lmms-lab.com/login");
+                        open("https://writer.lmms-lab.com/login?source=desktop");
                       });
                     }}
                     className="h-8 px-3 text-sm border-2 border-black bg-white text-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center"
@@ -1496,7 +1496,7 @@ export default function EditorPage() {
                     Open Folder
                   </button>
 
-                  {auth.isConfigured && !auth.loading && !auth.profile && (
+                  {!auth.loading && !auth.profile && (
                     <div className="border-t border-border pt-8 w-full max-w-sm">
                       <p className="text-muted text-xs mb-6 uppercase tracking-wider">
                         Sign in for cloud features
