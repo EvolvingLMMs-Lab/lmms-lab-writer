@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getGitHubUser, storeGitHubToken } from "@/lib/github/stars";
 
@@ -40,14 +41,66 @@ export async function GET(request: Request) {
   }
 
   if (code) {
+    // For desktop flow, use regular Supabase client to get full tokens (not SSR client which truncates refresh_token)
+    if (source === "desktop") {
+      console.log("[auth/callback] Desktop flow - using regular Supabase client for full tokens");
+
+      const supabaseRaw = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { auth: { persistSession: false, autoRefreshToken: false } }
+      );
+
+      const { data, error } = await supabaseRaw.auth.exchangeCodeForSession(code);
+
+      if (error) {
+        console.log("[auth/callback] Desktop exchangeCodeForSession error:", error.message);
+        const errorMsg = encodeURIComponent(error.message);
+        return NextResponse.redirect(`${origin}/auth/desktop-success?error=${errorMsg}`);
+      }
+
+      const session = data.session;
+      console.log("[auth/callback] Desktop session exists:", !!session);
+      console.log("[auth/callback] Desktop access_token length:", session?.access_token?.length);
+      console.log("[auth/callback] Desktop refresh_token length:", session?.refresh_token?.length);
+
+      if (session) {
+        // Also store GitHub token using SSR client
+        if (session.provider_token && session.user) {
+          try {
+            const supabase = await createClient();
+            const githubUser = await getGitHubUser(session.provider_token);
+            await storeGitHubToken(
+              supabase,
+              session.user.id,
+              githubUser,
+              session.provider_token,
+              session.provider_refresh_token ? "with_refresh" : undefined,
+            );
+          } catch {
+            // Silently fail - not critical
+          }
+        }
+
+        const params = new URLSearchParams({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        });
+        const redirectUrl = `${origin}/auth/desktop-success?${params}`;
+        console.log("[auth/callback] Desktop redirect, refresh_token length:", session.refresh_token.length);
+
+        const response = NextResponse.redirect(redirectUrl);
+        response.cookies.set("auth_source", "", { path: "/", maxAge: 0 });
+        return response;
+      }
+    }
+
+    // For non-desktop flow, use SSR client (stores session in cookies)
     const supabase = await createClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
       const errorMsg = encodeURIComponent(error.message);
-      if (source === "desktop") {
-        return NextResponse.redirect(`${origin}/auth/desktop-success?error=${errorMsg}`);
-      }
       return NextResponse.redirect(`${origin}/login?error=${errorMsg}`);
     }
 
@@ -72,27 +125,8 @@ export async function GET(request: Request) {
       }
     }
 
-    // Desktop flow: redirect to desktop-success page with tokens
-    if (source === "desktop" && session) {
-      console.log("[auth/callback] Desktop flow - redirecting to desktop-success with tokens");
-      console.log("[auth/callback] access_token length:", session.access_token.length);
-      console.log("[auth/callback] refresh_token length:", session.refresh_token.length);
-
-      const params = new URLSearchParams({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-      });
-      const redirectUrl = `${origin}/auth/desktop-success?${params}`;
-      console.log("[auth/callback] Redirect URL (truncated):", redirectUrl.substring(0, 100) + "...");
-
-      const response = NextResponse.redirect(redirectUrl);
-      // Clear the auth_source cookie
-      response.cookies.set("auth_source", "", { path: "/", maxAge: 0 });
-      return response;
-    }
-
     console.log("[auth/callback] Non-desktop flow - redirecting to post-login");
-    // Check sessionStorage backup (handled by post-login page)
+    // For non-desktop, redirect to post-login page
     return NextResponse.redirect(`${origin}/auth/post-login`);
   }
 
