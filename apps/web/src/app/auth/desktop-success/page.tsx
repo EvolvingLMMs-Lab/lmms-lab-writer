@@ -31,18 +31,14 @@ function DesktopSuccessContent() {
       console.log("[desktop-success] refresh_token exists:", !!refreshToken);
       console.log("[desktop-success] refresh_token length:", refreshToken?.length);
 
-      // Validate tokens - refresh token should be at least 20 chars
+      // Validate tokens exist
       if (!accessToken || !refreshToken) {
         console.log("[desktop-success] ERROR: Missing tokens");
         setError("Missing authentication tokens. Please try logging in again from the desktop app.");
         return;
       }
 
-      if (refreshToken.length < 20) {
-        console.log("[desktop-success] ERROR: refresh_token too short:", refreshToken.length);
-        setError("Invalid authentication tokens. Please try logging in again from the desktop app.");
-        return;
-      }
+      console.log("[desktop-success] Tokens validated, creating login code...");
 
       // Create login code from tokens
       console.log("[desktop-success] Creating login code...");
