@@ -1556,23 +1556,23 @@ export default function EditorPage() {
               key="right-panel-container"
               initial={
                 prefersReducedMotion
-                  ? { opacity: 1 }
-                  : { x: "100%", opacity: 0 }
+                  ? { opacity: 1, width: 0 }
+                  : { opacity: 0, width: 0 }
               }
-              animate={{ x: 0, opacity: 1 }}
+              animate={{ opacity: 1, width: "auto" }}
               exit={
                 prefersReducedMotion
-                  ? { opacity: 0 }
-                  : { x: "100%", opacity: 0 }
+                  ? { opacity: 0, width: 0 }
+                  : { opacity: 0, width: 0 }
               }
               transition={
                 prefersReducedMotion ? INSTANT_TRANSITION : PANEL_SPRING
               }
-              className="absolute right-0 top-0 bottom-0 flex bg-white z-10"
+              className="flex flex-shrink-0 bg-white overflow-hidden"
               style={{
                 willChange: prefersReducedMotion
                   ? undefined
-                  : "transform, opacity",
+                  : "width, opacity",
               }}
             >
               <div className="relative group w-1 flex-shrink-0">
