@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ExternalLinkHandler } from "@/components/external-link-handler";
+import { DeepLinkHandler } from "@/components/auth/deep-link-handler";
 import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
@@ -31,6 +32,7 @@ export default function RootLayout({
       >
         <ToastProvider>
           <ExternalLinkHandler />
+          <DeepLinkHandler />
           {children}
         </ToastProvider>
       </body>

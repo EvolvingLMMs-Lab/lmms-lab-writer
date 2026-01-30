@@ -42,6 +42,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_deep_link::init())
         .manage(PtyState::default())
         .manage(OpenCodeState::default())
         .manage(LaTeXCompilationState::default())
