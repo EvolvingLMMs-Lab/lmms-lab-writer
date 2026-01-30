@@ -8,10 +8,18 @@ export async function GET(request: Request) {
   const error_param = searchParams.get("error");
   const error_description = searchParams.get("error_description");
   const next = searchParams.get("next") ?? "/profile";
+  const source = searchParams.get("source");
 
   if (error_param) {
     console.error("OAuth error:", error_param, error_description);
     const errorMsg = encodeURIComponent(error_description || error_param);
+
+    // If from desktop, redirect to intermediate page with error
+    if (source === "desktop") {
+      return NextResponse.redirect(
+        `${origin}/auth/desktop-success?error=${errorMsg}`
+      );
+    }
     return NextResponse.redirect(`${origin}/login?error=${errorMsg}`);
   }
 
@@ -21,6 +29,13 @@ export async function GET(request: Request) {
     if (error) {
       console.error("exchangeCodeForSession error:", error.message);
       const errorMsg = encodeURIComponent(error.message);
+
+      // If from desktop, redirect to intermediate page with error
+      if (source === "desktop") {
+        return NextResponse.redirect(
+          `${origin}/auth/desktop-success?error=${errorMsg}`
+        );
+      }
       return NextResponse.redirect(`${origin}/login?error=${errorMsg}`);
     }
 
@@ -56,6 +71,15 @@ export async function GET(request: Request) {
       console.log(
         "[auth/callback] No provider_token in session, skipping token storage",
       );
+    }
+
+    // If from desktop, redirect to intermediate page that handles deep link
+    if (source === "desktop" && session) {
+      const params = new URLSearchParams({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      });
+      return NextResponse.redirect(`${origin}/auth/desktop-success?${params}`);
     }
 
     return NextResponse.redirect(`${origin}${next}`);

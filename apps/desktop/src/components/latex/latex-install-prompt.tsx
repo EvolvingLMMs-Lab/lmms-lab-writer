@@ -156,20 +156,35 @@ export function LaTeXInstallPrompt({ onRefreshCompilers }: LaTeXInstallPromptPro
           {/* Distribution Options */}
           {!isInstalling && !result && distributions.length > 0 && (
             <div className="mt-4 space-y-2">
-              {distributions.map((dist) => (
+              {distributions.map((dist, index) => (
                 <div
                   key={dist.id}
-                  className="flex items-center justify-between gap-3 p-3 bg-white border border-amber-200 hover:border-amber-400 transition-colors"
+                  className={`flex items-center justify-between gap-3 p-3 bg-white border transition-colors ${
+                    index === 0
+                      ? "border-green-400 hover:border-green-500"
+                      : "border-amber-200 hover:border-amber-400"
+                  }`}
                 >
                   <div className="min-w-0">
-                    <div className="font-medium text-sm">{dist.name}</div>
+                    <div className="font-medium text-sm flex items-center gap-2">
+                      {dist.name}
+                      {index === 0 && (
+                        <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 font-normal">
+                          Recommended
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted mt-0.5">{dist.description}</p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {dist.install_command && (
                       <button
                         onClick={() => handleInstall(dist.id)}
-                        className="btn btn-sm border-2 border-black bg-black text-white shadow-[2px_2px_0_0_#fbbf24] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+                        className={`btn btn-sm border-2 transition-all ${
+                          index === 0
+                            ? "border-green-600 bg-green-600 text-white shadow-[2px_2px_0_0_#22c55e] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
+                            : "border-black bg-black text-white shadow-[2px_2px_0_0_#fbbf24] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
+                        }`}
                       >
                         Install
                       </button>
@@ -177,7 +192,11 @@ export function LaTeXInstallPrompt({ onRefreshCompilers }: LaTeXInstallPromptPro
                     {dist.download_url && (
                       <button
                         onClick={() => handleOpenDownload(dist.download_url!)}
-                        className="btn btn-sm border-2 border-amber-600 bg-white text-amber-700 hover:bg-amber-50 transition-colors"
+                        className={`btn btn-sm border-2 transition-colors ${
+                          index === 0 && !dist.install_command
+                            ? "border-green-600 bg-green-600 text-white hover:bg-green-700"
+                            : "border-amber-600 bg-white text-amber-700 hover:bg-amber-50"
+                        }`}
                       >
                         Download
                       </button>

@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [],
     "security": {
-      "csp": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' asset: http://asset.localhost data: blob:; media-src 'self' asset: http://asset.localhost data: blob:; frame-src 'self' asset: http://asset.localhost blob:; connect-src 'self' http://localhost:* ws://localhost:* ipc: http://ipc.localhost",
+      "csp": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' asset: http://asset.localhost data: blob: https://*.supabase.co https://*.githubusercontent.com; media-src 'self' asset: http://asset.localhost data: blob:; frame-src 'self' asset: http://asset.localhost blob:; connect-src 'self' http://localhost:* ws://localhost:* wss://localhost:* ipc: http://ipc.localhost https://*.supabase.co wss://*.supabase.co",
       "assetProtocol": {
         "enable": true,
         "scope": ["**"]
@@ -62,6 +62,12 @@
   "plugins": {
     "shell": {
       "open": true
+    },
+    "deep-link": {
+      "mobile": [],
+      "desktop": {
+        "schemes": ["lmms-writer"]
+      }
     }
   }
 }

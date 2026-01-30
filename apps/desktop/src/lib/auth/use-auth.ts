@@ -6,12 +6,20 @@ import { getSupabaseClient } from "@/lib/supabase";
 
 export type MembershipTier = "free" | "supporter";
 
+// Constants matching web app
+const INKS_PER_STAR = 6;
+const INKS_TO_DOWNLOAD = 15;
+
 export type UserProfile = {
   email: string;
   name: string | null;
   avatarUrl: string | null;
   tier: MembershipTier;
   expiresAt: string | null;
+  // Inks system (shared with web)
+  inks: number;
+  canDownload: boolean;
+  totalStarCount: number;
 };
 
 type AuthState = {
@@ -41,9 +49,12 @@ export function useAuth() {
 
         const { data: membership } = await supabase
           .from("user_memberships")
-          .select("tier, expires_at")
+          .select("tier, expires_at, total_star_count")
           .eq("user_id", session.user.id)
           .single();
+
+        const totalStarCount = membership?.total_star_count || 0;
+        const inks = totalStarCount * INKS_PER_STAR;
 
         return {
           email: session.user.email ?? "",
@@ -52,6 +63,9 @@ export function useAuth() {
           avatarUrl: metadata.avatar_url || metadata.picture || null,
           tier: (membership?.tier as MembershipTier) || "free",
           expiresAt: membership?.expires_at ?? null,
+          inks,
+          canDownload: inks >= INKS_TO_DOWNLOAD,
+          totalStarCount,
         };
       } catch {
         return null;
@@ -156,7 +170,7 @@ export function useAuth() {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "github",
         options: {
-          redirectTo: "https://writer.lmms-lab.com/auth/callback",
+          redirectTo: "https://writer.lmms-lab.com/auth/callback?source=desktop",
           skipBrowserRedirect: true,
         },
       });
@@ -205,7 +219,7 @@ export function useAuth() {
         email,
         password,
         options: {
-          emailRedirectTo: "https://writer.lmms-lab.com/auth/callback",
+          emailRedirectTo: "https://writer.lmms-lab.com/auth/callback?source=desktop",
         },
       });
 

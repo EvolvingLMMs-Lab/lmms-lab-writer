@@ -54,16 +54,40 @@ export const OpenCodePanel = memo(function OpenCodePanel({
 
   // Handle pending message from external source
   useEffect(() => {
-    const sendPendingMessage = async () => {
-      if (
-        pendingMessage &&
-        !pendingMessageSentRef.current &&
-        opencode.connected &&
-        opencode.currentSessionId
-      ) {
+    const handlePendingMessage = async () => {
+      if (!pendingMessage || pendingMessageSentRef.current || !opencode.connected) {
+        return;
+      }
+
+      // Wait for model to be selected (loadConfig to complete)
+      // This prevents sending with undefined model which may trigger paid providers
+      if (!opencode.selectedModel && opencode.providers.length === 0) {
+        console.log("[OpenCode] Waiting for config to load before sending pending message...");
+        return; // Effect will re-run when providers are loaded
+      }
+
+      // If no session exists, create one first
+      let sessionId = opencode.currentSessionId;
+      if (!sessionId) {
+        const newSession = await opencode.createSession();
+        if (!newSession) {
+          console.error("[OpenCode] Failed to create session for pending message");
+          onPendingMessageSent?.();
+          return;
+        }
+        sessionId = newSession.id;
+        // Wait a tick for the session state to update
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      // Now send the message
+      if (sessionId) {
         pendingMessageSentRef.current = true;
         try {
+          console.log("[OpenCode] Sending pending message with model:", opencode.selectedModel);
           await opencode.sendMessage(pendingMessage);
+        } catch (err) {
+          console.error("[OpenCode] Failed to send pending message:", err);
         } finally {
           onPendingMessageSent?.();
         }
@@ -71,11 +95,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     };
 
     if (pendingMessage) {
-      if (opencode.connected && !opencode.currentSessionId) {
-        opencode.createSession().then(() => sendPendingMessage());
-      } else {
-        sendPendingMessage();
-      }
+      handlePendingMessage();
     } else {
       pendingMessageSentRef.current = false;
     }
@@ -86,6 +106,8 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     opencode.currentSessionId,
     opencode.sendMessage,
     opencode.createSession,
+    opencode.selectedModel,
+    opencode.providers,
     onPendingMessageSent,
   ]);
 
@@ -191,7 +213,9 @@ export const OpenCodePanel = memo(function OpenCodePanel({
           {opencode.error && (
             <div className="px-3 py-2 bg-red-50 border-b border-red-200 text-xs text-red-700 flex items-start gap-2">
               <WarningIcon className="size-4 flex-shrink-0 mt-0.5" />
-              <span className="flex-1">{opencode.error}</span>
+              <span className="flex-1">
+                <ErrorMessage message={opencode.error} />
+              </span>
             </div>
           )}
 
@@ -1094,6 +1118,37 @@ function ConfirmDialog({
       </div>
     </div>
   );
+}
+
+function ErrorMessage({ message }: { message: string }) {
+  // Extract URL from error message if present
+  const urlMatch = message.match(/(https?:\/\/[^\s]+)/);
+
+  if (urlMatch) {
+    const url = urlMatch[1];
+    const parts = message.split(url);
+
+    const handleClick = () => {
+      import("@tauri-apps/plugin-shell").then(({ open }) => {
+        open(url);
+      });
+    };
+
+    return (
+      <>
+        {parts[0]}
+        <button
+          onClick={handleClick}
+          className="underline hover:text-red-900 font-medium"
+        >
+          {url.includes("billing") ? "Add payment method" : url}
+        </button>
+        {parts[1]}
+      </>
+    );
+  }
+
+  return <>{message}</>;
 }
 
 function MarkdownText({
