@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 export default function PostLoginPage() {
   const router = useRouter();
@@ -17,21 +16,10 @@ export default function PostLoginPage() {
       sessionStorage.removeItem("auth_source");
 
       if (authSource === "desktop") {
-        // Get current session and redirect to desktop-success
-        const supabase = createClient();
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (session) {
-          const params = new URLSearchParams({
-            access_token: session.access_token,
-            refresh_token: session.refresh_token,
-          });
-          setStatus("Redirecting to desktop app...");
-          window.location.href = `/auth/desktop-success?${params}`;
-          return;
-        }
+        // Redirect to desktop-success, which will fetch tokens from session
+        setStatus("Redirecting to desktop app...");
+        window.location.href = `/auth/desktop-success`;
+        return;
       }
 
       // Default: redirect to profile

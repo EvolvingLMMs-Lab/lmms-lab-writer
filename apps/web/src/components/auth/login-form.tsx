@@ -59,8 +59,11 @@ export function LoginForm() {
       const supabase = createClient();
       // Preserve source parameter (e.g., desktop) through OAuth flow
       // Store in sessionStorage as backup since Supabase may not preserve query params
-      if (source) {
+      if (source === "desktop") {
         sessionStorage.setItem("auth_source", source);
+      } else {
+        // Clear any stale auth_source from previous attempts
+        sessionStorage.removeItem("auth_source");
       }
       const callbackUrl = source
         ? `${window.location.origin}/auth/callback?source=${source}`
