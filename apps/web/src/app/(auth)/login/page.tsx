@@ -61,12 +61,9 @@ function LoginPageContent() {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session) {
-        // Already logged in, redirect to desktop-success with tokens
-        const params = new URLSearchParams({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
-        });
-        window.location.href = `/auth/desktop-success?${params}`;
+        // Already logged in, redirect to desktop-success
+        // The page will fetch tokens from the session
+        window.location.href = `/auth/desktop-success`;
       } else {
         setReady(true);
       }

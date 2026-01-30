@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 function DesktopSuccessContent() {
   const searchParams = useSearchParams();
@@ -13,18 +14,37 @@ function DesktopSuccessContent() {
   } | null>(null);
 
   useEffect(() => {
-    const accessToken = searchParams.get("access_token");
-    const refreshToken = searchParams.get("refresh_token");
-    const errorParam = searchParams.get("error");
+    const loadTokens = async () => {
+      const accessToken = searchParams.get("access_token");
+      const refreshToken = searchParams.get("refresh_token");
+      const errorParam = searchParams.get("error");
 
-    if (errorParam) {
-      setError(decodeURIComponent(errorParam));
-      return;
-    }
+      if (errorParam) {
+        setError(decodeURIComponent(errorParam));
+        return;
+      }
 
-    if (accessToken && refreshToken) {
-      setTokens({ accessToken, refreshToken });
-    }
+      // If tokens are in URL, use them
+      if (accessToken && refreshToken) {
+        setTokens({ accessToken, refreshToken });
+        return;
+      }
+
+      // Otherwise, try to get from current session
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        setTokens({
+          accessToken: session.access_token,
+          refreshToken: session.refresh_token,
+        });
+      } else {
+        setError("No active session found. Please login again.");
+      }
+    };
+
+    loadTokens();
   }, [searchParams]);
 
   const handleOpenApp = () => {
