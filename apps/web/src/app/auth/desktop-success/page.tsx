@@ -8,6 +8,12 @@ function DesktopSuccessContent() {
   const [status, setStatus] = useState<"redirecting" | "success" | "fallback">(
     "redirecting"
   );
+  const [tokens, setTokens] = useState<{
+    accessToken: string;
+    refreshToken: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [showManual, setShowManual] = useState(false);
 
   useEffect(() => {
     const accessToken = searchParams.get("access_token");
@@ -23,6 +29,9 @@ function DesktopSuccessContent() {
       setStatus("fallback");
       return;
     }
+
+    // Store tokens for manual copy fallback
+    setTokens({ accessToken, refreshToken });
 
     // Try to redirect to desktop app via deep link
     const deepLinkUrl = `lmms-writer://auth/callback?access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}`;
@@ -40,6 +49,14 @@ function DesktopSuccessContent() {
       clearTimeout(timer);
     };
   }, [searchParams]);
+
+  const handleCopyTokens = async () => {
+    if (!tokens) return;
+    const tokenString = JSON.stringify(tokens, null, 2);
+    await navigator.clipboard.writeText(tokenString);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -75,9 +92,38 @@ function DesktopSuccessContent() {
             <p className="text-muted text-sm mb-6">
               You can now close this window and return to the desktop app.
             </p>
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted mb-4">
               If the app didn&apos;t open automatically, please return to it manually.
             </p>
+
+            {/* Manual token copy for development */}
+            {tokens && (
+              <div className="border-t border-border pt-4 mt-4">
+                <button
+                  onClick={() => setShowManual(!showManual)}
+                  className="text-xs text-muted hover:text-foreground underline"
+                >
+                  {showManual ? "Hide" : "App didn't open?"} (Dev mode)
+                </button>
+
+                {showManual && (
+                  <div className="mt-4 text-left">
+                    <p className="text-xs text-muted mb-2">
+                      Copy these tokens and paste them in the desktop app:
+                    </p>
+                    <div className="bg-neutral-100 p-3 rounded text-xs font-mono break-all max-h-32 overflow-auto">
+                      {JSON.stringify(tokens, null, 2)}
+                    </div>
+                    <button
+                      onClick={handleCopyTokens}
+                      className="mt-2 px-3 py-1.5 text-xs border border-black bg-white hover:bg-neutral-50 transition-colors"
+                    >
+                      {copied ? "Copied!" : "Copy Tokens"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
 
