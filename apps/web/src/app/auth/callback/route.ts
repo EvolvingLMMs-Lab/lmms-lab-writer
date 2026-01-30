@@ -60,8 +60,8 @@ export async function GET(request: Request) {
         return NextResponse.redirect(`${origin}/auth/desktop-success?error=${encodeURIComponent("Missing code verifier. Please try again.")}`);
       }
 
-      // Call Supabase Auth API directly
-      const tokenUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=pkce`;
+      // Call Supabase Auth API directly (bypassing SSR client to get full refresh token)
+      const tokenUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token`;
       console.log("[auth/callback] Calling token endpoint:", tokenUrl);
 
       const tokenResponse = await fetch(tokenUrl, {
@@ -69,22 +69,35 @@ export async function GET(request: Request) {
         headers: {
           "Content-Type": "application/json",
           "apikey": process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
         },
         body: JSON.stringify({
+          grant_type: "pkce",
           auth_code: code,
           code_verifier: codeVerifier,
         }),
       });
 
-      const tokenData = await tokenResponse.json();
+      const tokenText = await tokenResponse.text();
       console.log("[auth/callback] Token response status:", tokenResponse.status);
+      console.log("[auth/callback] Token response body:", tokenText.substring(0, 500));
+
+      let tokenData;
+      try {
+        tokenData = JSON.parse(tokenText);
+      } catch {
+        console.log("[auth/callback] Failed to parse token response");
+        return NextResponse.redirect(`${origin}/auth/desktop-success?error=${encodeURIComponent("Invalid response from auth server")}`);
+      }
+
       console.log("[auth/callback] Token response has access_token:", !!tokenData.access_token);
       console.log("[auth/callback] Token response has refresh_token:", !!tokenData.refresh_token);
       console.log("[auth/callback] refresh_token length:", tokenData.refresh_token?.length);
 
       if (!tokenResponse.ok || !tokenData.access_token) {
-        console.log("[auth/callback] Token error:", tokenData);
-        return NextResponse.redirect(`${origin}/auth/desktop-success?error=${encodeURIComponent(tokenData.error_description || tokenData.error || "Failed to get tokens")}`);
+        const errorMsg = tokenData.error_description || tokenData.msg || tokenData.error || "Failed to get tokens";
+        console.log("[auth/callback] Token error:", errorMsg);
+        return NextResponse.redirect(`${origin}/auth/desktop-success?error=${encodeURIComponent(errorMsg)}`);
       }
 
       // Redirect to desktop-success with full tokens
