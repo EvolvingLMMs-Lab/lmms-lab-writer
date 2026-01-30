@@ -61,9 +61,8 @@ function LoginPageContent() {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session) {
-        // Already logged in, redirect to desktop-success
-        // The page will fetch tokens from the session
-        window.location.href = `/auth/desktop-success`;
+        // Already logged in - redirect to server-side endpoint to get full tokens
+        window.location.href = `/auth/desktop-token`;
       } else {
         setReady(true);
       }
