@@ -7,7 +7,19 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const error_param = searchParams.get("error");
   const error_description = searchParams.get("error_description");
-  const source = searchParams.get("source");
+
+  // Check source from URL first, then from cookie as backup
+  let source: string | null = searchParams.get("source");
+  if (!source) {
+    const cookies = request.headers.get("cookie") || "";
+    const authSourceMatch = cookies.match(/auth_source=([^;]+)/);
+    if (authSourceMatch) {
+      source = authSourceMatch[1] ?? null;
+    }
+  }
+
+  console.log("[auth/callback] URL:", request.url);
+  console.log("[auth/callback] source:", source, "code exists:", !!code);
 
   if (error_param) {
     const errorMsg = encodeURIComponent(error_description || error_param);
@@ -30,6 +42,9 @@ export async function GET(request: Request) {
     }
 
     const session = data.session;
+    console.log("[auth/callback] session exists:", !!session);
+    console.log("[auth/callback] access_token length:", session?.access_token?.length);
+    console.log("[auth/callback] refresh_token length:", session?.refresh_token?.length);
 
     // Store GitHub token if available
     if (session?.provider_token && session.user) {
@@ -53,7 +68,10 @@ export async function GET(request: Request) {
         access_token: session.access_token,
         refresh_token: session.refresh_token,
       });
-      return NextResponse.redirect(`${origin}/auth/desktop-success?${params}`);
+      const response = NextResponse.redirect(`${origin}/auth/desktop-success?${params}`);
+      // Clear the auth_source cookie
+      response.cookies.set("auth_source", "", { path: "/", maxAge: 0 });
+      return response;
     }
 
     // Check sessionStorage backup (handled by post-login page)
