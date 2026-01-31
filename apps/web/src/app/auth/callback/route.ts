@@ -19,10 +19,6 @@ export async function GET(request: Request) {
   let source: string | null = searchParams.get("source");
   console.log("[auth/callback] Source from URL:", source);
 
-  // Check for desktop local callback redirect_uri
-  const desktopRedirectUri = searchParams.get("desktop_redirect_uri");
-  console.log("[auth/callback] Desktop redirect_uri:", desktopRedirectUri);
-
   if (!source) {
     const cookieHeader = request.headers.get("cookie") || "";
     console.log("[auth/callback] Cookies:", cookieHeader);
@@ -35,30 +31,12 @@ export async function GET(request: Request) {
 
   console.log("[auth/callback] Final source:", source);
 
-  // Helper to redirect to desktop local server
-  const redirectToDesktopLocal = (params: URLSearchParams) => {
-    if (desktopRedirectUri && desktopRedirectUri.startsWith("http://localhost:")) {
-      const redirectUrl = new URL(desktopRedirectUri);
-      params.forEach((value, key) => redirectUrl.searchParams.set(key, value));
-      console.log("[auth/callback] Redirecting to desktop local server:", redirectUrl.toString());
-      return NextResponse.redirect(redirectUrl.toString());
-    }
-    return null;
-  };
-
   if (error_param) {
-    const errorMsg = error_description || error_param;
-
-    // Try desktop local redirect first
-    const desktopResponse = redirectToDesktopLocal(new URLSearchParams({
-      error: errorMsg,
-    }));
-    if (desktopResponse) return desktopResponse;
-
+    const errorMsg = encodeURIComponent(error_description || error_param);
     if (source === "desktop") {
-      return NextResponse.redirect(`${origin}/auth/desktop-success?error=${encodeURIComponent(errorMsg)}`);
+      return NextResponse.redirect(`${origin}/auth/desktop-success?error=${errorMsg}`);
     }
-    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(errorMsg)}`);
+    return NextResponse.redirect(`${origin}/login?error=${errorMsg}`);
   }
 
   if (code) {
@@ -68,15 +46,8 @@ export async function GET(request: Request) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
-      const errorMsg = error.message;
-
-      // Try desktop local redirect first
-      const desktopResponse = redirectToDesktopLocal(new URLSearchParams({
-        error: errorMsg,
-      }));
-      if (desktopResponse) return desktopResponse;
-
-      return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(errorMsg)}`);
+      const errorMsg = encodeURIComponent(error.message);
+      return NextResponse.redirect(`${origin}/login?error=${errorMsg}`);
     }
 
     const session = data.session;
@@ -98,15 +69,6 @@ export async function GET(request: Request) {
       } catch {
         // Silently fail - not critical
       }
-    }
-
-    // If desktop local redirect is specified, redirect with tokens
-    if (session && desktopRedirectUri) {
-      const desktopResponse = redirectToDesktopLocal(new URLSearchParams({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-      }));
-      if (desktopResponse) return desktopResponse;
     }
 
     console.log("[auth/callback] Web flow - redirecting to post-login");
