@@ -164,21 +164,9 @@ export function useAuth() {
 
   const signInWithGitHub = useCallback(async () => {
     try {
-      const supabase = getSupabaseClient();
       const { open } = await import("@tauri-apps/plugin-shell");
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "github",
-        options: {
-          redirectTo: "https://writer.lmms-lab.com/auth/callback?source=desktop",
-          skipBrowserRedirect: true,
-        },
-      });
-
-      if (error) throw error;
-      if (data.url) {
-        await open(data.url);
-      }
+      // Open web login page - let web handle OAuth flow so PKCE code_verifier is in browser cookies
+      await open("https://writer.lmms-lab.com/login?source=desktop");
     } catch (err) {
       setState((prev) => ({
         ...prev,
