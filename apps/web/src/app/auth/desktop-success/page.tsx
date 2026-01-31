@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 function DesktopSuccessContent() {
   const searchParams = useSearchParams();
@@ -22,7 +23,46 @@ function DesktopSuccessContent() {
         return;
       }
 
-      // Get tokens from URL (passed from auth callback)
+      // Check if we have a code to exchange (new flow)
+      const authCode = searchParams.get("code");
+      if (authCode) {
+        console.log("[desktop-success] Auth code found, exchanging for session...");
+        try {
+          const supabase = createClient();
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(authCode);
+
+          if (exchangeError) {
+            console.log("[desktop-success] Exchange error:", exchangeError.message);
+            setError(exchangeError.message);
+            return;
+          }
+
+          const session = data.session;
+          console.log("[desktop-success] Session obtained");
+          console.log("[desktop-success] access_token length:", session?.access_token?.length);
+          console.log("[desktop-success] refresh_token length:", session?.refresh_token?.length);
+
+          if (!session?.access_token || !session?.refresh_token) {
+            setError("Failed to get authentication tokens. Please try again.");
+            return;
+          }
+
+          // Create login code from tokens
+          const code = btoa(JSON.stringify({
+            accessToken: session.access_token,
+            refreshToken: session.refresh_token
+          }));
+          console.log("[desktop-success] Login code created, length:", code.length);
+          setLoginCode(code);
+          return;
+        } catch (err) {
+          console.error("[desktop-success] Exception:", err);
+          setError("Failed to complete authentication. Please try again.");
+          return;
+        }
+      }
+
+      // Legacy flow: tokens passed directly in URL
       const accessToken = searchParams.get("access_token");
       const refreshToken = searchParams.get("refresh_token");
 
@@ -31,7 +71,6 @@ function DesktopSuccessContent() {
       console.log("[desktop-success] refresh_token exists:", !!refreshToken);
       console.log("[desktop-success] refresh_token length:", refreshToken?.length);
 
-      // Validate tokens exist
       if (!accessToken || !refreshToken) {
         console.log("[desktop-success] ERROR: Missing tokens");
         setError("Missing authentication tokens. Please try logging in again from the desktop app.");
@@ -39,9 +78,6 @@ function DesktopSuccessContent() {
       }
 
       console.log("[desktop-success] Tokens validated, creating login code...");
-
-      // Create login code from tokens
-      console.log("[desktop-success] Creating login code...");
       const code = btoa(JSON.stringify({ accessToken, refreshToken }));
       console.log("[desktop-success] Login code created, length:", code.length);
       setLoginCode(code);
