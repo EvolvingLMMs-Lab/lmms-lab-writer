@@ -3,11 +3,15 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+type CallbackStatus = "pending" | "sending" | "sent" | "failed";
+
 function DesktopSuccessContent() {
   const searchParams = useSearchParams();
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loginCode, setLoginCode] = useState<string | null>(null);
+  const [callbackStatus, setCallbackStatus] = useState<CallbackStatus>("pending");
+  const callbackPort = searchParams.get("callback_port");
 
   useEffect(() => {
     const loadTokens = async () => {
@@ -166,6 +170,37 @@ function DesktopSuccessContent() {
     loadTokens();
   }, [searchParams]);
 
+  // Send code to desktop callback server when available
+  useEffect(() => {
+    if (!loginCode || !callbackPort) return;
+
+    const sendToCallback = async () => {
+      setCallbackStatus("sending");
+      try {
+        const response = await fetch(`http://127.0.0.1:${callbackPort}/callback`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ code: loginCode }),
+        });
+
+        if (response.ok) {
+          console.log("[desktop-success] Code sent to desktop app successfully");
+          setCallbackStatus("sent");
+        } else {
+          console.log("[desktop-success] Failed to send code to desktop app:", response.status);
+          setCallbackStatus("failed");
+        }
+      } catch (err) {
+        console.log("[desktop-success] Error sending code to desktop app:", err);
+        setCallbackStatus("failed");
+      }
+    };
+
+    sendToCallback();
+  }, [loginCode, callbackPort]);
+
   const handleCopy = async () => {
     if (!loginCode) return;
     await navigator.clipboard.writeText(loginCode);
@@ -221,24 +256,35 @@ function DesktopSuccessContent() {
       <div className="max-w-md w-full p-8">
         {/* Success Header */}
         <div className="text-center mb-8">
-          <div className="w-12 h-12 border-2 border-black flex items-center justify-center mx-auto mb-4">
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
+          <div className={`w-12 h-12 border-2 flex items-center justify-center mx-auto mb-4 ${
+            callbackStatus === "sent" ? "border-green-600" : "border-black"
+          }`}>
+            {callbackStatus === "sending" ? (
+              <div className="w-5 h-5 border-2 border-black border-t-transparent animate-spin" />
+            ) : (
+              <svg
+                className={`w-6 h-6 ${callbackStatus === "sent" ? "text-green-600" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            )}
           </div>
-          <h1 className="text-xl font-medium mb-2">Login Successful!</h1>
+          <h1 className="text-xl font-medium mb-2">
+            {callbackStatus === "sent" ? "Logged In!" : "Login Successful!"}
+          </h1>
           <p className="text-muted text-sm">
-            Copy the login code below and paste it in the desktop app.
+            {callbackStatus === "sending" && "Sending login code to desktop app..."}
+            {callbackStatus === "sent" && "Login code sent to desktop app. You can close this window."}
+            {(callbackStatus === "failed" || callbackStatus === "pending") &&
+              "Copy the login code below and paste it in the desktop app."}
           </p>
         </div>
 
@@ -263,13 +309,17 @@ function DesktopSuccessContent() {
             </button>
           </div>
           <p className="text-xs text-muted">
-            This code expires when your session expires. Get a new code if login fails.
+            {callbackStatus === "sent"
+              ? "You can also copy the code manually if needed."
+              : "This code expires when your session expires. Get a new code if login fails."}
           </p>
         </div>
 
         {/* Footer */}
         <p className="text-xs text-muted text-center mt-6">
-          You can close this window after pasting the code in the app.
+          {callbackStatus === "sent"
+            ? "Return to the desktop app to continue."
+            : "You can close this window after pasting the code in the app."}
         </p>
       </div>
     </div>

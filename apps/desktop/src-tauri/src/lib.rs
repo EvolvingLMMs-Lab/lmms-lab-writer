@@ -1,13 +1,15 @@
 mod commands;
 
+use commands::auth::AuthCallbackStateWrapper;
 use commands::fs::{ProjectState, WatcherState};
 use commands::latex::LaTeXCompilationState;
 use commands::opencode::OpenCodeState;
 use commands::terminal::PtyState;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::webview::WebviewWindowBuilder;
 use tauri::WebviewUrl;
 use tauri_plugin_opener::OpenerExt;
+use tokio::sync::Mutex as TokioMutex;
 
 fn is_external_url(url: &url::Url, dev_port: u16) -> bool {
     let scheme = url.scheme();
@@ -48,7 +50,13 @@ pub fn run() {
         .manage(LaTeXCompilationState::default())
         .manage(Mutex::new(WatcherState::default()))
         .manage(Mutex::new(ProjectState::default()))
+        .manage(Arc::new(TokioMutex::new(
+            commands::auth::AuthCallbackState::default(),
+        )) as AuthCallbackStateWrapper)
         .invoke_handler(tauri::generate_handler![
+            commands::auth::start_auth_callback_server,
+            commands::auth::stop_auth_callback_server,
+            commands::auth::get_auth_callback_port,
             commands::fs::set_project_path,
             commands::fs::read_file,
             commands::fs::write_file,

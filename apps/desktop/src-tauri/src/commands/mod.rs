@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod fs;
 pub mod git;
 pub mod latex;

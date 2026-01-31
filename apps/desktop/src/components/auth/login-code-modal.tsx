@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { X, Check, Loader2, Copy, ExternalLink } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase";
+import { invoke } from "@tauri-apps/api/core";
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
 
 interface LoginCodeModalProps {
   isOpen: boolean;
@@ -15,59 +17,30 @@ type LoginState = "idle" | "loading" | "success" | "error";
 
 const DEFAULT_LOGIN_URL = "https://writer.lmms-lab.com/login?source=desktop";
 
-export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl = DEFAULT_LOGIN_URL }: LoginCodeModalProps) {
+export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLoginUrl = DEFAULT_LOGIN_URL }: LoginCodeModalProps) {
   const [loginCode, setLoginCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<LoginState>("idle");
   const [linkCopied, setLinkCopied] = useState(false);
+  const [callbackPort, setCallbackPort] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const unlistenRef = useRef<UnlistenFn | null>(null);
+  const hasProcessedCodeRef = useRef(false);
 
-  // Reset state when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setLoginCode("");
-      setError(null);
-      setState("idle");
-      setLinkCopied(false);
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
-  }, [isOpen]);
+  // Compute login URL with callback port
+  const loginUrl = callbackPort
+    ? `${baseLoginUrl}&callback_port=${callbackPort}`
+    : baseLoginUrl;
 
-  const handleCopyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(loginUrl);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy link:", err);
-    }
-  };
+  // Handle code login (extracted to be reusable)
+  const processLoginCode = useCallback(async (code: string) => {
+    if (!code.trim() || state === "loading" || state === "success") return;
 
-  const handleOpenLink = async () => {
-    try {
-      const { open } = await import("@tauri-apps/plugin-shell");
-      await open(loginUrl);
-    } catch (err) {
-      console.error("Failed to open link:", err);
-      // Fallback: copy to clipboard
-      handleCopyLink();
-    }
-  };
+    // Prevent double processing
+    if (hasProcessedCodeRef.current) return;
+    hasProcessedCodeRef.current = true;
 
-  // Handle ESC key to close modal
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen && state !== "loading") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [isOpen, state, onClose]);
-
-  const handleCodeLogin = async () => {
-    if (!loginCode.trim() || state === "loading") return;
-
+    setLoginCode(code);
     setError(null);
     setState("loading");
 
@@ -78,7 +51,7 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl = DEFAULT_
     let refreshToken: string;
 
     try {
-      const decoded = atob(loginCode.trim());
+      const decoded = atob(code.trim());
       console.log("[LoginCode] Decoded base64, parsing JSON...");
       const tokens = JSON.parse(decoded);
       accessToken = tokens.accessToken;
@@ -94,6 +67,7 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl = DEFAULT_
       console.error("[LoginCode] Decode error:", err);
       setError("Invalid login code format. Please copy the code again.");
       setState("error");
+      hasProcessedCodeRef.current = false;
       return;
     }
 
@@ -183,8 +157,107 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl = DEFAULT_
       }
 
       setState("error");
+      hasProcessedCodeRef.current = false;
+    }
+  }, [state, onClose, onSuccess]);
+
+  // Start/stop auth callback server and listen for events
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let mounted = true;
+
+    const startServer = async () => {
+      try {
+        const port = await invoke<number>("start_auth_callback_server");
+        if (mounted) {
+          setCallbackPort(port);
+          console.log("[LoginCode] Auth callback server started on port:", port);
+        }
+      } catch (err) {
+        console.error("[LoginCode] Failed to start auth callback server:", err);
+      }
+    };
+
+    const setupListener = async () => {
+      try {
+        unlistenRef.current = await listen<{ code: string }>("auth-code-received", (event) => {
+          console.log("[LoginCode] Received auth code from callback server");
+          if (mounted && event.payload.code) {
+            processLoginCode(event.payload.code);
+          }
+        });
+      } catch (err) {
+        console.error("[LoginCode] Failed to setup event listener:", err);
+      }
+    };
+
+    startServer();
+    setupListener();
+
+    return () => {
+      mounted = false;
+
+      // Stop the server
+      invoke("stop_auth_callback_server").catch((err) => {
+        console.error("[LoginCode] Failed to stop auth callback server:", err);
+      });
+
+      // Remove listener
+      if (unlistenRef.current) {
+        unlistenRef.current();
+        unlistenRef.current = null;
+      }
+    };
+  }, [isOpen, processLoginCode]);
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setLoginCode("");
+      setError(null);
+      setState("idle");
+      setLinkCopied(false);
+      hasProcessedCodeRef.current = false;
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [isOpen]);
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(loginUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy link:", err);
     }
   };
+
+  const handleOpenLink = async () => {
+    try {
+      const { open } = await import("@tauri-apps/plugin-shell");
+      await open(loginUrl);
+    } catch (err) {
+      console.error("Failed to open link:", err);
+      // Fallback: copy to clipboard
+      handleCopyLink();
+    }
+  };
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen && state !== "loading") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, state, onClose]);
+
+  const handleCodeLogin = useCallback(() => {
+    processLoginCode(loginCode);
+  }, [loginCode, processLoginCode]);
 
   if (!isOpen) return null;
 
