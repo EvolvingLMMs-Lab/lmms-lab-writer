@@ -20,7 +20,7 @@ export function LoginForm() {
   const getSupabaseClient = () => {
     if (source === "desktop") {
       // Use standard client with PKCE flow for desktop
-      // Don't use custom storageKey - let Supabase use default (project ref)
+      // Explicitly set storage to window.localStorage
       console.log("[LoginForm] Creating standard client with PKCE flow");
       return createStandardClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,6 +29,7 @@ export function LoginForm() {
           auth: {
             flowType: "pkce",
             persistSession: true,
+            storage: window.localStorage,
           },
         }
       );

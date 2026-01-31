@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
 
 function DesktopSuccessContent() {
   const searchParams = useSearchParams();
@@ -29,57 +28,83 @@ function DesktopSuccessContent() {
       const authCode = searchParams.get("code");
       if (authCode) {
         console.log("[desktop-success] PKCE code found, exchanging for session...");
-        // Log ALL localStorage keys to find the code_verifier
+
+        // Find the code_verifier in localStorage
         const allKeys = Object.keys(localStorage);
-        const relevantKeys = allKeys.filter(k => k.includes('supabase') || k.includes('sb-') || k.includes('code'));
         console.log("[desktop-success] All localStorage keys:", allKeys);
-        console.log("[desktop-success] Relevant keys:", relevantKeys);
-        // Log the actual values for debugging
-        relevantKeys.forEach(k => {
-          const value = localStorage.getItem(k);
-          console.log(`[desktop-success] ${k}:`, value?.substring(0, 100) + (value && value.length > 100 ? '...' : ''));
-        });
+
+        const codeVerifierKey = allKeys.find(k => k.includes('code-verifier'));
+        if (!codeVerifierKey) {
+          console.log("[desktop-success] ERROR: code_verifier key not found!");
+          setError("Authentication data missing. Please try logging in again.");
+          return;
+        }
+
+        const codeVerifierRaw = localStorage.getItem(codeVerifierKey);
+        console.log("[desktop-success] code_verifier key:", codeVerifierKey);
+        console.log("[desktop-success] code_verifier raw:", codeVerifierRaw?.substring(0, 50));
+
+        // Parse the code_verifier (it's stored as JSON string)
+        let codeVerifier: string;
         try {
-          // Use standard Supabase client with PKCE - matches what login form used
-          // Don't use custom storageKey - let Supabase use default (project ref)
-          const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-              auth: {
-                flowType: "pkce",
-                persistSession: true,
-              },
-            }
-          );
-          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(authCode);
+          codeVerifier = JSON.parse(codeVerifierRaw || '""');
+          console.log("[desktop-success] code_verifier parsed, length:", codeVerifier.length);
+        } catch {
+          codeVerifier = codeVerifierRaw || '';
+          console.log("[desktop-success] code_verifier used as-is, length:", codeVerifier.length);
+        }
 
-          if (exchangeError) {
-            console.log("[desktop-success] Exchange error:", exchangeError.message);
-            setError(exchangeError.message);
+        if (!codeVerifier) {
+          console.log("[desktop-success] ERROR: code_verifier is empty!");
+          setError("Authentication data invalid. Please try logging in again.");
+          return;
+        }
+
+        try {
+          // Call Supabase token endpoint directly with PKCE
+          const tokenUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=pkce`;
+          console.log("[desktop-success] Calling token endpoint:", tokenUrl);
+
+          const response = await fetch(tokenUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            },
+            body: JSON.stringify({
+              auth_code: authCode,
+              code_verifier: codeVerifier,
+            }),
+          });
+
+          const data = await response.json();
+          console.log("[desktop-success] Token response status:", response.status);
+          console.log("[desktop-success] Token response has access_token:", !!data.access_token);
+          console.log("[desktop-success] Token response has refresh_token:", !!data.refresh_token);
+
+          if (!response.ok || !data.access_token) {
+            console.log("[desktop-success] Token error:", data.error || data.msg || data.error_description);
+            setError(data.error_description || data.msg || data.error || "Failed to get tokens");
             return;
           }
 
-          const session = data.session;
-          console.log("[desktop-success] Session obtained via PKCE");
-          console.log("[desktop-success] access_token length:", session?.access_token?.length);
-          console.log("[desktop-success] refresh_token length:", session?.refresh_token?.length);
-
-          if (!session?.access_token || !session?.refresh_token) {
-            setError("Failed to get authentication tokens. Please try again.");
-            return;
-          }
+          console.log("[desktop-success] access_token length:", data.access_token?.length);
+          console.log("[desktop-success] refresh_token length:", data.refresh_token?.length);
 
           // Create login code from tokens
           const code = btoa(JSON.stringify({
-            accessToken: session.access_token,
-            refreshToken: session.refresh_token
+            accessToken: data.access_token,
+            refreshToken: data.refresh_token
           }));
           console.log("[desktop-success] Login code created, length:", code.length);
+
+          // Clear the code_verifier from storage
+          localStorage.removeItem(codeVerifierKey);
+
           setLoginCode(code);
           return;
         } catch (err) {
-          console.error("[desktop-success] PKCE exchange exception:", err);
+          console.error("[desktop-success] Token exchange exception:", err);
           setError("Failed to complete authentication. Please try again.");
           return;
         }
