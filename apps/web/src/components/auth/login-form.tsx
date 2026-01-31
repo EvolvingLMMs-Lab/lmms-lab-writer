@@ -19,7 +19,8 @@ export function LoginForm() {
   // Get appropriate Supabase client based on flow
   const getSupabaseClient = () => {
     if (source === "desktop") {
-      // Use standard client with PKCE flow for desktop - stores code_verifier in localStorage
+      // Use standard client with PKCE flow for desktop
+      // Don't use custom storageKey - let Supabase use default (project ref)
       console.log("[LoginForm] Creating standard client with PKCE flow");
       return createStandardClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,8 +29,6 @@ export function LoginForm() {
           auth: {
             flowType: "pkce",
             persistSession: true,
-            storage: typeof window !== "undefined" ? window.localStorage : undefined,
-            storageKey: "sb-desktop-auth",
           },
         }
       );
@@ -119,7 +118,10 @@ export function LoginForm() {
         const urlHasCodeChallenge = data.url.includes("code_challenge");
         console.log("[LoginForm] PKCE enabled (has code_challenge):", urlHasCodeChallenge);
       }
-      console.log("[LoginForm] localStorage after signInWithOAuth:", Object.keys(localStorage).filter(k => k.includes('supabase') || k.includes('sb-')));
+      // Log ALL localStorage keys to see where code_verifier is stored
+      const allKeys = Object.keys(localStorage);
+      console.log("[LoginForm] All localStorage keys:", allKeys);
+      console.log("[LoginForm] code_verifier key:", allKeys.find(k => k.includes('code-verifier')) || 'NOT FOUND');
 
       if (error) {
         setError(`GitHub OAuth error: ${error.message}`);

@@ -29,8 +29,11 @@ function DesktopSuccessContent() {
       const authCode = searchParams.get("code");
       if (authCode) {
         console.log("[desktop-success] PKCE code found, exchanging for session...");
-        const relevantKeys = Object.keys(localStorage).filter(k => k.includes('supabase') || k.includes('sb-'));
-        console.log("[desktop-success] localStorage keys:", relevantKeys);
+        // Log ALL localStorage keys to find the code_verifier
+        const allKeys = Object.keys(localStorage);
+        const relevantKeys = allKeys.filter(k => k.includes('supabase') || k.includes('sb-') || k.includes('code'));
+        console.log("[desktop-success] All localStorage keys:", allKeys);
+        console.log("[desktop-success] Relevant keys:", relevantKeys);
         // Log the actual values for debugging
         relevantKeys.forEach(k => {
           const value = localStorage.getItem(k);
@@ -38,7 +41,7 @@ function DesktopSuccessContent() {
         });
         try {
           // Use standard Supabase client with PKCE - matches what login form used
-          // Must use same storageKey to find code_verifier
+          // Don't use custom storageKey - let Supabase use default (project ref)
           const supabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -46,8 +49,6 @@ function DesktopSuccessContent() {
               auth: {
                 flowType: "pkce",
                 persistSession: true,
-                storage: window.localStorage,
-                storageKey: "sb-desktop-auth",
               },
             }
           );
