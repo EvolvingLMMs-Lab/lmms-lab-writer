@@ -19,10 +19,15 @@ export function LoginForm() {
   // Get appropriate Supabase client based on flow
   const getSupabaseClient = () => {
     if (source === "desktop") {
-      // Use standard client (localStorage) for desktop flow - PKCE works across pages
+      // Use standard client with PKCE flow for desktop - stores code_verifier in localStorage
       return createStandardClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          auth: {
+            flowType: "pkce",
+          },
+        }
       );
     }
     // Use SSR client (cookies) for web flow

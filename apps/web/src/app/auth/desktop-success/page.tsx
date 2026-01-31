@@ -14,7 +14,9 @@ function DesktopSuccessContent() {
     const loadTokens = async () => {
       console.log("=== [desktop-success] Page Loaded ===");
       console.log("[desktop-success] Full URL:", window.location.href);
+      console.log("[desktop-success] Hash:", window.location.hash);
 
+      // Check for error in query params
       const errorParam = searchParams.get("error");
       console.log("[desktop-success] Error param:", errorParam);
 
@@ -23,16 +25,21 @@ function DesktopSuccessContent() {
         return;
       }
 
-      // Check if we have a code to exchange (new flow)
+      // Check for PKCE code in query params (PKCE flow)
       const authCode = searchParams.get("code");
       if (authCode) {
-        console.log("[desktop-success] Auth code found, exchanging for session...");
+        console.log("[desktop-success] PKCE code found, exchanging for session...");
         console.log("[desktop-success] localStorage keys:", Object.keys(localStorage).filter(k => k.includes('supabase') || k.includes('sb-')));
         try {
-          // Use standard Supabase client (localStorage) - matches what login form used
+          // Use standard Supabase client with PKCE - matches what login form used
           const supabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+              auth: {
+                flowType: "pkce",
+              },
+            }
           );
           const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(authCode);
 
@@ -43,7 +50,7 @@ function DesktopSuccessContent() {
           }
 
           const session = data.session;
-          console.log("[desktop-success] Session obtained");
+          console.log("[desktop-success] Session obtained via PKCE");
           console.log("[desktop-success] access_token length:", session?.access_token?.length);
           console.log("[desktop-success] refresh_token length:", session?.refresh_token?.length);
 
@@ -61,31 +68,63 @@ function DesktopSuccessContent() {
           setLoginCode(code);
           return;
         } catch (err) {
-          console.error("[desktop-success] Exception:", err);
+          console.error("[desktop-success] PKCE exchange exception:", err);
           setError("Failed to complete authentication. Please try again.");
           return;
         }
       }
 
-      // Legacy flow: tokens passed directly in URL
-      const accessToken = searchParams.get("access_token");
-      const refreshToken = searchParams.get("refresh_token");
+      // Parse hash fragment (OAuth implicit flow returns tokens in hash - fallback)
+      const hash = window.location.hash.substring(1); // Remove leading #
+      const hashParams = new URLSearchParams(hash);
 
-      console.log("[desktop-success] access_token exists:", !!accessToken);
-      console.log("[desktop-success] access_token length:", accessToken?.length);
-      console.log("[desktop-success] refresh_token exists:", !!refreshToken);
-      console.log("[desktop-success] refresh_token length:", refreshToken?.length);
-
-      if (!accessToken || !refreshToken) {
-        console.log("[desktop-success] ERROR: Missing tokens");
-        setError("Missing authentication tokens. Please try logging in again from the desktop app.");
+      // Check for error in hash
+      const hashError = hashParams.get("error");
+      if (hashError) {
+        const errorDesc = hashParams.get("error_description") || hashError;
+        setError(decodeURIComponent(errorDesc));
         return;
       }
 
-      console.log("[desktop-success] Tokens validated, creating login code...");
-      const code = btoa(JSON.stringify({ accessToken, refreshToken }));
-      console.log("[desktop-success] Login code created, length:", code.length);
-      setLoginCode(code);
+      // Get tokens from hash fragment (implicit flow - has short refresh token)
+      let accessToken = hashParams.get("access_token");
+      let refreshToken = hashParams.get("refresh_token");
+
+      console.log("[desktop-success] Hash access_token exists:", !!accessToken);
+      console.log("[desktop-success] Hash access_token length:", accessToken?.length);
+      console.log("[desktop-success] Hash refresh_token exists:", !!refreshToken);
+      console.log("[desktop-success] Hash refresh_token length:", refreshToken?.length);
+
+      // If tokens found in hash, use them (note: refresh_token may be short/placeholder)
+      if (accessToken && refreshToken) {
+        console.log("[desktop-success] Tokens found in hash, creating login code...");
+        console.log("[desktop-success] WARNING: Implicit flow - refresh_token may not work for long sessions");
+        const code = btoa(JSON.stringify({ accessToken, refreshToken }));
+        console.log("[desktop-success] Login code created, length:", code.length);
+        setLoginCode(code);
+        // Clear hash from URL for security
+        window.history.replaceState(null, "", window.location.pathname);
+        return;
+      }
+
+      // Fallback: check query params (legacy flow)
+      accessToken = searchParams.get("access_token");
+      refreshToken = searchParams.get("refresh_token");
+
+      console.log("[desktop-success] Query access_token exists:", !!accessToken);
+      console.log("[desktop-success] Query refresh_token exists:", !!refreshToken);
+
+      if (accessToken && refreshToken) {
+        console.log("[desktop-success] Tokens found in query, creating login code...");
+        const code = btoa(JSON.stringify({ accessToken, refreshToken }));
+        console.log("[desktop-success] Login code created, length:", code.length);
+        setLoginCode(code);
+        return;
+      }
+
+      // No tokens found
+      console.log("[desktop-success] ERROR: Missing tokens");
+      setError("Missing authentication tokens. Please try logging in again.");
     };
 
     loadTokens();
