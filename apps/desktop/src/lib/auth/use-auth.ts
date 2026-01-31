@@ -111,19 +111,33 @@ export function useAuth() {
 
         const {
           data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (event, session) => {
+        } = supabase.auth.onAuthStateChange((event, session) => {
+          // IMPORTANT: Do NOT await async operations here!
+          // Blocking on database queries in this callback causes deadlock with setSession.
+          // See: https://github.com/supabase/auth-js/issues/762
           if (!mounted) return;
 
           if (session) {
-            const profile = await fetchProfile(session);
+            // First, set state immediately without profile (non-blocking)
             setState({
               user: session.user,
               session,
-              profile,
+              profile: null, // Will be fetched separately
               loading: false,
               error: null,
               isConfigured: true,
             });
+
+            // Then fetch profile in a separate, non-blocking call
+            // Using setTimeout to ensure this runs after the callback returns
+            setTimeout(() => {
+              if (!mounted) return;
+              fetchProfile(session).then((profile) => {
+                if (mounted) {
+                  setState((prev) => ({ ...prev, profile }));
+                }
+              });
+            }, 0);
           } else {
             setState({
               user: null,
@@ -251,7 +265,10 @@ export function useAuth() {
   const refreshAuth = useCallback(async () => {
     try {
       const supabase = getSupabaseClient();
+
+      // First try getSession which checks stored session
       const { data: { session } } = await supabase.auth.getSession();
+      console.log("[useAuth] refreshAuth - getSession result:", { hasSession: !!session });
 
       if (session) {
         const profile = await fetchProfile(session);
@@ -263,18 +280,94 @@ export function useAuth() {
           error: null,
           isConfigured: true,
         });
-      } else {
+        return;
+      }
+
+      // If no stored session, try to get user from any cached access token
+      // This handles the case where setSession failed but the access token is valid
+      console.log("[useAuth] No stored session, trying getUser...");
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      console.log("[useAuth] getUser result:", { hasUser: !!user, error: userError?.message });
+
+      if (user && !userError) {
+        // We have a valid user but no proper session
+        // Create a minimal session-like object for the profile fetch
+        const minimalSession = {
+          user,
+          access_token: "",
+          refresh_token: "",
+          expires_in: 0,
+          expires_at: 0,
+          token_type: "bearer",
+        } as Session;
+
+        const profile = await fetchProfile(minimalSession);
         setState({
-          user: null,
-          session: null,
-          profile: null,
+          user,
+          session: null, // No valid session, but user is authenticated
+          profile,
           loading: false,
           error: null,
           isConfigured: true,
         });
+        return;
       }
-    } catch {
+
+      // No session and no valid user
+      setState({
+        user: null,
+        session: null,
+        profile: null,
+        loading: false,
+        error: null,
+        isConfigured: true,
+      });
+    } catch (err) {
+      console.error("[useAuth] refreshAuth error:", err);
       // Silently fail - auth state remains unchanged
+    }
+  }, [fetchProfile]);
+
+  // Set auth state using an access token directly (used when setSession fails)
+  const setAuthWithToken = useCallback(async (accessToken: string) => {
+    try {
+      console.log("[useAuth] setAuthWithToken called");
+      const supabase = getSupabaseClient();
+
+      // Validate the access token and get user data
+      const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
+      console.log("[useAuth] getUser with token result:", { hasUser: !!user, error: userError?.message });
+
+      if (userError || !user) {
+        console.error("[useAuth] Token validation failed:", userError?.message);
+        return false;
+      }
+
+      // Create a minimal session for profile fetching
+      const minimalSession = {
+        user,
+        access_token: accessToken,
+        refresh_token: "",
+        expires_in: 3600,
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        token_type: "bearer",
+      } as Session;
+
+      const profile = await fetchProfile(minimalSession);
+      setState({
+        user,
+        session: minimalSession,
+        profile,
+        loading: false,
+        error: null,
+        isConfigured: true,
+      });
+
+      console.log("[useAuth] Auth state set successfully with token");
+      return true;
+    } catch (err) {
+      console.error("[useAuth] setAuthWithToken error:", err);
+      return false;
     }
   }, [fetchProfile]);
 
@@ -286,5 +379,6 @@ export function useAuth() {
     signOut,
     refreshProfile,
     refreshAuth,
+    setAuthWithToken,
   };
 }

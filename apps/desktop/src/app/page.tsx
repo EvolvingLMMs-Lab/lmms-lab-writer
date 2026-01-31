@@ -1626,7 +1626,15 @@ export default function EditorPage() {
       <LoginCodeModal
         isOpen={showLoginCodeModal}
         onClose={() => setShowLoginCodeModal(false)}
-        onSuccess={() => auth.refreshAuth()}
+        onSuccess={async (accessToken) => {
+          if (accessToken) {
+            // Session storage failed, use access token directly
+            await auth.setAuthWithToken(accessToken);
+          } else {
+            // Session was stored properly, refresh normally
+            await auth.refreshAuth();
+          }
+        }}
       />
     </div>
   );

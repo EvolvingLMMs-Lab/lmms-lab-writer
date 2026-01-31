@@ -1,21 +1,25 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Check, Loader2 } from "lucide-react";
+import { X, Check, Loader2, Copy, ExternalLink } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase";
 
 interface LoginCodeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (accessToken?: string) => void;
+  loginUrl?: string;
 }
 
 type LoginState = "idle" | "loading" | "success" | "error";
 
-export function LoginCodeModal({ isOpen, onClose, onSuccess }: LoginCodeModalProps) {
+const DEFAULT_LOGIN_URL = "https://writer.lmms-lab.com/login?source=desktop";
+
+export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl = DEFAULT_LOGIN_URL }: LoginCodeModalProps) {
   const [loginCode, setLoginCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<LoginState>("idle");
+  const [linkCopied, setLinkCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Reset state when modal opens
@@ -24,9 +28,31 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess }: LoginCodeModalPro
       setLoginCode("");
       setError(null);
       setState("idle");
+      setLinkCopied(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(loginUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy link:", err);
+    }
+  };
+
+  const handleOpenLink = async () => {
+    try {
+      const { open } = await import("@tauri-apps/plugin-shell");
+      await open(loginUrl);
+    } catch (err) {
+      console.error("Failed to open link:", err);
+      // Fallback: copy to clipboard
+      handleCopyLink();
+    }
+  };
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -77,24 +103,13 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess }: LoginCodeModalPro
       const supabase = getSupabaseClient();
       console.log("[LoginCode] Supabase client obtained");
 
-      // Try setSession with timeout (the short refresh token from SSR may cause hanging)
-      console.log("[LoginCode] Calling setSession with 10s timeout...");
-
-      const setSessionPromise = supabase.auth.setSession({
+      // Set session with the tokens
+      // Note: With noOpLock configured in the Supabase client, this should not hang
+      console.log("[LoginCode] Calling setSession...");
+      const { data: setSessionData, error: setSessionError } = await supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
       });
-
-      const timeoutPromise = new Promise<{ data: { session: null }; error: Error }>((resolve) => {
-        setTimeout(() => {
-          resolve({ data: { session: null }, error: new Error("timeout") });
-        }, 10000);
-      });
-
-      const { data: setSessionData, error: setSessionError } = await Promise.race([
-        setSessionPromise,
-        timeoutPromise,
-      ]);
 
       console.log("[LoginCode] setSession returned:", {
         hasData: !!setSessionData,
@@ -103,9 +118,8 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess }: LoginCodeModalPro
       });
 
       if (setSessionError || !setSessionData?.session) {
-        // setSession failed - likely due to short/invalid refresh token format
-        // Try to use just the access token by verifying the user
-        console.log("[LoginCode] setSession failed, trying getUser with access token...");
+        // setSession failed - validate token and use fallback
+        console.log("[LoginCode] setSession failed, validating access token...");
 
         const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
         console.log("[LoginCode] getUser returned:", {
@@ -117,26 +131,21 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess }: LoginCodeModalPro
           throw new Error("invalid_token");
         }
 
-        // Access token is valid - user is authenticated
-        // Note: Without valid refresh token, session won't auto-refresh
-        // But we can still use the access token until it expires
         console.log("[LoginCode] Access token valid, user:", userData.user.email);
+        console.log("[LoginCode] Will pass access token to onSuccess for fallback auth");
 
-        // Skip Step 3 verification since we already verified the token
-        // The session might not be set, but the user is authenticated
-        console.log("[LoginCode] Skipping session verification (using access token only)");
-        console.log("[LoginCode] Success! Setting success state...");
+        // Success - access token is valid
         setState("success");
 
         setTimeout(() => {
-          console.log("[LoginCode] Closing modal and calling onSuccess...");
+          console.log("[LoginCode] Closing modal and calling onSuccess with token...");
           onClose();
-          onSuccess?.();
+          onSuccess?.(accessToken);
         }, 500);
         return;
       }
 
-      // Step 3: Verify session (only if setSession succeeded)
+      // Step 3: Verify session
       console.log("[LoginCode] Step 3: Verifying session...");
       const { data: { session } } = await supabase.auth.getSession();
 
@@ -163,9 +172,7 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess }: LoginCodeModalPro
       console.error("[LoginCode] Error:", err);
       const message = err instanceof Error ? err.message : "unknown";
 
-      if (message === "timeout") {
-        setError("Login timed out. The login code may be invalid.");
-      } else if (message === "invalid_token") {
+      if (message === "invalid_token") {
         setError("Invalid or expired login code. Please get a new code.");
       } else if (message === "expired" || message.includes("Refresh Token")) {
         setError("Login code expired. Please get a new code from the web page.");
@@ -211,6 +218,37 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess }: LoginCodeModalPro
           <p className="text-sm text-muted">
             Complete the login in your browser, then paste the login code here.
           </p>
+
+          {/* Login URL - copyable fallback */}
+          <div className="bg-neutral-50 border border-border p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted">Login URL</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handleCopyLink}
+                  className="p-1 text-muted hover:text-black hover:bg-neutral-200 transition-colors"
+                  title="Copy link"
+                >
+                  {linkCopied ? (
+                    <Check className="w-3.5 h-3.5 text-green-600" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
+                <button
+                  onClick={handleOpenLink}
+                  className="p-1 text-muted hover:text-black hover:bg-neutral-200 transition-colors"
+                  title="Open in browser"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+            <p className="text-xs font-mono text-muted break-all select-all">
+              {loginUrl}
+            </p>
+          </div>
+
           <input
             ref={inputRef}
             type="text"
