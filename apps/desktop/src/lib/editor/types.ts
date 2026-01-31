@@ -7,11 +7,31 @@ export type EditorTheme =
   | "dracula"
   | "nord";
 
-export const EDITOR_THEMES: { value: EditorTheme; label: string; description: string }[] = [
-  { value: "monochrome", label: "Monochrome", description: "Clean black and white" },
-  { value: "github-light", label: "GitHub Light", description: "Classic GitHub style" },
-  { value: "solarized-light", label: "Solarized Light", description: "Easy on the eyes" },
-  { value: "one-dark", label: "One Dark", description: "Atom's iconic dark theme" },
+export const EDITOR_THEMES: {
+  value: EditorTheme;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "monochrome",
+    label: "Monochrome",
+    description: "Clean black and white",
+  },
+  {
+    value: "github-light",
+    label: "GitHub Light",
+    description: "Classic GitHub style",
+  },
+  {
+    value: "solarized-light",
+    label: "Solarized Light",
+    description: "Easy on the eyes",
+  },
+  {
+    value: "one-dark",
+    label: "One Dark",
+    description: "Atom's iconic dark theme",
+  },
   { value: "dracula", label: "Dracula", description: "Popular dark theme" },
   { value: "nord", label: "Nord", description: "Arctic, bluish colors" },
 ];
@@ -39,8 +59,16 @@ export interface EditorSettings {
   // Editing
   tabSize: number;
   insertSpaces: boolean;
-  autoClosingBrackets: "always" | "languageDefined" | "beforeWhitespace" | "never";
-  autoClosingQuotes: "always" | "languageDefined" | "beforeWhitespace" | "never";
+  autoClosingBrackets:
+    | "always"
+    | "languageDefined"
+    | "beforeWhitespace"
+    | "never";
+  autoClosingQuotes:
+    | "always"
+    | "languageDefined"
+    | "beforeWhitespace"
+    | "never";
 
   // Features
   minimap: MinimapSettings;
@@ -48,7 +76,13 @@ export interface EditorSettings {
   renderWhitespace: "none" | "boundary" | "selection" | "trailing" | "all";
   smoothScrolling: boolean;
   cursorBlinking: "blink" | "smooth" | "phase" | "expand" | "solid";
-  cursorStyle: "line" | "block" | "underline" | "line-thin" | "block-outline" | "underline-thin";
+  cursorStyle:
+    | "line"
+    | "block"
+    | "underline"
+    | "line-thin"
+    | "block-outline"
+    | "underline-thin";
 
   // Formatting
   formatOnSave: boolean;
@@ -65,8 +99,7 @@ export const DEFAULT_MINIMAP_SETTINGS: MinimapSettings = {
 };
 
 export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
-  // Theme
-  theme: "monochrome",
+  theme: "github-light",
 
   // Display
   fontSize: 14,

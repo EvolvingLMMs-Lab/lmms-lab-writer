@@ -106,6 +106,9 @@ export function useOpenCode(
   const currentSessionIdRef = useRef<string | null>(null);
   currentSessionIdRef.current = currentSessionId;
 
+  const sessionErrorRetryCountRef = useRef(0);
+  const maxSessionErrorRetries = 3;
+
   const selectedAgentRef = useRef<string | null>(null);
   selectedAgentRef.current = selectedAgent;
   const selectedModelRef = useRef<{
@@ -217,7 +220,7 @@ export function useOpenCode(
         }
       }
 
-      // Handle session.error events - show error to user
+      // Handle session.error events - auto-recover or show error to user
       if (event.type === "session.error") {
         const errorSessionId = event.properties.sessionID;
         if (errorSessionId === currentSessionIdRef.current) {
@@ -226,30 +229,72 @@ export function useOpenCode(
             "[OpenCode] Session error for current session:",
             errorData,
           );
-          if (errorData) {
-            // Try to parse nested JSON error (e.g., from CreditsError)
-            let errorMessage =
-              errorData.data?.message || errorData.name || "Unknown error";
 
-            // Check if the error message contains JSON with billing info
-            if (errorMessage.includes("CreditsError") || errorMessage.includes("No payment method")) {
-              try {
-                const jsonMatch = errorMessage.match(/\{.*\}/s);
-                if (jsonMatch) {
-                  const parsed = JSON.parse(jsonMatch[0]);
-                  if (parsed.error?.message) {
-                    errorMessage = parsed.error.message;
-                  }
+          // Parse error message
+          let errorMessage =
+            errorData?.data?.message || errorData?.name || "Unknown error";
+
+          // Check if this is a non-recoverable error (billing, credits, etc.)
+          const isNonRecoverable =
+            errorMessage.includes("CreditsError") ||
+            errorMessage.includes("No payment method") ||
+            errorMessage.includes("billing") ||
+            errorMessage.includes("quota") ||
+            errorMessage.includes("rate limit");
+
+          if (isNonRecoverable) {
+            // Parse nested JSON for billing errors
+            try {
+              const jsonMatch = errorMessage.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                if (parsed.error?.message) {
+                  errorMessage = parsed.error.message;
                 }
-              } catch {
-                // Keep original error message if parsing fails
               }
+            } catch {
+              // Keep original error message
             }
-
-            const providerInfo = errorData.data?.providerID
+            const providerInfo = errorData?.data?.providerID
               ? ` (Provider: ${errorData.data.providerID})`
               : "";
             setError(`${errorMessage}${providerInfo}`);
+          } else {
+            // Recoverable error - try to auto-recover by creating new session
+            sessionErrorRetryCountRef.current++;
+            console.log(
+              `[OpenCode] Session error (attempt ${sessionErrorRetryCountRef.current}/${maxSessionErrorRetries}), attempting recovery...`,
+            );
+
+            if (sessionErrorRetryCountRef.current <= maxSessionErrorRetries) {
+              // Clear error and create new session
+              setError(null);
+              const client = clientRef.current;
+              if (client) {
+                client
+                  .createSession()
+                  .then((newSession) => {
+                    if (newSession) {
+                      console.log(
+                        "[OpenCode] Auto-recovered with new session:",
+                        newSession.id,
+                      );
+                      setCurrentSessionId(newSession.id);
+                      syncFromStoreRef.current();
+                      sessionErrorRetryCountRef.current = 0;
+                    }
+                  })
+                  .catch((err) => {
+                    console.error("[OpenCode] Auto-recovery failed:", err);
+                    setError("Session error. Please try again.");
+                  });
+              }
+            } else {
+              // Max retries reached
+              console.error("[OpenCode] Max session error retries reached");
+              setError("Session keeps failing. Please restart OpenCode.");
+              sessionErrorRetryCountRef.current = 0;
+            }
           }
         }
       }
@@ -506,6 +551,7 @@ export function useOpenCode(
       const session = await client.createSession();
       setCurrentSessionId(session.id);
       syncFromStore();
+      sessionErrorRetryCountRef.current = 0;
       return session;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create session");

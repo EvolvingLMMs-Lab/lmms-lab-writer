@@ -1393,7 +1393,7 @@ export default function EditorPage() {
           )}
         </AnimatePresence>
 
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <div className="flex-1 min-w-0 w-0 flex flex-col overflow-hidden">
           {selectedFile && (
             <div className="flex items-center border-b border-border bg-neutral-50 overflow-x-auto min-h-[34px]">
               {openTabs.map((tab) => {
@@ -1528,7 +1528,13 @@ export default function EditorPage() {
                   ? { opacity: 1, width: 0 }
                   : { opacity: 0, width: 0 }
               }
-              animate={{ opacity: 1, width: "auto" }}
+              animate={{
+                opacity: 1,
+                width:
+                  resizing === "right"
+                    ? `calc(var(--right-panel-width) + 4px)`
+                    : rightPanelWidth + 4,
+              }}
               exit={
                 prefersReducedMotion
                   ? { opacity: 0, width: 0 }
@@ -1539,9 +1545,7 @@ export default function EditorPage() {
               }
               className="flex flex-shrink-0 bg-white overflow-hidden"
               style={{
-                willChange: prefersReducedMotion
-                  ? undefined
-                  : "width, opacity",
+                willChange: prefersReducedMotion ? undefined : "width, opacity",
               }}
             >
               <div className="relative group w-1 flex-shrink-0">

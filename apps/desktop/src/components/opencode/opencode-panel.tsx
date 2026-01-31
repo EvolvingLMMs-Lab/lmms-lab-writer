@@ -55,14 +55,20 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   // Handle pending message from external source
   useEffect(() => {
     const handlePendingMessage = async () => {
-      if (!pendingMessage || pendingMessageSentRef.current || !opencode.connected) {
+      if (
+        !pendingMessage ||
+        pendingMessageSentRef.current ||
+        !opencode.connected
+      ) {
         return;
       }
 
       // Wait for model to be selected (loadConfig to complete)
       // This prevents sending with undefined model which may trigger paid providers
       if (!opencode.selectedModel && opencode.providers.length === 0) {
-        console.log("[OpenCode] Waiting for config to load before sending pending message...");
+        console.log(
+          "[OpenCode] Waiting for config to load before sending pending message...",
+        );
         return; // Effect will re-run when providers are loaded
       }
 
@@ -71,7 +77,9 @@ export const OpenCodePanel = memo(function OpenCodePanel({
       if (!sessionId) {
         const newSession = await opencode.createSession();
         if (!newSession) {
-          console.error("[OpenCode] Failed to create session for pending message");
+          console.error(
+            "[OpenCode] Failed to create session for pending message",
+          );
           onPendingMessageSent?.();
           return;
         }
@@ -84,7 +92,10 @@ export const OpenCodePanel = memo(function OpenCodePanel({
       if (sessionId) {
         pendingMessageSentRef.current = true;
         try {
-          console.log("[OpenCode] Sending pending message with model:", opencode.selectedModel);
+          console.log(
+            "[OpenCode] Sending pending message with model:",
+            opencode.selectedModel,
+          );
           await opencode.sendMessage(pendingMessage);
         } catch (err) {
           console.error("[OpenCode] Failed to send pending message:", err);
@@ -174,10 +185,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          <span
-            className="size-2 flex-shrink-0 bg-green-500"
-            title="Connected"
-          />
+          <span className="size-2 flex-shrink-0 bg-accent" title="Connected" />
           <button
             onClick={() => setShowSessionList(!showSessionList)}
             className="flex items-center gap-1 text-xs hover:bg-neutral-100 px-1 py-0.5 transition-colors min-w-0"
@@ -485,9 +493,9 @@ function MessageTurn({
 
   return (
     <div className="space-y-3">
-      {/* User message - teal/sage rounded bubble */}
-      <div className="bg-[#8B9F8C] rounded-lg px-4 py-3">
-        <p className="text-[13px] leading-relaxed whitespace-pre-wrap break-words text-white">
+      {/* User message - orange accent bar */}
+      <div className="border-l-4 border-accent bg-background px-4 py-3">
+        <p className="text-[13px] font-mono leading-relaxed whitespace-pre-wrap break-words text-foreground">
           {userText}
         </p>
       </div>
@@ -661,7 +669,7 @@ function ToolDisplay({
               </div>
               {Object.entries(part.state.input).map(([key, value]) => (
                 <div key={key} className="font-mono text-xs">
-                  <span className="text-blue-600">{key}</span>
+                  <span className="text-accent font-medium">{key}</span>
                   <span className="text-neutral-400">: </span>
                   <span className="text-neutral-700 whitespace-pre-wrap break-all">
                     {formatValue(value)}
@@ -1121,11 +1129,10 @@ function ConfirmDialog({
 }
 
 function ErrorMessage({ message }: { message: string }) {
-  // Extract URL from error message if present
   const urlMatch = message.match(/(https?:\/\/[^\s]+)/);
+  const url = urlMatch?.[1];
 
-  if (urlMatch) {
-    const url = urlMatch[1];
+  if (url) {
     const parts = message.split(url);
 
     const handleClick = () => {
