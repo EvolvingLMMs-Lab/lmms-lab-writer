@@ -72,8 +72,8 @@ export async function GET(request: Request) {
           "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
         },
         body: JSON.stringify({
-          grant_type: "pkce",
-          auth_code: code,
+          grant_type: "authorization_code",
+          code: code,
           code_verifier: codeVerifier,
         }),
       });
