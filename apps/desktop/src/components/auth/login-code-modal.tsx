@@ -26,6 +26,8 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
   const inputRef = useRef<HTMLInputElement>(null);
   const unlistenRef = useRef<UnlistenFn | null>(null);
   const hasProcessedCodeRef = useRef(false);
+  const hasOpenedBrowserRef = useRef(false);
+  const processLoginCodeRef = useRef<((code: string) => Promise<void>) | null>(null);
 
   // Compute login URL with callback port
   const loginUrl = callbackPort
@@ -161,6 +163,11 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
     }
   }, [state, onClose, onSuccess]);
 
+  // Keep ref updated with latest processLoginCode
+  useEffect(() => {
+    processLoginCodeRef.current = processLoginCode;
+  }, [processLoginCode]);
+
   // Start/stop auth callback server and listen for events
   useEffect(() => {
     if (!isOpen) return;
@@ -168,23 +175,50 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
     let mounted = true;
 
     const startServer = async () => {
+      // Prevent multiple browser opens
+      if (hasOpenedBrowserRef.current) return;
+
       try {
         const port = await invoke<number>("start_auth_callback_server");
-        if (mounted) {
+        if (mounted && !hasOpenedBrowserRef.current) {
           setCallbackPort(port);
           console.log("[LoginCode] Auth callback server started on port:", port);
+
+          // Automatically open browser with callback port
+          hasOpenedBrowserRef.current = true;
+          const urlWithPort = `${baseLoginUrl}&callback_port=${port}`;
+          console.log("[LoginCode] Opening browser with URL:", urlWithPort);
+          try {
+            const { open } = await import("@tauri-apps/plugin-shell");
+            await open(urlWithPort);
+          } catch (openErr) {
+            console.error("[LoginCode] Failed to open browser:", openErr);
+          }
         }
       } catch (err) {
         console.error("[LoginCode] Failed to start auth callback server:", err);
+        // Fallback: open browser without callback port
+        if (!hasOpenedBrowserRef.current) {
+          hasOpenedBrowserRef.current = true;
+          try {
+            const { open } = await import("@tauri-apps/plugin-shell");
+            await open(baseLoginUrl);
+          } catch (openErr) {
+            console.error("[LoginCode] Failed to open browser:", openErr);
+          }
+        }
       }
     };
 
     const setupListener = async () => {
+      // Don't setup if already listening
+      if (unlistenRef.current) return;
+
       try {
         unlistenRef.current = await listen<{ code: string }>("auth-code-received", (event) => {
           console.log("[LoginCode] Received auth code from callback server");
-          if (mounted && event.payload.code) {
-            processLoginCode(event.payload.code);
+          if (mounted && event.payload.code && processLoginCodeRef.current) {
+            processLoginCodeRef.current(event.payload.code);
           }
         });
       } catch (err) {
@@ -209,9 +243,9 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
         unlistenRef.current = null;
       }
     };
-  }, [isOpen, processLoginCode]);
+  }, [isOpen, baseLoginUrl]);
 
-  // Reset state when modal opens
+  // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setLoginCode("");
@@ -219,7 +253,11 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
       setState("idle");
       setLinkCopied(false);
       hasProcessedCodeRef.current = false;
+      hasOpenedBrowserRef.current = false;
       setTimeout(() => inputRef.current?.focus(), 100);
+    } else {
+      // Reset when modal closes
+      hasOpenedBrowserRef.current = false;
     }
   }, [isOpen]);
 

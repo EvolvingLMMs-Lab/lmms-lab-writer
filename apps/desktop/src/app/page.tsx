@@ -930,9 +930,6 @@ export default function EditorPage() {
                 ) : (
                   <button
                     onClick={() => {
-                      import("@tauri-apps/plugin-shell").then(({ open }) => {
-                        open(`${WEB_URL}/login?source=desktop`);
-                      });
                       setShowLoginCodeModal(true);
                     }}
                     className="h-8 px-3 text-sm border-2 border-black bg-white text-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center"
