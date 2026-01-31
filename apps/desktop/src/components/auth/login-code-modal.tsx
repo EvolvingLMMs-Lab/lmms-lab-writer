@@ -103,8 +103,8 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess }: LoginCodeModalPro
       });
 
       if (setSessionError || !setSessionData?.session) {
-        // setSession failed - the refresh token from SSR is invalid
-        // Try to use just the access token by setting it directly
+        // setSession failed - likely due to short/invalid refresh token format
+        // Try to use just the access token by verifying the user
         console.log("[LoginCode] setSession failed, trying getUser with access token...");
 
         const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
@@ -119,21 +119,33 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess }: LoginCodeModalPro
 
         // Access token is valid - user is authenticated
         // Note: Without valid refresh token, session won't auto-refresh
+        // But we can still use the access token until it expires
         console.log("[LoginCode] Access token valid, user:", userData.user.email);
+
+        // Skip Step 3 verification since we already verified the token
+        // The session might not be set, but the user is authenticated
+        console.log("[LoginCode] Skipping session verification (using access token only)");
+        console.log("[LoginCode] Success! Setting success state...");
+        setState("success");
+
+        setTimeout(() => {
+          console.log("[LoginCode] Closing modal and calling onSuccess...");
+          onClose();
+          onSuccess?.();
+        }, 500);
+        return;
       }
 
-      // Step 3: Verify session or user
-      console.log("[LoginCode] Step 3: Verifying...");
+      // Step 3: Verify session (only if setSession succeeded)
+      console.log("[LoginCode] Step 3: Verifying session...");
       const { data: { session } } = await supabase.auth.getSession();
-      const { data: { user } } = await supabase.auth.getUser();
 
       console.log("[LoginCode] Verification:", {
         hasSession: !!session,
-        hasUser: !!user,
-        userEmail: user?.email || session?.user?.email
+        userEmail: session?.user?.email
       });
 
-      if (!session && !user) {
+      if (!session) {
         throw new Error("no session");
       }
 
