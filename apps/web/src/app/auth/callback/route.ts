@@ -61,7 +61,8 @@ export async function GET(request: Request) {
       }
 
       // Call Supabase Auth API directly (bypassing SSR client to get full refresh token)
-      const tokenUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token`;
+      // Supabase expects grant_type as URL query param for PKCE flow
+      const tokenUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=pkce`;
       console.log("[auth/callback] Calling token endpoint:", tokenUrl);
 
       const tokenResponse = await fetch(tokenUrl, {
@@ -72,8 +73,7 @@ export async function GET(request: Request) {
           "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
         },
         body: JSON.stringify({
-          grant_type: "authorization_code",
-          code: code,
+          auth_code: code,
           code_verifier: codeVerifier,
         }),
       });
