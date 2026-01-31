@@ -1,5 +1,6 @@
 mod commands;
 
+use commands::auth::AuthServerState;
 use commands::fs::{ProjectState, WatcherState};
 use commands::latex::LaTeXCompilationState;
 use commands::opencode::OpenCodeState;
@@ -46,6 +47,7 @@ pub fn run() {
         .manage(PtyState::default())
         .manage(OpenCodeState::default())
         .manage(LaTeXCompilationState::default())
+        .manage(AuthServerState::default())
         .manage(Mutex::new(WatcherState::default()))
         .manage(Mutex::new(ProjectState::default()))
         .invoke_handler(tauri::generate_handler![
@@ -85,6 +87,9 @@ pub fn run() {
             commands::latex::latex_get_distributions,
             commands::latex::latex_install,
             commands::latex::latex_open_download_page,
+            commands::auth::auth_start_server,
+            commands::auth::auth_stop_server,
+            commands::auth::auth_server_status,
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();

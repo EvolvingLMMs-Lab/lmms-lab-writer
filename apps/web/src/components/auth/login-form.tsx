@@ -11,6 +11,7 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const source = searchParams.get("source");
+  const desktopRedirectUri = searchParams.get("desktop_redirect_uri");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -55,7 +56,7 @@ export function LoginForm() {
       return;
     }
 
-    // If from desktop, redirect to desktop-success page with tokens
+    // If from desktop, redirect with tokens
     if (source === "desktop") {
       const {
         data: { session },
@@ -65,6 +66,17 @@ export function LoginForm() {
           access_token: session.access_token,
           refresh_token: session.refresh_token,
         });
+
+        // If desktop local callback is specified, redirect there
+        if (desktopRedirectUri && desktopRedirectUri.startsWith("http://localhost:")) {
+          const redirectUrl = new URL(desktopRedirectUri);
+          redirectUrl.searchParams.set("access_token", session.access_token);
+          redirectUrl.searchParams.set("refresh_token", session.refresh_token);
+          window.location.href = redirectUrl.toString();
+          return;
+        }
+
+        // Otherwise redirect to desktop-success page
         window.location.href = `/auth/desktop-success?${params}`;
         return;
       }
@@ -96,11 +108,22 @@ export function LoginForm() {
         console.log("[LoginForm] Cleared auth_source");
       }
 
-      // For desktop flow, redirect directly to desktop-success to keep PKCE state
-      // For web flow, use callback route to handle session cookies
-      const callbackUrl = source === "desktop"
-        ? `${window.location.origin}/auth/desktop-success`
-        : `${window.location.origin}/auth/callback`;
+      // Build callback URL based on flow
+      let callbackUrl: string;
+      if (source === "desktop") {
+        if (desktopRedirectUri && desktopRedirectUri.startsWith("http://localhost:")) {
+          // Use web callback route which will redirect to desktop local server
+          const url = new URL(`${window.location.origin}/auth/callback`);
+          url.searchParams.set("desktop_redirect_uri", desktopRedirectUri);
+          callbackUrl = url.toString();
+        } else {
+          // Fallback to desktop-success page for manual code flow
+          callbackUrl = `${window.location.origin}/auth/desktop-success`;
+        }
+      } else {
+        // Web flow uses callback route
+        callbackUrl = `${window.location.origin}/auth/callback`;
+      }
       console.log("[LoginForm] Callback URL:", callbackUrl);
 
       // For desktop flow, store code_verifier in sessionStorage as backup
