@@ -11,7 +11,23 @@ function DesktopSuccessContent() {
   const [error, setError] = useState<string | null>(null);
   const [loginCode, setLoginCode] = useState<string | null>(null);
   const [callbackStatus, setCallbackStatus] = useState<CallbackStatus>("pending");
-  const callbackPort = searchParams.get("callback_port");
+  // Get callback_port from URL or sessionStorage (OAuth flow loses URL params)
+  const [callbackPort, setCallbackPort] = useState<string | null>(null);
+
+  useEffect(() => {
+    const portFromUrl = searchParams.get("callback_port");
+    const portFromStorage = sessionStorage.getItem("auth_callback_port");
+    const port = portFromUrl || portFromStorage;
+
+    if (port) {
+      setCallbackPort(port);
+      console.log("[desktop-success] callback_port:", port, portFromUrl ? "(from URL)" : "(from sessionStorage)");
+      // Clean up sessionStorage after reading
+      if (portFromStorage) {
+        sessionStorage.removeItem("auth_callback_port");
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const loadTokens = async () => {

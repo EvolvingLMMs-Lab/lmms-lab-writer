@@ -65,6 +65,11 @@ export function LoginForm() {
           access_token: session.access_token,
           refresh_token: session.refresh_token,
         });
+        // Preserve callback_port for auto-login
+        const callbackPort = searchParams.get("callback_port");
+        if (callbackPort) {
+          params.set("callback_port", callbackPort);
+        }
         window.location.href = `/auth/desktop-success?${params}`;
         return;
       }
@@ -90,10 +95,17 @@ export function LoginForm() {
       // Preserve source parameter (e.g., desktop) through OAuth flow
       if (source === "desktop") {
         sessionStorage.setItem("auth_source", "desktop");
+        // Also preserve callback_port for auto-login feature
+        const callbackPort = searchParams.get("callback_port");
+        if (callbackPort) {
+          sessionStorage.setItem("auth_callback_port", callbackPort);
+          console.log("[LoginForm] Set auth_callback_port in sessionStorage:", callbackPort);
+        }
         console.log("[LoginForm] Set auth_source in sessionStorage");
       } else {
         sessionStorage.removeItem("auth_source");
-        console.log("[LoginForm] Cleared auth_source");
+        sessionStorage.removeItem("auth_callback_port");
+        console.log("[LoginForm] Cleared auth_source and auth_callback_port");
       }
 
       // For desktop flow, redirect directly to desktop-success to keep PKCE state
