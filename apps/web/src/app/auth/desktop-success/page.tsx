@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 
 function DesktopSuccessContent() {
   const searchParams = useSearchParams();
@@ -27,8 +27,13 @@ function DesktopSuccessContent() {
       const authCode = searchParams.get("code");
       if (authCode) {
         console.log("[desktop-success] Auth code found, exchanging for session...");
+        console.log("[desktop-success] localStorage keys:", Object.keys(localStorage).filter(k => k.includes('supabase') || k.includes('sb-')));
         try {
-          const supabase = createClient();
+          // Use standard Supabase client (localStorage) - matches what login form used
+          const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+          );
           const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(authCode);
 
           if (exchangeError) {

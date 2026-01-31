@@ -4,7 +4,8 @@ import { startTransition, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Github } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient as createSSRClient } from "@/lib/supabase/client";
+import { createClient as createStandardClient } from "@supabase/supabase-js";
 
 export function LoginForm() {
   const router = useRouter();
@@ -15,12 +16,25 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Get appropriate Supabase client based on flow
+  const getSupabaseClient = () => {
+    if (source === "desktop") {
+      // Use standard client (localStorage) for desktop flow - PKCE works across pages
+      return createStandardClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+    }
+    // Use SSR client (cookies) for web flow
+    return createSSRClient();
+  };
+
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    const supabase = createClient();
+    const supabase = getSupabaseClient();
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -61,26 +75,27 @@ export function LoginForm() {
     console.log("[LoginForm] source param:", source);
 
     try {
-      const supabase = createClient();
+      const supabase = getSupabaseClient();
+      console.log("[LoginForm] Using", source === "desktop" ? "standard" : "SSR", "client");
 
       // Preserve source parameter (e.g., desktop) through OAuth flow
-      // Store in cookie as backup since Supabase may not preserve query params
       if (source === "desktop") {
-        document.cookie = "auth_source=desktop; path=/; max-age=300; samesite=lax";
-        sessionStorage.setItem("auth_source", source);
-        console.log("[LoginForm] Set auth_source cookie and sessionStorage to 'desktop'");
+        sessionStorage.setItem("auth_source", "desktop");
+        console.log("[LoginForm] Set auth_source in sessionStorage");
       } else {
-        // Clear any stale auth_source from previous attempts
-        document.cookie = "auth_source=; path=/; max-age=0";
         sessionStorage.removeItem("auth_source");
-        console.log("[LoginForm] Cleared auth_source (source is not desktop)");
+        console.log("[LoginForm] Cleared auth_source");
       }
 
-      const callbackUrl = source
-        ? `${window.location.origin}/auth/callback?source=${source}`
+      // For desktop flow, redirect directly to desktop-success to keep PKCE state
+      // For web flow, use callback route to handle session cookies
+      const callbackUrl = source === "desktop"
+        ? `${window.location.origin}/auth/desktop-success`
         : `${window.location.origin}/auth/callback`;
       console.log("[LoginForm] Callback URL:", callbackUrl);
 
+      // For desktop flow, store code_verifier in sessionStorage as backup
+      // since cookie storage might not work across page navigations
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "github",
         options: {
@@ -89,6 +104,7 @@ export function LoginForm() {
       });
 
       console.log("[LoginForm] signInWithOAuth result:", { hasData: !!data, hasUrl: !!data?.url, error: error?.message });
+      console.log("[LoginForm] Cookies after signInWithOAuth:", document.cookie);
 
       if (error) {
         setError(`GitHub OAuth error: ${error.message}`);

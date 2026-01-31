@@ -8,8 +8,7 @@ export function createClient(): SupabaseClient {
     throw new Error("createClient must be called on the client side");
   }
 
-  if (client) return client;
-
+  // Don't cache client - ensure fresh cookie access for auth operations
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 

@@ -40,16 +40,8 @@ export async function GET(request: Request) {
   }
 
   if (code) {
-    // For desktop flow, pass code to client-side page for exchange
-    // (Browser Supabase client has access to the code_verifier it stored)
-    if (source === "desktop") {
-      console.log("[auth/callback] Desktop flow - redirecting to client-side handler");
-      const response = NextResponse.redirect(`${origin}/auth/desktop-success?code=${code}`);
-      response.cookies.set("auth_source", "", { path: "/", maxAge: 0 });
-      return response;
-    }
-
-    // For web flow, use SSR client (stores session in cookies)
+    // Note: Desktop flow redirects directly to /auth/desktop-success, not through this callback
+    // Web flow uses SSR client (stores session in cookies)
     const supabase = await createClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
