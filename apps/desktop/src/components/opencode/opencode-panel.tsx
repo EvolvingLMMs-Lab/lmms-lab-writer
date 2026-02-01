@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOpenCode } from "@/lib/opencode/use-opencode";
 import type {
   Message,
+  AssistantMessage,
   Part,
   ToolPart,
   TextPart,
@@ -401,14 +402,15 @@ function MessageList({
   // Group messages into turns (user + assistant responses)
   // Must be before any early returns to satisfy rules-of-hooks
   const turns = useMemo(() => {
-    const result: { user: Message; assistantParts: Part[] }[] = [];
-    let currentTurn: { user: Message; assistantParts: Part[] } | null = null;
+    const result: { user: Message; assistantMessages: Message[]; assistantParts: Part[] }[] = [];
+    let currentTurn: { user: Message; assistantMessages: Message[]; assistantParts: Part[] } | null = null;
 
     for (const msg of messages) {
       if (msg.role === "user") {
         if (currentTurn) result.push(currentTurn);
-        currentTurn = { user: msg, assistantParts: [] };
+        currentTurn = { user: msg, assistantMessages: [], assistantParts: [] };
       } else if (msg.role === "assistant" && currentTurn) {
+        currentTurn.assistantMessages.push(msg);
         const parts = getPartsForMessage(msg.id);
         currentTurn.assistantParts.push(...parts);
       }
@@ -434,6 +436,10 @@ function MessageList({
         // Only allow answering questions in the last turn
         const isLastTurn = index === turns.length - 1;
 
+        // Get the last assistant message's completion time
+        const lastAssistant = turn.assistantMessages[turn.assistantMessages.length - 1];
+        const endTime = lastAssistant?.role === 'assistant' ? (lastAssistant as AssistantMessage).time?.completed : undefined;
+
         return (
           <MessageTurn
             key={turn.user.id}
@@ -441,6 +447,7 @@ function MessageList({
             assistantParts={turn.assistantParts}
             onFileClick={onFileClick}
             startTime={turn.user.time?.created}
+            endTime={endTime}
             onAnswer={isLastTurn ? onAnswer : undefined}
           />
         );
@@ -454,15 +461,18 @@ function MessageTurn({
   assistantParts,
   onFileClick,
   startTime,
+  endTime,
   onAnswer,
 }: {
   userText: string;
   assistantParts: Part[];
   onFileClick?: (path: string) => void;
   startTime?: number;
+  endTime?: number;
   onAnswer?: (answer: string) => void;
 }) {
   const [showSteps, setShowSteps] = useState(false);
+  const [now, setNow] = useState(Date.now());
 
   // Deduplicate parts
   const dedupedParts = useMemo(() => {
@@ -517,12 +527,20 @@ function MessageTurn({
   const hasIntermediateText = intermediateTextParts.length > 0;
   const hasSteps = toolParts.length > 0 || hasReasoningContent || hasIntermediateText;
 
+  // Update timer for in-progress messages
+  useEffect(() => {
+    if (endTime || !startTime) return; // Already completed or no start time
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [endTime, startTime]);
+
   // Calculate elapsed time for steps
   const elapsedTime = useMemo(() => {
     if (!startTime) return null;
-    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    const end = endTime || now;
+    const elapsed = Math.round((end - startTime) / 1000);
     return `${elapsed}s`;
-  }, [startTime]);
+  }, [startTime, endTime, now]);
 
   return (
     <div className="space-y-3">
@@ -856,9 +874,10 @@ function AskUserQuestionDisplay({
     }
   };
 
-  const hasSelection = questions.some((_, i) =>
-    (selectedOptions[i]?.length > 0) || (showCustom[i] && customInputs[i])
-  );
+  const hasSelection = questions.some((_, i) => {
+    const options = selectedOptions[i];
+    return (options && options.length > 0) || (showCustom[i] && customInputs[i]);
+  });
 
   return (
     <div className="border-2 border-accent bg-white p-4 space-y-4">

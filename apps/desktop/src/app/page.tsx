@@ -157,6 +157,7 @@ export default function EditorPage() {
   const contentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const opencodeStartedForPathRef = useRef<string | null>(null);
   const savingVisualTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSaveTimeRef = useRef<{ path: string; time: number } | null>(null);
   const [isLoadingFile, setIsLoadingFile] = useState(false);
 
   // RAF-based resize refs for 60fps performance
@@ -655,7 +656,7 @@ export default function EditorPage() {
     }
   }, [selectedFile, openTabs]);
 
-  // Handle file deletion - automatically close tabs for deleted files
+  // Handle file changes - deletion and external modifications
   useEffect(() => {
     if (!daemon.lastFileChange) return;
 
@@ -683,8 +684,25 @@ export default function EditorPage() {
 
         return newTabs;
       });
+    } else if (kind === "modify") {
+      // Reload file content if the currently selected file was modified externally
+      // Skip if this was our own save (within 2 seconds)
+      const lastSave = lastSaveTimeRef.current;
+      const isOurSave = lastSave &&
+        lastSave.path === path &&
+        Date.now() - lastSave.time < 2000;
+
+      if (path === selectedFile && !isOurSave) {
+        daemon.readFile(path).then((content) => {
+          if (content !== null) {
+            setFileContent(content);
+          }
+        }).catch((err) => {
+          console.error("Failed to reload modified file:", err);
+        });
+      }
     }
-  }, [daemon.lastFileChange, selectedFile, handleFileSelect]);
+  }, [daemon.lastFileChange, selectedFile, handleFileSelect, daemon]);
 
   const handleCloseTab = useCallback(
     (path: string, e?: React.MouseEvent) => {
@@ -730,6 +748,8 @@ export default function EditorPage() {
         if (fileToSave) {
           try {
             await daemon.writeFile(fileToSave, content);
+            // Track when we saved this file to avoid reloading our own changes
+            lastSaveTimeRef.current = { path: fileToSave, time: Date.now() };
           } catch (error) {
             console.error("Failed to save file:", error);
           }
