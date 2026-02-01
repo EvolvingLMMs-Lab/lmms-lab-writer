@@ -99,32 +99,34 @@ export function DownloadSection() {
           )}
         </div>
 
-        {recommended.variants.map((variant) => (
-          <motion.div
-            key={variant.file}
-            whileHover={{ scale: 1.01, y: -2 }}
-            whileTap={{ scale: 0.99 }}
-            transition={GPU_SPRING}
-            style={{ willChange: "transform" }}
-          >
-            <Link
-              href={variant.url}
-              className="group flex items-center gap-4 p-5 border-2 border-black bg-white hover:bg-neutral-50 transition-colors shadow-[4px_4px_0_0_#000] hover:shadow-[2px_2px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px]"
+        <div className="space-y-4">
+          {recommended.variants.map((variant) => (
+            <motion.div
+              key={variant.file}
+              whileHover={{ scale: 1.01, y: -2 }}
+              whileTap={{ scale: 0.99 }}
+              transition={GPU_SPRING}
+              style={{ willChange: "transform" }}
             >
-              <div className="flex items-center justify-center w-12 h-12 bg-black text-white">
-                <recommended.icon className="w-6 h-6" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{recommended.name}</span>
-                  <span className="text-xs text-muted">{variant.sublabel}</span>
+              <Link
+                href={variant.url}
+                className="group flex items-center gap-4 p-5 border-2 border-black bg-white hover:bg-neutral-50 transition-colors shadow-[4px_4px_0_0_#000] hover:shadow-[2px_2px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px]"
+              >
+                <div className="flex items-center justify-center w-12 h-12 bg-black text-white">
+                  <recommended.icon className="w-6 h-6" />
                 </div>
-                <span className="text-xs text-muted">{variant.file}</span>
-              </div>
-              <Download className="w-5 h-5 text-muted group-hover:text-black transition-colors" />
-            </Link>
-          </motion.div>
-        ))}
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{recommended.name}</span>
+                    <span className="text-xs text-muted">{variant.sublabel}</span>
+                  </div>
+                  <span className="text-xs text-muted">{variant.file}</span>
+                </div>
+                <Download className="w-5 h-5 text-muted group-hover:text-black transition-colors" />
+              </Link>
+            </motion.div>
+          ))}
+        </div>
       </div>
 
       {/* Other Platforms */}
