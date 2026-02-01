@@ -286,13 +286,21 @@ export function RequirementsSection() {
           {detectedPlatform === "Windows" ? (
             <>
               <Link
+                href="https://yihui.org/tinytex/"
+                className="underline hover:text-foreground transition-colors"
+                target="_blank"
+              >
+                TinyTeX
+              </Link>
+              ,{" "}
+              <Link
                 href="https://miktex.org/"
                 className="underline hover:text-foreground transition-colors"
                 target="_blank"
               >
                 MiKTeX
               </Link>
-              {" "}or{" "}
+              , or{" "}
               <Link
                 href="https://www.tug.org/texlive/"
                 className="underline hover:text-foreground transition-colors"
@@ -304,13 +312,21 @@ export function RequirementsSection() {
           ) : (
             <>
               <Link
+                href="https://yihui.org/tinytex/"
+                className="underline hover:text-foreground transition-colors"
+                target="_blank"
+              >
+                TinyTeX
+              </Link>
+              ,{" "}
+              <Link
                 href="https://www.tug.org/mactex/"
                 className="underline hover:text-foreground transition-colors"
                 target="_blank"
               >
                 MacTeX
               </Link>
-              {" "}or{" "}
+              , or{" "}
               <Link
                 href="https://www.tug.org/texlive/"
                 className="underline hover:text-foreground transition-colors"
