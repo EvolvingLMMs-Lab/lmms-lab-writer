@@ -1,18 +1,14 @@
 "use client";
 
-import { startTransition, useState } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Github } from "lucide-react";
 import { createClient as createSSRClient } from "@/lib/supabase/client";
 import { createClient as createStandardClient } from "@supabase/supabase-js";
 
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const source = searchParams.get("source");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,48 +32,6 @@ export function LoginForm() {
     }
     // Use SSR client (cookies) for web flow
     return createSSRClient();
-  };
-
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    const supabase = getSupabaseClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    // If from desktop, redirect to desktop-success page with tokens
-    if (source === "desktop") {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
-        const params = new URLSearchParams({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
-        });
-        // Preserve callback_port for auto-login
-        const callbackPort = searchParams.get("callback_port");
-        if (callbackPort) {
-          params.set("callback_port", callbackPort);
-        }
-        window.location.href = `/auth/desktop-success?${params}`;
-        return;
-      }
-    }
-
-    startTransition(() => {
-      router.push("/profile");
-    });
   };
 
   const handleGitHubLogin = async () => {
@@ -163,70 +117,16 @@ export function LoginForm() {
       <button
         onClick={handleGitHubLogin}
         disabled={loading}
-        className="btn btn-secondary w-full mb-6"
+        className="btn btn-secondary w-full"
       >
         <Github className="w-4 h-4" />
-        Continue with GitHub
+        {loading ? "Connecting..." : "Continue with GitHub"}
       </button>
 
-      <div className="relative mb-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted">Or</span>
-        </div>
-      </div>
+      {error && <p className="text-sm text-red-600 mt-4">{error}</p>}
 
-      <form onSubmit={handleEmailLogin} className="space-y-4">
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium mb-2">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="input"
-            placeholder="you@example.com"
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium mb-2">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="input"
-            placeholder="Your password"
-            required
-          />
-        </div>
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn btn-secondary w-full"
-        >
-          {loading ? "Signing in..." : "Sign in with Email"}
-        </button>
-      </form>
-
-      <p className="text-sm text-muted text-center mt-6">
-        Don&apos;t have an account?{" "}
-        <Link
-          href="/signup"
-          className="underline underline-offset-2 hover:text-foreground"
-        >
-          Sign up
-        </Link>
+      <p className="text-xs text-muted text-center mt-6">
+        GitHub account required to track starred repositories and earn inks.
       </p>
     </>
   );

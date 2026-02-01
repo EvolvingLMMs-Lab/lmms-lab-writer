@@ -38,8 +38,14 @@ const platforms = {
     icon: Monitor,
     variants: [
       {
-        label: "Windows",
-        sublabel: "64-bit",
+        label: "Windows Installer",
+        sublabel: "64-bit (exe)",
+        file: "LMMs-Lab Writer_0.1.0_x64-setup.exe",
+        url: `${BLOB_URL}/LMMs-Lab%20Writer_0.1.0_x64-setup.exe`,
+      },
+      {
+        label: "Windows MSI",
+        sublabel: "64-bit (msi)",
         file: "LMMs-Lab Writer_0.1.0_x64_en-US.msi",
         url: `${BLOB_URL}/LMMs-Lab%20Writer_0.1.0_x64_en-US.msi`,
       },

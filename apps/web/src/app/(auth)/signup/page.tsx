@@ -53,7 +53,7 @@ export default function SignupPage() {
           custom={0.15}
           variants={fadeIn}
         >
-          Get access to license management and premium features.
+          Create an account with GitHub to get started.
         </m.p>
 
         <m.div

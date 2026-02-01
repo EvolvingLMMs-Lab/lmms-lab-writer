@@ -93,7 +93,7 @@ function LoginPageContent() {
           custom={0.15}
           variants={fadeIn}
         >
-          Access your license and membership features.
+          Sign in with GitHub to access your account.
         </m.p>
 
         <Suspense fallback={null}>
