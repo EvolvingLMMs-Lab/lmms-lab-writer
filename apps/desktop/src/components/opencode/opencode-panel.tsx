@@ -9,6 +9,7 @@ import type {
   ToolPart,
   TextPart,
   ReasoningPart,
+  FilePart,
   SessionStatus,
   SessionInfo,
 } from "@/lib/opencode/types";
@@ -44,6 +45,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
 }: Props) {
   const opencode = useOpenCode({ baseUrl, directory, autoConnect });
   const [input, setInput] = useState("");
+  const [attachedFiles, setAttachedFiles] = useState<{ url: string; mime: string; filename: string }[]>([]);
   const [showSessionList, setShowSessionList] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pendingMessageSentRef = useRef(false);
@@ -151,10 +153,12 @@ export const OpenCodePanel = memo(function OpenCodePanel({
 
   const handleSend = useCallback(async () => {
     const content = input.trim();
-    if (!content) return;
+    if (!content && attachedFiles.length === 0) return;
+    const filesToSend = [...attachedFiles];
     setInput("");
-    await opencode.sendMessage(content);
-  }, [input, opencode]);
+    setAttachedFiles([]);
+    await opencode.sendMessage(content, filesToSend.length > 0 ? filesToSend : undefined);
+  }, [input, attachedFiles, opencode]);
 
   const handleAnswer = useCallback(async (answer: string) => {
     if (!answer.trim()) return;
@@ -248,6 +252,8 @@ export const OpenCodePanel = memo(function OpenCodePanel({
           <InputArea
             input={input}
             setInput={setInput}
+            attachedFiles={attachedFiles}
+            setAttachedFiles={setAttachedFiles}
             onSend={handleSend}
             onAbort={handleAbort}
             isWorking={isWorking}
@@ -433,6 +439,7 @@ function MessageList({
         const userParts = getPartsForMessage(turn.user.id);
         const userText =
           userParts.find((p): p is TextPart => p.type === "text")?.text || "";
+        const userImages = userParts.filter((p): p is FilePart => p.type === "file" && "mime" in p && typeof p.mime === "string" && p.mime.startsWith("image/"));
         // Only allow answering questions in the last turn
         const isLastTurn = index === turns.length - 1;
 
@@ -444,6 +451,7 @@ function MessageList({
           <MessageTurn
             key={turn.user.id}
             userText={userText}
+            userImages={userImages}
             assistantParts={turn.assistantParts}
             onFileClick={onFileClick}
             startTime={turn.user.time?.created}
@@ -458,6 +466,7 @@ function MessageList({
 
 function MessageTurn({
   userText,
+  userImages,
   assistantParts,
   onFileClick,
   startTime,
@@ -465,6 +474,7 @@ function MessageTurn({
   onAnswer,
 }: {
   userText: string;
+  userImages?: FilePart[];
   assistantParts: Part[];
   onFileClick?: (path: string) => void;
   startTime?: number;
@@ -546,9 +556,30 @@ function MessageTurn({
     <div className="space-y-3">
       {/* User message - orange accent bar */}
       <div className="border-l-4 border-accent bg-background px-4 py-3">
-        <p className="text-[13px] font-mono leading-relaxed whitespace-pre-wrap break-words text-foreground">
-          {userText}
-        </p>
+        {userImages && userImages.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {userImages.map((img) => (
+              <a
+                key={img.id}
+                href={img.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block"
+              >
+                <img
+                  src={img.url}
+                  alt="Attached"
+                  className="max-h-32 max-w-[200px] object-contain rounded border border-neutral-200 hover:border-neutral-400 transition-colors cursor-zoom-in"
+                />
+              </a>
+            ))}
+          </div>
+        )}
+        {userText && (
+          <p className="text-[13px] font-mono leading-relaxed whitespace-pre-wrap break-words text-foreground">
+            {userText}
+          </p>
+        )}
       </div>
 
       {/* Steps toggle - disclosure triangle style */}
@@ -993,9 +1024,13 @@ function formatValue(value: unknown): string {
   return json.length > 300 ? json.slice(0, 300) + "..." : json;
 }
 
+type AttachedFile = { url: string; mime: string; filename: string };
+
 function InputArea({
   input,
   setInput,
+  attachedFiles,
+  setAttachedFiles,
   onSend,
   onAbort,
   isWorking,
@@ -1008,6 +1043,8 @@ function InputArea({
 }: {
   input: string;
   setInput: (v: string) => void;
+  attachedFiles: AttachedFile[];
+  setAttachedFiles: (files: AttachedFile[]) => void;
   onSend: () => void;
   onAbort: () => void;
   isWorking: boolean;
@@ -1027,6 +1064,77 @@ function InputArea({
   onSelectModel: (m: { providerId: string; modelId: string } | null) => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newFiles: AttachedFile[] = [];
+    for (const file of Array.from(files)) {
+      // Only accept images
+      if (!file.type.startsWith('image/')) continue;
+
+      // Convert to base64 data URL
+      const reader = new FileReader();
+      const dataUrl = await new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      newFiles.push({
+        url: dataUrl,
+        mime: file.type,
+        filename: file.name,
+      });
+    }
+
+    setAttachedFiles([...attachedFiles, ...newFiles]);
+    // Reset input so same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [attachedFiles, setAttachedFiles]);
+
+  const handleRemoveFile = useCallback((index: number) => {
+    setAttachedFiles(attachedFiles.filter((_, i) => i !== index));
+  }, [attachedFiles, setAttachedFiles]);
+
+  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageFiles: File[] = [];
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) imageFiles.push(file);
+      }
+    }
+
+    if (imageFiles.length === 0) return;
+
+    // Prevent default paste behavior for images
+    e.preventDefault();
+
+    const newFiles: AttachedFile[] = [];
+    for (const file of imageFiles) {
+      const reader = new FileReader();
+      const dataUrl = await new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      newFiles.push({
+        url: dataUrl,
+        mime: file.type,
+        filename: file.name || `pasted-image-${Date.now()}.${file.type.split('/')[1] || 'png'}`,
+      });
+    }
+
+    setAttachedFiles([...attachedFiles, ...newFiles]);
+  }, [attachedFiles, setAttachedFiles]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -1034,6 +1142,24 @@ function InputArea({
       onSend();
     }
   };
+
+  // Handle keyboard navigation for image preview modal
+  useEffect(() => {
+    if (previewIndex === null) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setPreviewIndex(null);
+      } else if (e.key === "ArrowLeft" && attachedFiles.length > 1) {
+        setPreviewIndex((prev) => (prev! - 1 + attachedFiles.length) % attachedFiles.length);
+      } else if (e.key === "ArrowRight" && attachedFiles.length > 1) {
+        setPreviewIndex((prev) => (prev! + 1) % attachedFiles.length);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [previewIndex, attachedFiles.length]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -1067,14 +1193,45 @@ function InputArea({
   return (
     <div className="flex-shrink-0 bg-white p-4">
       <div className="border border-neutral-200 rounded-xl bg-neutral-50 focus-within:border-neutral-400 focus-within:bg-white transition-all">
+        {/* Attached images preview - above textarea */}
+        {attachedFiles.length > 0 && (
+          <div className="flex gap-2 px-3 pt-3 pb-1 overflow-x-auto">
+            {attachedFiles.map((file, index) => (
+              <div key={index} className="relative flex-shrink-0 group">
+                <button
+                  onClick={() => setPreviewIndex(index)}
+                  className="block focus:outline-none focus:ring-2 focus:ring-accent rounded"
+                  title="Click to preview"
+                >
+                  <img
+                    src={file.url}
+                    alt={file.filename}
+                    className="h-16 w-16 object-cover rounded border border-neutral-200 cursor-zoom-in hover:border-neutral-400 transition-colors"
+                  />
+                </button>
+                <button
+                  onClick={() => handleRemoveFile(index)}
+                  className="absolute -top-1.5 -right-1.5 size-5 bg-black text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Remove"
+                >
+                  <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <textarea
           ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           placeholder='Ask anything... "Add unit tests for the user service"'
           disabled={isWorking}
-          className="w-full min-h-[44px] max-h-[200px] px-4 py-3 resize-none focus:outline-none text-sm bg-transparent placeholder:text-neutral-400"
+          className={`w-full min-h-[44px] max-h-[200px] px-4 py-3 resize-none focus:outline-none text-sm bg-transparent placeholder:text-neutral-400 ${attachedFiles.length > 0 ? 'pt-2' : ''}`}
           rows={1}
         />
         <div className="flex items-center gap-2 px-3 py-2">
@@ -1137,11 +1294,28 @@ function InputArea({
             )}
           </div>
 
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleFileSelect}
+            className="hidden"
+          />
           <button
-            className="p-1.5 text-neutral-400 hover:text-neutral-600 transition-colors flex-shrink-0"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isWorking}
+            className={`p-1.5 transition-colors flex-shrink-0 ${
+              attachedFiles.length > 0
+                ? "text-accent"
+                : "text-neutral-400 hover:text-neutral-600"
+            } ${isWorking ? "opacity-50 cursor-not-allowed" : ""}`}
             title="Attach image"
           >
             <ImageIcon className="size-4" />
+            {attachedFiles.length > 0 && (
+              <span className="sr-only">{attachedFiles.length} attached</span>
+            )}
           </button>
 
           {isWorking ? (
@@ -1155,7 +1329,7 @@ function InputArea({
           ) : (
             <button
               onClick={onSend}
-              disabled={!input.trim()}
+              disabled={!input.trim() && attachedFiles.length === 0}
               className="p-1.5 bg-neutral-200 hover:bg-neutral-300 rounded-full transition-colors disabled:opacity-30 disabled:hover:bg-neutral-200"
               title="Send"
             >
@@ -1163,6 +1337,61 @@ function InputArea({
             </button>
           )}
         </div>
+
+        {/* Image preview modal */}
+        {previewIndex !== null && attachedFiles[previewIndex] && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+            onClick={() => setPreviewIndex(null)}
+          >
+            <div className="relative max-w-[90vw] max-h-[90vh]">
+              <img
+                src={attachedFiles[previewIndex].url}
+                alt="Preview"
+                className="max-w-full max-h-[90vh] object-contain rounded-lg"
+                onClick={(e) => e.stopPropagation()}
+              />
+              <button
+                onClick={() => setPreviewIndex(null)}
+                className="absolute top-2 right-2 size-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+                title="Close"
+              >
+                <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              {/* Navigation arrows */}
+              {attachedFiles.length > 1 && (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPreviewIndex((previewIndex - 1 + attachedFiles.length) % attachedFiles.length);
+                    }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 size-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+                    title="Previous"
+                  >
+                    <svg className="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPreviewIndex((previewIndex + 1) % attachedFiles.length);
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 size-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+                    title="Next"
+                  >
+                    <svg className="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

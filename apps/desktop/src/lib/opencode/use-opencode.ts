@@ -48,7 +48,7 @@ export type UseOpenCodeReturn = {
   createSession: () => Promise<SessionInfo | null>;
   selectSession: (sessionId: string) => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, files?: { url: string; mime: string; filename?: string }[]) => Promise<void>;
   abort: () => Promise<void>;
   getPartsForMessage: (messageId: string) => Part[];
   resetReconnectState: () => void;
@@ -641,13 +641,14 @@ export function useOpenCode(
   }, []);
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, files?: { url: string; mime: string; filename?: string }[]) => {
       const client = clientRef.current;
       console.log("[OpenCode] sendMessage called:", {
         hasClient: !!client,
         connected,
         currentSessionId,
         content: content.slice(0, 50) + (content.length > 50 ? "..." : ""),
+        fileCount: files?.length || 0,
         selectedAgent,
         selectedModel,
         availableAgents: agents.map((a) => a.id),
@@ -674,6 +675,7 @@ export function useOpenCode(
         console.log("[OpenCode] Calling client.chat with:", {
           agent: agentToUse,
           model: selectedModel,
+          fileCount: files?.length || 0,
         });
         await client.chat(currentSessionId, content, {
           agent: agentToUse,
@@ -683,6 +685,7 @@ export function useOpenCode(
                 modelID: selectedModel.modelId,
               }
             : undefined,
+          files,
         });
         console.log("[OpenCode] client.chat completed successfully");
         // Sync messages/parts after a short delay, but NOT status

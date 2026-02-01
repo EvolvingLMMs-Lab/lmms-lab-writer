@@ -460,10 +460,30 @@ export class OpenCodeClient {
     options?: {
       agent?: string;
       model?: { providerID: string; modelID: string };
+      files?: { url: string; mime: string; filename?: string }[];
     },
   ): Promise<void> {
+    const parts: { type: string; text?: string; url?: string; mime?: string; filename?: string }[] = [];
+
+    // Add file parts first (images)
+    if (options?.files && options.files.length > 0) {
+      for (const file of options.files) {
+        parts.push({
+          type: "file",
+          url: file.url,
+          mime: file.mime,
+          filename: file.filename,
+        });
+      }
+    }
+
+    // Add text part
+    if (content.trim()) {
+      parts.push({ type: "text", text: content });
+    }
+
     const body: Record<string, unknown> = {
-      parts: [{ type: "text", text: content }],
+      parts,
       agent: options?.agent,
     };
 
