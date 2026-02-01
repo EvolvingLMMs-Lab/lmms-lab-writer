@@ -155,6 +155,11 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     await opencode.sendMessage(content);
   }, [input, opencode]);
 
+  const handleAnswer = useCallback(async (answer: string) => {
+    if (!answer.trim()) return;
+    await opencode.sendMessage(answer);
+  }, [opencode]);
+
   const handleAbort = useCallback(async () => {
     await opencode.abort();
   }, [opencode]);
@@ -233,6 +238,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
               messages={opencode.messages}
               getPartsForMessage={opencode.getPartsForMessage}
               onFileClick={onFileClick}
+              onAnswer={handleAnswer}
             />
             <div ref={messagesEndRef} />
           </div>
@@ -385,10 +391,12 @@ function MessageList({
   messages,
   getPartsForMessage,
   onFileClick,
+  onAnswer,
 }: {
   messages: Message[];
   getPartsForMessage: (messageId: string) => Part[];
   onFileClick?: (path: string) => void;
+  onAnswer?: (answer: string) => void;
 }) {
   // Group messages into turns (user + assistant responses)
   // Must be before any early returns to satisfy rules-of-hooks
@@ -419,10 +427,12 @@ function MessageList({
 
   return (
     <div className="space-y-6">
-      {turns.map((turn) => {
+      {turns.map((turn, index) => {
         const userParts = getPartsForMessage(turn.user.id);
         const userText =
           userParts.find((p): p is TextPart => p.type === "text")?.text || "";
+        // Only allow answering questions in the last turn
+        const isLastTurn = index === turns.length - 1;
 
         return (
           <MessageTurn
@@ -431,6 +441,7 @@ function MessageList({
             assistantParts={turn.assistantParts}
             onFileClick={onFileClick}
             startTime={turn.user.time?.created}
+            onAnswer={isLastTurn ? onAnswer : undefined}
           />
         );
       })}
@@ -443,11 +454,13 @@ function MessageTurn({
   assistantParts,
   onFileClick,
   startTime,
+  onAnswer,
 }: {
   userText: string;
   assistantParts: Part[];
   onFileClick?: (path: string) => void;
   startTime?: number;
+  onAnswer?: (answer: string) => void;
 }) {
   const [showSteps, setShowSteps] = useState(false);
 
@@ -461,28 +474,48 @@ function MessageTurn({
     });
   }, [assistantParts]);
 
-  // Categorize parts
-  const { textParts, toolParts, reasoningParts } = useMemo(() => {
+  // Categorize parts - separate AskUserQuestion from regular tools
+  const { textParts, toolParts, reasoningParts, askUserQuestionParts } = useMemo(() => {
     const text: TextPart[] = [];
     const tools: ToolPart[] = [];
     const reasoning: ReasoningPart[] = [];
+    const askUserQuestions: ToolPart[] = [];
 
     for (const part of dedupedParts) {
       if (part.type === "text" && !(part as TextPart).synthetic) {
         text.push(part as TextPart);
       } else if (part.type === "tool") {
-        tools.push(part as ToolPart);
+        const toolPart = part as ToolPart;
+        // Check for AskUserQuestion tool (case insensitive)
+        if (toolPart.tool.toLowerCase() === "askuserquestion") {
+          askUserQuestions.push(toolPart);
+        } else {
+          tools.push(toolPart);
+        }
       } else if (part.type === "reasoning") {
         reasoning.push(part as ReasoningPart);
       }
     }
-    return { textParts: text, toolParts: tools, reasoningParts: reasoning };
+    return { textParts: text, toolParts: tools, reasoningParts: reasoning, askUserQuestionParts: askUserQuestions };
   }, [dedupedParts]);
 
-  const combinedText = textParts.map((p) => p.text).join("");
+  // Separate intermediate text (steps) from final output
+  // Only the last text part is considered the final output
+  const { intermediateTextParts, finalTextPart } = useMemo(() => {
+    if (textParts.length <= 1) {
+      return { intermediateTextParts: [], finalTextPart: textParts[0] || null };
+    }
+    return {
+      intermediateTextParts: textParts.slice(0, -1),
+      finalTextPart: textParts[textParts.length - 1],
+    };
+  }, [textParts]);
+
+  const finalText = finalTextPart?.text || "";
   const hasReasoningContent =
     reasoningParts.length > 0 && reasoningParts.some((p) => p.text.trim());
-  const hasSteps = toolParts.length > 0 || hasReasoningContent;
+  const hasIntermediateText = intermediateTextParts.length > 0;
+  const hasSteps = toolParts.length > 0 || hasReasoningContent || hasIntermediateText;
 
   // Calculate elapsed time for steps
   const elapsedTime = useMemo(() => {
@@ -523,6 +556,25 @@ function MessageTurn({
           {/* Reasoning - only show if has actual content */}
           {hasReasoningContent && <ReasoningDisplay parts={reasoningParts} />}
 
+          {/* Intermediate text outputs (not the final response) */}
+          {hasIntermediateText && (
+            <div className="space-y-2">
+              {intermediateTextParts.map((part) => (
+                <div
+                  key={part.id}
+                  className="text-xs border border-neutral-200 bg-neutral-50 p-2"
+                >
+                  <div className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium mb-1">
+                    Output
+                  </div>
+                  <div className="text-neutral-600 whitespace-pre-wrap break-words">
+                    <MarkdownText text={part.text} onFileClick={onFileClick} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Tools as file list */}
           {toolParts.length > 0 && (
             <div className="space-y-0">
@@ -539,12 +591,25 @@ function MessageTurn({
       )}
 
       {/* Response label and text */}
-      {combinedText && (
+      {finalText && (
         <div className="space-y-1">
           <div className="text-xs text-neutral-400">Response</div>
           <div className="text-[13px] leading-relaxed whitespace-pre-wrap break-words text-neutral-700">
-            <MarkdownText text={combinedText} onFileClick={onFileClick} />
+            <MarkdownText text={finalText} onFileClick={onFileClick} />
           </div>
+        </div>
+      )}
+
+      {/* AskUserQuestion - interactive question UI */}
+      {askUserQuestionParts.length > 0 && (
+        <div className="space-y-3">
+          {askUserQuestionParts.map((part) => (
+            <AskUserQuestionDisplay
+              key={part.id}
+              part={part}
+              onAnswer={onAnswer}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -696,6 +761,202 @@ function ToolDisplay({
           <p className="text-xs text-red-600">
             {(part.state as { error: string }).error}
           </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Types for AskUserQuestion tool
+type AskUserQuestionOption = {
+  label: string;
+  description?: string;
+};
+
+type AskUserQuestion = {
+  question: string;
+  header: string;
+  options: AskUserQuestionOption[];
+  multiSelect?: boolean;
+};
+
+function parseAskUserQuestions(input: Record<string, unknown>): AskUserQuestion[] | null {
+  let questions = input.questions;
+
+  // Handle stringified JSON
+  if (typeof questions === "string") {
+    try {
+      questions = JSON.parse(questions);
+    } catch {
+      return null;
+    }
+  }
+
+  if (!Array.isArray(questions)) return null;
+
+  return questions.filter((q): q is AskUserQuestion =>
+    q && typeof q === "object" &&
+    typeof q.question === "string" &&
+    Array.isArray(q.options)
+  );
+}
+
+function AskUserQuestionDisplay({
+  part,
+  onAnswer,
+}: {
+  part: ToolPart;
+  onAnswer?: (answer: string) => void;
+}) {
+  const questions = useMemo(() => parseAskUserQuestions(part.state.input), [part.state.input]);
+  const [selectedOptions, setSelectedOptions] = useState<Record<number, string[]>>({});
+  const [customInputs, setCustomInputs] = useState<Record<number, string>>({});
+  const [showCustom, setShowCustom] = useState<Record<number, boolean>>({});
+
+  const isCompleted = part.state.status === "completed";
+  const isPending = part.state.status === "pending" || part.state.status === "running";
+
+  if (!questions || questions.length === 0) {
+    return null;
+  }
+
+  const handleOptionClick = (qIndex: number, option: string, multiSelect: boolean) => {
+    setSelectedOptions(prev => {
+      const current = prev[qIndex] || [];
+      if (multiSelect) {
+        // Toggle selection for multi-select
+        if (current.includes(option)) {
+          return { ...prev, [qIndex]: current.filter(o => o !== option) };
+        } else {
+          return { ...prev, [qIndex]: [...current, option] };
+        }
+      } else {
+        // Single select - replace
+        return { ...prev, [qIndex]: [option] };
+      }
+    });
+    // Hide custom input when selecting a predefined option
+    setShowCustom(prev => ({ ...prev, [qIndex]: false }));
+  };
+
+  const handleSubmit = () => {
+    if (!onAnswer) return;
+
+    const answers: string[] = [];
+    questions.forEach((q, i) => {
+      if (showCustom[i] && customInputs[i]) {
+        answers.push(`${q.header}: ${customInputs[i]}`);
+      } else if (selectedOptions[i]?.length) {
+        answers.push(`${q.header}: ${selectedOptions[i].join(", ")}`);
+      }
+    });
+
+    if (answers.length > 0) {
+      onAnswer(answers.join("\n"));
+    }
+  };
+
+  const hasSelection = questions.some((_, i) =>
+    (selectedOptions[i]?.length > 0) || (showCustom[i] && customInputs[i])
+  );
+
+  return (
+    <div className="border-2 border-accent bg-white p-4 space-y-4">
+      {questions.map((q, qIndex) => (
+        <div key={qIndex} className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium px-2 py-0.5 bg-accent text-white">
+              {q.header}
+            </span>
+            {q.multiSelect && (
+              <span className="text-xs text-muted">(可多选)</span>
+            )}
+          </div>
+          <p className="text-sm font-medium">{q.question}</p>
+
+          <div className="space-y-2">
+            {q.options.map((opt, optIndex) => {
+              const isSelected = selectedOptions[qIndex]?.includes(opt.label);
+              return (
+                <button
+                  key={optIndex}
+                  type="button"
+                  disabled={isCompleted}
+                  onClick={() => handleOptionClick(qIndex, opt.label, q.multiSelect || false)}
+                  className={`w-full text-left p-3 border transition-colors ${
+                    isSelected
+                      ? "border-accent bg-accent/5"
+                      : "border-border hover:border-neutral-400"
+                  } ${isCompleted ? "opacity-60 cursor-not-allowed" : ""}`}
+                >
+                  <div className="flex items-start gap-2">
+                    <div className={`size-4 flex-shrink-0 mt-0.5 border ${
+                      isSelected ? "border-accent bg-accent" : "border-neutral-300"
+                    } flex items-center justify-center`}>
+                      {isSelected && <CheckIcon className="size-3 text-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium">{opt.label}</div>
+                      {opt.description && (
+                        <div className="text-xs text-muted mt-0.5">{opt.description}</div>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+
+            {/* Custom input option */}
+            {isPending && (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCustom(prev => ({ ...prev, [qIndex]: !prev[qIndex] }))}
+                  className={`w-full text-left p-3 border transition-colors ${
+                    showCustom[qIndex]
+                      ? "border-accent bg-accent/5"
+                      : "border-border hover:border-neutral-400"
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    <div className={`size-4 flex-shrink-0 mt-0.5 border ${
+                      showCustom[qIndex] ? "border-accent bg-accent" : "border-neutral-300"
+                    } flex items-center justify-center`}>
+                      {showCustom[qIndex] && <CheckIcon className="size-3 text-white" />}
+                    </div>
+                    <div className="text-sm font-medium">Other (自定义)</div>
+                  </div>
+                </button>
+
+                {showCustom[qIndex] && (
+                  <input
+                    type="text"
+                    value={customInputs[qIndex] || ""}
+                    onChange={(e) => setCustomInputs(prev => ({ ...prev, [qIndex]: e.target.value }))}
+                    placeholder="输入自定义答案..."
+                    className="w-full px-3 py-2 text-sm border border-border focus:border-accent focus:outline-none"
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+
+      {isPending && onAnswer && (
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!hasSelection}
+          className="btn-brutalist w-full disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Submit Answer
+        </button>
+      )}
+
+      {isCompleted && (
+        <div className="text-xs text-muted border-t border-border pt-2">
+          ✓ Question answered
         </div>
       )}
     </div>

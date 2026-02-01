@@ -226,9 +226,226 @@ pub async fn git_pull(dir: String) -> Result<(), String> {
     Ok(())
 }
 
+// Fallback .gitignore content from https://github.com/github/gitignore/blob/main/TeX.gitignore
+const FALLBACK_TEX_GITIGNORE: &str = r#"## Core latex/pdflatex auxiliary files:
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+.*.lb
+
+## Intermediate documents:
+*.dvi
+*.xdv
+*-converted-to.*
+
+## Generated if empty string is given at "Please type another file name for output:"
+.pdf
+
+## Bibliography auxiliary files (bibtex/biblatex/biber):
+*.bbl
+*.bbl-SAVE-ERROR
+*.bcf
+*.bcf-SAVE-ERROR
+*.blg
+*-blx.aux
+*-blx.bib
+*.run.xml
+
+## Build tool auxiliary files:
+*.fdb_latexmk
+*.synctex
+*.synctex(busy)
+*.synctex.gz
+*.synctex.gz(busy)
+*.pdfsync
+*.rubbercache
+rubber.cache
+
+## Build tool directories for auxiliary files
+latex.out/
+
+## Auxiliary and intermediate files from other packages:
+*.alg
+*.loa
+acs-*.bib
+*.thm
+*.atfi
+*.nav
+*.pre
+*.snm
+*.vrb
+*.soc
+*.loc
+*.cut
+*.cpt
+*.spl
+*.ent
+*.lox
+*.mf
+*.mp
+*.t[1-9]
+*.t[1-9][0-9]
+*.tfm
+*.end
+*.?end
+*.[1-9]
+*.[1-9][0-9]
+*.[1-9][0-9][0-9]
+*.[1-9]R
+*.[1-9][0-9]R
+*.[1-9][0-9][0-9]R
+*.eledsec[1-9]
+*.eledsec[1-9]R
+*.eledsec[1-9][0-9]
+*.eledsec[1-9][0-9]R
+*.eledsec[1-9][0-9][0-9]
+*.eledsec[1-9][0-9][0-9]R
+*.acn
+*.acr
+*.glg
+*.glg-abr
+*.glo
+*.glo-abr
+*.gls
+*.gls-abr
+*.glsdefs
+*.lzo
+*.lzs
+*.slg
+*.slo
+*.sls
+*.gnuplot
+*.table
+*-gnuplottex-*
+*.gaux
+*.glog
+*.gtex
+*.4ct
+*.4tc
+*.idv
+*.lg
+*.trc
+*.xref
+*.hd
+*.brf
+*-concordance.tex
+*-tikzDictionary
+*.lol
+*.ltjruby
+*.idx
+*.ilg
+*.ind
+*.maf
+*.mlf
+*.mlt
+*.mtc[0-9]*
+*.slf[0-9]*
+*.slt[0-9]*
+*.stc[0-9]*
+_minted*
+*.data.minted
+*.pyg
+*.mw
+*.newpax
+*.nlg
+*.nlo
+*.nls
+*.pax
+*.pdfpc
+*.sagetex.sage
+*.sagetex.py
+*.sagetex.scmd
+*.wrt
+*.spell.bad
+*.spell.txt
+svg-inkscape/
+*.sout
+*.sympy
+sympy-plots-for-*.tex/
+*.upa
+*.upb
+*.pytxcode
+pythontex-files-*/
+*.listing
+*.loe
+*.dpth
+*.md5
+*.auxlock
+*.ptc
+*.tdo
+*.hst
+*.ver
+*.lod
+*.xcp
+*.xmpi
+*.xdy
+*.xyc
+*.xyd
+*.ttt
+*.fff
+TSWLatexianTemp*
+
+## Editors:
+*.bak
+*.sav
+*.bak[0-9]*
+.texpadtmp
+*.lyx~
+*.backup
+.*.swp
+*~[0-9]*
+*.tps
+./auto/*
+*.el
+*-tags.tex
+*.sta
+*.lpz
+*.xwm
+
+## OS files
+.DS_Store
+Thumbs.db
+"#;
+
+async fn fetch_gitignore() -> Option<String> {
+    let url = "https://raw.githubusercontent.com/github/gitignore/main/TeX.gitignore";
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()
+        .ok()?;
+
+    let response = client.get(url).send().await.ok()?;
+    if response.status().is_success() {
+        response.text().await.ok()
+    } else {
+        None
+    }
+}
+
 #[tauri::command]
 pub async fn git_init(dir: String) -> Result<(), String> {
     run_git(&dir, &["init"]).await?;
+
+    // Create a .gitignore file for LaTeX projects
+    let gitignore_path = std::path::Path::new(&dir).join(".gitignore");
+    if !gitignore_path.exists() {
+        // Try to fetch from GitHub, fallback to hardcoded version
+        let gitignore_content = fetch_gitignore()
+            .await
+            .unwrap_or_else(|| FALLBACK_TEX_GITIGNORE.to_string());
+
+        std::fs::write(&gitignore_path, gitignore_content)
+            .map_err(|e| format!("Failed to create .gitignore: {}", e))?;
+    }
+
     Ok(())
 }
 

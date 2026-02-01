@@ -286,6 +286,15 @@ export function getToolInfo(tool: string, input: Record<string, unknown> = {}): 
         subtitle: mcpTool,
       }
     }
+    case 'askuserquestion': {
+      const questions = input.questions as { header?: string }[] | undefined
+      const firstHeader = questions?.[0]?.header
+      return {
+        icon: 'help-circle',
+        title: 'Question',
+        subtitle: firstHeader || 'Waiting for input',
+      }
+    }
     default:
       return {
         icon: 'tool',
