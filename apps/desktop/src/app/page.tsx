@@ -24,7 +24,9 @@ import { useEditorSettings } from "@/lib/editor";
 import {
   LaTeXSettingsDialog,
   LaTeXInstallPrompt,
+  MainFileSelectionDialog,
 } from "@/components/latex";
+import type { MainFileDetectionResult } from "@/lib/latex/types";
 
 function throttle<T extends (...args: Parameters<T>) => void>(
   fn: T,
@@ -149,6 +151,8 @@ export default function EditorPage() {
     string | null
   >(null);
   const [opencodeError, setOpencodeError] = useState<string | null>(null);
+  const [showMainFileDialog, setShowMainFileDialog] = useState(false);
+  const [mainFileDetectionResult, setMainFileDetectionResult] = useState<MainFileDetectionResult | null>(null);
 
   const contentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const opencodeStartedForPathRef = useRef<string | null>(null);
@@ -198,6 +202,56 @@ export default function EditorPage() {
       latexCompiler.compilersStatus.xelatex.available ||
       latexCompiler.compilersStatus.lualatex.available ||
       latexCompiler.compilersStatus.latexmk.available);
+
+  // Handle compile with main file detection
+  const handleCompileWithDetection = useCallback(async () => {
+    if (!daemon.projectPath) return;
+
+    // Run detection
+    const result = await latexSettings.detectMainFile(daemon.projectPath);
+
+    if (!result) {
+      toast("Failed to detect main file", "error");
+      return;
+    }
+
+    // If detection found a main file and doesn't need user input, proceed
+    if (result.main_file && !result.needs_user_input) {
+      setShowRightPanel(true);
+      setPendingOpenCodeMessage(
+        latexSettings.settings.compilePrompt.replace("{mainFile}", result.main_file)
+      );
+      return;
+    }
+
+    // If we need user input (ambiguous case), show the dialog
+    if (result.needs_user_input && result.tex_files.length > 0) {
+      setMainFileDetectionResult(result);
+      setShowMainFileDialog(true);
+      return;
+    }
+
+    // No tex files found
+    toast("No .tex files found in the project", "error");
+  }, [daemon.projectPath, latexSettings, toast]);
+
+  // Handle main file selection from dialog
+  const handleMainFileSelect = useCallback((mainFile: string) => {
+    latexSettings.setMainFile(mainFile);
+    setShowMainFileDialog(false);
+    setMainFileDetectionResult(null);
+
+    // Proceed with compilation
+    setShowRightPanel(true);
+    setPendingOpenCodeMessage(
+      latexSettings.settings.compilePrompt.replace("{mainFile}", mainFile)
+    );
+  }, [latexSettings]);
+
+  const handleMainFileDialogCancel = useCallback(() => {
+    setShowMainFileDialog(false);
+    setMainFileDetectionResult(null);
+  }, []);
 
   const checkOpencodeStatus = useCallback(async () => {
     try {
@@ -783,14 +837,8 @@ export default function EditorPage() {
       // Compile with AI: Cmd/Ctrl+Shift+B
       if (isMod && e.shiftKey && key === "b") {
         e.preventDefault();
-        if (daemon.projectPath && latexSettings.settings.mainFile) {
-          setShowRightPanel(true);
-          setPendingOpenCodeMessage(
-            latexSettings.settings.compilePrompt.replace(
-              "{mainFile}",
-              latexSettings.settings.mainFile
-            )
-          );
+        if (daemon.projectPath) {
+          handleCompileWithDetection();
         }
         return;
       }
@@ -799,7 +847,7 @@ export default function EditorPage() {
     window.addEventListener("keydown", handleKeyDown, { capture: true });
     return () =>
       window.removeEventListener("keydown", handleKeyDown, { capture: true });
-  }, [daemon, handleOpenFolder, selectedFile, handleCloseTab, latexSettings.settings.mainFile]);
+  }, [daemon, handleOpenFolder, selectedFile, handleCloseTab, handleCompileWithDetection]);
 
   return (
     <div className="h-dvh flex flex-col">
@@ -854,22 +902,14 @@ export default function EditorPage() {
                 <span className="text-neutral-300 text-lg select-none">/</span>
                 <div className="flex items-center gap-2 h-8">
                   <button
-                    onClick={() => {
-                      setShowRightPanel(true);
-                      setPendingOpenCodeMessage(
-                        latexSettings.settings.compilePrompt.replace(
-                          "{mainFile}",
-                          latexSettings.settings.mainFile || "main.tex"
-                        )
-                      );
-                    }}
-                    disabled={!latexSettings.settings.mainFile}
+                    onClick={handleCompileWithDetection}
+                    disabled={latexSettings.isDetecting}
                     className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-white text-black ${
-                      !latexSettings.settings.mainFile
+                      latexSettings.isDetecting
                         ? "opacity-50 cursor-not-allowed"
                         : "hover:bg-neutral-50 hover:border-neutral-400"
                     }`}
-                    title={latexSettings.settings.mainFile ? "Compile (Ctrl+Shift+B)" : "Set main file first"}
+                    title="Compile (Ctrl+Shift+B)"
                   >
                     <svg
                       className="size-4"
@@ -1619,6 +1659,15 @@ export default function EditorPage() {
         onUpdateEditorSettings={editorSettings.updateSettings}
         texFiles={texFiles}
       />
+
+      {mainFileDetectionResult && (
+        <MainFileSelectionDialog
+          open={showMainFileDialog}
+          detectionResult={mainFileDetectionResult}
+          onSelect={handleMainFileSelect}
+          onCancel={handleMainFileDialogCancel}
+        />
+      )}
 
       <LoginCodeModal
         isOpen={showLoginCodeModal}

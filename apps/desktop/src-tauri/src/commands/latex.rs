@@ -980,3 +980,172 @@ pub async fn latex_open_download_page(
         .open_url(&url, None::<&str>)
         .map_err(|e| format!("Failed to open URL: {}", e))
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MainFileDetectionResult {
+    /// The detected main file, if any
+    pub main_file: Option<String>,
+    /// All .tex files found in the directory
+    pub tex_files: Vec<String>,
+    /// Detection method used
+    pub detection_method: String,
+    /// Whether user input is needed (multiple candidates, none found)
+    pub needs_user_input: bool,
+    /// Message explaining the detection result
+    pub message: String,
+}
+
+/// Detect the main LaTeX file in a directory
+#[tauri::command]
+pub async fn latex_detect_main_file(
+    directory: String,
+    configured_main_file: Option<String>,
+) -> Result<MainFileDetectionResult, String> {
+    use std::path::Path;
+    use walkdir::WalkDir;
+
+    let dir_path = Path::new(&directory);
+    if !dir_path.exists() {
+        return Err("Directory does not exist".to_string());
+    }
+
+    // Step 1: Check if configured main file exists
+    if let Some(ref main_file) = configured_main_file {
+        let main_path = dir_path.join(main_file);
+        if main_path.exists() {
+            return Ok(MainFileDetectionResult {
+                main_file: Some(main_file.clone()),
+                tex_files: vec![main_file.clone()],
+                detection_method: "configured".to_string(),
+                needs_user_input: false,
+                message: format!("Using configured main file: {}", main_file),
+            });
+        }
+    }
+
+    // Step 2: Find all .tex files (non-recursive for now, just top level)
+    let mut tex_files: Vec<String> = Vec::new();
+    for entry in WalkDir::new(&directory)
+        .max_depth(1)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if path.is_file() {
+            if let Some(ext) = path.extension() {
+                if ext == "tex" {
+                    if let Some(name) = path.file_name() {
+                        tex_files.push(name.to_string_lossy().to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    // Step 3: If only one .tex file, use it
+    if tex_files.len() == 1 {
+        let main_file = tex_files[0].clone();
+        return Ok(MainFileDetectionResult {
+            main_file: Some(main_file.clone()),
+            tex_files,
+            detection_method: "single_file".to_string(),
+            needs_user_input: false,
+            message: format!("Only one .tex file found: {}", main_file),
+        });
+    }
+
+    // Step 4: If no .tex files found
+    if tex_files.is_empty() {
+        return Ok(MainFileDetectionResult {
+            main_file: None,
+            tex_files: vec![],
+            detection_method: "none".to_string(),
+            needs_user_input: true,
+            message: "No .tex files found in the project directory".to_string(),
+        });
+    }
+
+    // Step 5: Multiple .tex files - try to detect main file by content
+    let mut candidates: Vec<(String, i32)> = Vec::new();
+
+    for tex_file in &tex_files {
+        let file_path = dir_path.join(tex_file);
+        if let Ok(content) = std::fs::read_to_string(&file_path) {
+            let mut score = 0;
+
+            // Check for \documentclass - strong indicator of main file
+            if content.contains("\\documentclass") {
+                score += 10;
+            }
+
+            // Check for \begin{document}
+            if content.contains("\\begin{document}") {
+                score += 5;
+            }
+
+            // Common main file names get bonus points
+            let lower_name = tex_file.to_lowercase();
+            if lower_name == "main.tex" {
+                score += 8;
+            } else if lower_name == "paper.tex" || lower_name == "article.tex" {
+                score += 5;
+            } else if lower_name == "thesis.tex" || lower_name == "dissertation.tex" {
+                score += 5;
+            } else if lower_name == "report.tex" || lower_name == "document.tex" {
+                score += 3;
+            }
+
+            // Files that are typically included (not main files) get negative score
+            if lower_name.starts_with("chapter") || lower_name.starts_with("section") {
+                score -= 3;
+            }
+            if lower_name == "preamble.tex" || lower_name == "packages.tex" || lower_name == "macros.tex" {
+                score -= 5;
+            }
+            if lower_name == "abstract.tex" || lower_name == "appendix.tex" || lower_name == "bibliography.tex" {
+                score -= 3;
+            }
+
+            if score > 0 {
+                candidates.push((tex_file.clone(), score));
+            }
+        }
+    }
+
+    // Sort by score descending
+    candidates.sort_by(|a, b| b.1.cmp(&a.1));
+
+    // If we have a clear winner (significantly higher score)
+    if !candidates.is_empty() {
+        let best = &candidates[0];
+        let second_best_score = candidates.get(1).map(|c| c.1).unwrap_or(0);
+
+        // If the best candidate has a significantly higher score
+        if best.1 >= 10 && best.1 > second_best_score + 3 {
+            return Ok(MainFileDetectionResult {
+                main_file: Some(best.0.clone()),
+                tex_files,
+                detection_method: "auto_detected".to_string(),
+                needs_user_input: false,
+                message: format!("Auto-detected main file: {} (contains \\documentclass)", best.0),
+            });
+        }
+    }
+
+    // Step 6: Can't determine automatically - need user input
+    // Sort tex_files to put likely candidates first
+    let mut sorted_files = tex_files.clone();
+    sorted_files.sort_by(|a, b| {
+        let score_a = candidates.iter().find(|c| &c.0 == a).map(|c| c.1).unwrap_or(0);
+        let score_b = candidates.iter().find(|c| &c.0 == b).map(|c| c.1).unwrap_or(0);
+        score_b.cmp(&score_a)
+    });
+
+    Ok(MainFileDetectionResult {
+        main_file: None,
+        tex_files: sorted_files,
+        detection_method: "ambiguous".to_string(),
+        needs_user_input: true,
+        message: format!("Multiple .tex files found ({}). Please select the main file.", tex_files.len()),
+    })
+}
