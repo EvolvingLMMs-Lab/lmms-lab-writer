@@ -13,11 +13,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // setSession and other auth operations to hang indefinitely.
 // This no-op lock bypasses the locking mechanism entirely, which is safe for
 // desktop apps that don't need cross-tab synchronization.
-const noOpLock = async (
+const noOpLock = async <R>(
   _name: string,
   _acquireTimeout: number,
-  fn: () => Promise<unknown>
-): Promise<unknown> => {
+  fn: () => Promise<R>
+): Promise<R> => {
   return await fn();
 };
 
