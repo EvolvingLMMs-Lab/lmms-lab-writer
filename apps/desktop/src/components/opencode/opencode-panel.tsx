@@ -12,6 +12,7 @@ import type {
   FilePart,
   SessionStatus,
   SessionInfo,
+  QuestionAsked,
 } from "@/lib/opencode/types";
 import { getToolInfo } from "@/lib/opencode/types";
 import { Spinner } from "@/components/ui/spinner";
@@ -165,6 +166,11 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     await opencode.sendMessage(answer);
   }, [opencode]);
 
+  // Handle answering questions via the question API
+  const handleAnswerQuestion = useCallback(async (answers: Record<string, string | string[]>) => {
+    await opencode.answerQuestion(answers);
+  }, [opencode]);
+
   const handleAbort = useCallback(async () => {
     await opencode.abort();
   }, [opencode]);
@@ -247,6 +253,16 @@ export const OpenCodePanel = memo(function OpenCodePanel({
             />
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Current Question UI */}
+          {opencode.currentQuestion && (
+            <div className="border-t border-border p-3">
+              <CurrentQuestionUI
+                question={opencode.currentQuestion}
+                onAnswer={handleAnswerQuestion}
+              />
+            </div>
+          )}
 
           {/* Input */}
           <InputArea
@@ -502,24 +518,10 @@ function MessageTurn({
     const askUserQuestions: ToolPart[] = [];
 
     for (const part of dedupedParts) {
-      // Debug: log all part types
-      console.log("[OpenCode Debug] Part:", { type: part.type, id: part.id });
       if (part.type === "text" && !(part as TextPart).synthetic) {
-        const textPart = part as TextPart;
-        // Debug: check if text contains questions JSON
-        if (textPart.text.includes('"questions"') || textPart.text.includes('"options"')) {
-          console.log("[OpenCode Debug] Text contains questions JSON:", textPart.text.slice(0, 200));
-        }
-        text.push(textPart);
+        text.push(part as TextPart);
       } else if (part.type === "tool") {
         const toolPart = part as ToolPart;
-        // Debug: log all tool names to identify AskUserQuestion
-        console.log("[OpenCode Debug] Tool part:", {
-          tool: toolPart.tool,
-          status: toolPart.state.status,
-          hasQuestions: "questions" in toolPart.state.input,
-          input: toolPart.state.input,
-        });
         // Check for question tool (OpenCode uses "question" not "askuserquestion")
         if (toolPart.tool.toLowerCase() === "question" || toolPart.tool.toLowerCase() === "askuserquestion") {
           askUserQuestions.push(toolPart);
@@ -2167,6 +2169,149 @@ function ToolIcon({ tool }: { tool: string }) {
         </svg>
       );
   }
+}
+
+// ============================================================================
+// Current Question UI (using question.asked event)
+// ============================================================================
+
+function CurrentQuestionUI({
+  question,
+  onAnswer,
+}: {
+  question: QuestionAsked;
+  onAnswer: (answers: Record<string, string | string[]>) => void;
+}) {
+  const [selectedOptions, setSelectedOptions] = useState<Record<number, string[]>>({});
+  const [customInputs, setCustomInputs] = useState<Record<number, string>>({});
+  const [showCustom, setShowCustom] = useState<Record<number, boolean>>({});
+
+  const handleOptionClick = (qIndex: number, option: string, multiSelect: boolean) => {
+    setSelectedOptions(prev => {
+      const current = prev[qIndex] || [];
+      if (multiSelect) {
+        if (current.includes(option)) {
+          return { ...prev, [qIndex]: current.filter(o => o !== option) };
+        } else {
+          return { ...prev, [qIndex]: [...current, option] };
+        }
+      } else {
+        return { ...prev, [qIndex]: [option] };
+      }
+    });
+    setShowCustom(prev => ({ ...prev, [qIndex]: false }));
+  };
+
+  const handleSubmit = () => {
+    const answers: Record<string, string | string[]> = {};
+    question.questions.forEach((q, i) => {
+      if (showCustom[i] && customInputs[i]) {
+        answers[q.header] = customInputs[i];
+      } else if (selectedOptions[i]?.length) {
+        answers[q.header] = q.multiSelect ? selectedOptions[i] : selectedOptions[i][0];
+      }
+    });
+
+    if (Object.keys(answers).length > 0) {
+      onAnswer(answers);
+    }
+  };
+
+  const hasSelection = question.questions.some((_, i) => {
+    return (selectedOptions[i] && selectedOptions[i].length > 0) || (showCustom[i] && customInputs[i]);
+  });
+
+  return (
+    <div className="border-2 border-accent bg-white p-4 space-y-4">
+      <div className="text-xs font-medium text-accent uppercase tracking-wider">Question</div>
+      {question.questions.map((q, qIndex) => (
+        <div key={qIndex} className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium px-2 py-0.5 bg-accent text-white">
+              {q.header}
+            </span>
+            {q.multiSelect && (
+              <span className="text-xs text-muted">(可多选)</span>
+            )}
+          </div>
+          <p className="text-sm font-medium">{q.question}</p>
+
+          <div className="space-y-2">
+            {q.options.map((opt, optIndex) => {
+              const isSelected = selectedOptions[qIndex]?.includes(opt.label);
+              return (
+                <button
+                  key={optIndex}
+                  type="button"
+                  onClick={() => handleOptionClick(qIndex, opt.label, q.multiSelect || false)}
+                  className={`w-full text-left p-3 border transition-colors ${
+                    isSelected
+                      ? "border-accent bg-accent/5"
+                      : "border-border hover:border-neutral-400"
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    <div className={`size-4 flex-shrink-0 mt-0.5 border ${
+                      isSelected ? "border-accent bg-accent" : "border-neutral-300"
+                    } flex items-center justify-center`}>
+                      {isSelected && <CheckIcon className="size-3 text-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium">{opt.label}</div>
+                      {opt.description && (
+                        <div className="text-xs text-muted mt-0.5">{opt.description}</div>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+
+            {/* Custom input option */}
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setShowCustom(prev => ({ ...prev, [qIndex]: !prev[qIndex] }))}
+                className={`w-full text-left p-3 border transition-colors ${
+                  showCustom[qIndex]
+                    ? "border-accent bg-accent/5"
+                    : "border-border hover:border-neutral-400"
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  <div className={`size-4 flex-shrink-0 mt-0.5 border ${
+                    showCustom[qIndex] ? "border-accent bg-accent" : "border-neutral-300"
+                  } flex items-center justify-center`}>
+                    {showCustom[qIndex] && <CheckIcon className="size-3 text-white" />}
+                  </div>
+                  <div className="text-sm font-medium">Other (自定义)</div>
+                </div>
+              </button>
+
+              {showCustom[qIndex] && (
+                <input
+                  type="text"
+                  value={customInputs[qIndex] || ""}
+                  onChange={(e) => setCustomInputs(prev => ({ ...prev, [qIndex]: e.target.value }))}
+                  placeholder="输入自定义答案..."
+                  className="w-full px-3 py-2 text-sm border border-border focus:border-accent focus:outline-none"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={!hasSelection}
+        className="btn-brutalist w-full disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Submit Answer
+      </button>
+    </div>
+  );
 }
 
 // ============================================================================
