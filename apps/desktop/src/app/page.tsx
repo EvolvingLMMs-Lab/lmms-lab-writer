@@ -205,9 +205,45 @@ export default function EditorPage() {
       latexCompiler.compilersStatus.lualatex.available ||
       latexCompiler.compilersStatus.latexmk.available);
 
+  // Ensure .lmms_lab_writer/COMPILE_NOTES exists
+  const ensureCompileNotesFile = useCallback(async () => {
+    if (!daemon.projectPath) return;
+
+    const dirPath = ".lmms_lab_writer";
+    const filePath = ".lmms_lab_writer/COMPILE_NOTES";
+
+    try {
+      // Try to read the file first to check if it exists
+      await daemon.readFile(filePath);
+    } catch {
+      // File doesn't exist, create it
+      try {
+        await daemon.createDirectory(dirPath);
+      } catch {
+        // Directory might already exist, ignore
+      }
+
+      const initialContent = `# Compilation Notes
+
+This file stores compilation preferences and notes for this LaTeX project.
+The AI assistant will read and update this file during compilation.
+
+## Project Info
+- Created: ${new Date().toISOString()}
+
+## Compilation History
+(Notes will be added here by the AI assistant)
+`;
+      await daemon.writeFile(filePath, initialContent);
+    }
+  }, [daemon]);
+
   // Handle compile with main file detection
   const handleCompileWithDetection = useCallback(async () => {
     if (!daemon.projectPath) return;
+
+    // Ensure COMPILE_NOTES file exists before compilation
+    await ensureCompileNotesFile();
 
     // Run detection
     const result = await latexSettings.detectMainFile(daemon.projectPath);
@@ -235,7 +271,7 @@ export default function EditorPage() {
 
     // No tex files found
     toast("No .tex files found in the project", "error");
-  }, [daemon.projectPath, latexSettings, toast]);
+  }, [daemon.projectPath, latexSettings, toast, ensureCompileNotesFile]);
 
   // Handle main file selection from dialog
   const handleMainFileSelect = useCallback((mainFile: string) => {

@@ -537,6 +537,9 @@ function MessageTurn({
   const hasIntermediateText = intermediateTextParts.length > 0;
   const hasSteps = toolParts.length > 0 || hasReasoningContent || hasIntermediateText;
 
+  // Get the last tool operation to show in the response area
+  const lastToolPart = toolParts.length > 0 ? toolParts[toolParts.length - 1] : null;
+
   // Update timer for in-progress messages
   useEffect(() => {
     if (endTime || !startTime) return; // Already completed or no start time
@@ -639,13 +642,21 @@ function MessageTurn({
         </div>
       )}
 
-      {/* Response label and text */}
-      {finalText && (
-        <div className="space-y-1">
+      {/* Response area - combines last operation and text */}
+      {(finalText || (lastToolPart && !showSteps)) && (
+        <div className="space-y-2">
           <div className="text-xs text-neutral-400">Response</div>
-          <div className="text-[13px] leading-relaxed whitespace-pre-wrap break-words text-neutral-700">
-            <MarkdownText text={finalText} onFileClick={onFileClick} />
-          </div>
+          {lastToolPart && !showSteps && (
+            <ToolDisplay
+              part={lastToolPart}
+              onFileClick={onFileClick}
+            />
+          )}
+          {finalText && (
+            <div className="text-[13px] leading-relaxed whitespace-pre-wrap break-words text-neutral-700">
+              <MarkdownText text={finalText} onFileClick={onFileClick} />
+            </div>
+          )}
         </div>
       )}
 

@@ -41,7 +41,7 @@ export const DEFAULT_LATEX_SETTINGS: LaTeXSettings = {
 Main file: {mainFile}
 
 Guidelines:
-1. First, check if .lmms_lab_writer/COMPILE_NOTES exists. If it does, read it for previous compilation notes and preferences. If not, create the .lmms_lab_writer directory and COMPILE_NOTES file.
+1. First, read .lmms_lab_writer/COMPILE_NOTES for previous compilation notes and preferences
 2. If the main file does not exist, auto-detect the correct main .tex file (look for \\documentclass in .tex files)
 3. Prefer xelatex or pdflatex, but feel free to choose the most appropriate compiler based on the document content
 4. If packages are missing, try installing them with tlmgr
