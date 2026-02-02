@@ -163,6 +163,24 @@ export type SessionError = {
   }
 }
 
+export type QuestionOption = {
+  label: string
+  description?: string
+}
+
+export type Question = {
+  question: string
+  header: string
+  options: QuestionOption[]
+  multiSelect?: boolean
+}
+
+export type QuestionAsked = {
+  id: string
+  sessionID: string
+  questions: Question[]
+}
+
 export type Event =
   | { type: 'server.connected'; properties: Record<string, unknown> }
   | { type: 'server.heartbeat'; properties: Record<string, unknown> }
@@ -177,6 +195,7 @@ export type Event =
   | { type: 'message.removed'; properties: { sessionID: string; messageID: string } }
   | { type: 'message.part.updated'; properties: { part: Part; delta?: string } }
   | { type: 'message.part.removed'; properties: { sessionID: string; messageID: string; partID: string } }
+  | { type: 'question.asked'; properties: QuestionAsked }
 
 export type ToolInfo = {
   icon: string
@@ -286,6 +305,7 @@ export function getToolInfo(tool: string, input: Record<string, unknown> = {}): 
         subtitle: mcpTool,
       }
     }
+    case 'question':
     case 'askuserquestion': {
       const questions = input.questions as { header?: string }[] | undefined
       const firstHeader = questions?.[0]?.header

@@ -502,12 +502,26 @@ function MessageTurn({
     const askUserQuestions: ToolPart[] = [];
 
     for (const part of dedupedParts) {
+      // Debug: log all part types
+      console.log("[OpenCode Debug] Part:", { type: part.type, id: part.id });
       if (part.type === "text" && !(part as TextPart).synthetic) {
-        text.push(part as TextPart);
+        const textPart = part as TextPart;
+        // Debug: check if text contains questions JSON
+        if (textPart.text.includes('"questions"') || textPart.text.includes('"options"')) {
+          console.log("[OpenCode Debug] Text contains questions JSON:", textPart.text.slice(0, 200));
+        }
+        text.push(textPart);
       } else if (part.type === "tool") {
         const toolPart = part as ToolPart;
-        // Check for AskUserQuestion tool (case insensitive)
-        if (toolPart.tool.toLowerCase() === "askuserquestion") {
+        // Debug: log all tool names to identify AskUserQuestion
+        console.log("[OpenCode Debug] Tool part:", {
+          tool: toolPart.tool,
+          status: toolPart.state.status,
+          hasQuestions: "questions" in toolPart.state.input,
+          input: toolPart.state.input,
+        });
+        // Check for question tool (OpenCode uses "question" not "askuserquestion")
+        if (toolPart.tool.toLowerCase() === "question" || toolPart.tool.toLowerCase() === "askuserquestion") {
           askUserQuestions.push(toolPart);
         } else {
           tools.push(toolPart);

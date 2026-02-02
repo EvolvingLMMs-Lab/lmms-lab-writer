@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { OpenCodeClient, createOpenCodeClient } from "./client";
-import type { Event, Message, Part, SessionInfo, SessionStatus } from "./types";
+import type { Event, Message, Part, SessionInfo, SessionStatus, QuestionAsked } from "./types";
 
 export type UseOpenCodeOptions = {
   baseUrl?: string;
@@ -37,6 +37,7 @@ export type UseOpenCodeReturn = {
   messages: Message[];
   parts: Map<string, Part[]>;
   status: SessionStatus;
+  currentQuestion: QuestionAsked | null;
 
   agents: Agent[];
   providers: Provider[];
@@ -49,6 +50,7 @@ export type UseOpenCodeReturn = {
   selectSession: (sessionId: string) => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
   sendMessage: (content: string, files?: { url: string; mime: string; filename?: string }[]) => Promise<void>;
+  answerQuestion: (answers: Record<string, string | string[]>) => Promise<void>;
   abort: () => Promise<void>;
   getPartsForMessage: (messageId: string) => Part[];
   resetReconnectState: () => void;
@@ -94,6 +96,7 @@ export function useOpenCode(
   const [messages, setMessages] = useState<Message[]>([]);
   const [parts, setParts] = useState<Map<string, Part[]>>(new Map());
   const [status, setStatus] = useState<SessionStatus>({ type: "idle" });
+  const [currentQuestion, setCurrentQuestion] = useState<QuestionAsked | null>(null);
 
   const [agents, setAgents] = useState<Agent[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -217,6 +220,15 @@ export function useOpenCode(
         );
         if (statusData) {
           setStatus(statusData);
+        }
+      }
+
+      // Handle question.asked events
+      if (event.type === "question.asked") {
+        const questionData = event.properties as QuestionAsked;
+        if (questionData.sessionID === currentSessionIdRef.current) {
+          console.log("[OpenCode] Question asked:", questionData);
+          setCurrentQuestion(questionData);
         }
       }
 
@@ -725,6 +737,30 @@ export function useOpenCode(
     }
   }, [connected, currentSessionId]);
 
+  const answerQuestion = useCallback(
+    async (answers: Record<string, string | string[]>) => {
+      const client = clientRef.current;
+      if (!client || !connected || !currentQuestion) {
+        console.log("[OpenCode] answerQuestion: preconditions not met", {
+          hasClient: !!client,
+          connected,
+          hasQuestion: !!currentQuestion,
+        });
+        return;
+      }
+
+      try {
+        console.log("[OpenCode] Answering question:", currentQuestion.id, answers);
+        await client.answerQuestion(currentQuestion.id, answers);
+        setCurrentQuestion(null); // Clear the question after answering
+      } catch (err) {
+        console.error("[OpenCode] Failed to answer question:", err);
+        setError(err instanceof Error ? err.message : "Failed to answer question");
+      }
+    },
+    [connected, currentQuestion],
+  );
+
   const getPartsForMessage = useCallback(
     (messageId: string): Part[] => {
       if (!currentSessionId) return [];
@@ -785,6 +821,7 @@ export function useOpenCode(
     messages,
     parts,
     status,
+    currentQuestion,
     agents,
     providers,
     selectedAgent,
@@ -795,6 +832,7 @@ export function useOpenCode(
     selectSession,
     deleteSession,
     sendMessage,
+    answerQuestion,
     abort,
     getPartsForMessage,
     resetReconnectState,

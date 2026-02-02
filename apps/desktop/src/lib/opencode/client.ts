@@ -547,6 +547,30 @@ export class OpenCodeClient {
       throw new Error(`Failed to abort: ${response.statusText}`);
   }
 
+  async answerQuestion(
+    questionID: string,
+    answers: Record<string, string | string[]>,
+  ): Promise<void> {
+    console.log("[OpenCode Client] answerQuestion:", { questionID, answers });
+    const response = await fetch(
+      `${this.baseUrl}/question/${questionID}${this.getQueryParams()}`,
+      {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify({ answers }),
+        signal: this.getSignal(),
+      },
+    );
+    console.log("[OpenCode Client] answerQuestion response:", {
+      status: response.status,
+      ok: response.ok,
+    });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(`Failed to answer question: ${response.statusText} - ${errorText}`);
+    }
+  }
+
   async getAgents(): Promise<
     { id: string; name: string; description?: string }[]
   > {
