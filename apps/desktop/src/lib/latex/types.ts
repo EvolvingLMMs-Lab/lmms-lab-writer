@@ -36,7 +36,7 @@ export interface CompileOutputEvent {
 
 export const DEFAULT_LATEX_SETTINGS: LaTeXSettings = {
   mainFile: null,
-  compilePrompt: "Please compile the LaTeX document. The main file is: {mainFile}",
+  compilePrompt: "Please compile the LaTeX document. The main file is: {mainFile}. If there are some packages missing, you need to install it.",
 };
 
 export const COMPILER_DISPLAY_NAMES: Record<LaTeXCompiler, string> = {
