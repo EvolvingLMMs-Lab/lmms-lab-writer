@@ -113,6 +113,7 @@ export default function EditorPage() {
   const [fileContent, setFileContent] = useState<string>("");
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [binaryPreviewUrl, setBinaryPreviewUrl] = useState<string | null>(null);
+  const [pdfRefreshKey, setPdfRefreshKey] = useState(0);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
@@ -1117,6 +1118,26 @@ export default function EditorPage() {
                                 />
                               </svg>
                             </button>
+                            <button
+                              onClick={() => daemon.refreshFiles()}
+                              className="p-1 text-muted hover:text-black hover:bg-black/5 transition-colors"
+                              title="Refresh Files"
+                              aria-label="Refresh Files"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={1.5}
+                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                />
+                              </svg>
+                            </button>
                           </div>
                         </div>
                         <EditorErrorBoundary>
@@ -1502,20 +1523,47 @@ export default function EditorPage() {
           )}
           {daemon.projectPath && selectedFile ? (
             binaryPreviewUrl ? (
-              <div className="flex-1 flex items-center justify-center bg-neutral-50 overflow-auto p-4">
-                {getFileType(selectedFile) === "image" ? (
-                  <img
-                    src={binaryPreviewUrl}
-                    alt={selectedFile}
-                    className="max-w-full max-h-full object-contain"
-                  />
-                ) : (
-                  <iframe
-                    src={binaryPreviewUrl}
-                    className="w-full h-full border-0"
-                    title={`PDF: ${selectedFile}`}
-                  />
+              <div className="flex-1 flex flex-col bg-neutral-50 overflow-hidden">
+                {getFileType(selectedFile) === "pdf" && (
+                  <div className="flex items-center justify-end px-2 py-1 border-b border-neutral-200 bg-neutral-100">
+                    <button
+                      onClick={() => setPdfRefreshKey((k) => k + 1)}
+                      className="flex items-center gap-1.5 px-2 py-1 text-xs text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200 rounded transition-colors"
+                      title="Refresh PDF"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                        />
+                      </svg>
+                      Refresh
+                    </button>
+                  </div>
                 )}
+                <div className="flex-1 flex items-center justify-center overflow-auto p-4">
+                  {getFileType(selectedFile) === "image" ? (
+                    <img
+                      src={binaryPreviewUrl}
+                      alt={selectedFile}
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  ) : (
+                    <iframe
+                      key={pdfRefreshKey}
+                      src={binaryPreviewUrl}
+                      className="w-full h-full border-0"
+                      title={`PDF: ${selectedFile}`}
+                    />
+                  )}
+                </div>
               </div>
             ) : isLoadingFile ? (
               <EditorSkeleton className="flex-1 min-h-0" />
