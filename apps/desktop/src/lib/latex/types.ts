@@ -40,13 +40,15 @@ export const DEFAULT_LATEX_SETTINGS: LaTeXSettings = {
 
 Main file: {mainFile}
 
-Instructions:
-1. If the main file does not exist, auto-detect the correct main .tex file (look for \\documentclass in .tex files)
-2. Use xelatex or pdflatex to compile the document
-3. If there are missing packages, install them using tlmgr (e.g., tlmgr install <package-name>)
-4. If bibliography or cross-references are used, run the compiler multiple times or use latexmk
-5. If compilation fails, read the .log file to diagnose the error and fix it
-6. After successful compilation, let me know the output PDF path`,
+Guidelines:
+1. First, check if .lmms_lab_writer/COMPILE_NOTES exists. If it does, read it for previous compilation notes and preferences. If not, create the .lmms_lab_writer directory and COMPILE_NOTES file.
+2. If the main file does not exist, auto-detect the correct main .tex file (look for \\documentclass in .tex files)
+3. Prefer xelatex or pdflatex, but feel free to choose the most appropriate compiler based on the document content
+4. If packages are missing, try installing them with tlmgr
+5. For bibliography or cross-references, consider running multiple passes or using latexmk
+6. If compilation fails, check the .log file to diagnose and fix the issue
+7. After compilation (success or failure), update .lmms_lab_writer/COMPILE_NOTES with any useful information: working compiler, installed packages, resolved issues, or tips for future compilations
+8. After successful compilation, let me know the output PDF path`,
 };
 
 export const COMPILER_DISPLAY_NAMES: Record<LaTeXCompiler, string> = {
