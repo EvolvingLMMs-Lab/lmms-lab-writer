@@ -946,7 +946,7 @@ function AskUserQuestionDisplay({
               {q.header}
             </span>
             {q.multiSelect && (
-              <span className="text-xs text-muted">(可多选)</span>
+              <span className="text-xs text-muted">(Multi-select)</span>
             )}
           </div>
           <p className="text-sm font-medium">{q.question}</p>
@@ -960,16 +960,14 @@ function AskUserQuestionDisplay({
                   type="button"
                   disabled={isCompleted}
                   onClick={() => handleOptionClick(qIndex, opt.label, q.multiSelect || false)}
-                  className={`w-full text-left p-3 border transition-colors ${
-                    isSelected
-                      ? "border-accent bg-accent/5"
-                      : "border-border hover:border-neutral-400"
-                  } ${isCompleted ? "opacity-60 cursor-not-allowed" : ""}`}
+                  className={`w-full text-left p-3 border transition-colors ${isSelected
+                    ? "border-accent bg-accent/5"
+                    : "border-border hover:border-neutral-400"
+                    } ${isCompleted ? "opacity-60 cursor-not-allowed" : ""}`}
                 >
                   <div className="flex items-start gap-2">
-                    <div className={`size-4 flex-shrink-0 mt-0.5 border ${
-                      isSelected ? "border-accent bg-accent" : "border-neutral-300"
-                    } flex items-center justify-center`}>
+                    <div className={`size-4 flex-shrink-0 mt-0.5 border ${isSelected ? "border-accent bg-accent" : "border-neutral-300"
+                      } flex items-center justify-center`}>
                       {isSelected && <CheckIcon className="size-3 text-white" />}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -989,19 +987,17 @@ function AskUserQuestionDisplay({
                 <button
                   type="button"
                   onClick={() => setShowCustom(prev => ({ ...prev, [qIndex]: !prev[qIndex] }))}
-                  className={`w-full text-left p-3 border transition-colors ${
-                    showCustom[qIndex]
-                      ? "border-accent bg-accent/5"
-                      : "border-border hover:border-neutral-400"
-                  }`}
+                  className={`w-full text-left p-3 border transition-colors ${showCustom[qIndex]
+                    ? "border-accent bg-accent/5"
+                    : "border-border hover:border-neutral-400"
+                    }`}
                 >
                   <div className="flex items-start gap-2">
-                    <div className={`size-4 flex-shrink-0 mt-0.5 border ${
-                      showCustom[qIndex] ? "border-accent bg-accent" : "border-neutral-300"
-                    } flex items-center justify-center`}>
+                    <div className={`size-4 flex-shrink-0 mt-0.5 border ${showCustom[qIndex] ? "border-accent bg-accent" : "border-neutral-300"
+                      } flex items-center justify-center`}>
                       {showCustom[qIndex] && <CheckIcon className="size-3 text-white" />}
                     </div>
-                    <div className="text-sm font-medium">Other (自定义)</div>
+                    <div className="text-sm font-medium">Other</div>
                   </div>
                 </button>
 
@@ -1010,7 +1006,7 @@ function AskUserQuestionDisplay({
                     type="text"
                     value={customInputs[qIndex] || ""}
                     onChange={(e) => setCustomInputs(prev => ({ ...prev, [qIndex]: e.target.value }))}
-                    placeholder="输入自定义答案..."
+                    placeholder="Enter custom answer..."
                     className="w-full px-3 py-2 text-sm border border-border focus:border-accent focus:outline-none"
                   />
                 )}
@@ -1332,11 +1328,10 @@ function InputArea({
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isWorking}
-            className={`p-1.5 transition-colors flex-shrink-0 ${
-              attachedFiles.length > 0
-                ? "text-accent"
-                : "text-neutral-400 hover:text-neutral-600"
-            } ${isWorking ? "opacity-50 cursor-not-allowed" : ""}`}
+            className={`p-1.5 transition-colors flex-shrink-0 ${attachedFiles.length > 0
+              ? "text-accent"
+              : "text-neutral-400 hover:text-neutral-600"
+              } ${isWorking ? "opacity-50 cursor-not-allowed" : ""}`}
             title="Attach image"
           >
             <ImageIcon className="size-4" />
@@ -2231,7 +2226,7 @@ function CurrentQuestionUI({
               {q.header}
             </span>
             {q.multiSelect && (
-              <span className="text-xs text-muted">(可多选)</span>
+              <span className="text-xs text-muted">(Multi-select)</span>
             )}
           </div>
           <p className="text-sm font-medium">{q.question}</p>
@@ -2244,16 +2239,14 @@ function CurrentQuestionUI({
                   key={optIndex}
                   type="button"
                   onClick={() => handleOptionClick(qIndex, opt.label, q.multiSelect || false)}
-                  className={`w-full text-left p-3 border transition-colors ${
-                    isSelected
-                      ? "border-accent bg-accent/5"
-                      : "border-border hover:border-neutral-400"
-                  }`}
+                  className={`w-full text-left p-3 border transition-colors ${isSelected
+                    ? "border-accent bg-accent/5"
+                    : "border-border hover:border-neutral-400"
+                    }`}
                 >
                   <div className="flex items-start gap-2">
-                    <div className={`size-4 flex-shrink-0 mt-0.5 border ${
-                      isSelected ? "border-accent bg-accent" : "border-neutral-300"
-                    } flex items-center justify-center`}>
+                    <div className={`size-4 flex-shrink-0 mt-0.5 border ${isSelected ? "border-accent bg-accent" : "border-neutral-300"
+                      } flex items-center justify-center`}>
                       {isSelected && <CheckIcon className="size-3 text-white" />}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -2272,19 +2265,17 @@ function CurrentQuestionUI({
               <button
                 type="button"
                 onClick={() => setShowCustom(prev => ({ ...prev, [qIndex]: !prev[qIndex] }))}
-                className={`w-full text-left p-3 border transition-colors ${
-                  showCustom[qIndex]
-                    ? "border-accent bg-accent/5"
-                    : "border-border hover:border-neutral-400"
-                }`}
+                className={`w-full text-left p-3 border transition-colors ${showCustom[qIndex]
+                  ? "border-accent bg-accent/5"
+                  : "border-border hover:border-neutral-400"
+                  }`}
               >
                 <div className="flex items-start gap-2">
-                  <div className={`size-4 flex-shrink-0 mt-0.5 border ${
-                    showCustom[qIndex] ? "border-accent bg-accent" : "border-neutral-300"
-                  } flex items-center justify-center`}>
+                  <div className={`size-4 flex-shrink-0 mt-0.5 border ${showCustom[qIndex] ? "border-accent bg-accent" : "border-neutral-300"
+                    } flex items-center justify-center`}>
                     {showCustom[qIndex] && <CheckIcon className="size-3 text-white" />}
                   </div>
-                  <div className="text-sm font-medium">Other (自定义)</div>
+                  <div className="text-sm font-medium">Other</div>
                 </div>
               </button>
 
@@ -2293,7 +2284,7 @@ function CurrentQuestionUI({
                   type="text"
                   value={customInputs[qIndex] || ""}
                   onChange={(e) => setCustomInputs(prev => ({ ...prev, [qIndex]: e.target.value }))}
-                  placeholder="输入自定义答案..."
+                  placeholder="Enter custom answer..."
                   className="w-full px-3 py-2 text-sm border border-border focus:border-accent focus:outline-none"
                 />
               )}
