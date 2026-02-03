@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 import type { SessionInfo } from "@/lib/opencode/types";
 import { TrashIcon } from "./icons";
 import { formatRelativeTime } from "./utils";
@@ -37,8 +38,10 @@ export function SessionList({
     );
   }
 
+  const [listParent] = useAutoAnimate({ duration: 200 });
+
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto">
+    <div ref={listParent} className="flex-1 min-h-0 overflow-y-auto">
       {sortedSessions.map((session) => {
         const isActive = session.id === currentSessionId;
         const timeStr = formatRelativeTime(new Date(session.time.updated));

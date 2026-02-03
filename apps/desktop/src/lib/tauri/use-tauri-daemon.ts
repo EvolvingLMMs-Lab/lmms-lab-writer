@@ -517,18 +517,12 @@ export function useTauriDaemon() {
 
           const { path, kind } = event.payload;
 
-          const isTransientFile =
-            /\.(aux|log|out|toc|lof|lot|fls|fdb_latexmk|synctex\.gz|bbl|blg|nav|snm|vrb)$/i.test(
-              path,
-            );
-          if (!isTransientFile) {
-            setLastFileChange(event.payload);
-          }
+          setLastFileChange(event.payload);
 
           const currentPath = projectPathRef.current;
           if (!currentPath) return;
 
-          if ((kind === "create" || kind === "remove" || kind === "rename") && !isTransientFile) {
+          if (kind === "create" || kind === "remove" || kind === "rename") {
             debouncedRefreshFileTree(currentPath);
           }
 

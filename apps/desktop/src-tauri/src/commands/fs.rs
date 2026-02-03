@@ -84,11 +84,6 @@ const IGNORED_DIRS: &[&str] = &[
     "out",
 ];
 
-const IGNORED_EXTENSIONS: &[&str] = &[
-    ".aux", ".log", ".out", ".toc", ".lof", ".lot", ".fls", ".fdb_latexmk", ".synctex.gz", ".bbl",
-    ".blg",
-];
-
 const DEBOUNCE_MS: u64 = 100;
 
 #[tauri::command]
@@ -232,10 +227,6 @@ fn build_file_tree(dir: &Path, base_path: &str) -> Vec<FileNode> {
     for entry in entries.flatten() {
         let name = entry.file_name().to_string_lossy().to_string();
 
-        if name.starts_with('.') && name != ".latexmkrc" {
-            continue;
-        }
-
         if IGNORED_DIRS.contains(&name.as_str()) {
             continue;
         }
@@ -260,11 +251,6 @@ fn build_file_tree(dir: &Path, base_path: &str) -> Vec<FileNode> {
                 children: Some(children),
             });
         } else if file_type.is_file() {
-            let should_ignore = IGNORED_EXTENSIONS.iter().any(|ext| name.ends_with(ext));
-            if should_ignore {
-                continue;
-            }
-
             nodes.push(FileNode {
                 name,
                 path: relative_path,
@@ -293,16 +279,6 @@ fn should_ignore_path(path: &Path) -> bool {
     for component in path.components() {
         let name = component.as_os_str().to_string_lossy();
         if IGNORED_DIRS.contains(&name.as_ref()) {
-            return true;
-        }
-        if name.starts_with('.') && name != ".latexmkrc" {
-            return true;
-        }
-    }
-
-    if let Some(name) = path.file_name() {
-        let name = name.to_string_lossy();
-        if IGNORED_EXTENSIONS.iter().any(|ext| name.ends_with(ext)) {
             return true;
         }
     }
@@ -488,23 +464,23 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_file_tree_ignores_hidden_files() {
+    async fn test_get_file_tree_shows_dotfiles() {
         let temp_dir = TempDir::new().unwrap();
-        
-        fs::write(temp_dir.path().join(".hidden"), "").unwrap();
+
+        fs::write(temp_dir.path().join(".gitignore"), "").unwrap();
         fs::write(temp_dir.path().join("visible.tex"), "").unwrap();
 
         let tree = get_file_tree(temp_dir.path().to_string_lossy().to_string()).await.unwrap();
 
         let names: Vec<&str> = tree.iter().map(|n| n.name.as_str()).collect();
-        assert!(!names.contains(&".hidden"));
+        assert!(names.contains(&".gitignore"));
         assert!(names.contains(&"visible.tex"));
     }
 
     #[tokio::test]
-    async fn test_get_file_tree_ignores_latex_aux_files() {
+    async fn test_get_file_tree_shows_all_files() {
         let temp_dir = TempDir::new().unwrap();
-        
+
         fs::write(temp_dir.path().join("main.tex"), "").unwrap();
         fs::write(temp_dir.path().join("main.aux"), "").unwrap();
         fs::write(temp_dir.path().join("main.log"), "").unwrap();
@@ -514,9 +490,9 @@ mod tests {
 
         let names: Vec<&str> = tree.iter().map(|n| n.name.as_str()).collect();
         assert!(names.contains(&"main.tex"));
-        assert!(!names.contains(&"main.aux"));
-        assert!(!names.contains(&"main.log"));
-        assert!(!names.contains(&"main.synctex.gz"));
+        assert!(names.contains(&"main.aux"));
+        assert!(names.contains(&"main.log"));
+        assert!(names.contains(&"main.synctex.gz"));
     }
 
     #[tokio::test]

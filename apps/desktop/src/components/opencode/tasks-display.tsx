@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { CheckIcon, DisclosureTriangle } from "./icons";
 import { Spinner } from "@/components/ui/spinner";
 import type { TaskItem } from "./types";
@@ -28,6 +29,7 @@ export function parseTasks(data: unknown): TaskItem[] | null {
 
 export function CollapsibleTasksBar({ tasks }: { tasks: TaskItem[] }) {
   const [expanded, setExpanded] = useState(false);
+  const [tasksParent] = useAutoAnimate({ duration: 150 });
 
   const { completed, inProgress, total } = useMemo(() => {
     let comp = 0;
@@ -68,7 +70,7 @@ export function CollapsibleTasksBar({ tasks }: { tasks: TaskItem[] }) {
       </button>
 
       {expanded && (
-        <div className="border-t border-border divide-y divide-border max-h-48 overflow-y-auto">
+        <div ref={tasksParent} className="border-t border-border divide-y divide-border max-h-48 overflow-y-auto">
           {tasks.map((task) => (
             <div key={task.id} className="px-3 py-1.5 flex items-start gap-2 hover:bg-neutral-50 transition-colors">
               <div className={`size-3.5 flex-shrink-0 mt-0.5 border flex items-center justify-center ${
@@ -100,13 +102,15 @@ export function CollapsibleTasksBar({ tasks }: { tasks: TaskItem[] }) {
 }
 
 export function TasksDisplay({ tasks }: { tasks: TaskItem[] }) {
+  const [tasksListParent] = useAutoAnimate({ duration: 150 });
+
   return (
     <div className="border-2 border-border bg-white my-2 overflow-hidden">
       <div className="bg-neutral-50 px-3 py-1.5 border-b border-border flex justify-between items-center">
         <span className="text-[10px] font-mono font-medium text-muted uppercase tracking-wider">Tasks</span>
         <span className="text-[10px] font-mono text-muted">{tasks.length}</span>
       </div>
-      <div className="divide-y divide-border">
+      <div ref={tasksListParent} className="divide-y divide-border">
         {tasks.map((task) => (
           <div key={task.id} className="px-3 py-2 flex items-start gap-2 hover:bg-neutral-50 transition-colors">
             <div className={`size-4 flex-shrink-0 mt-0.5 border flex items-center justify-center ${

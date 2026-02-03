@@ -1,8 +1,18 @@
 "use client";
 
-import { useState, useCallback, memo, useRef, useEffect, useMemo } from "react";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  useState,
+  useCallback,
+  memo,
+  useRef,
+  useEffect,
+  useMemo,
+  createContext,
+  useContext,
+} from "react";
+import { Tree } from "react-arborist";
+import type { NodeRendererProps, TreeApi } from "react-arborist";
+import { motion } from "framer-motion";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { Command } from "@tauri-apps/plugin-shell";
 import { platform } from "@tauri-apps/plugin-os";
@@ -51,13 +61,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-const _ITEM_SPRING = {
-  type: "spring",
-  stiffness: 500,
-  damping: 30,
-  mass: 0.5,
-} as const;
-
 export interface FileOperations {
   createFile: (path: string) => Promise<void>;
   createDirectory: (path: string) => Promise<void>;
@@ -87,11 +90,6 @@ interface DialogState {
   type: "create-file" | "create-directory" | "rename";
   parentPath?: string;
   node?: FileNode;
-}
-
-// Helper to check if a path is an ancestor of another
-function isAncestorPath(ancestor: string, descendant: string): boolean {
-  return descendant.startsWith(ancestor + "/");
 }
 
 function getFileExtension(filename: string): string {
@@ -242,113 +240,106 @@ function FileIcon({
   return <IconComponent className={iconClass} />;
 }
 
-const TreeNode = memo(function TreeNode({
-  node,
-  depth,
-  onFileSelect,
-  selectedFile,
-  highlightedFile,
-  defaultExpanded = false,
-  focusedPath,
-  onExpandedChange,
-  onFocusChange,
-  onContextMenu,
-  parentPath = "",
-}: {
-  node: FileNode;
-  depth: number;
-  onFileSelect?: (path: string) => void;
+// --- react-arborist data types ---
+
+interface ArboristFileNode {
+  id: string;
+  name: string;
+  type: "file" | "directory";
+  path: string;
+  children?: ArboristFileNode[];
+}
+
+function convertToArboristData(nodes: FileNode[]): ArboristFileNode[] {
+  return nodes.map((node) => {
+    const result: ArboristFileNode = {
+      id: node.path,
+      name: node.name,
+      type: node.type,
+      path: node.path,
+    };
+    if (node.type === "directory") {
+      result.children = node.children
+        ? convertToArboristData(node.children)
+        : [];
+    }
+    return result;
+  });
+}
+
+// --- Context for passing data to node renderer ---
+
+interface FileTreeContextValue {
   selectedFile?: string;
   highlightedFile?: string | null;
-  defaultExpanded?: boolean;
-  focusedPath?: string | null;
-  onExpandedChange?: (path: string, expanded: boolean) => void;
-  onFocusChange?: (path: string) => void;
   onContextMenu?: (
     e: React.MouseEvent,
     node: FileNode,
     parentPath: string,
   ) => void;
-  parentPath?: string;
-}) {
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const isDirectory = node.type === "directory";
-  const isHighlighted = highlightedFile === node.path;
-  const isFocused = focusedPath === node.path;
-  const shouldAutoExpand =
-    isDirectory &&
-    !!highlightedFile &&
-    isAncestorPath(node.path, highlightedFile);
+  onFileSelect?: (path: string) => void;
+}
 
-  const [expanded, setExpanded] = useState<boolean>(
-    defaultExpanded || depth === 0 || shouldAutoExpand,
-  );
-  const isSelected = selectedFile === node.path;
+const FileTreeContext = createContext<FileTreeContextValue>({});
 
-  // Auto-expand when shouldAutoExpand becomes true
-  useEffect(() => {
-    if (shouldAutoExpand && !expanded) {
-      setExpanded(true);
-      onExpandedChange?.(node.path, true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to shouldAutoExpand changes
-  }, [shouldAutoExpand]);
+// --- Node renderer ---
 
-  useEffect(() => {
-    if (isHighlighted && buttonRef.current) {
-      buttonRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }
-  }, [isHighlighted]);
+function NodeRenderer({
+  node,
+  style,
+}: NodeRendererProps<ArboristFileNode>) {
+  const { selectedFile, highlightedFile, onContextMenu, onFileSelect } =
+    useContext(FileTreeContext);
 
-  const handleClick = useCallback(() => {
-    // Sync keyboard focus with mouse click
-    onFocusChange?.(node.path);
+  const isDirectory = node.data.type === "directory";
+  const isSelected = selectedFile === node.data.path;
+  const isHighlighted = highlightedFile === node.data.path;
+  const isFocused = node.isFocused && !isSelected;
 
-    if (isDirectory) {
-      setExpanded((prev) => {
-        const newExpanded = !prev;
-        onExpandedChange?.(node.path, newExpanded);
-        return newExpanded;
-      });
-    } else {
-      onFileSelect?.(node.path);
-    }
-  }, [isDirectory, node.path, onFileSelect, onExpandedChange, onFocusChange]);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        handleClick();
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isDirectory) {
+        node.toggle();
+      } else {
+        onFileSelect?.(node.data.path);
       }
+      node.focus();
     },
-    [handleClick],
+    [isDirectory, node, onFileSelect],
   );
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      onContextMenu?.(e, node, parentPath);
+      // Find parent path from the node's path
+      const parentPath = node.data.path.includes("/")
+        ? node.data.path.substring(0, node.data.path.lastIndexOf("/"))
+        : "";
+      onContextMenu?.(
+        e,
+        {
+          name: node.data.name,
+          path: node.data.path,
+          type: node.data.type,
+        },
+        parentPath,
+      );
     },
-    [onContextMenu, node, parentPath],
+    [onContextMenu, node.data],
   );
 
   return (
-    <div>
+    <div style={style}>
       <motion.button
-        ref={buttonRef}
         onClick={handleClick}
-        onKeyDown={handleKeyDown}
         onContextMenu={handleContextMenu}
         role="treeitem"
-        aria-expanded={isDirectory ? expanded : undefined}
+        aria-expanded={isDirectory ? node.isOpen : undefined}
         aria-selected={isSelected}
         tabIndex={-1}
-        data-path={node.path}
+        data-path={node.data.path}
         className={`w-full flex items-center gap-2 px-2 py-1 text-left text-sm transition-colors ${
           isSelected
             ? "bg-black text-white"
@@ -356,7 +347,7 @@ const TreeNode = memo(function TreeNode({
               ? "bg-black/10"
               : "hover:bg-black/5"
         }`}
-        style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        style={{ paddingLeft: `${node.level * 12 + 8}px`, height: "28px" }}
         whileTap={{ scale: 0.98 }}
         initial={false}
         animate={
@@ -378,7 +369,7 @@ const TreeNode = memo(function TreeNode({
           <motion.div
             className="w-3 h-3 flex-shrink-0"
             initial={false}
-            animate={{ rotate: expanded ? 90 : 0 }}
+            animate={{ rotate: node.isOpen ? 90 : 0 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
           >
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
@@ -387,69 +378,47 @@ const TreeNode = memo(function TreeNode({
           </motion.div>
         )}
         {!isDirectory && <span className="w-3" />}
-        <FileIcon type={node.type} expanded={expanded} filename={node.name} />
-        <span className="truncate">{node.name}</span>
+        <FileIcon
+          type={node.data.type}
+          expanded={node.isOpen}
+          filename={node.data.name}
+        />
+        <span className="truncate">{node.data.name}</span>
       </motion.button>
-
-      <AnimatePresence initial={false}>
-        {isDirectory && expanded && node.children && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            style={{ overflow: "hidden" }}
-          >
-            {node.children.map((child) => (
-              <TreeNode
-                key={child.path}
-                node={child}
-                depth={depth + 1}
-                onFileSelect={onFileSelect}
-                selectedFile={selectedFile}
-                highlightedFile={highlightedFile}
-                focusedPath={focusedPath}
-                onExpandedChange={onExpandedChange}
-                onFocusChange={onFocusChange}
-                onContextMenu={onContextMenu}
-                parentPath={node.path}
-              />
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
-});
-
-function flattenVisibleNodes(
-  nodes: FileNode[],
-  expandedPaths: Set<string>,
-  depth = 0,
-): Array<{ node: FileNode; depth: number }> {
-  const result: Array<{ node: FileNode; depth: number }> = [];
-
-  for (const node of nodes) {
-    result.push({ node, depth });
-
-    if (
-      node.type === "directory" &&
-      node.children &&
-      expandedPaths.has(node.path)
-    ) {
-      result.push(
-        ...flattenVisibleNodes(node.children, expandedPaths, depth + 1),
-      );
-    }
-  }
-
-  return result;
 }
+
+// --- Helpers ---
 
 function getParentPath(path: string): string | null {
   const lastSlash = path.lastIndexOf("/");
   return lastSlash > 0 ? path.substring(0, lastSlash) : null;
 }
+
+function collectAllAncestorPaths(path: string): string[] {
+  const parts = path.split("/");
+  const ancestors: string[] = [];
+  for (let i = 1; i < parts.length; i++) {
+    ancestors.push(parts.slice(0, i).join("/"));
+  }
+  return ancestors;
+}
+
+// Build a flat lookup from path -> FileNode for keyboard shortcuts
+function buildNodeMap(nodes: FileNode[]): Map<string, FileNode> {
+  const map = new Map<string, FileNode>();
+  function walk(list: FileNode[]) {
+    for (const n of list) {
+      map.set(n.path, n);
+      if (n.children) walk(n.children);
+    }
+  }
+  walk(nodes);
+  return map;
+}
+
+// --- Main component ---
 
 export const FileTree = memo(function FileTree({
   files,
@@ -461,255 +430,47 @@ export const FileTree = memo(function FileTree({
   projectPath,
   onRefresh,
 }: Props) {
-  const [focusedPath, setFocusedPath] = useState<string | null>(null);
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => {
-    const initial = new Set<string>();
-    files.forEach((node) => {
-      if (node.type === "directory") {
-        initial.add(node.path);
-      }
-    });
-    return initial;
-  });
-
-  const visibleItems = useMemo(
-    () => flattenVisibleNodes(files, expandedPaths),
-    [files, expandedPaths],
-  );
-
-  const handleExpandedChange = useCallback(
-    (path: string, expanded: boolean) => {
-      setExpandedPaths((prev) => {
-        const next = new Set(prev);
-        if (expanded) {
-          next.add(path);
-        } else {
-          next.delete(path);
-        }
-        return next;
-      });
-    },
-    [],
-  );
+  const treeRef = useRef<TreeApi<ArboristFileNode>>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
   const [dialog, setDialog] = useState<DialogState | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (visibleItems.length === 0) return;
+  const arboristData = useMemo(() => convertToArboristData(files), [files]);
+  const nodeMap = useMemo(() => buildNodeMap(files), [files]);
 
-      const currentIndex = focusedPath
-        ? visibleItems.findIndex((item) => item.node.path === focusedPath)
-        : -1;
-
-      const currentNode = currentIndex >= 0 ? visibleItems[currentIndex]?.node : null;
-
-      switch (e.key) {
-        case "ArrowDown": {
-          e.preventDefault();
-          const nextIndex =
-            currentIndex < visibleItems.length - 1 ? currentIndex + 1 : 0;
-          const nextItem = visibleItems[nextIndex];
-          if (nextItem) {
-            setFocusedPath(nextItem.node.path);
-          }
-          break;
-        }
-
-        case "ArrowUp": {
-          e.preventDefault();
-          const prevIndex =
-            currentIndex > 0 ? currentIndex - 1 : visibleItems.length - 1;
-          const prevItem = visibleItems[prevIndex];
-          if (prevItem) {
-            setFocusedPath(prevItem.node.path);
-          }
-          break;
-        }
-
-        case "ArrowRight": {
-          e.preventDefault();
-          if (currentIndex >= 0) {
-            const current = visibleItems[currentIndex];
-            if (current && current.node.type === "directory") {
-              if (!expandedPaths.has(current.node.path)) {
-                handleExpandedChange(current.node.path, true);
-              } else if (
-                current.node.children &&
-                current.node.children.length > 0
-              ) {
-                const firstChild = current.node.children[0];
-                if (firstChild) {
-                  setFocusedPath(firstChild.path);
-                }
-              }
-            }
-          }
-          break;
-        }
-
-        case "ArrowLeft": {
-          e.preventDefault();
-          if (currentIndex >= 0) {
-            const current = visibleItems[currentIndex];
-            if (current) {
-              if (
-                current.node.type === "directory" &&
-                expandedPaths.has(current.node.path)
-              ) {
-                handleExpandedChange(current.node.path, false);
-              } else {
-                const parentPath = getParentPath(current.node.path);
-                if (parentPath) {
-                  setFocusedPath(parentPath);
-                }
-              }
-            }
-          }
-          break;
-        }
-
-        case "Home": {
-          e.preventDefault();
-          const firstItem = visibleItems[0];
-          if (firstItem) {
-            setFocusedPath(firstItem.node.path);
-          }
-          break;
-        }
-
-        case "End": {
-          e.preventDefault();
-          const lastItem = visibleItems[visibleItems.length - 1];
-          if (lastItem) {
-            setFocusedPath(lastItem.node.path);
-          }
-          break;
-        }
-
-        case "Enter":
-        case " ": {
-          e.preventDefault();
-          if (currentIndex >= 0) {
-            const current = visibleItems[currentIndex];
-            if (current) {
-              if (current.node.type === "directory") {
-                handleExpandedChange(
-                  current.node.path,
-                  !expandedPaths.has(current.node.path),
-                );
-              } else {
-                onFileSelect?.(current.node.path);
-              }
-            }
-          }
-          break;
-        }
-
-        // F2 - Rename
-        case "F2": {
-          e.preventDefault();
-          if (currentNode && fileOperations) {
-            setDialog({ type: "rename", node: currentNode });
-          }
-          break;
-        }
-
-        // Delete or Backspace - Delete file/folder
-        case "Delete":
-        case "Backspace": {
-          e.preventDefault();
-          if (currentNode && fileOperations) {
-            const isDirectory = currentNode.type === "directory";
-            const nodePath = currentNode.path;
-            const nodeName = currentNode.name;
-            // Use async Tauri dialog to ensure proper confirmation before delete
-            (async () => {
-              const confirmed = await ask(
-                `Are you sure you want to delete "${nodeName}"?${isDirectory ? " This will delete all files inside." : ""}`,
-                { title: "Confirm Delete", kind: "warning" }
-              );
-              if (confirmed) {
-                try {
-                  await fileOperations.deletePath(nodePath);
-                } catch (error) {
-                  alert(`Failed to delete: ${error}`);
-                }
-              }
-            })();
-          }
-          break;
-        }
-
-        // N - New file (Shift+N for new folder)
-        case "n":
-        case "N": {
-          if (!fileOperations) break;
-          e.preventDefault();
-          // Determine parent path: if current is directory use it, otherwise use parent
-          const parentPath = currentNode
-            ? currentNode.type === "directory"
-              ? currentNode.path
-              : getParentPath(currentNode.path) || ""
-            : "";
-
-          if (e.shiftKey) {
-            // Shift+N: New folder
-            setDialog({ type: "create-directory", parentPath });
-          } else {
-            // N: New file
-            setDialog({ type: "create-file", parentPath });
-          }
-          break;
-        }
-
-        // F5 - Refresh file list
-        case "F5": {
-          e.preventDefault();
-          onRefresh?.();
-          break;
-        }
-
-        // R - Reveal in Explorer/Finder (when a file/folder is focused)
-        case "r":
-        case "R": {
-          if (!currentNode || !projectPath) break;
-          e.preventDefault();
-          const fullPath = `${projectPath}/${currentNode.path}`;
-          revealInFileManager(fullPath).catch(console.error);
-          break;
-        }
-      }
-    },
-    [
-      visibleItems,
-      focusedPath,
-      expandedPaths,
-      handleExpandedChange,
-      onFileSelect,
-      fileOperations,
-      onRefresh,
-      projectPath,
-    ],
-  );
-
+  // Measure container for react-arborist width/height
   useEffect(() => {
-    if (focusedPath) {
-      const button = document.querySelector(
-        `[data-path="${CSS.escape(focusedPath)}"]`,
-      ) as HTMLElement;
-      if (button) {
-        button.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      }
-    }
-  }, [focusedPath]);
+    const el = containerRef.current;
+    if (!el) return;
 
-  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(
-    null,
-  );
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        setContainerSize({ width, height });
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Highlight effect: open ancestors and scroll into view
+  useEffect(() => {
+    const tree = treeRef.current;
+    if (!tree || !highlightedFile) return;
+
+    // Open all ancestor directories
+    const ancestors = collectAllAncestorPaths(highlightedFile);
+    for (const ancestorPath of ancestors) {
+      tree.open(ancestorPath);
+    }
+
+    // Scroll to the highlighted node after a short delay to let opens settle
+    requestAnimationFrame(() => {
+      tree.scrollTo(highlightedFile, "center");
+    });
+  }, [highlightedFile]);
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, node: FileNode, parentPath: string) => {
@@ -733,6 +494,110 @@ export const FileTree = memo(function FileTree({
     setDialog(null);
   }, []);
 
+  // Handle right-click on empty area
+  const handleRootContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      // Only show if clicking on the container itself, not on a tree node
+      if ((e.target as HTMLElement).closest("[data-path]")) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        node: { name: "", path: "", type: "directory" } as FileNode,
+        parentPath: "",
+      });
+    },
+    [],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const tree = treeRef.current;
+      if (!tree) return;
+
+      const focusedNode = tree.focusedNode;
+      const currentNode = focusedNode
+        ? nodeMap.get(focusedNode.data.path) ?? null
+        : null;
+
+      switch (e.key) {
+        // F2 - Rename
+        case "F2": {
+          e.preventDefault();
+          if (currentNode && fileOperations) {
+            setDialog({ type: "rename", node: currentNode });
+          }
+          break;
+        }
+
+        // Delete or Backspace - Delete file/folder
+        case "Delete":
+        case "Backspace": {
+          e.preventDefault();
+          if (currentNode && fileOperations) {
+            const isDirectory = currentNode.type === "directory";
+            const nodePath = currentNode.path;
+            const nodeName = currentNode.name;
+            (async () => {
+              const confirmed = await ask(
+                `Are you sure you want to delete "${nodeName}"?${isDirectory ? " This will delete all files inside." : ""}`,
+                { title: "Confirm Delete", kind: "warning" },
+              );
+              if (confirmed) {
+                try {
+                  await fileOperations.deletePath(nodePath);
+                } catch (error) {
+                  alert(`Failed to delete: ${error}`);
+                }
+              }
+            })();
+          }
+          break;
+        }
+
+        // N - New file (Shift+N for new folder)
+        case "n":
+        case "N": {
+          if (!fileOperations) break;
+          e.preventDefault();
+          const parentPath = currentNode
+            ? currentNode.type === "directory"
+              ? currentNode.path
+              : getParentPath(currentNode.path) || ""
+            : "";
+
+          if (e.shiftKey) {
+            setDialog({ type: "create-directory", parentPath });
+          } else {
+            setDialog({ type: "create-file", parentPath });
+          }
+          break;
+        }
+
+        // F5 - Refresh file list
+        case "F5": {
+          e.preventDefault();
+          onRefresh?.();
+          break;
+        }
+
+        // R - Reveal in Explorer/Finder
+        case "r":
+        case "R": {
+          if (!currentNode || !projectPath) break;
+          e.preventDefault();
+          const fullPath = `${projectPath}/${currentNode.path}`;
+          revealInFileManager(fullPath).catch(console.error);
+          break;
+        }
+      }
+    },
+    [nodeMap, fileOperations, onRefresh, projectPath],
+  );
+
   const getContextMenuItems = useCallback(
     (node: FileNode, _parentPath: string): ContextMenuItem[] => {
       const isDirectory = node.type === "directory";
@@ -741,7 +606,8 @@ export const FileTree = memo(function FileTree({
       if (isDirectory) {
         items.push({
           label: "New File",
-          onClick: () => setDialog({ type: "create-file", parentPath: node.path }),
+          onClick: () =>
+            setDialog({ type: "create-file", parentPath: node.path }),
           icon: (
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -790,7 +656,7 @@ export const FileTree = memo(function FileTree({
         onClick: async () => {
           const confirmed = await ask(
             `Are you sure you want to delete "${node.name}"?${isDirectory ? " This will delete all files inside." : ""}`,
-            { title: "Confirm Delete", kind: "warning" }
+            { title: "Confirm Delete", kind: "warning" },
           );
           if (confirmed) {
             try {
@@ -815,7 +681,8 @@ export const FileTree = memo(function FileTree({
 
       if (projectPath) {
         items.push({
-          label: platform() === "macos" ? "Reveal in Finder" : "Reveal in Explorer",
+          label:
+            platform() === "macos" ? "Reveal in Finder" : "Reveal in Explorer",
           onClick: async () => {
             const fullPath = `${projectPath}/${node.path}`;
             try {
@@ -896,7 +763,8 @@ export const FileTree = memo(function FileTree({
 
     if (projectPath) {
       items.push({
-        label: platform() === "macos" ? "Reveal in Finder" : "Reveal in Explorer",
+        label:
+          platform() === "macos" ? "Reveal in Finder" : "Reveal in Explorer",
         onClick: async () => {
           try {
             await revealInFileManager(projectPath);
@@ -936,25 +804,6 @@ export const FileTree = memo(function FileTree({
 
     return items;
   }, [fileOperations, projectPath, onRefresh]);
-
-  // Handle right-click on empty area
-  const handleRootContextMenu = useCallback(
-    (e: React.MouseEvent) => {
-      // Only show if clicking on the container itself, not on a tree node
-      if ((e.target as HTMLElement).closest('[data-path]')) {
-        return;
-      }
-      e.preventDefault();
-      e.stopPropagation();
-      setContextMenu({
-        x: e.clientX,
-        y: e.clientY,
-        node: { name: "", path: "", type: "directory" } as FileNode,
-        parentPath: "",
-      });
-    },
-    [],
-  );
 
   const validateFileName = useCallback((name: string): string | null => {
     if (!name.trim()) {
@@ -999,6 +848,16 @@ export const FileTree = memo(function FileTree({
     [dialog, fileOperations, closeDialog],
   );
 
+  const ctxValue = useMemo<FileTreeContextValue>(
+    () => ({
+      selectedFile,
+      highlightedFile,
+      onContextMenu: handleContextMenu,
+      onFileSelect,
+    }),
+    [selectedFile, highlightedFile, handleContextMenu, onFileSelect],
+  );
+
   if (files.length === 0) {
     return (
       <div className={`p-4 text-sm text-muted ${className}`}>No files</div>
@@ -1007,37 +866,35 @@ export const FileTree = memo(function FileTree({
 
   return (
     <>
-      <OverlayScrollbarsComponent
+      <div
+        ref={containerRef}
         className={className}
         role="tree"
         aria-label="File explorer"
         tabIndex={0}
         onKeyDown={handleKeyDown}
         onContextMenu={handleRootContextMenu}
-        options={{
-          scrollbars: {
-            theme: "os-theme-monochrome",
-            autoHide: "leave",
-            autoHideDelay: 400,
-          },
-        }}
       >
-        {files.map((node) => (
-          <TreeNode
-            key={node.path}
-            node={node}
-            depth={0}
-            onFileSelect={onFileSelect}
-            selectedFile={selectedFile}
-            highlightedFile={highlightedFile}
-            onContextMenu={handleContextMenu}
-            defaultExpanded
-            focusedPath={focusedPath}
-            onExpandedChange={handleExpandedChange}
-            onFocusChange={setFocusedPath}
-          />
-        ))}
-      </OverlayScrollbarsComponent>
+        <FileTreeContext.Provider value={ctxValue}>
+          {containerSize.width > 0 && containerSize.height > 0 && (
+            <Tree<ArboristFileNode>
+              ref={treeRef}
+              data={arboristData}
+              width={containerSize.width}
+              height={containerSize.height}
+              rowHeight={28}
+              indent={12}
+              openByDefault={true}
+              disableDrag={true}
+              disableDrop={true}
+              disableEdit={true}
+              disableMultiSelection={true}
+            >
+              {NodeRenderer}
+            </Tree>
+          )}
+        </FileTreeContext.Provider>
+      </div>
 
       {contextMenu && (
         <ContextMenu

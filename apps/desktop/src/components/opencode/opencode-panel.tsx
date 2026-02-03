@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { useOpenCode } from "@/lib/opencode/use-opencode";
 import type { ToolPart } from "@/lib/opencode/types";
 import type { Props } from "./types";
@@ -29,6 +30,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   const [showSessionList, setShowSessionList] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pendingMessageSentRef = useRef(false);
+  const [panelParent] = useAutoAnimate({ duration: 200 });
 
 
   // Extract latest tasks from message history
@@ -231,7 +233,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   const currentSession = opencode.sessions.find(s => s.id === opencode.currentSessionId);
 
   return (
-    <div className={`flex h-full flex-col bg-neutral-50/50 ${className}`}>
+    <div ref={panelParent} className={`flex h-full flex-col bg-neutral-50/50 ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border bg-white px-3 py-2">
         <div className="flex items-center gap-2 overflow-hidden">
@@ -245,6 +247,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
             <div className="flex items-center gap-1.5 text-[10px] text-muted font-mono">
               <span className={`inline-block size-1.5 ${isWorking ? 'bg-accent animate-pulse' : 'bg-neutral-300'}`} />
               <span>{opencode.status.type === 'running' ? 'thinking' : opencode.status.type === 'busy' ? 'busy' : 'ready'}</span>
+              {baseUrl && <a href={baseUrl} target="_blank" rel="noopener noreferrer" className="text-muted/60 hover:text-accent hover:underline cursor-pointer transition-colors">· {baseUrl.replace(/^https?:\/\//, '')}</a>}
             </div>
           </div>
         </div>

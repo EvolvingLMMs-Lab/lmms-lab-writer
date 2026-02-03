@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 import type {
   Message,
   AssistantMessage,
@@ -52,8 +53,10 @@ export function MessageList({
     );
   }
 
+  const [turnsParent] = useAutoAnimate({ duration: 200 });
+
   return (
-    <div className="space-y-6">
+    <div ref={turnsParent} className="space-y-6">
       {turns.map((turn, index) => {
         const userParts = getPartsForMessage(turn.user.id);
         const userText =
@@ -98,6 +101,7 @@ function MessageTurn({
   endTime?: number;
   onAnswer?: (questionID: string, answers: string[][]) => void;
 }) {
+  const [stepsParent] = useAutoAnimate({ duration: 150 });
   const [now, setNow] = useState(Date.now());
 
   // Deduplicate parts
@@ -185,7 +189,7 @@ function MessageTurn({
 
       {/* All steps rendered chronologically */}
       {steps.length > 0 && (
-        <div className="space-y-1.5 pl-2 border-l border-neutral-100 ml-1">
+        <div ref={stepsParent} className="space-y-1.5 pl-2 border-l border-neutral-100 ml-1">
           {steps.map((step, idx) => {
             // Reasoning Group
             if ("type" in step && step.type === "reasoning-group") {
