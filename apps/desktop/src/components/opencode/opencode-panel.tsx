@@ -4,8 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOpenCode } from "@/lib/opencode/use-opencode";
 import type { ToolPart } from "@/lib/opencode/types";
 import type { Props } from "./types";
-import { parseTasks } from "./tasks-display";
-import { TasksDisplay } from "./tasks-display";
+import { parseTasks, CollapsibleTasksBar } from "./tasks-display";
 import { SessionList, EmptyState } from "./session-list";
 import { MessageList } from "./message-list";
 import { InputArea } from "./input-area";
@@ -30,7 +29,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   const [showSessionList, setShowSessionList] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pendingMessageSentRef = useRef(false);
-  const [activeTab, setActiveTab] = useState<"chat" | "tasks">("chat");
+
 
   // Extract latest tasks from message history
   const latestTasks = useMemo(() => {
@@ -65,12 +64,10 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     return null;
   }, [opencode.messages, opencode.getPartsForMessage]);
 
-  // Auto-scroll to bottom when messages/parts update (only in chat tab)
+  // Auto-scroll to bottom when messages/parts update
   useEffect(() => {
-    if (activeTab === 'chat') {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [opencode.messages, opencode.parts, opencode.status, activeTab]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [opencode.messages, opencode.parts, opencode.status]);
 
   // Handle pending message from external source
   useEffect(() => {
@@ -255,78 +252,44 @@ export const OpenCodePanel = memo(function OpenCodePanel({
         </button>
       </div>
 
-      {/* Tab Bar */}
-      <div className="flex border-b border-border bg-white">
-        <button
-          onClick={() => setActiveTab('chat')}
-          className={`flex-1 py-1.5 text-[10px] font-mono uppercase tracking-wider text-center border-b-2 transition-colors ${activeTab === 'chat'
-            ? 'border-accent'
-            : 'border-transparent text-muted hover:text-foreground'
-            }`}
-        >
-          Chat
-        </button>
-        <button
-          onClick={() => setActiveTab('tasks')}
-          className={`flex-1 py-1.5 text-[10px] font-mono uppercase tracking-wider text-center border-b-2 transition-colors ${activeTab === 'tasks'
-            ? 'border-accent'
-            : 'border-transparent text-muted hover:text-foreground'
-            }`}
-        >
-          Tasks {latestTasks && <span className="ml-1 text-[9px] text-muted">{latestTasks.length}</span>}
-        </button>
-      </div>
+      {/* Collapsible tasks bar */}
+      {latestTasks && <CollapsibleTasksBar tasks={latestTasks} />}
 
       {/* Content Area */}
       <div className="flex-1 min-h-0 overflow-hidden relative">
-        {activeTab === 'chat' ? (
-          <div className="absolute inset-0 flex flex-col">
-            <div className="flex-1 overflow-y-auto px-4 py-4">
-              {opencode.messages.length === 0 ? (
-                <EmptyState onNewSession={handleNewSession} hasOtherSessions={opencode.sessions.length > 1} />
-              ) : (
-                <MessageList
-                  messages={opencode.messages}
-                  getPartsForMessage={opencode.getPartsForMessage}
-                  onFileClick={onFileClick}
-                  onAnswer={handleAnswer}
-                />
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            <div className="border-t border-border bg-white p-3">
-              <InputArea
-                input={input}
-                setInput={setInput}
-                attachedFiles={attachedFiles}
-                setAttachedFiles={setAttachedFiles}
-                onSend={handleSend}
-                onAbort={handleAbort}
-                isWorking={isWorking}
-                agents={opencode.agents}
-                providers={opencode.providers}
-                selectedAgent={opencode.selectedAgent}
-                selectedModel={opencode.selectedModel}
-                onSelectAgent={opencode.setSelectedAgent}
-                onSelectModel={opencode.setSelectedModel}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="absolute inset-0 overflow-y-auto p-3 bg-white">
-            {latestTasks ? (
-              <TasksDisplay tasks={latestTasks} />
+        <div className="absolute inset-0 flex flex-col">
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            {opencode.messages.length === 0 ? (
+              <EmptyState onNewSession={handleNewSession} hasOtherSessions={opencode.sessions.length > 1} />
             ) : (
-              <div className="flex-1 flex items-center justify-center p-4">
-                <div className="text-center space-y-2">
-                  <p className="text-sm text-muted">No tasks yet</p>
-                  <p className="text-xs text-muted">Tasks will appear here when the agent creates them.</p>
-                </div>
-              </div>
+              <MessageList
+                messages={opencode.messages}
+                getPartsForMessage={opencode.getPartsForMessage}
+                onFileClick={onFileClick}
+                onAnswer={handleAnswer}
+              />
             )}
+            <div ref={messagesEndRef} />
           </div>
-        )}
+
+          <div className="border-t border-border bg-white p-3">
+            <InputArea
+              input={input}
+              setInput={setInput}
+              attachedFiles={attachedFiles}
+              setAttachedFiles={setAttachedFiles}
+              onSend={handleSend}
+              onAbort={handleAbort}
+              isWorking={isWorking}
+              agents={opencode.agents}
+              providers={opencode.providers}
+              selectedAgent={opencode.selectedAgent}
+              selectedModel={opencode.selectedModel}
+              onSelectAgent={opencode.setSelectedAgent}
+              onSelectModel={opencode.setSelectedModel}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
