@@ -12,7 +12,6 @@ import type {
   FilePart,
   SessionStatus,
   SessionInfo,
-  QuestionAsked,
 } from "@/lib/opencode/types";
 import { getToolInfo } from "@/lib/opencode/types";
 import { Spinner } from "@/components/ui/spinner";
@@ -166,10 +165,6 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     await opencode.sendMessage(answer);
   }, [opencode]);
 
-  // Handle answering questions via the question API
-  const handleAnswerQuestion = useCallback(async (answers: Record<string, string | string[]>) => {
-    await opencode.answerQuestion(answers);
-  }, [opencode]);
 
   const handleAbort = useCallback(async () => {
     await opencode.abort();
@@ -254,15 +249,6 @@ export const OpenCodePanel = memo(function OpenCodePanel({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Current Question UI */}
-          {opencode.currentQuestion && (
-            <div className="border-t border-border p-3">
-              <CurrentQuestionUI
-                question={opencode.currentQuestion}
-                onAnswer={handleAnswerQuestion}
-              />
-            </div>
-          )}
 
           {/* Input */}
           <InputArea
@@ -888,6 +874,7 @@ function AskUserQuestionDisplay({
   const [selectedOptions, setSelectedOptions] = useState<Record<number, string[]>>({});
   const [customInputs, setCustomInputs] = useState<Record<number, string>>({});
   const [showCustom, setShowCustom] = useState<Record<number, boolean>>({});
+  const [currentStep, setCurrentStep] = useState(0);
 
   const isCompleted = part.state.status === "completed";
   const isPending = part.state.status === "pending" || part.state.status === "running";
@@ -896,34 +883,66 @@ function AskUserQuestionDisplay({
     return null;
   }
 
+  const totalSteps = questions.length + 1; // +1 for summary
+  const isSummaryStep = currentStep === questions.length;
+
   const handleOptionClick = (qIndex: number, option: string, multiSelect: boolean) => {
     setSelectedOptions(prev => {
       const current = prev[qIndex] || [];
       if (multiSelect) {
-        // Toggle selection for multi-select
+        // Multi-select: Toggle option, key "Other" (showCustom) untouched unless logic dictates otherwise
+        // (Usually in multi-select, picking an option doesn't need to hide "Other")
         if (current.includes(option)) {
           return { ...prev, [qIndex]: current.filter(o => o !== option) };
         } else {
           return { ...prev, [qIndex]: [...current, option] };
         }
       } else {
-        // Single select - replace
+        // Single-select: Select this option, replace previous. Hide "Other".
+        setShowCustom(prevCustom => ({ ...prevCustom, [qIndex]: false }));
         return { ...prev, [qIndex]: [option] };
       }
     });
-    // Hide custom input when selecting a predefined option
-    setShowCustom(prev => ({ ...prev, [qIndex]: false }));
   };
+
+  const toggleCustomInput = (qIndex: number, multiSelect: boolean) => {
+    setShowCustom(prev => {
+      const willShow = !prev[qIndex];
+      // If turning ON "Other" in Single-select, verify we clear standard options?
+      // Or we can keep them visually but prioritize "Other" on submit.
+      // Better UX: Deselect options if we pick "Other" in single-select.
+      if (willShow && !multiSelect) {
+        setSelectedOptions(opts => ({ ...opts, [qIndex]: [] }));
+      }
+      return { ...prev, [qIndex]: willShow };
+    });
+  }
 
   const handleSubmit = () => {
     if (!onAnswer) return;
 
     const answers: string[] = [];
     questions.forEach((q, i) => {
-      if (showCustom[i] && customInputs[i]) {
-        answers.push(`${q.header}: ${customInputs[i]}`);
-      } else if (selectedOptions[i]?.length) {
-        answers.push(`${q.header}: ${selectedOptions[i].join(", ")}`);
+      const selections = selectedOptions[i] || [];
+      const hasCustom = showCustom[i] && !!customInputs[i]?.trim();
+
+      const parts: string[] = [];
+
+      if (q.multiSelect) {
+        // Multi: combine standard selections + custom
+        parts.push(...selections);
+        if (hasCustom) parts.push(customInputs[i].trim());
+      } else {
+        // Single: Custom takes precedence if active, else selection
+        if (hasCustom) {
+          parts.push(customInputs[i].trim());
+        } else if (selections.length > 0) {
+          parts.push(selections[0]);
+        }
+      }
+
+      if (parts.length > 0) {
+        answers.push(`${q.header}: ${parts.join(", ")}`);
       }
     });
 
@@ -932,104 +951,252 @@ function AskUserQuestionDisplay({
     }
   };
 
-  const hasSelection = questions.some((_, i) => {
-    const options = selectedOptions[i];
-    return (options && options.length > 0) || (showCustom[i] && customInputs[i]);
+  // Check if current step has any valid answer
+  const currentStepHasSelection = (() => {
+    if (isCompleted) return true;
+    if (isSummaryStep) return true; // Review step always allows proceeding/submit if there's *something* (handled by submit button state)
+
+    // For normal steps:
+    const q = questions[currentStep];
+    const opts = selectedOptions[currentStep];
+    const hasOpts = opts && opts.length > 0;
+    const hasCust = showCustom[currentStep] && !!customInputs[currentStep]?.trim();
+
+    // If it's the review step, we might want to check if ALL questions are answered? 
+    // The previous code checked "isSummaryStep" separately. 
+    // Here we just check the current question logic.
+    return hasOpts || hasCust;
+  })();
+
+  const hasAnySelection = questions.some((_, i) => {
+    const opts = selectedOptions[i];
+    const hasOpts = opts && opts.length > 0;
+    const hasCust = showCustom[i] && !!customInputs[i]?.trim();
+    return hasOpts || hasCust;
   });
 
-  return (
-    <div className="border-2 border-accent bg-white p-4 space-y-4">
-      {questions.map((q, qIndex) => (
-        <div key={qIndex} className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium px-2 py-0.5 bg-accent text-white">
-              {q.header}
-            </span>
-            {q.multiSelect && (
-              <span className="text-xs text-muted">(Multi-select)</span>
-            )}
-          </div>
-          <p className="text-sm font-medium">{q.question}</p>
+  const getAnswerText = (qIndex: number) => {
+    const q = questions[qIndex];
+    const selections = selectedOptions[qIndex] || [];
+    const hasCustom = showCustom[qIndex] && customInputs[qIndex];
 
-          <div className="space-y-2">
-            {q.options.map((opt, optIndex) => {
-              const isSelected = selectedOptions[qIndex]?.includes(opt.label);
+    if (q.multiSelect) {
+      const parts = [...selections];
+      if (hasCustom) parts.push(customInputs[qIndex]);
+      return parts.join(", ");
+    } else {
+      if (hasCustom) return customInputs[qIndex];
+      if (selections.length) return selections[0];
+      return null;
+    }
+  };
+
+  // Completed state: compact summary
+  if (isCompleted) {
+    return (
+      <div className="border-2 border-accent bg-white p-4 space-y-1">
+        <div className="text-xs font-medium text-muted">Answered</div>
+        {questions.map((q, qIndex) => {
+          const answer = getAnswerText(qIndex);
+          return answer ? (
+            <div key={qIndex} className="text-xs">
+              <span className="text-neutral-500">{q.header}:</span> {answer}
+            </div>
+          ) : null;
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-2 border-accent bg-white p-4 flex flex-col max-h-[50vh]">
+      {/* Step indicator */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1.5">
+          {Array.from({ length: totalSteps }).map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => { if (i <= currentStep) setCurrentStep(i); }}
+              className={`size-5 flex items-center justify-center text-[10px] font-mono border-2 transition-all duration-150 ${i === currentStep
+                  ? "border-accent bg-accent text-white"
+                  : i < currentStep
+                    ? "border-accent bg-white text-accent cursor-pointer hover:bg-accent/5"
+                    : "border-neutral-300 text-neutral-400 cursor-default"
+                }`}
+            >
+              {i < currentStep ? (
+                <CheckIcon className="size-3" />
+              ) : i === questions.length ? (
+                <span className="text-[9px]">&#x2713;</span>
+              ) : (
+                i + 1
+              )}
+            </button>
+          ))}
+        </div>
+        <span className="text-[10px] font-mono text-muted uppercase tracking-wider">
+          {isSummaryStep ? "Review" : `${currentStep + 1} / ${questions.length}`}
+        </span>
+      </div>
+
+      {/* Content area */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {/* Question step */}
+        {!isSummaryStep && (() => {
+          const q = questions[currentStep];
+          if (!q) return null;
+          const qIndex = currentStep;
+          const isRadio = !q.multiSelect;
+
+          return (
+            <div key={`step-${currentStep}`} className="wizard-step-enter space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium px-2 py-0.5 bg-accent text-white">
+                  {q.header}
+                </span>
+                {q.multiSelect && (
+                  <span className="text-xs text-muted">(Multi-select)</span>
+                )}
+              </div>
+              <p className="text-sm font-medium">{q.question}</p>
+
+              <div className="space-y-2">
+                {q.options.map((opt, optIndex) => {
+                  const isSelected = selectedOptions[qIndex]?.includes(opt.label);
+                  return (
+                    <button
+                      key={optIndex}
+                      type="button"
+                      onClick={() => handleOptionClick(qIndex, opt.label, q.multiSelect || false)}
+                      className={`w-full text-left p-3 border transition-colors ${isSelected
+                        ? "border-accent bg-accent/5"
+                        : "border-border hover:border-neutral-400"
+                        }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <div className={`size-4 flex-shrink-0 mt-0.5 border ${isSelected ? "border-accent bg-accent" : "border-neutral-300"
+                          } flex items-center justify-center ${isRadio ? 'rounded-full' : ''}`}>
+                          {isSelected && <CheckIcon className="size-3 text-white" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium">{opt.label}</div>
+                          {opt.description && (
+                            <div className="text-xs text-muted mt-0.5">{opt.description}</div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+
+                {/* Custom input option */}
+                {isPending && (
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleCustomInput(qIndex, q.multiSelect || false)}
+                      className={`w-full text-left p-3 border transition-colors ${showCustom[qIndex]
+                        ? "border-accent bg-accent/5"
+                        : "border-border hover:border-neutral-400"
+                        }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <div className={`size-4 flex-shrink-0 mt-0.5 border ${showCustom[qIndex] ? "border-accent bg-accent" : "border-neutral-300"
+                          } flex items-center justify-center ${isRadio ? 'rounded-full' : ''}`}>
+                          {showCustom[qIndex] && <CheckIcon className="size-3 text-white" />}
+                        </div>
+                        <div className="text-sm font-medium">Other</div>
+                      </div>
+                    </button>
+
+                    {showCustom[qIndex] && (
+                      <input
+                        type="text"
+                        value={customInputs[qIndex] || ""}
+                        onChange={(e) => setCustomInputs(prev => ({ ...prev, [qIndex]: e.target.value }))}
+                        placeholder="Enter custom answer..."
+                        className="w-full px-3 py-2 text-sm border border-border focus:border-accent focus:outline-none"
+                        autoFocus
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Summary step */}
+        {isSummaryStep && (
+          <div key="step-summary" className="wizard-step-enter space-y-2">
+            <div className="text-xs font-medium uppercase tracking-wider text-muted mb-2">
+              Review Answers
+            </div>
+            {questions.map((q, qIndex) => {
+              const answer = getAnswerText(qIndex);
+              const hasAnswer = !!answer;
               return (
                 <button
-                  key={optIndex}
+                  key={qIndex}
                   type="button"
-                  disabled={isCompleted}
-                  onClick={() => handleOptionClick(qIndex, opt.label, q.multiSelect || false)}
-                  className={`w-full text-left p-3 border transition-colors ${isSelected
-                    ? "border-accent bg-accent/5"
-                    : "border-border hover:border-neutral-400"
-                    } ${isCompleted ? "opacity-60 cursor-not-allowed" : ""}`}
+                  onClick={() => setCurrentStep(qIndex)}
+                  className={`w-full text-left p-3 border transition-colors group ${hasAnswer
+                      ? "border-border hover:border-accent"
+                      : "border-red-300 bg-red-50"
+                    }`}
                 >
-                  <div className="flex items-start gap-2">
-                    <div className={`size-4 flex-shrink-0 mt-0.5 border ${isSelected ? "border-accent bg-accent" : "border-neutral-300"
-                      } flex items-center justify-center`}>
-                      {isSelected && <CheckIcon className="size-3 text-white" />}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[10px] font-mono uppercase tracking-wider text-muted">
+                        {q.header}
+                      </div>
+                      <div className="text-sm mt-0.5 truncate">
+                        {hasAnswer ? answer : "Not answered"}
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium">{opt.label}</div>
-                      {opt.description && (
-                        <div className="text-xs text-muted mt-0.5">{opt.description}</div>
-                      )}
-                    </div>
+                    <span className="text-xs text-muted opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                      Edit
+                    </span>
                   </div>
                 </button>
               );
             })}
-
-            {/* Custom input option */}
-            {isPending && (
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCustom(prev => ({ ...prev, [qIndex]: !prev[qIndex] }))}
-                  className={`w-full text-left p-3 border transition-colors ${showCustom[qIndex]
-                    ? "border-accent bg-accent/5"
-                    : "border-border hover:border-neutral-400"
-                    }`}
-                >
-                  <div className="flex items-start gap-2">
-                    <div className={`size-4 flex-shrink-0 mt-0.5 border ${showCustom[qIndex] ? "border-accent bg-accent" : "border-neutral-300"
-                      } flex items-center justify-center`}>
-                      {showCustom[qIndex] && <CheckIcon className="size-3 text-white" />}
-                    </div>
-                    <div className="text-sm font-medium">Other</div>
-                  </div>
-                </button>
-
-                {showCustom[qIndex] && (
-                  <input
-                    type="text"
-                    value={customInputs[qIndex] || ""}
-                    onChange={(e) => setCustomInputs(prev => ({ ...prev, [qIndex]: e.target.value }))}
-                    placeholder="Enter custom answer..."
-                    className="w-full px-3 py-2 text-sm border border-border focus:border-accent focus:outline-none"
-                  />
-                )}
-              </div>
-            )}
           </div>
-        </div>
-      ))}
+        )}
+      </div>
 
+      {/* Navigation */}
       {isPending && onAnswer && (
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!hasSelection}
-          className="btn-brutalist w-full disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Submit Answer
-        </button>
-      )}
+        <div className="flex items-center justify-between pt-3 border-t border-border mt-3">
+          <button
+            type="button"
+            onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
+            className={`text-xs font-mono px-3 py-1.5 border border-border transition-colors hover:bg-neutral-100 ${currentStep === 0 ? "opacity-0 pointer-events-none" : ""
+              }`}
+          >
+            Back
+          </button>
 
-      {isCompleted && (
-        <div className="text-xs text-muted border-t border-border pt-2">
-          ✓ Question answered
+          {isSummaryStep ? (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!hasAnySelection}
+              className="btn-brutalist disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Submit
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCurrentStep(currentStep + 1)}
+              disabled={!currentStepHasSelection}
+              className="btn-brutalist disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {currentStep === questions.length - 1 ? "Review" : "Next"}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -2166,144 +2333,6 @@ function ToolIcon({ tool }: { tool: string }) {
   }
 }
 
-// ============================================================================
-// Current Question UI (using question.asked event)
-// ============================================================================
-
-function CurrentQuestionUI({
-  question,
-  onAnswer,
-}: {
-  question: QuestionAsked;
-  onAnswer: (answers: Record<string, string | string[]>) => void;
-}) {
-  const [selectedOptions, setSelectedOptions] = useState<Record<number, string[]>>({});
-  const [customInputs, setCustomInputs] = useState<Record<number, string>>({});
-  const [showCustom, setShowCustom] = useState<Record<number, boolean>>({});
-
-  const handleOptionClick = (qIndex: number, option: string, multiSelect: boolean) => {
-    setSelectedOptions(prev => {
-      const current = prev[qIndex] || [];
-      if (multiSelect) {
-        if (current.includes(option)) {
-          return { ...prev, [qIndex]: current.filter(o => o !== option) };
-        } else {
-          return { ...prev, [qIndex]: [...current, option] };
-        }
-      } else {
-        return { ...prev, [qIndex]: [option] };
-      }
-    });
-    setShowCustom(prev => ({ ...prev, [qIndex]: false }));
-  };
-
-  const handleSubmit = () => {
-    const answers: Record<string, string | string[]> = {};
-    question.questions.forEach((q, i) => {
-      if (showCustom[i] && customInputs[i]) {
-        answers[q.header] = customInputs[i];
-      } else if (selectedOptions[i]?.length) {
-        answers[q.header] = q.multiSelect ? selectedOptions[i] : selectedOptions[i][0];
-      }
-    });
-
-    if (Object.keys(answers).length > 0) {
-      onAnswer(answers);
-    }
-  };
-
-  const hasSelection = question.questions.some((_, i) => {
-    return (selectedOptions[i] && selectedOptions[i].length > 0) || (showCustom[i] && customInputs[i]);
-  });
-
-  return (
-    <div className="border-2 border-accent bg-white p-4 space-y-4">
-      <div className="text-xs font-medium text-accent uppercase tracking-wider">Question</div>
-      {question.questions.map((q, qIndex) => (
-        <div key={qIndex} className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium px-2 py-0.5 bg-accent text-white">
-              {q.header}
-            </span>
-            {q.multiSelect && (
-              <span className="text-xs text-muted">(Multi-select)</span>
-            )}
-          </div>
-          <p className="text-sm font-medium">{q.question}</p>
-
-          <div className="space-y-2">
-            {q.options.map((opt, optIndex) => {
-              const isSelected = selectedOptions[qIndex]?.includes(opt.label);
-              return (
-                <button
-                  key={optIndex}
-                  type="button"
-                  onClick={() => handleOptionClick(qIndex, opt.label, q.multiSelect || false)}
-                  className={`w-full text-left p-3 border transition-colors ${isSelected
-                    ? "border-accent bg-accent/5"
-                    : "border-border hover:border-neutral-400"
-                    }`}
-                >
-                  <div className="flex items-start gap-2">
-                    <div className={`size-4 flex-shrink-0 mt-0.5 border ${isSelected ? "border-accent bg-accent" : "border-neutral-300"
-                      } flex items-center justify-center`}>
-                      {isSelected && <CheckIcon className="size-3 text-white" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium">{opt.label}</div>
-                      {opt.description && (
-                        <div className="text-xs text-muted mt-0.5">{opt.description}</div>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-
-            {/* Custom input option */}
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => setShowCustom(prev => ({ ...prev, [qIndex]: !prev[qIndex] }))}
-                className={`w-full text-left p-3 border transition-colors ${showCustom[qIndex]
-                  ? "border-accent bg-accent/5"
-                  : "border-border hover:border-neutral-400"
-                  }`}
-              >
-                <div className="flex items-start gap-2">
-                  <div className={`size-4 flex-shrink-0 mt-0.5 border ${showCustom[qIndex] ? "border-accent bg-accent" : "border-neutral-300"
-                    } flex items-center justify-center`}>
-                    {showCustom[qIndex] && <CheckIcon className="size-3 text-white" />}
-                  </div>
-                  <div className="text-sm font-medium">Other</div>
-                </div>
-              </button>
-
-              {showCustom[qIndex] && (
-                <input
-                  type="text"
-                  value={customInputs[qIndex] || ""}
-                  onChange={(e) => setCustomInputs(prev => ({ ...prev, [qIndex]: e.target.value }))}
-                  placeholder="Enter custom answer..."
-                  className="w-full px-3 py-2 text-sm border border-border focus:border-accent focus:outline-none"
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      ))}
-
-      <button
-        type="button"
-        onClick={handleSubmit}
-        disabled={!hasSelection}
-        className="btn-brutalist w-full disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Submit Answer
-      </button>
-    </div>
-  );
-}
 
 // ============================================================================
 // Utils
