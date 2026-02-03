@@ -50,7 +50,7 @@ export type UseOpenCodeReturn = {
   selectSession: (sessionId: string) => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
   sendMessage: (content: string, files?: { url: string; mime: string; filename?: string }[]) => Promise<void>;
-  answerQuestion: (answers: Record<string, string | string[]>) => Promise<void>;
+  answerQuestion: (questionID: string, answers: string[][]) => Promise<void>;
   abort: () => Promise<void>;
   getPartsForMessage: (messageId: string) => Part[];
   resetReconnectState: () => void;
@@ -738,27 +738,26 @@ export function useOpenCode(
   }, [connected, currentSessionId]);
 
   const answerQuestion = useCallback(
-    async (answers: Record<string, string | string[]>) => {
+    async (questionID: string, answers: string[][]) => {
       const client = clientRef.current;
-      if (!client || !connected || !currentQuestion) {
+      if (!client || !connected) {
         console.log("[OpenCode] answerQuestion: preconditions not met", {
           hasClient: !!client,
           connected,
-          hasQuestion: !!currentQuestion,
         });
         return;
       }
 
       try {
-        console.log("[OpenCode] Answering question:", currentQuestion.id, answers);
-        await client.answerQuestion(currentQuestion.id, answers);
-        setCurrentQuestion(null); // Clear the question after answering
+        console.log("[OpenCode] Answering question:", questionID, answers);
+        await client.answerQuestion(questionID, answers);
+        setCurrentQuestion(null);
       } catch (err) {
         console.error("[OpenCode] Failed to answer question:", err);
         setError(err instanceof Error ? err.message : "Failed to answer question");
       }
     },
-    [connected, currentQuestion],
+    [connected],
   );
 
   const getPartsForMessage = useCallback(

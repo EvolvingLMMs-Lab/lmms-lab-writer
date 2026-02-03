@@ -31,13 +31,14 @@ export function AskUserQuestionDisplay({
   onAnswer,
 }: {
   part: ToolPart;
-  onAnswer?: (answer: string) => void;
+  onAnswer?: (questionID: string, answers: string[][]) => void;
 }) {
   const questions = useMemo(() => parseAskUserQuestions(part.state.input), [part.state.input]);
   const [selectedOptions, setSelectedOptions] = useState<Record<number, string[]>>({});
   const [customInputs, setCustomInputs] = useState<Record<number, string>>({});
   const [showCustom, setShowCustom] = useState<Record<number, boolean>>({});
   const [currentStep, setCurrentStep] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
 
   const isCompleted = part.state.status === "completed";
   const isPending = part.state.status === "pending" || part.state.status === "running";
@@ -76,33 +77,21 @@ export function AskUserQuestionDisplay({
   }
 
   const handleSubmit = () => {
-    if (!onAnswer) return;
+    if (!onAnswer || submitting) return;
 
-    const answers: string[] = [];
-    questions.forEach((q, i) => {
+    // Build positional string[][] — each inner array is selected labels for that question
+    const answers: string[][] = questions.map((_, i) => {
       const selections = selectedOptions[i] || [];
       const hasCustom = showCustom[i] && !!customInputs[i]?.trim();
-
-      const parts: string[] = [];
-
-      if (q.multiSelect) {
-        parts.push(...selections);
-        if (hasCustom) parts.push(customInputs[i]!.trim());
-      } else {
-        if (hasCustom) {
-          parts.push(customInputs[i]!.trim());
-        } else if (selections.length > 0 && selections[0]) {
-          parts.push(selections[0]);
-        }
-      }
-
-      if (parts.length > 0) {
-        answers.push(`${q.header}: ${parts.join(", ")}`);
-      }
+      const result = [...selections];
+      if (hasCustom) result.push(customInputs[i]!.trim());
+      return result;
     });
 
-    if (answers.length > 0) {
-      onAnswer(answers.join("\n"));
+    // Check at least one question has an answer
+    if (answers.some(a => a.length > 0)) {
+      setSubmitting(true);
+      onAnswer(part.id, answers);
     }
   };
 
@@ -330,10 +319,10 @@ export function AskUserQuestionDisplay({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={!hasAnySelection}
+              disabled={!hasAnySelection || submitting}
               className="px-3 py-1 bg-neutral-900 text-white text-[10px] font-medium uppercase tracking-wider hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Submit
+              {submitting ? "Submitting..." : "Submit"}
             </button>
           ) : (
             <button

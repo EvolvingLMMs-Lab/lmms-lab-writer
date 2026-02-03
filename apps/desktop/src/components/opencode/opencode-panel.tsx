@@ -159,9 +159,14 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     await opencode.sendMessage(content, filesToSend.length > 0 ? filesToSend : undefined);
   }, [input, attachedFiles, opencode]);
 
-  const handleAnswer = useCallback(async (answer: string) => {
-    if (!answer.trim()) return;
-    await opencode.sendMessage(answer);
+  const handleAnswer = useCallback(async (_questionID: string, answers: string[][]) => {
+    // Use the question ID from the SSE question.asked event (que_...), not the tool part ID (prt_...)
+    const actualQuestionID = opencode.currentQuestion?.id;
+    if (!actualQuestionID) {
+      console.warn("[OpenCode] No currentQuestion available, cannot answer");
+      return;
+    }
+    await opencode.answerQuestion(actualQuestionID, answers);
   }, [opencode]);
 
 

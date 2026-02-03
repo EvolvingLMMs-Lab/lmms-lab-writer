@@ -548,12 +548,12 @@ export class OpenCodeClient {
   }
 
   async answerQuestion(
-    questionID: string,
-    answers: Record<string, string | string[]>,
+    requestID: string,
+    answers: string[][],
   ): Promise<void> {
-    console.log("[OpenCode Client] answerQuestion:", { questionID, answers });
+    console.log("[OpenCode Client] answerQuestion:", { requestID, answers });
     const response = await fetch(
-      `${this.baseUrl}/question/${questionID}${this.getQueryParams()}`,
+      `${this.baseUrl}/question/${requestID}/reply${this.getQueryParams()}`,
       {
         method: "POST",
         headers: this.getHeaders(),

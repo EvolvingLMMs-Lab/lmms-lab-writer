@@ -24,7 +24,7 @@ export function MessageList({
   messages: Message[];
   getPartsForMessage: (messageId: string) => Part[];
   onFileClick?: (path: string) => void;
-  onAnswer?: (answer: string) => void;
+  onAnswer?: (questionID: string, answers: string[][]) => void;
 }) {
   const turns = useMemo(() => {
     const result: { user: Message; assistantMessages: Message[]; assistantParts: Part[] }[] = [];
@@ -96,7 +96,7 @@ function MessageTurn({
   onFileClick?: (path: string) => void;
   startTime?: number;
   endTime?: number;
-  onAnswer?: (answer: string) => void;
+  onAnswer?: (questionID: string, answers: string[][]) => void;
 }) {
   const [now, setNow] = useState(Date.now());
 
