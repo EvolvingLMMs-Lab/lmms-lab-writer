@@ -496,51 +496,81 @@ function MessageTurn({
     });
   }, [assistantParts]);
 
-  // Categorize parts - separate AskUserQuestion from regular tools
-  const { textParts, toolParts, reasoningParts, askUserQuestionParts } = useMemo(() => {
-    const text: TextPart[] = [];
-    const tools: ToolPart[] = [];
-    const reasoning: ReasoningPart[] = [];
-    const askUserQuestions: ToolPart[] = [];
+  // Analyze parts to separate:
+  // 1. Steps (Reasoning, Tools, Intermediate Text) - to be shown chronologically
+  // 2. Final Response (Last Text part)
+  // 3. Questions (Special interactive tools)
+  const { steps, finalTextPart, lastToolPart, askUserQuestions } = useMemo(() => {
+    const questions: ToolPart[] = [];
+    const chronologicalSteps: (Part | { type: "reasoning-group"; parts: ReasoningPart[] })[] = [];
 
-    for (const part of dedupedParts) {
-      if (part.type === "text" && !(part as TextPart).synthetic) {
-        text.push(part as TextPart);
-      } else if (part.type === "tool") {
-        const toolPart = part as ToolPart;
-        // Check for question tool (OpenCode uses "question" not "askuserquestion")
-        if (toolPart.tool.toLowerCase() === "question" || toolPart.tool.toLowerCase() === "askuserquestion") {
-          askUserQuestions.push(toolPart);
-        } else {
-          tools.push(toolPart);
-        }
-      } else if (part.type === "reasoning") {
-        reasoning.push(part as ReasoningPart);
+    // Find the last text part which acts as the final response
+    let lastTextIndex = -1;
+    for (let i = dedupedParts.length - 1; i >= 0; i--) {
+      const p = dedupedParts[i];
+      if (p.type === "text" && !(p as TextPart).synthetic) {
+        lastTextIndex = i;
+        break;
       }
     }
-    return { textParts: text, toolParts: tools, reasoningParts: reasoning, askUserQuestionParts: askUserQuestions };
+
+    const _finalTextPart = lastTextIndex >= 0 ? (dedupedParts[lastTextIndex] as TextPart) : null;
+
+    // Process all parts
+    let currentReasoningGroup: ReasoningPart[] = [];
+
+    dedupedParts.forEach((part, index) => {
+      // Handle interactive questions specially - distinct from regular steps
+      if (part.type === "tool") {
+        const toolPart = part as ToolPart;
+        if (toolPart.tool.toLowerCase() === "question" || toolPart.tool.toLowerCase() === "askuserquestion") {
+          questions.push(toolPart);
+          // If we want questions to ALSO appear in the step log, uncomment next line. 
+          // But usually they are the "stop" condition.
+          // For now, let's include them in steps if we want a complete log, 
+          // but the prompt implies "running steps". 
+          // Existing behavior separated them. Let's separate "View" from "Interaction".
+          // We will NOT add to chronologicalSteps to avoid duplication if displayed separately.
+          return;
+        }
+      }
+
+      // If it's the final text response, skip adding to steps
+      if (index === lastTextIndex) return;
+
+      // Group reasoning
+      if (part.type === "reasoning") {
+        currentReasoningGroup.push(part as ReasoningPart);
+      } else {
+        // flush reasoning group if exists
+        if (currentReasoningGroup.length > 0) {
+          chronologicalSteps.push({ type: "reasoning-group", parts: [...currentReasoningGroup] });
+          currentReasoningGroup = [];
+        }
+        chronologicalSteps.push(part);
+      }
+    });
+
+    // flush remaining reasoning
+    if (currentReasoningGroup.length > 0) {
+      chronologicalSteps.push({ type: "reasoning-group", parts: [...currentReasoningGroup] });
+    }
+
+    // Identify last tool for "preview" if steps are hidden
+    // We look at the original dedupedParts for this context
+    const tools = dedupedParts.filter(p => p.type === 'tool') as ToolPart[];
+    const _lastToolPart = tools.length > 0 ? tools[tools.length - 1] : null;
+
+    return {
+      steps: chronologicalSteps,
+      finalTextPart: _finalTextPart,
+      lastToolPart: _lastToolPart,
+      askUserQuestions: questions
+    };
   }, [dedupedParts]);
 
-  // Separate intermediate text (steps) from final output
-  // Only the last text part is considered the final output
-  const { intermediateTextParts, finalTextPart } = useMemo(() => {
-    if (textParts.length <= 1) {
-      return { intermediateTextParts: [], finalTextPart: textParts[0] || null };
-    }
-    return {
-      intermediateTextParts: textParts.slice(0, -1),
-      finalTextPart: textParts[textParts.length - 1],
-    };
-  }, [textParts]);
-
   const finalText = finalTextPart?.text || "";
-  const hasReasoningContent =
-    reasoningParts.length > 0 && reasoningParts.some((p) => p.text.trim());
-  const hasIntermediateText = intermediateTextParts.length > 0;
-  const hasSteps = toolParts.length > 0 || hasReasoningContent || hasIntermediateText;
-
-  // Get the last tool operation to show in the response area
-  const lastToolPart = toolParts.length > 0 ? toolParts[toolParts.length - 1] : null;
+  const hasSteps = steps.length > 0;
 
   // Update timer for in-progress messages
   useEffect(() => {
@@ -604,56 +634,56 @@ function MessageTurn({
         </button>
       )}
 
-      {/* Steps content */}
+      {/* Steps content - Chronological Rendering */}
       {showSteps && (
-        <div className="space-y-1">
-          {/* Reasoning - only show if has actual content */}
-          {hasReasoningContent && <ReasoningDisplay parts={reasoningParts} />}
+        <div className="space-y-1 pl-2 border-l border-neutral-100 ml-1">
+          {steps.map((step, idx) => {
+            // Reasoning Group
+            if ("type" in step && step.type === "reasoning-group") {
+              return <ReasoningDisplay key={`reasoning-${idx}`} parts={(step as { parts: ReasoningPart[] }).parts} />;
+            }
 
-          {/* Intermediate text outputs (not the final response) */}
-          {hasIntermediateText && (
-            <div className="space-y-2">
-              {intermediateTextParts.map((part) => (
+            // Tool Part
+            const p = step as Part; // We know it's a Part or Reasoning Group
+            if (p.type === "tool") {
+              return <ToolDisplay key={p.id} part={p as ToolPart} onFileClick={onFileClick} />;
+            }
+
+            // Intermediate Text (Output)
+            if (p.type === "text") {
+              return (
                 <div
-                  key={part.id}
+                  key={p.id}
                   className="text-xs border border-neutral-200 bg-neutral-50 p-2"
                 >
                   <div className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium mb-1">
                     Output
                   </div>
                   <div className="text-neutral-600 whitespace-pre-wrap break-words">
-                    <MarkdownText text={part.text} onFileClick={onFileClick} />
+                    <MarkdownText text={(p as TextPart).text} onFileClick={onFileClick} />
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            }
 
-          {/* Tools as file list */}
-          {toolParts.length > 0 && (
-            <div className="space-y-0">
-              {toolParts.map((part) => (
-                <ToolDisplay
-                  key={part.id}
-                  part={part}
-                  onFileClick={onFileClick}
-                />
-              ))}
-            </div>
-          )}
+            return null;
+          })}
         </div>
       )}
 
       {/* Response area - combines last operation and text */}
-      {(finalText || (lastToolPart && !showSteps)) && (
+      {(finalText || (lastToolPart && !showSteps && !finalText)) && (
         <div className="space-y-2">
           <div className="text-xs text-neutral-400">Response</div>
-          {lastToolPart && !showSteps && (
+
+          {/* If steps are hidden, show the last tool as a summary of activity if no text */}
+          {!finalText && lastToolPart && !showSteps && (
             <ToolDisplay
               part={lastToolPart}
               onFileClick={onFileClick}
             />
           )}
+
           {finalText && (
             <div className="text-[13px] leading-relaxed whitespace-pre-wrap break-words text-neutral-700">
               <MarkdownText text={finalText} onFileClick={onFileClick} />
@@ -663,9 +693,9 @@ function MessageTurn({
       )}
 
       {/* AskUserQuestion - interactive question UI */}
-      {askUserQuestionParts.length > 0 && (
+      {askUserQuestions.length > 0 && (
         <div className="space-y-3">
-          {askUserQuestionParts.map((part) => (
+          {askUserQuestions.map((part) => (
             <AskUserQuestionDisplay
               key={part.id}
               part={part}
@@ -708,6 +738,88 @@ function ReasoningDisplay({ parts }: { parts: ReasoningPart[] }) {
   );
 }
 
+// Types for Todo/Task tools
+type TaskItem = {
+  id: string;
+  content: string;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  priority?: "low" | "medium" | "high";
+}
+
+function parseTasks(data: unknown): TaskItem[] | null {
+  if (!data) return null;
+
+  // Handle direct array
+  if (Array.isArray(data)) {
+    return data.every(item => typeof item === 'object' && item?.content)
+      ? data as TaskItem[]
+      : null;
+  }
+
+  // Handle object with 'todos' property (common in OpenCode)
+  if (typeof data === 'object' && data !== null && 'todos' in data) {
+    const todos = (data as { todos: unknown }).todos;
+    if (Array.isArray(todos)) {
+      return todos.every(item => typeof item === 'object' && item?.content)
+        ? todos as TaskItem[]
+        : null;
+    }
+  }
+
+  return null;
+}
+
+function TasksDisplay({ tasks }: { tasks: TaskItem[] }) {
+  return (
+    <div className="border border-neutral-200 rounded-md bg-white my-2 overflow-hidden">
+      <div className="bg-neutral-50 px-3 py-2 border-b border-neutral-200 text-xs font-medium text-neutral-500 flex justify-between items-center">
+        <span>TASKS</span>
+        <span className="bg-neutral-200 text-neutral-600 px-1.5 py-0.5 rounded-full text-[10px]">
+          {tasks.length}
+        </span>
+      </div>
+      <div className="divide-y divide-neutral-100">
+        {tasks.map((task) => (
+          <div key={task.id} className="p-3 flex items-start gap-3 hover:bg-neutral-50 transition-colors">
+            {/* Status Icon */}
+            <div className={`mt-0.5 flex-shrink-0 ${task.status === 'completed' ? 'text-green-500' :
+                task.status === 'in_progress' ? 'text-blue-500' :
+                  task.status === 'cancelled' ? 'text-neutral-400' :
+                    'text-neutral-300'
+              }`}>
+              {task.status === 'completed' ? (
+                <svg className="size-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
+              ) : task.status === 'in_progress' ? (
+                <svg className="size-4 animate-spin-slow" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" strokeWidth="3" strokeDasharray="16" strokeLinecap="round" className="opacity-25" /><path d="M12 2C6.48 2 2 6.48 2 12" strokeWidth="3" strokeLinecap="round" /></svg>
+              ) : task.status === 'cancelled' ? (
+                <svg className="size-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z" /></svg>
+              ) : (
+                <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9" strokeWidth="2" /></svg>
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className={`text-sm ${task.status === 'completed' || task.status === 'cancelled' ? 'text-neutral-500 line-through decoration-neutral-300' : 'text-neutral-800'}`}>
+                {task.content}
+              </div>
+              {task.priority && (
+                <div className="mt-1">
+                  <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${task.priority === 'high' ? 'bg-red-50 text-red-600 border-red-100' :
+                      task.priority === 'medium' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                        'bg-green-50 text-green-600 border-green-100'
+                    }`}>
+                    {task.priority}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function ToolDisplay({
   part,
   onFileClick,
@@ -727,7 +839,26 @@ function ToolDisplay({
       info.subtitle,
     );
   const output = (part.state as { output?: string }).output;
-  const hasDetails = Object.keys(part.state.input).length > 0 || output;
+  // Always expand if it's a task tool to show the UI
+  const isTaskTool = ['todowrite', 'todocreate', 'todolist', 'todoread', 'todoupdate'].includes(part.tool.toLowerCase());
+
+  // Try to parse tasks from input or output
+  const tasksFromInput = isTaskTool ? parseTasks(part.state.input) : null;
+  // Output might be a stringified JSON
+  const tasksFromOutput = useMemo(() => {
+    if (!isTaskTool || !output) return null;
+    try {
+      const parsed = JSON.parse(output);
+      return parseTasks(parsed);
+    } catch {
+      return null;
+    }
+  }, [isTaskTool, output]);
+
+  const tasksToDisplay = tasksFromOutput || tasksFromInput;
+
+  // If we have tasks to display, force "hasDetails" to true to allow expansion (or auto-expand)
+  const hasDetails = Object.keys(part.state.input).length > 0 || output || tasksToDisplay;
 
   const diffStats = useMemo(() => {
     if (output && (part.tool === "write" || part.tool === "edit")) {
@@ -789,7 +920,15 @@ function ToolDisplay({
 
       {expanded && (
         <div className="border-t border-neutral-200 bg-white">
-          {Object.keys(part.state.input).length > 0 && (
+          {/* Special Task Display */}
+          {tasksToDisplay && (
+            <div className="px-3 py-2">
+              <TasksDisplay tasks={tasksToDisplay} />
+            </div>
+          )}
+
+          {/* Standard Input/Output fallback if no special display or if debugging */}
+          {(!tasksToDisplay && Object.keys(part.state.input).length > 0) && (
             <div className="px-3 py-2 space-y-1">
               <div className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium">
                 Input
@@ -805,7 +944,8 @@ function ToolDisplay({
               ))}
             </div>
           )}
-          {output && (
+
+          {(!tasksToDisplay && output) && (
             <div className="px-3 py-2 border-t border-neutral-200">
               <div className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium mb-1">
                 Output
@@ -1019,10 +1159,10 @@ function AskUserQuestionDisplay({
               type="button"
               onClick={() => { if (i <= currentStep) setCurrentStep(i); }}
               className={`size-5 flex items-center justify-center text-[10px] font-mono border-2 transition-all duration-150 ${i === currentStep
-                  ? "border-accent bg-accent text-white"
-                  : i < currentStep
-                    ? "border-accent bg-white text-accent cursor-pointer hover:bg-accent/5"
-                    : "border-neutral-300 text-neutral-400 cursor-default"
+                ? "border-accent bg-accent text-white"
+                : i < currentStep
+                  ? "border-accent bg-white text-accent cursor-pointer hover:bg-accent/5"
+                  : "border-neutral-300 text-neutral-400 cursor-default"
                 }`}
             >
               {i < currentStep ? (
@@ -1142,8 +1282,8 @@ function AskUserQuestionDisplay({
                   type="button"
                   onClick={() => setCurrentStep(qIndex)}
                   className={`w-full text-left p-3 border transition-colors group ${hasAnswer
-                      ? "border-border hover:border-accent"
-                      : "border-red-300 bg-red-50"
+                    ? "border-border hover:border-accent"
+                    : "border-red-300 bg-red-50"
                     }`}
                 >
                   <div className="flex items-start justify-between gap-2">
