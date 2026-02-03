@@ -57,3 +57,4 @@ marketing-assets/
 apps/video/out/
 *.local.json
 supabase/
+.agent/

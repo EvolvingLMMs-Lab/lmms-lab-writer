@@ -49,11 +49,47 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   const [showSessionList, setShowSessionList] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pendingMessageSentRef = useRef(false);
+  const [activeTab, setActiveTab] = useState<"chat" | "tasks">("chat");
 
-  // Auto-scroll to bottom when messages/parts update
+  // Extract latest tasks from message history
+  const latestTasks = useMemo(() => {
+    // Scan messages in reverse to find the last updated task list
+    for (let i = opencode.messages.length - 1; i >= 0; i--) {
+      const msg = opencode.messages[i]!;
+      if (msg.role !== 'assistant') continue;
+
+      const msgParts = opencode.getPartsForMessage(msg.id);
+      for (let j = msgParts.length - 1; j >= 0; j--) {
+        const p = msgParts[j]!;
+        if (p.type === 'tool') {
+          const tp = p as ToolPart;
+          const isTaskTool = ['todowrite', 'todocreate', 'todolist', 'todoread', 'todoupdate'].includes(tp.tool.toLowerCase());
+          if (isTaskTool) {
+            const output = (tp.state as { output?: string }).output;
+            if (output) {
+              try {
+                const parsed = JSON.parse(output);
+                const tasks = parseTasks(parsed);
+                if (tasks) return tasks;
+              } catch { }
+            }
+            if (tp.state.input) {
+              const tasks = parseTasks(tp.state.input);
+              if (tasks) return tasks;
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }, [opencode.messages, opencode.getPartsForMessage]);
+
+  // Auto-scroll to bottom when messages/parts update (only in chat tab)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [opencode.messages, opencode.parts, opencode.status]);
+    if (activeTab === 'chat') {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [opencode.messages, opencode.parts, opencode.status, activeTab]);
 
   // Handle pending message from external source
   useEffect(() => {
@@ -66,13 +102,9 @@ export const OpenCodePanel = memo(function OpenCodePanel({
         return;
       }
 
-      // Wait for model to be selected (loadConfig to complete)
-      // This prevents sending with undefined model which may trigger paid providers
+      // Wait for model to be selected
       if (!opencode.selectedModel && opencode.providers.length === 0) {
-        console.log(
-          "[OpenCode] Waiting for config to load before sending pending message...",
-        );
-        return; // Effect will re-run when providers are loaded
+        return;
       }
 
       // If no session exists, create one first
@@ -80,14 +112,10 @@ export const OpenCodePanel = memo(function OpenCodePanel({
       if (!sessionId) {
         const newSession = await opencode.createSession();
         if (!newSession) {
-          console.error(
-            "[OpenCode] Failed to create session for pending message",
-          );
           onPendingMessageSent?.();
           return;
         }
         sessionId = newSession.id;
-        // Wait a tick for the session state to update
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
@@ -95,29 +123,22 @@ export const OpenCodePanel = memo(function OpenCodePanel({
       if (sessionId) {
         pendingMessageSentRef.current = true;
         try {
-          console.log(
-            "[OpenCode] Sending pending message with model:",
-            opencode.selectedModel,
-          );
           await opencode.sendMessage(pendingMessage);
-        } catch (err) {
-          console.error("[OpenCode] Failed to send pending message:", err);
-        } finally {
           onPendingMessageSent?.();
+        } catch (error) {
+          console.error("[OpenCode] Error sending pending message:", error);
         }
       }
     };
 
-    if (pendingMessage) {
-      handlePendingMessage();
-    } else {
-      pendingMessageSentRef.current = false;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- using specific opencode properties to avoid re-renders
+    handlePendingMessage();
   }, [
     pendingMessage,
     opencode.connected,
+    opencode.selectedModel,
+    opencode.providers.length,
     opencode.currentSessionId,
+    opencode.createSession,
     opencode.sendMessage,
     opencode.createSession,
     opencode.selectedModel,
@@ -191,88 +212,141 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     );
   }
 
+  if (!opencode.currentSessionId || showSessionList) {
+    return (
+      <div className={`flex h-full flex-col ${className}`}>
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+          <h2 className="text-xs font-mono font-medium uppercase tracking-wider">Chats</h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleNewSession}
+              className="text-[10px] font-mono px-2 py-1 border border-border hover:border-accent transition-colors"
+            >
+              + New
+            </button>
+            {opencode.currentSessionId && (
+              <button onClick={() => setShowSessionList(false)} className="text-[10px] font-mono text-muted hover:text-foreground transition-colors">Back</button>
+            )}
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <SessionList
+            sessions={opencode.sessions}
+            currentSessionId={opencode.currentSessionId}
+            onSelect={(id) => { opencode.selectSession(id); setShowSessionList(false); }}
+            onDelete={opencode.deleteSession}
+            onNewSession={async () => {
+              const s = await opencode.createSession();
+              if (s) setShowSessionList(false);
+            }}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  const currentSession = opencode.sessions.find(s => s.id === opencode.currentSessionId);
+
   return (
-    <div className={`flex flex-col bg-white min-h-0 ${className}`}>
+    <div className={`flex h-full flex-col bg-neutral-50/50 ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="size-2 flex-shrink-0 bg-accent" title="Connected" />
-          <button
-            onClick={() => setShowSessionList(!showSessionList)}
-            className="flex items-center gap-1 text-xs hover:bg-neutral-100 px-1 py-0.5 transition-colors min-w-0"
-          >
-            <span className="truncate">
-              {opencode.currentSession?.title || "Select Session"}
-            </span>
-            <ChevronIcon
-              className={`size-3 flex-shrink-0 transition-transform ${showSessionList ? "rotate-180" : ""}`}
-            />
+      <div className="flex items-center justify-between border-b border-border bg-white px-3 py-2">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <button onClick={() => setShowSessionList(true)} className="flex-shrink-0 text-muted hover:text-foreground transition-colors">
+            <ChevronIcon className="size-4 rotate-90" />
           </button>
+          <div className="flex flex-col min-w-0">
+            <h2 className="text-xs font-medium truncate">
+              {currentSession?.title || "New Chat"}
+            </h2>
+            <div className="flex items-center gap-1.5 text-[10px] text-muted font-mono">
+              <span className={`inline-block size-1.5 ${isWorking ? 'bg-accent animate-pulse' : 'bg-neutral-300'}`} />
+              <span>{opencode.status.type === 'running' ? 'thinking' : opencode.status.type === 'busy' ? 'busy' : 'ready'}</span>
+            </div>
+          </div>
         </div>
         <button
           onClick={handleNewSession}
-          className="text-xs px-2 py-1 border border-border hover:bg-neutral-100 transition-colors flex-shrink-0"
-          title="New Session"
+          className="flex-shrink-0 text-neutral-400 hover:text-neutral-600 transition-colors"
+          title="New Chat"
         >
-          + New
+          <PlusIcon className="size-5" />
         </button>
       </div>
 
-      {showSessionList ? (
-        <SessionList
-          sessions={opencode.sessions}
-          currentSessionId={opencode.currentSessionId}
-          onSelect={handleSelectSession}
-          onNewSession={handleNewSession}
-          onDelete={opencode.deleteSession}
-        />
-      ) : opencode.currentSessionId ? (
-        <>
-          {/* Error banner */}
-          {opencode.error && (
-            <div className="px-3 py-2 bg-red-50 border-b border-red-200 text-xs text-red-700 flex items-start gap-2">
-              <WarningIcon className="size-4 flex-shrink-0 mt-0.5" />
-              <span className="flex-1">
-                <ErrorMessage message={opencode.error} />
-              </span>
+      {/* Tab Bar */}
+      <div className="flex border-b border-border bg-white">
+        <button
+          onClick={() => setActiveTab('chat')}
+          className={`flex-1 py-1.5 text-[10px] font-mono uppercase tracking-wider text-center border-b-2 transition-colors ${activeTab === 'chat'
+            ? 'border-accent'
+            : 'border-transparent text-muted hover:text-foreground'
+            }`}
+        >
+          Chat
+        </button>
+        <button
+          onClick={() => setActiveTab('tasks')}
+          className={`flex-1 py-1.5 text-[10px] font-mono uppercase tracking-wider text-center border-b-2 transition-colors ${activeTab === 'tasks'
+            ? 'border-accent'
+            : 'border-transparent text-muted hover:text-foreground'
+            }`}
+        >
+          Tasks {latestTasks && <span className="ml-1 text-[9px] text-muted">{latestTasks.length}</span>}
+        </button>
+      </div>
+
+      {/* Content Area */}
+      <div className="flex-1 min-h-0 overflow-hidden relative">
+        {activeTab === 'chat' ? (
+          <div className="absolute inset-0 flex flex-col">
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              {opencode.messages.length === 0 ? (
+                <EmptyState onNewSession={handleNewSession} hasOtherSessions={opencode.sessions.length > 1} />
+              ) : (
+                <MessageList
+                  messages={opencode.messages}
+                  getPartsForMessage={opencode.getPartsForMessage}
+                  onFileClick={onFileClick}
+                  onAnswer={handleAnswer}
+                />
+              )}
+              <div ref={messagesEndRef} />
             </div>
-          )}
 
-          {/* Messages */}
-          <div className="flex-1 min-h-0 overflow-y-auto p-3">
-            <MessageList
-              messages={opencode.messages}
-              getPartsForMessage={opencode.getPartsForMessage}
-              onFileClick={onFileClick}
-              onAnswer={handleAnswer}
-            />
-            <div ref={messagesEndRef} />
+            <div className="border-t border-border bg-white p-3">
+              <InputArea
+                input={input}
+                setInput={setInput}
+                attachedFiles={attachedFiles}
+                setAttachedFiles={setAttachedFiles}
+                onSend={handleSend}
+                onAbort={handleAbort}
+                isWorking={isWorking}
+                agents={opencode.agents}
+                providers={opencode.providers}
+                selectedAgent={opencode.selectedAgent}
+                selectedModel={opencode.selectedModel}
+                onSelectAgent={opencode.setSelectedAgent}
+                onSelectModel={opencode.setSelectedModel}
+              />
+            </div>
           </div>
-
-
-          {/* Input */}
-          <InputArea
-            input={input}
-            setInput={setInput}
-            attachedFiles={attachedFiles}
-            setAttachedFiles={setAttachedFiles}
-            onSend={handleSend}
-            onAbort={handleAbort}
-            isWorking={isWorking}
-            agents={opencode.agents}
-            providers={opencode.providers}
-            selectedAgent={opencode.selectedAgent}
-            selectedModel={opencode.selectedModel}
-            onSelectAgent={opencode.setSelectedAgent}
-            onSelectModel={opencode.setSelectedModel}
-          />
-        </>
-      ) : (
-        <EmptyState
-          onNewSession={handleNewSession}
-          hasOtherSessions={opencode.sessions.length > 0}
-        />
-      )}
+        ) : (
+          <div className="absolute inset-0 overflow-y-auto p-3 bg-white">
+            {latestTasks ? (
+              <TasksDisplay tasks={latestTasks} />
+            ) : (
+              <div className="flex-1 flex items-center justify-center p-4">
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-muted">No tasks yet</p>
+                  <p className="text-xs text-muted">Tasks will appear here when the agent creates them.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 });
@@ -280,6 +354,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
 // ============================================================================
 // Sub-components
 // ============================================================================
+
 
 function SessionList({
   sessions,
@@ -507,7 +582,7 @@ function MessageTurn({
     // Find the last text part which acts as the final response
     let lastTextIndex = -1;
     for (let i = dedupedParts.length - 1; i >= 0; i--) {
-      const p = dedupedParts[i];
+      const p = dedupedParts[i]!;
       if (p.type === "text" && !(p as TextPart).synthetic) {
         lastTextIndex = i;
         break;
@@ -771,53 +846,50 @@ function parseTasks(data: unknown): TaskItem[] | null {
 
 function TasksDisplay({ tasks }: { tasks: TaskItem[] }) {
   return (
-    <div className="border border-neutral-200 rounded-md bg-white my-2 overflow-hidden">
-      <div className="bg-neutral-50 px-3 py-2 border-b border-neutral-200 text-xs font-medium text-neutral-500 flex justify-between items-center">
-        <span>TASKS</span>
-        <span className="bg-neutral-200 text-neutral-600 px-1.5 py-0.5 rounded-full text-[10px]">
-          {tasks.length}
-        </span>
+    <div className="border-2 border-border bg-white my-2 overflow-hidden">
+      <div className="bg-neutral-50 px-3 py-1.5 border-b border-border flex justify-between items-center">
+        <span className="text-[10px] font-mono font-medium text-muted uppercase tracking-wider">Tasks</span>
+        <span className="text-[10px] font-mono text-muted">{tasks.length}</span>
       </div>
-      <div className="divide-y divide-neutral-100">
+      <div className="divide-y divide-border">
         {tasks.map((task) => (
-          <div key={task.id} className="p-3 flex items-start gap-3 hover:bg-neutral-50 transition-colors">
-            {/* Status Icon */}
-            <div className={`mt-0.5 flex-shrink-0 ${task.status === 'completed' ? 'text-green-500' :
-                task.status === 'in_progress' ? 'text-blue-500' :
-                  task.status === 'cancelled' ? 'text-neutral-400' :
-                    'text-neutral-300'
-              }`}>
-              {task.status === 'completed' ? (
-                <svg className="size-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
-              ) : task.status === 'in_progress' ? (
-                <svg className="size-4 animate-spin-slow" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" strokeWidth="3" strokeDasharray="16" strokeLinecap="round" className="opacity-25" /><path d="M12 2C6.48 2 2 6.48 2 12" strokeWidth="3" strokeLinecap="round" /></svg>
-              ) : task.status === 'cancelled' ? (
-                <svg className="size-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z" /></svg>
-              ) : (
-                <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9" strokeWidth="2" /></svg>
-              )}
+          <div key={task.id} className="px-3 py-2 flex items-start gap-2 hover:bg-neutral-50 transition-colors">
+            {/* Status indicator */}
+            <div className={`size-4 flex-shrink-0 mt-0.5 border flex items-center justify-center ${
+              task.status === 'completed'
+                ? 'border-accent bg-accent'
+                : task.status === 'in_progress'
+                  ? 'border-accent'
+                  : task.status === 'cancelled'
+                    ? 'border-neutral-300 bg-neutral-100'
+                    : 'border-neutral-300'
+            }`}>
+              {task.status === 'completed' && <CheckIcon className="size-3 text-white" />}
+              {task.status === 'in_progress' && <Spinner className="size-2.5" />}
+              {task.status === 'cancelled' && <span className="text-[10px] text-neutral-400">&times;</span>}
             </div>
 
             <div className="flex-1 min-w-0">
-              <div className={`text-sm ${task.status === 'completed' || task.status === 'cancelled' ? 'text-neutral-500 line-through decoration-neutral-300' : 'text-neutral-800'}`}>
+              <div className={`text-xs ${
+                task.status === 'completed' || task.status === 'cancelled'
+                  ? 'text-muted line-through'
+                  : ''
+              }`}>
                 {task.content}
               </div>
               {task.priority && (
-                <div className="mt-1">
-                  <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${task.priority === 'high' ? 'bg-red-50 text-red-600 border-red-100' :
-                      task.priority === 'medium' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                        'bg-green-50 text-green-600 border-green-100'
-                    }`}>
-                    {task.priority}
-                  </span>
-                </div>
+                <span className={`text-[9px] font-mono uppercase tracking-wider mt-1 inline-block ${
+                  task.priority === 'high' ? 'text-accent font-bold' : 'text-muted'
+                }`}>
+                  {task.priority}
+                </span>
               )}
             </div>
           </div>
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 function ToolDisplay({
@@ -1071,12 +1143,12 @@ function AskUserQuestionDisplay({
       if (q.multiSelect) {
         // Multi: combine standard selections + custom
         parts.push(...selections);
-        if (hasCustom) parts.push(customInputs[i].trim());
+        if (hasCustom) parts.push(customInputs[i]!.trim());
       } else {
         // Single: Custom takes precedence if active, else selection
         if (hasCustom) {
-          parts.push(customInputs[i].trim());
-        } else if (selections.length > 0) {
+          parts.push(customInputs[i]!.trim());
+        } else if (selections.length > 0 && selections[0]) {
           parts.push(selections[0]);
         }
       }
@@ -1102,8 +1174,8 @@ function AskUserQuestionDisplay({
     const hasOpts = opts && opts.length > 0;
     const hasCust = showCustom[currentStep] && !!customInputs[currentStep]?.trim();
 
-    // If it's the review step, we might want to check if ALL questions are answered? 
-    // The previous code checked "isSummaryStep" separately. 
+    // If it's the review step, we might want to check if ALL questions are answered?
+    // The previous code checked "isSummaryStep" separately.
     // Here we just check the current question logic.
     return hasOpts || hasCust;
   })();
@@ -1117,16 +1189,17 @@ function AskUserQuestionDisplay({
 
   const getAnswerText = (qIndex: number) => {
     const q = questions[qIndex];
+    if (!q) return null;
     const selections = selectedOptions[qIndex] || [];
     const hasCustom = showCustom[qIndex] && customInputs[qIndex];
 
     if (q.multiSelect) {
       const parts = [...selections];
-      if (hasCustom) parts.push(customInputs[qIndex]);
-      return parts.join(", ");
+      if (hasCustom) parts.push(customInputs[qIndex]!);
+      return parts.length > 0 ? parts.join(", ") : null;
     } else {
       if (hasCustom) return customInputs[qIndex];
-      if (selections.length) return selections[0];
+      if (selections.length && selections[0]) return selections[0];
       return null;
     }
   };
@@ -1134,13 +1207,13 @@ function AskUserQuestionDisplay({
   // Completed state: compact summary
   if (isCompleted) {
     return (
-      <div className="border-2 border-accent bg-white p-4 space-y-1">
-        <div className="text-xs font-medium text-muted">Answered</div>
+      <div className="border border-accent bg-white p-3 space-y-1 rounded-sm">
+        <div className="text-[10px] font-medium text-muted uppercase tracking-wider">Answered</div>
         {questions.map((q, qIndex) => {
           const answer = getAnswerText(qIndex);
           return answer ? (
             <div key={qIndex} className="text-xs">
-              <span className="text-neutral-500">{q.header}:</span> {answer}
+              <span className="text-neutral-500 font-medium">{q.header}:</span> {answer}
             </div>
           ) : null;
         })}
@@ -1149,33 +1222,33 @@ function AskUserQuestionDisplay({
   }
 
   return (
-    <div className="border-2 border-accent bg-white p-4 flex flex-col max-h-[50vh]">
+    <div className="border border-accent bg-white p-3 flex flex-col max-h-[50vh] rounded-sm shadow-sm">
       {/* Step indicator */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1">
           {Array.from({ length: totalSteps }).map((_, i) => (
             <button
               key={i}
               type="button"
               onClick={() => { if (i <= currentStep) setCurrentStep(i); }}
-              className={`size-5 flex items-center justify-center text-[10px] font-mono border-2 transition-all duration-150 ${i === currentStep
+              className={`size-4 flex items-center justify-center text-[9px] font-mono border transition-all duration-150 rounded-full ${i === currentStep
                 ? "border-accent bg-accent text-white"
                 : i < currentStep
                   ? "border-accent bg-white text-accent cursor-pointer hover:bg-accent/5"
-                  : "border-neutral-300 text-neutral-400 cursor-default"
+                  : "border-neutral-200 text-neutral-300 cursor-default"
                 }`}
             >
               {i < currentStep ? (
-                <CheckIcon className="size-3" />
+                <CheckIcon className="size-2.5" />
               ) : i === questions.length ? (
-                <span className="text-[9px]">&#x2713;</span>
+                <span className="text-[8px]">&#x2713;</span>
               ) : (
                 i + 1
               )}
             </button>
           ))}
         </div>
-        <span className="text-[10px] font-mono text-muted uppercase tracking-wider">
+        <span className="text-[9px] font-mono text-muted uppercase tracking-wider">
           {isSummaryStep ? "Review" : `${currentStep + 1} / ${questions.length}`}
         </span>
       </div>
@@ -1192,16 +1265,16 @@ function AskUserQuestionDisplay({
           return (
             <div key={`step-${currentStep}`} className="wizard-step-enter space-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium px-2 py-0.5 bg-accent text-white">
+                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-accent text-white rounded-sm uppercase tracking-wide">
                   {q.header}
                 </span>
                 {q.multiSelect && (
-                  <span className="text-xs text-muted">(Multi-select)</span>
+                  <span className="text-[10px] text-muted">(Multi-select)</span>
                 )}
               </div>
-              <p className="text-sm font-medium">{q.question}</p>
+              <p className="text-xs font-medium text-neutral-800 leading-relaxed">{q.question}</p>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {q.options.map((opt, optIndex) => {
                   const isSelected = selectedOptions[qIndex]?.includes(opt.label);
                   return (
@@ -1209,20 +1282,19 @@ function AskUserQuestionDisplay({
                       key={optIndex}
                       type="button"
                       onClick={() => handleOptionClick(qIndex, opt.label, q.multiSelect || false)}
-                      className={`w-full text-left p-3 border transition-colors ${isSelected
+                      className={`w-full text-left p-2 border rounded transition-colors ${isSelected
                         ? "border-accent bg-accent/5"
                         : "border-border hover:border-neutral-400"
                         }`}
                     >
                       <div className="flex items-start gap-2">
-                        <div className={`size-4 flex-shrink-0 mt-0.5 border ${isSelected ? "border-accent bg-accent" : "border-neutral-300"
-                          } flex items-center justify-center ${isRadio ? 'rounded-full' : ''}`}>
-                          {isSelected && <CheckIcon className="size-3 text-white" />}
+                        <div className={`size-3.5 flex-shrink-0 mt-0.5 border ${isSelected ? "border-accent bg-accent" : "border-neutral-300"} flex items-center justify-center ${isRadio ? 'rounded-full' : 'rounded-sm'}`}>
+                          {isSelected && <CheckIcon className="size-2.5 text-white" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium">{opt.label}</div>
+                          <div className="text-xs font-medium text-neutral-700">{opt.label}</div>
                           {opt.description && (
-                            <div className="text-xs text-muted mt-0.5">{opt.description}</div>
+                            <div className="text-[10px] text-muted mt-0.5 leading-tight">{opt.description}</div>
                           )}
                         </div>
                       </div>
@@ -1232,21 +1304,20 @@ function AskUserQuestionDisplay({
 
                 {/* Custom input option */}
                 {isPending && (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <button
                       type="button"
                       onClick={() => toggleCustomInput(qIndex, q.multiSelect || false)}
-                      className={`w-full text-left p-3 border transition-colors ${showCustom[qIndex]
+                      className={`w-full text-left p-2 border rounded transition-colors ${showCustom[qIndex]
                         ? "border-accent bg-accent/5"
                         : "border-border hover:border-neutral-400"
                         }`}
                     >
                       <div className="flex items-start gap-2">
-                        <div className={`size-4 flex-shrink-0 mt-0.5 border ${showCustom[qIndex] ? "border-accent bg-accent" : "border-neutral-300"
-                          } flex items-center justify-center ${isRadio ? 'rounded-full' : ''}`}>
-                          {showCustom[qIndex] && <CheckIcon className="size-3 text-white" />}
+                        <div className={`size-3.5 flex-shrink-0 mt-0.5 border ${showCustom[qIndex] ? "border-accent bg-accent" : "border-neutral-300"} flex items-center justify-center ${isRadio ? 'rounded-full' : 'rounded-sm'}`}>
+                          {showCustom[qIndex] && <CheckIcon className="size-2.5 text-white" />}
                         </div>
-                        <div className="text-sm font-medium">Other</div>
+                        <div className="text-xs font-medium text-neutral-700">Other</div>
                       </div>
                     </button>
 
@@ -1256,7 +1327,7 @@ function AskUserQuestionDisplay({
                         value={customInputs[qIndex] || ""}
                         onChange={(e) => setCustomInputs(prev => ({ ...prev, [qIndex]: e.target.value }))}
                         placeholder="Enter custom answer..."
-                        className="w-full px-3 py-2 text-sm border border-border focus:border-accent focus:outline-none"
+                        className="w-full px-2 py-1.5 text-xs border border-border focus:border-accent focus:outline-none rounded"
                         autoFocus
                       />
                     )}
@@ -1270,7 +1341,7 @@ function AskUserQuestionDisplay({
         {/* Summary step */}
         {isSummaryStep && (
           <div key="step-summary" className="wizard-step-enter space-y-2">
-            <div className="text-xs font-medium uppercase tracking-wider text-muted mb-2">
+            <div className="text-[10px] font-medium uppercase tracking-wider text-muted mb-1">
               Review Answers
             </div>
             {questions.map((q, qIndex) => {
@@ -1281,21 +1352,21 @@ function AskUserQuestionDisplay({
                   key={qIndex}
                   type="button"
                   onClick={() => setCurrentStep(qIndex)}
-                  className={`w-full text-left p-3 border transition-colors group ${hasAnswer
+                  className={`w-full text-left p-2 border rounded transition-colors group ${hasAnswer
                     ? "border-border hover:border-accent"
                     : "border-red-300 bg-red-50"
                     }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <div className="text-[10px] font-mono uppercase tracking-wider text-muted">
+                      <div className="text-[9px] font-mono uppercase tracking-wider text-muted">
                         {q.header}
                       </div>
-                      <div className="text-sm mt-0.5 truncate">
+                      <div className="text-xs mt-0.5 truncate text-neutral-700">
                         {hasAnswer ? answer : "Not answered"}
                       </div>
                     </div>
-                    <span className="text-xs text-muted opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    <span className="text-[9px] text-muted opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                       Edit
                     </span>
                   </div>
@@ -1308,11 +1379,11 @@ function AskUserQuestionDisplay({
 
       {/* Navigation */}
       {isPending && onAnswer && (
-        <div className="flex items-center justify-between pt-3 border-t border-border mt-3">
+        <div className="flex items-center justify-between pt-2 border-t border-border mt-2">
           <button
             type="button"
             onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
-            className={`text-xs font-mono px-3 py-1.5 border border-border transition-colors hover:bg-neutral-100 ${currentStep === 0 ? "opacity-0 pointer-events-none" : ""
+            className={`text-[10px] font-mono px-2 py-1 border border-border rounded transition-colors hover:bg-neutral-100 ${currentStep === 0 ? "opacity-0 pointer-events-none" : ""
               }`}
           >
             Back
@@ -1323,7 +1394,7 @@ function AskUserQuestionDisplay({
               type="button"
               onClick={handleSubmit}
               disabled={!hasAnySelection}
-              className="btn-brutalist disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 bg-neutral-900 text-white text-[10px] font-medium uppercase tracking-wider hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Submit
             </button>
@@ -1332,7 +1403,7 @@ function AskUserQuestionDisplay({
               type="button"
               onClick={() => setCurrentStep(currentStep + 1)}
               disabled={!currentStepHasSelection}
-              className="btn-brutalist disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 bg-neutral-900 text-white text-[10px] font-medium uppercase tracking-wider hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {currentStep === questions.length - 1 ? "Review" : "Next"}
             </button>
@@ -2113,20 +2184,103 @@ function ProviderIcon({ providerId }: { providerId?: string }) {
   );
 }
 
+
+
+
+function ToolIcon({ tool }: { tool: string }) {
+  const className = "size-4 text-neutral-500 flex-shrink-0";
+  switch (tool) {
+    case "bash":
+      return <TerminalIcon className={className} />;
+    case "glob":
+    case "grep":
+      return (
+        <svg
+          className={className}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+      );
+    case "read":
+    case "write":
+    case "edit":
+      return (
+        <svg
+          className={className}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
+        </svg>
+      );
+    default:
+      return (
+        <svg
+          className={className}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            strokeWidth={1.5}
+            d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+          />
+        </svg>
+      );
+  }
+}
+
+
+// ============================================================================
+// Utils
+// ============================================================================
+
+function formatRelativeTime(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "now";
+  if (diffMins < 60) return `${diffMins}m`;
+  if (diffHours < 24) return `${diffHours}h`;
+  if (diffDays < 7) return `${diffDays}d`;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+
+// Helper components ...
+
+
 function ChevronIcon({ className }: { className?: string }) {
   return (
     <svg
       className={className}
-      fill="none"
       viewBox="0 0 24 24"
+      fill="none"
       stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
     >
-      <path
-        strokeLinecap="square"
-        strokeLinejoin="miter"
-        strokeWidth={2}
-        d="M19 9l-7 7-7-7"
-      />
+      <polyline points="6 9 12 15 18 9" />
     </svg>
   );
 }
@@ -2185,22 +2339,21 @@ function TrashIcon({ className }: { className?: string }) {
   );
 }
 
-function CheckIcon({ className }: { className?: string }) {
+function PlusIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="square"
-        strokeLinejoin="miter"
-        strokeWidth={2}
-        d="M5 13l4 4L19 7"
-      />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
   );
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  )
 }
 
 function FolderIcon({ className }: { className?: string }) {
@@ -2393,7 +2546,7 @@ function FileTypeIcon({ filename }: { filename: string }) {
           strokeWidth={1.5}
           d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
         />
-      </svg>
+      </svg >
     );
   }
 
@@ -2412,82 +2565,4 @@ function FileTypeIcon({ filename }: { filename: string }) {
       />
     </svg>
   );
-}
-
-function ToolIcon({ tool }: { tool: string }) {
-  const className = "size-4 text-neutral-500 flex-shrink-0";
-  switch (tool) {
-    case "bash":
-      return <TerminalIcon className={className} />;
-    case "glob":
-    case "grep":
-      return (
-        <svg
-          className={className}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="square"
-            strokeLinejoin="miter"
-            strokeWidth={1.5}
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-          />
-        </svg>
-      );
-    case "read":
-    case "write":
-    case "edit":
-      return (
-        <svg
-          className={className}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="square"
-            strokeLinejoin="miter"
-            strokeWidth={1.5}
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          />
-        </svg>
-      );
-    default:
-      return (
-        <svg
-          className={className}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="square"
-            strokeLinejoin="miter"
-            strokeWidth={1.5}
-            d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-          />
-        </svg>
-      );
-  }
-}
-
-
-// ============================================================================
-// Utils
-// ============================================================================
-
-function formatRelativeTime(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return "now";
-  if (diffMins < 60) return `${diffMins}m`;
-  if (diffHours < 24) return `${diffHours}h`;
-  if (diffDays < 7) return `${diffDays}d`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
