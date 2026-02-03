@@ -1,6 +1,13 @@
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import { useMemo } from "react";
+
+const remarkPlugins = [remarkGfm, remarkMath];
+const rehypePlugins = [rehypeKatex];
 
 export function MarkdownText({
   text,
@@ -22,8 +29,6 @@ export function MarkdownText({
         );
       },
       code({ children, className }) {
-        // Fenced code block (has language className like "language-xxx")
-        // or is inside a <pre> — react-markdown wraps fenced blocks in <pre><code>
         const isInline = !className;
         const content = String(children).replace(/\n$/, "");
 
@@ -45,7 +50,6 @@ export function MarkdownText({
           );
         }
 
-        // Block code — just render children, <pre> is handled above
         return <code className={className}>{children}</code>;
       },
       p({ children }) {
@@ -91,11 +95,41 @@ export function MarkdownText({
           </blockquote>
         );
       },
+      table({ children }) {
+        return (
+          <div className="my-2 overflow-x-auto">
+            <table className="text-xs border-collapse w-full">
+              {children}
+            </table>
+          </div>
+        );
+      },
+      thead({ children }) {
+        return <thead className="bg-neutral-50">{children}</thead>;
+      },
+      th({ children }) {
+        return (
+          <th className="border border-neutral-200 px-2 py-1 text-left font-medium text-neutral-700">
+            {children}
+          </th>
+        );
+      },
+      td({ children }) {
+        return (
+          <td className="border border-neutral-200 px-2 py-1 text-neutral-600">
+            {children}
+          </td>
+        );
+      },
     };
   }, [onFileClick]);
 
   return (
-    <ReactMarkdown components={components}>
+    <ReactMarkdown
+      remarkPlugins={remarkPlugins}
+      rehypePlugins={rehypePlugins}
+      components={components}
+    >
       {text}
     </ReactMarkdown>
   );

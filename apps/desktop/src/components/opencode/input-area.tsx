@@ -169,8 +169,7 @@ export function InputArea({
   }, [selectedModel, providers]);
 
   return (
-    <div className="flex-shrink-0 bg-white p-4">
-      <div className="border border-neutral-200 rounded-xl bg-neutral-50 focus-within:border-neutral-400 focus-within:bg-white transition-all">
+    <div className="border border-neutral-200 rounded-xl bg-neutral-50 focus-within:border-neutral-400 focus-within:bg-white transition-all">
         {/* Attached images preview - above textarea */}
         {attachedFiles.length > 0 && (
           <div className="flex gap-2 px-3 pt-3 pb-1 overflow-x-auto">
@@ -369,7 +368,6 @@ export function InputArea({
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 }

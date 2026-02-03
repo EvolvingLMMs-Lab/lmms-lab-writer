@@ -260,7 +260,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
         <div className="absolute inset-0 flex flex-col">
           <div className="flex-1 overflow-y-auto px-4 py-4">
             {opencode.messages.length === 0 ? (
-              <EmptyState onNewSession={handleNewSession} hasOtherSessions={opencode.sessions.length > 1} />
+              <EmptyState />
             ) : (
               <MessageList
                 messages={opencode.messages}

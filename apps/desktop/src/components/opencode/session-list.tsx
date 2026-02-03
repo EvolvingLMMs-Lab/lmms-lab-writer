@@ -97,25 +97,10 @@ export function SessionList({
   );
 }
 
-export function EmptyState({
-  onNewSession,
-  hasOtherSessions,
-}: {
-  onNewSession: () => void;
-  hasOtherSessions: boolean;
-}) {
+export function EmptyState() {
   return (
     <div className="flex-1 flex items-center justify-center p-4">
-      <div className="text-center space-y-3">
-        <p className="text-sm text-muted">
-          {hasOtherSessions
-            ? "Select a session or create a new one"
-            : "No sessions yet"}
-        </p>
-        <button onClick={onNewSession} className="btn-brutalist">
-          New Session
-        </button>
-      </div>
+      <p className="text-sm text-muted">Send a message to get started</p>
     </div>
   );
 }
