@@ -110,21 +110,12 @@ function MessageTurn({
     });
   }, [assistantParts]);
 
-  // Build chronological list: all parts inline, questions separated
-  const { steps, askUserQuestions } = useMemo(() => {
-    const questions: ToolPart[] = [];
+  // Build chronological list: all parts inline (including questions)
+  const steps = useMemo(() => {
     const chronologicalSteps: (Part | { type: "reasoning-group"; parts: ReasoningPart[] })[] = [];
     let currentReasoningGroup: ReasoningPart[] = [];
 
     dedupedParts.forEach((part) => {
-      if (part.type === "tool") {
-        const toolPart = part as ToolPart;
-        if (toolPart.tool.toLowerCase() === "question" || toolPart.tool.toLowerCase() === "askuserquestion") {
-          questions.push(toolPart);
-          return;
-        }
-      }
-
       if (part.type === "reasoning") {
         currentReasoningGroup.push(part as ReasoningPart);
       } else {
@@ -140,7 +131,7 @@ function MessageTurn({
       chronologicalSteps.push({ type: "reasoning-group", parts: [...currentReasoningGroup] });
     }
 
-    return { steps: chronologicalSteps, askUserQuestions: questions };
+    return chronologicalSteps;
   }, [dedupedParts]);
 
   // Update timer for in-progress messages
@@ -203,9 +194,14 @@ function MessageTurn({
 
             const p = step as Part;
 
-            // Tool Part
+            // AskUserQuestion — render inline at its chronological position
             if (p.type === "tool") {
-              return <ToolDisplay key={p.id} part={p as ToolPart} onFileClick={onFileClick} />;
+              const toolPart = p as ToolPart;
+              const toolName = toolPart.tool.toLowerCase();
+              if (toolName === "question" || toolName === "askuserquestion") {
+                return <AskUserQuestionDisplay key={p.id} part={toolPart} onAnswer={onAnswer} />;
+              }
+              return <ToolDisplay key={p.id} part={toolPart} onFileClick={onFileClick} />;
             }
 
             // Text Part — rendered as markdown
@@ -222,19 +218,6 @@ function MessageTurn({
 
             return null;
           })}
-        </div>
-      )}
-
-      {/* AskUserQuestion — interactive question UI */}
-      {askUserQuestions.length > 0 && (
-        <div className="space-y-3">
-          {askUserQuestions.map((part) => (
-            <AskUserQuestionDisplay
-              key={part.id}
-              part={part}
-              onAnswer={onAnswer}
-            />
-          ))}
         </div>
       )}
     </div>
