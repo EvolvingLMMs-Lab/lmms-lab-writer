@@ -18,6 +18,15 @@ export const extname = tauriExtname;
 export const sep = tauriSep;
 
 /**
+ * Detect the path separator used in a path string
+ */
+function detectSeparator(path: string): string {
+  // If path contains backslash, it's likely Windows
+  if (path.includes("\\")) return "\\";
+  return "/";
+}
+
+/**
  * Synchronous path utilities for use in render functions where async is not possible.
  * These work correctly on both Windows and Unix by handling both separators.
  */
@@ -34,12 +43,16 @@ export const pathSync = {
 
   /**
    * Get the parent directory path (synchronous)
+   * Preserves the original path separator style
    */
   dirname(path: string): string {
+    const sep = detectSeparator(path);
     const normalized = path.replace(/\\/g, "/");
     const lastSlash = normalized.lastIndexOf("/");
     if (lastSlash <= 0) return "";
-    return normalized.substring(0, lastSlash);
+    const result = normalized.substring(0, lastSlash);
+    // Restore original separator if needed
+    return sep === "\\" ? result.replace(/\//g, "\\") : result;
   },
 
   /**
@@ -53,13 +66,21 @@ export const pathSync = {
 
   /**
    * Join path segments (synchronous)
-   * Uses forward slashes; use normalize() for OS-specific format
+   * Preserves the separator style of the first path segment
    */
   join(...parts: string[]): string {
-    return parts
+    if (parts.length === 0) return "";
+    const firstPart = parts[0] || "";
+    const sep = detectSeparator(firstPart);
+
+    // Normalize all parts to forward slashes for joining
+    const joined = parts
       .map((p) => p.replace(/\\/g, "/"))
       .join("/")
       .replace(/\/+/g, "/");
+
+    // Convert back to original separator if needed
+    return sep === "\\" ? joined.replace(/\//g, "\\") : joined;
   },
 
   /**
@@ -71,13 +92,16 @@ export const pathSync = {
 
   /**
    * Get all ancestor paths for a given path
+   * Preserves the original path separator style
    */
   ancestors(path: string): string[] {
+    const sep = detectSeparator(path);
     const normalized = path.replace(/\\/g, "/");
     const parts = normalized.split("/").filter(Boolean);
     const ancestors: string[] = [];
     for (let i = 1; i < parts.length; i++) {
-      ancestors.push(parts.slice(0, i).join("/"));
+      const ancestorPath = parts.slice(0, i).join("/");
+      ancestors.push(sep === "\\" ? ancestorPath.replace(/\//g, "\\") : ancestorPath);
     }
     return ancestors;
   },
