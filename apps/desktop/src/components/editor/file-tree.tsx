@@ -11,7 +11,7 @@ import {
   useContext,
 } from "react";
 import { Tree } from "react-arborist";
-import type { NodeRendererProps, TreeApi } from "react-arborist";
+import type { NodeRendererProps, TreeApi, MoveHandler } from "react-arborist";
 import { motion } from "framer-motion";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { Command } from "@tauri-apps/plugin-shell";
@@ -351,6 +351,7 @@ const FileTreeContext = createContext<FileTreeContextValue>({});
 function NodeRenderer({
   node,
   style,
+  dragHandle,
 }: NodeRendererProps<ArboristFileNode>) {
   const { selectedFile, highlightedFile, onContextMenu, onFileSelect } =
     useContext(FileTreeContext);
@@ -393,7 +394,7 @@ function NodeRenderer({
   );
 
   return (
-    <div style={style}>
+    <div style={style} ref={dragHandle}>
       <motion.button
         onClick={handleClick}
         onContextMenu={handleContextMenu}
@@ -548,6 +549,44 @@ export const FileTree = memo(function FileTree({
   const closeDialog = useCallback(() => {
     setDialog(null);
   }, []);
+
+  // Handle drag and drop move
+  const handleMove: MoveHandler<ArboristFileNode> = useCallback(
+    async ({ dragIds, parentId, index }) => {
+      if (!fileOperations) return;
+
+      for (const dragId of dragIds) {
+        const draggedNode = nodeMap.get(dragId);
+        if (!draggedNode) continue;
+
+        // Calculate new path
+        const fileName = draggedNode.name;
+        const newParentPath = parentId || ""; // Empty string means root
+        const newPath = newParentPath ? `${newParentPath}/${fileName}` : fileName;
+
+        // Skip if moving to the same location
+        if (draggedNode.path === newPath) continue;
+
+        // Check if target already exists
+        const targetExists = nodeMap.has(newPath);
+        if (targetExists) {
+          const confirmed = await ask(
+            `A file or folder named "${fileName}" already exists in this location. Do you want to replace it?`,
+            { title: "Confirm Replace", kind: "warning" },
+          );
+          if (!confirmed) continue;
+        }
+
+        try {
+          await fileOperations.renamePath(draggedNode.path, newPath);
+        } catch (error) {
+          console.error("Failed to move:", error);
+          alert(`Failed to move "${fileName}": ${error}`);
+        }
+      }
+    },
+    [fileOperations, nodeMap],
+  );
 
   // Handle right-click on empty area
   const handleRootContextMenu = useCallback(
@@ -952,10 +991,11 @@ export const FileTree = memo(function FileTree({
               rowHeight={28}
               indent={12}
               openByDefault={true}
-              disableDrag={true}
-              disableDrop={true}
+              disableDrag={!fileOperations}
+              disableDrop={!fileOperations}
               disableEdit={true}
               disableMultiSelection={true}
+              onMove={handleMove}
             >
               {NodeRenderer}
             </Tree>

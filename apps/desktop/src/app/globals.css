@@ -602,3 +602,52 @@ kbd {
     transform: none;
   }
 }
+
+/* File tree drag and drop styles */
+[data-react-arborist-dragging="true"] {
+  opacity: 0.5;
+}
+
+[data-react-arborist-drop-target="true"] {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+  outline: 2px dashed rgba(0, 0, 0, 0.3);
+  outline-offset: -2px;
+}
+
+[data-react-arborist-drop-target="true"][data-react-arborist-drop-position="inside"] {
+  background-color: rgba(0, 0, 0, 0.12) !important;
+  outline: 2px solid rgba(0, 0, 0, 0.4);
+}
+
+/* Drop indicator line for reordering */
+[data-react-arborist-drop-target="true"][data-react-arborist-drop-position="before"]::before,
+[data-react-arborist-drop-target="true"][data-react-arborist-drop-position="after"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #000;
+  pointer-events: none;
+}
+
+[data-react-arborist-drop-target="true"][data-react-arborist-drop-position="before"]::before {
+  top: 0;
+}
+
+[data-react-arborist-drop-target="true"][data-react-arborist-drop-position="after"]::after {
+  bottom: 0;
+}
+
+/* Dragging cursor */
+[role="tree"][data-dragging="true"] {
+  cursor: grabbing;
+}
+
+[role="treeitem"] {
+  cursor: grab;
+}
+
+[role="treeitem"]:active {
+  cursor: grabbing;
+}
