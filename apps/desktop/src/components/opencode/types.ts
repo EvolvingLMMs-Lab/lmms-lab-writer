@@ -13,8 +13,14 @@ export type Props = {
   onPendingMessageSent?: () => void;
   // Callbacks for AI edit accept/reject functionality
   onCaptureFileContent?: (toolPartId: string, filePath: string) => void;
-  onEditCompleted?: (toolPartId: string, filePath: string, afterContent: string) => void;
+  onEditCompleted?: (toolPartId: string, filePath: string, afterContent: string, messageId?: string) => void;
   onReviewEdit?: (editId: string, filePath: string) => void;
+  // Callback when AI turn completes (goes from running/busy to idle)
+  onTurnComplete?: (pendingEditCount: number) => void;
+  // Count of pending edits for the current turn
+  pendingEditCount?: number;
+  // Callback to open the changes review panel
+  onOpenChangesReview?: () => void;
 };
 
 export type TaskItem = {

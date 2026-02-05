@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, memo, useCallback } from "react";
+import { useRef, memo, useCallback, useEffect } from "react";
 import { DiffEditor, Monaco, DiffOnMount } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 
@@ -83,6 +83,7 @@ export const MonacoDiffEditor = memo(function MonacoDiffEditor({
   className = "",
 }: Props) {
   const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
+  const isDisposingRef = useRef(false);
 
   const detectedLanguage = language || (filePath ? getLanguageFromPath(filePath) : "plaintext");
 
@@ -92,6 +93,43 @@ export const MonacoDiffEditor = memo(function MonacoDiffEditor({
 
   const handleEditorDidMount: DiffOnMount = useCallback((editor) => {
     editorRef.current = editor;
+    isDisposingRef.current = false;
+  }, []);
+
+  // Cleanup effect to properly dispose the editor before unmount
+  useEffect(() => {
+    return () => {
+      if (editorRef.current && !isDisposingRef.current) {
+        isDisposingRef.current = true;
+        try {
+          // Get the models before disposing
+          const originalModel = editorRef.current.getModel()?.original;
+          const modifiedModel = editorRef.current.getModel()?.modified;
+
+          // Dispose the editor first (this should reset the widget)
+          editorRef.current.dispose();
+
+          // Then dispose the models if they exist and aren't already disposed
+          try {
+            if (originalModel && !originalModel.isDisposed()) {
+              originalModel.dispose();
+            }
+          } catch {
+            // Ignore errors during model disposal
+          }
+          try {
+            if (modifiedModel && !modifiedModel.isDisposed()) {
+              modifiedModel.dispose();
+            }
+          } catch {
+            // Ignore errors during model disposal
+          }
+        } catch {
+          // Silently ignore disposal errors
+        }
+        editorRef.current = null;
+      }
+    };
   }, []);
 
   return (

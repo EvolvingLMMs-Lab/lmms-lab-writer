@@ -18,6 +18,7 @@ export type PendingEdit = {
   deletions: number
   timestamp: number
   toolPartId: string
+  messageId?: string  // The assistant message ID that generated this edit (for grouping by turn)
   status: 'pending' | 'accepted' | 'rejected'
 }
 

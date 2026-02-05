@@ -26,6 +26,9 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   onCaptureFileContent,
   onEditCompleted,
   onReviewEdit,
+  onTurnComplete,
+  pendingEditCount = 0,
+  onOpenChangesReview,
 }: Props) {
   const opencode = useOpenCode({ baseUrl, directory, autoConnect });
   const [input, setInput] = useState("");
@@ -77,6 +80,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   // Track tool states for accept/reject functionality
   const processedToolsRef = useRef<Set<string>>(new Set());
   const runningToolsRef = useRef<Map<string, string>>(new Map()); // toolId -> filePath
+  const previousStatusRef = useRef<string>("idle");
 
   useEffect(() => {
     if (!onCaptureFileContent && !onEditCompleted) return;
@@ -93,6 +97,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
         if (toolName !== "write" && toolName !== "edit") return;
 
         const toolId = toolPart.id;
+        const messageId = toolPart.messageID;
         const filePath =
           (toolPart.state.input.filePath as string) ||
           (toolPart.state.input.file_path as string);
@@ -118,11 +123,30 @@ export const OpenCodePanel = memo(function OpenCodePanel({
           // For now, we'll read the file content in the parent component
           // since we need access to the daemon
           const afterContent = (toolPart.state as { output?: string }).output || "";
-          onEditCompleted?.(toolId, filePath, afterContent);
+          onEditCompleted?.(toolId, filePath, afterContent, messageId);
         }
       });
     });
   }, [opencode.parts, onCaptureFileContent, onEditCompleted]);
+
+  // Detect when turn completes (status changes from running/busy to idle)
+  useEffect(() => {
+    const prevStatus = previousStatusRef.current;
+    const currentStatus = opencode.status.type;
+
+    if (
+      (prevStatus === "running" || prevStatus === "busy") &&
+      currentStatus === "idle" &&
+      onTurnComplete
+    ) {
+      // Small delay to ensure all edits are processed
+      setTimeout(() => {
+        onTurnComplete(pendingEditCount);
+      }, 100);
+    }
+
+    previousStatusRef.current = currentStatus;
+  }, [opencode.status.type, onTurnComplete, pendingEditCount]);
 
   // Handle pending message from external source
   useEffect(() => {
@@ -304,13 +328,25 @@ export const OpenCodePanel = memo(function OpenCodePanel({
             </div>
           </div>
         </div>
-        <button
-          onClick={handleNewSession}
-          className="flex-shrink-0 text-neutral-400 hover:text-neutral-600 transition-colors"
-          title="New Chat"
-        >
-          <PlusIcon className="size-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {pendingEditCount > 0 && onOpenChangesReview && (
+            <button
+              onClick={onOpenChangesReview}
+              className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-mono bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition-colors"
+              title="Review all pending changes"
+            >
+              <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+              Review {pendingEditCount} changes
+            </button>
+          )}
+          <button
+            onClick={handleNewSession}
+            className="flex-shrink-0 text-neutral-400 hover:text-neutral-600 transition-colors"
+            title="New Chat"
+          >
+            <PlusIcon className="size-5" />
+          </button>
+        </div>
       </div>
 
       {/* Collapsible tasks bar */}

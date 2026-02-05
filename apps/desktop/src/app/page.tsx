@@ -27,6 +27,7 @@ import {
   MainFileSelectionDialog,
 } from "@/components/latex";
 import { InlineDiffReview } from "@/components/editor/inline-diff-review";
+import { ChangesReviewPanel } from "@/components/editor/changes-review-panel";
 import type { MainFileDetectionResult } from "@/lib/latex/types";
 import type { PendingEdit } from "@/lib/opencode/types";
 
@@ -160,6 +161,29 @@ export default function EditorPage() {
     () => new Map()
   );
   const fileContentCacheRef = useRef<Map<string, string>>(new Map());
+  const [showChangesReview, setShowChangesReview] = useState(false);
+
+  // Count of pending edits
+  const pendingEditCount = useMemo(() => {
+    let count = 0;
+    for (const edit of pendingEdits.values()) {
+      if (edit.status === "pending") {
+        count++;
+      }
+    }
+    return count;
+  }, [pendingEdits]);
+
+  // Get all edits for the review panel (sorted by timestamp, pending first)
+  const pendingEditsArray = useMemo(() => {
+    return Array.from(pendingEdits.values()).sort((a, b) => {
+      // Pending edits first
+      if (a.status === "pending" && b.status !== "pending") return -1;
+      if (a.status !== "pending" && b.status === "pending") return 1;
+      // Then by timestamp
+      return a.timestamp - b.timestamp;
+    });
+  }, [pendingEdits]);
 
   // Find pending edit for the currently selected file (most recent one)
   const pendingEditForCurrentFile = useMemo(() => {
@@ -842,7 +866,7 @@ The AI assistant will read and update this file during compilation.
 
   // Handle when AI edit completes
   const handleEditCompleted = useCallback(
-    async (toolPartId: string, filePath: string, _toolOutput: string) => {
+    async (toolPartId: string, filePath: string, _toolOutput: string, messageId?: string) => {
       const beforeContent = fileContentCacheRef.current.get(toolPartId) || "";
 
       // Read the actual file content after the edit
@@ -875,6 +899,7 @@ The AI assistant will read and update this file during compilation.
         deletions: Math.max(0, beforeLines - afterLines),
         timestamp: Date.now(),
         toolPartId,
+        messageId,
         status: "pending",
       };
 
@@ -1009,6 +1034,76 @@ The AI assistant will read and update this file during compilation.
     },
     [pendingEdits, daemon, toast]
   );
+
+  // Accept all pending edits
+  const handleAcceptAll = useCallback(() => {
+    setPendingEdits((prev) => {
+      const next = new Map(prev);
+      for (const [id, edit] of next.entries()) {
+        if (edit.status === "pending") {
+          next.set(id, { ...edit, status: "accepted" });
+          // Update editor if this file is currently open
+          if (selectedFile === edit.filePath) {
+            setFileContent(edit.after);
+          }
+        }
+      }
+      return next;
+    });
+    setShowChangesReview(false);
+    toast("All changes accepted", "success");
+  }, [selectedFile, toast]);
+
+  // Reject all pending edits
+  const handleRejectAll = useCallback(async () => {
+    const pendingToReject = Array.from(pendingEdits.values()).filter(
+      (edit) => edit.status === "pending"
+    );
+
+    // Revert all files
+    for (const edit of pendingToReject) {
+      try {
+        await daemon.writeFile(edit.filePath, edit.before);
+        // Update editor if this file is currently open
+        if (selectedFile === edit.filePath) {
+          setFileContent(edit.before);
+        }
+      } catch {
+        toast(`Failed to restore ${edit.filePath}`, "error");
+      }
+    }
+
+    // Update status of all rejected edits
+    setPendingEdits((prev) => {
+      const next = new Map(prev);
+      for (const [id, edit] of next.entries()) {
+        if (edit.status === "pending") {
+          next.set(id, { ...edit, status: "rejected" });
+        }
+      }
+      return next;
+    });
+    setShowChangesReview(false);
+    toast("All changes reverted", "success");
+  }, [pendingEdits, daemon, selectedFile, toast]);
+
+  // Handle when AI turn completes
+  const handleTurnComplete = useCallback((editCount: number) => {
+    if (editCount > 0) {
+      // Automatically open changes review when turn completes with edits
+      setShowChangesReview(true);
+    }
+  }, []);
+
+  // Open the changes review panel
+  const handleOpenChangesReview = useCallback(() => {
+    setShowChangesReview(true);
+  }, []);
+
+  // Close the changes review panel
+  const handleCloseChangesReview = useCallback(() => {
+    setShowChangesReview(false);
+  }, []);
 
   const handleOpenFolder = useCallback(async () => {
     try {
@@ -1766,7 +1861,25 @@ The AI assistant will read and update this file during compilation.
               })}
             </div>
           )}
-          {daemon.projectPath && selectedFile ? (
+          {showChangesReview && pendingEditsArray.length > 0 ? (
+            <motion.div
+              key="changes-review"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="flex-1 min-h-0"
+            >
+              <ChangesReviewPanel
+                edits={pendingEditsArray}
+                onAccept={handleAcceptEdit}
+                onReject={handleRejectEdit}
+                onAcceptAll={handleAcceptAll}
+                onRejectAll={handleRejectAll}
+                onDismiss={handleCloseChangesReview}
+                className="h-full"
+              />
+            </motion.div>
+          ) : daemon.projectPath && selectedFile ? (
             binaryPreviewUrl ? (
               <div className="flex-1 flex flex-col bg-neutral-50 overflow-hidden">
                 {getFileType(selectedFile) === "pdf" && (
@@ -1950,6 +2063,9 @@ The AI assistant will read and update this file during compilation.
                     onCaptureFileContent={handleCaptureFileContent}
                     onEditCompleted={handleEditCompleted}
                     onReviewEdit={handleReviewEdit}
+                    onTurnComplete={handleTurnComplete}
+                    pendingEditCount={pendingEditCount}
+                    onOpenChangesReview={handleOpenChangesReview}
                   />
                 </OpenCodeErrorBoundary>
               </aside>
