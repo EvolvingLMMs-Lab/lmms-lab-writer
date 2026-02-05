@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, Check, Loader2, Copy, ExternalLink } from "lucide-react";
+import {
+  ArrowSquareOut,
+  Check,
+  CircleNotch,
+  Copy,
+  X,
+} from "@phosphor-icons/react";
 import { getSupabaseClient } from "@/lib/supabase";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
@@ -351,7 +357,7 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
                   className="p-1 text-muted hover:text-black hover:bg-neutral-200 transition-colors"
                   title="Open in browser"
                 >
-                  <ExternalLink className="w-3.5 h-3.5" />
+                  <ArrowSquareOut className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -407,7 +413,7 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
                 </>
               ) : isLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <CircleNotch className="w-4 h-4 animate-spin" />
                   Logging in...
                 </>
               ) : (

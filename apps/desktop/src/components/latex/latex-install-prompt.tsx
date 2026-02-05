@@ -4,6 +4,7 @@ import { useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLatexInstaller } from "@/lib/latex";
 import { Spinner } from "@/components/ui/spinner";
+import { ArrowClockwise, Warning } from "@phosphor-icons/react";
 
 interface LaTeXInstallPromptProps {
   onRefreshCompilers?: () => void;
@@ -42,19 +43,7 @@ export function LaTeXInstallPrompt({ onRefreshCompilers }: LaTeXInstallPromptPro
     <div className="bg-amber-50 border-2 border-amber-400 p-4">
       <div className="flex items-start gap-3">
         {/* Warning Icon */}
-        <svg
-          className="size-6 text-amber-600 flex-shrink-0 mt-0.5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-          />
-        </svg>
+        <Warning className="size-6 text-amber-600 flex-shrink-0 mt-0.5" />
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
@@ -70,19 +59,7 @@ export function LaTeXInstallPrompt({ onRefreshCompilers }: LaTeXInstallPromptPro
                 className="flex-shrink-0 p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-100 rounded transition-colors"
                 title="Refresh compiler detection"
               >
-                <svg
-                  className="size-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
+                <ArrowClockwise className="size-4" />
               </button>
             )}
           </div>

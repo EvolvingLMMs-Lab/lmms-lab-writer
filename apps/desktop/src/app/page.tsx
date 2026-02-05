@@ -33,6 +33,16 @@ import { useRecentProjects } from "@/lib/recent-projects";
 import { pathSync } from "@/lib/path";
 import type { MainFileDetectionResult } from "@/lib/latex/types";
 import type { PendingEdit } from "@/lib/opencode/types";
+import {
+  ArrowClockwise,
+  FilePlus,
+  Folder,
+  FolderPlus,
+  Gear,
+  GitBranch,
+  PlayCircle,
+  X,
+} from "@phosphor-icons/react";
 
 function throttle<T extends (...args: Parameters<T>) => void>(
   fn: T,
@@ -1322,25 +1332,7 @@ The AI assistant will read and update this file during compilation.
                     }`}
                     title="Compile (Ctrl+Shift+B)"
                   >
-                    <svg
-                      className="size-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
+                    <PlayCircle className="size-4" />
                   </button>
 
                   <button
@@ -1349,25 +1341,7 @@ The AI assistant will read and update this file during compilation.
                     title="LaTeX Settings"
                     aria-label="LaTeX Settings"
                   >
-                    <svg
-                      className="size-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
+                    <Gear className="size-4" />
                   </button>
                 </div>
               </>
@@ -1472,19 +1446,7 @@ The AI assistant will read and update this file during compilation.
                               title="New File"
                               aria-label="New File"
                             >
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={1.5}
-                                  d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                />
-                              </svg>
+                              <FilePlus className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() =>
@@ -1494,19 +1456,7 @@ The AI assistant will read and update this file during compilation.
                               title="New Folder"
                               aria-label="New Folder"
                             >
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={1.5}
-                                  d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
-                                />
-                              </svg>
+                              <FolderPlus className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => daemon.refreshFiles()}
@@ -1514,19 +1464,7 @@ The AI assistant will read and update this file during compilation.
                               title="Refresh Files"
                               aria-label="Refresh Files"
                             >
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={1.5}
-                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                />
-                              </svg>
+                              <ArrowClockwise className="w-4 h-4" />
                             </button>
                           </div>
                         </div>
@@ -1550,19 +1488,7 @@ The AI assistant will read and update this file during compilation.
                       </>
                     ) : (
                       <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
-                        <svg
-                          className="w-8 h-8 mb-2 opacity-30"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="square"
-                            strokeLinejoin="miter"
-                            strokeWidth={1.5}
-                            d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                          />
-                        </svg>
+                        <Folder className="w-8 h-8 mb-2 opacity-30" />
                         <p className="text-xs">No folder open</p>
                       </div>
                     )}
@@ -1573,36 +1499,12 @@ The AI assistant will read and update this file during compilation.
                   <div className="flex-1 flex flex-col overflow-hidden">
                     {!daemon.projectPath ? (
                       <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
-                        <svg
-                          className="w-8 h-8 mb-2 opacity-30"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="square"
-                            strokeLinejoin="miter"
-                            strokeWidth={1.5}
-                            d="M6 3v12M18 9a3 3 0 100-6 3 3 0 000 6zM6 21a3 3 0 100-6 3 3 0 000 6zM18 9a9 9 0 01-9 9"
-                          />
-                        </svg>
+                        <GitBranch className="w-8 h-8 mb-2 opacity-30" />
                         <p className="text-xs">No folder open</p>
                       </div>
                     ) : !gitStatus?.isRepo ? (
                       <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
-                        <svg
-                          className="w-8 h-8 mb-2 opacity-30"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="square"
-                            strokeLinejoin="miter"
-                            strokeWidth={1.5}
-                            d="M6 3v12M18 9a3 3 0 100-6 3 3 0 000 6zM6 21a3 3 0 100-6 3 3 0 000 6zM18 9a9 9 0 01-9 9"
-                          />
-                        </svg>
+                        <GitBranch className="w-8 h-8 mb-2 opacity-30" />
                         <p className="text-xs mb-3">Not a git repository</p>
                         <button
                           onClick={() => daemon.gitInit()}
@@ -1626,19 +1528,7 @@ The AI assistant will read and update this file during compilation.
                               className="text-muted hover:text-black"
                               aria-label="Refresh git status"
                             >
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={1.5}
-                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                />
-                              </svg>
+                              <ArrowClockwise className="w-4 h-4" />
                             </button>
                           </div>
                           {!gitStatus.remote && (
@@ -1892,19 +1782,7 @@ The AI assistant will read and update this file during compilation.
                       }`}
                       aria-label="Close tab"
                     >
-                      <svg
-                        className="w-3 h-3"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
+                      <X className="w-3 h-3" />
                     </button>
                   </div>
                 );
@@ -1939,19 +1817,7 @@ The AI assistant will read and update this file during compilation.
                       className="flex items-center gap-1.5 px-2 py-1 text-xs text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200 rounded transition-colors"
                       title="Refresh PDF"
                     >
-                      <svg
-                        className="w-3.5 h-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                        />
-                      </svg>
+                      <ArrowClockwise className="w-3.5 h-3.5" />
                       Refresh
                     </button>
                   </div>

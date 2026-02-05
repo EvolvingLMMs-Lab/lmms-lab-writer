@@ -3,6 +3,13 @@
 import { useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  ArrowCounterClockwise,
+  Check,
+  Minus,
+  Plus,
+  X,
+} from "@phosphor-icons/react";
+import {
   LaTeXSettings,
   DEFAULT_LATEX_SETTINGS,
 } from "@/lib/latex/types";
@@ -55,21 +62,7 @@ function CheckboxItem({
             : "border-neutral-300 group-hover:border-black"
         }`}
       >
-        {checked && (
-          <svg
-            className="size-3 text-white"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="square"
-              strokeLinejoin="miter"
-              strokeWidth={3}
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
-        )}
+        {checked && <Check className="size-3 text-white" weight="bold" />}
       </div>
       <input
         type="checkbox"
@@ -194,19 +187,7 @@ export function LaTeXSettingsDialog({
                   className="p-1.5 hover:bg-neutral-100 transition-colors border border-transparent hover:border-neutral-200"
                   aria-label="Close"
                 >
-                  <svg
-                    className="size-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="square"
-                      strokeLinejoin="miter"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
+                  <X className="size-4" />
                 </button>
               </div>
 
@@ -295,19 +276,7 @@ export function LaTeXSettingsDialog({
                                 </span>
                               </div>
                               {isSelected && (
-                                <svg
-                                  className="size-4 flex-shrink-0 text-black"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M5 13l4 4L19 7"
-                                  />
-                                </svg>
+                                <Check className="size-4 flex-shrink-0 text-black" />
                               )}
                             </button>
                           );
@@ -334,18 +303,7 @@ export function LaTeXSettingsDialog({
                           className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-r border-neutral-200"
                           aria-label="Decrease font size"
                         >
-                          <svg
-                            className="size-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="square"
-                              strokeWidth={2}
-                              d="M20 12H4"
-                            />
-                          </svg>
+                          <Minus className="size-3" />
                         </button>
                         <input
                           type="number"
@@ -374,18 +332,7 @@ export function LaTeXSettingsDialog({
                           className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-l border-neutral-200"
                           aria-label="Increase font size"
                         >
-                          <svg
-                            className="size-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="square"
-                              strokeWidth={2}
-                              d="M12 4v16m8-8H4"
-                            />
-                          </svg>
+                          <Plus className="size-3" />
                         </button>
                         <span className="text-xs text-neutral-400 px-2 border-l border-neutral-200">
                           px
@@ -412,18 +359,7 @@ export function LaTeXSettingsDialog({
                           className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-r border-neutral-200"
                           aria-label="Decrease line height"
                         >
-                          <svg
-                            className="size-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="square"
-                              strokeWidth={2}
-                              d="M20 12H4"
-                            />
-                          </svg>
+                          <Minus className="size-3" />
                         </button>
                         <input
                           type="number"
@@ -458,18 +394,7 @@ export function LaTeXSettingsDialog({
                           className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-l border-neutral-200"
                           aria-label="Increase line height"
                         >
-                          <svg
-                            className="size-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="square"
-                              strokeWidth={2}
-                              d="M12 4v16m8-8H4"
-                            />
-                          </svg>
+                          <Plus className="size-3" />
                         </button>
                       </div>
                     </div>
@@ -880,19 +805,7 @@ export function LaTeXSettingsDialog({
                   }
                   className="text-xs text-neutral-500 hover:text-black transition-colors flex items-center gap-1.5 group"
                 >
-                  <svg
-                    className="size-3.5 group-hover:rotate-[-45deg] transition-transform"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="square"
-                      strokeLinejoin="miter"
-                      strokeWidth={2}
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
+                  <ArrowCounterClockwise className="size-3.5 group-hover:rotate-[-45deg] transition-transform" />
                   Reset to Defaults
                 </button>
                 <button

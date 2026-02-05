@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ArrowRight, CaretDown, CaretRight } from "@phosphor-icons/react";
 import { useAuth, type UserProfile } from "@/lib/auth";
 
 type Props = {
@@ -84,19 +85,9 @@ export function UserDropdown({ profile }: Props) {
             </span>
           </div>
         )}
-        <svg
+        <CaretDown
           className={`size-4 text-muted transition-transform ${isOpen ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
+        />
       </button>
 
       {isOpen && (
@@ -126,17 +117,7 @@ export function UserDropdown({ profile }: Props) {
               {name && <p className="font-medium truncate">{name}</p>}
               <p className="text-sm text-muted truncate">{email}</p>
             </div>
-            <svg
-              className="size-4 text-muted group-hover:text-black transition-colors flex-shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M9 18l6-6-6-6" />
-            </svg>
+            <CaretRight className="size-4 text-muted group-hover:text-black transition-colors flex-shrink-0" />
           </button>
 
           <div className="px-5 py-4 border-b border-border bg-neutral-50">
@@ -169,17 +150,7 @@ export function UserDropdown({ profile }: Props) {
                 </span>
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-muted group-hover:text-black transition-colors">
                   Unlock
-                  <svg
-                    className="size-3"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2.5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
+                  <ArrowRight className="size-3" weight="bold" />
                 </span>
               </button>
             )}

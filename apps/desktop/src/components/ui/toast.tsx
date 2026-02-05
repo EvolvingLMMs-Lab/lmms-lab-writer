@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Check, Info, X } from "@phosphor-icons/react";
 
 type ToastType = "success" | "error" | "info";
 
@@ -81,20 +82,7 @@ function ToastItem({
           className="flex-shrink-0 text-black hover:opacity-60 transition-opacity"
           aria-label="Dismiss"
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 14 14"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M1 1L13 13M1 13L13 1"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="square"
-            />
-          </svg>
+          <X className="w-3.5 h-3.5" />
         </button>
       </div>
     </motion.div>
@@ -104,58 +92,11 @@ function ToastItem({
 function getIcon(type: ToastType) {
   switch (type) {
     case "success":
-      return (
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 18 18"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M3 9L7 13L15 5"
-            stroke="black"
-            strokeWidth="2"
-            strokeLinecap="square"
-            strokeLinejoin="miter"
-          />
-        </svg>
-      );
+      return <Check size={18} className="text-black" />;
     case "error":
-      return (
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 18 18"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M4 4L14 14M4 14L14 4"
-            stroke="black"
-            strokeWidth="2"
-            strokeLinecap="square"
-          />
-        </svg>
-      );
+      return <X size={18} className="text-black" />;
     case "info":
-      return (
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 18 18"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <circle cx="9" cy="9" r="8" stroke="black" strokeWidth="2" />
-          <path
-            d="M9 5V6M9 8V13"
-            stroke="black"
-            strokeWidth="2"
-            strokeLinecap="square"
-          />
-        </svg>
-      );
+      return <Info size={18} className="text-black" />;
   }
 }
 

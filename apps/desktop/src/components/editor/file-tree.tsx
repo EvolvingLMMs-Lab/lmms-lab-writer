@@ -56,27 +56,29 @@ import type { FileNode } from "@lmms-lab/writer-shared";
 import { ContextMenu, type ContextMenuItem } from "../ui/context-menu";
 import { InputDialog } from "../ui/input-dialog";
 import {
+  Archive,
+  ArrowClockwise,
+  ArrowSquareOut,
+  BookOpenText,
+  BracketsCurly,
+  CaretRight,
+  Cube,
   File,
-  FileText,
   FileCode,
-  FileJson,
-  FileImage,
-  FileArchive,
-  FileVideo,
-  FileAudio,
-  FileSpreadsheet,
-  FileCog,
-  FilePen,
-  FileOutput,
-  FileBox,
-  FileTerminal,
+  FilePlus,
+  FileText,
   Folder,
   FolderOpen,
-  Library,
-  LayoutTemplate,
-  Blocks,
-  type LucideIcon,
-} from "lucide-react";
+  FolderPlus,
+  Gear,
+  Image,
+  MusicNote,
+  PencilLine,
+  Table,
+  Terminal,
+  Trash,
+  VideoCamera,
+} from "@phosphor-icons/react";
 
 export interface FileOperations {
   createFile: (path: string) => Promise<void>;
@@ -115,25 +117,27 @@ function getFileExtension(filename: string): string {
 }
 
 // Map file extensions to icons
-const FILE_ICON_MAP: Record<string, LucideIcon> = {
+type IconType = React.ComponentType<{ className?: string; size?: number }>;
+
+const FILE_ICON_MAP: Record<string, IconType> = {
   // LaTeX source files
-  ".tex": FilePen,
-  ".ltx": FilePen,
+  ".tex": FileText,
+  ".ltx": FileText,
   // LaTeX bibliography
-  ".bib": Library,
+  ".bib": BookOpenText,
   // LaTeX document class (template)
-  ".cls": LayoutTemplate,
+  ".cls": Cube,
   // LaTeX style packages
-  ".sty": Blocks,
+  ".sty": Cube,
   // LaTeX package source
-  ".dtx": FileBox,
-  ".ins": FileBox,
+  ".dtx": Cube,
+  ".ins": Cube,
   // LaTeX output
-  ".pdf": FileOutput,
-  ".dvi": FileOutput,
-  ".ps": FileOutput,
+  ".pdf": File,
+  ".dvi": File,
+  ".ps": File,
   // LaTeX config
-  ".latexmkrc": FileCog,
+  ".latexmkrc": Gear,
   // Documents
   ".doc": FileText,
   ".docx": FileText,
@@ -172,64 +176,64 @@ const FILE_ICON_MAP: Record<string, LucideIcon> = {
   ".vue": FileCode,
   ".svelte": FileCode,
   // Shell/Scripts
-  ".sh": FileTerminal,
-  ".bash": FileTerminal,
-  ".zsh": FileTerminal,
-  ".fish": FileTerminal,
-  ".ps1": FileTerminal,
-  ".bat": FileTerminal,
-  ".cmd": FileTerminal,
+  ".sh": Terminal,
+  ".bash": Terminal,
+  ".zsh": Terminal,
+  ".fish": Terminal,
+  ".ps1": Terminal,
+  ".bat": Terminal,
+  ".cmd": Terminal,
   // Config/Data
-  ".json": FileJson,
-  ".yaml": FileJson,
-  ".yml": FileJson,
-  ".toml": FileJson,
-  ".xml": FileJson,
-  ".ini": FileCog,
-  ".cfg": FileCog,
-  ".conf": FileCog,
-  ".env": FileCog,
-  ".gitignore": FileCog,
-  ".editorconfig": FileCog,
-  ".prettierrc": FileCog,
-  ".eslintrc": FileCog,
+  ".json": BracketsCurly,
+  ".yaml": BracketsCurly,
+  ".yml": BracketsCurly,
+  ".toml": BracketsCurly,
+  ".xml": BracketsCurly,
+  ".ini": Gear,
+  ".cfg": Gear,
+  ".conf": Gear,
+  ".env": Gear,
+  ".gitignore": Gear,
+  ".editorconfig": Gear,
+  ".prettierrc": Gear,
+  ".eslintrc": Gear,
   // Images
-  ".png": FileImage,
-  ".jpg": FileImage,
-  ".jpeg": FileImage,
-  ".gif": FileImage,
-  ".svg": FileImage,
-  ".webp": FileImage,
-  ".ico": FileImage,
-  ".bmp": FileImage,
-  ".tiff": FileImage,
-  ".tif": FileImage,
-  ".eps": FileImage,
-  ".pgf": FileImage,
-  ".tikz": FileImage,
+  ".png": Image,
+  ".jpg": Image,
+  ".jpeg": Image,
+  ".gif": Image,
+  ".svg": Image,
+  ".webp": Image,
+  ".ico": Image,
+  ".bmp": Image,
+  ".tiff": Image,
+  ".tif": Image,
+  ".eps": Image,
+  ".pgf": Image,
+  ".tikz": Image,
   // Archives
-  ".zip": FileArchive,
-  ".tar": FileArchive,
-  ".gz": FileArchive,
-  ".rar": FileArchive,
-  ".7z": FileArchive,
+  ".zip": Archive,
+  ".tar": Archive,
+  ".gz": Archive,
+  ".rar": Archive,
+  ".7z": Archive,
   // Video
-  ".mp4": FileVideo,
-  ".mkv": FileVideo,
-  ".avi": FileVideo,
-  ".mov": FileVideo,
-  ".webm": FileVideo,
+  ".mp4": VideoCamera,
+  ".mkv": VideoCamera,
+  ".avi": VideoCamera,
+  ".mov": VideoCamera,
+  ".webm": VideoCamera,
   // Audio
-  ".mp3": FileAudio,
-  ".wav": FileAudio,
-  ".flac": FileAudio,
-  ".ogg": FileAudio,
-  ".m4a": FileAudio,
+  ".mp3": MusicNote,
+  ".wav": MusicNote,
+  ".flac": MusicNote,
+  ".ogg": MusicNote,
+  ".m4a": MusicNote,
   // Spreadsheet/Data
-  ".csv": FileSpreadsheet,
-  ".xls": FileSpreadsheet,
-  ".xlsx": FileSpreadsheet,
-  ".tsv": FileSpreadsheet,
+  ".csv": Table,
+  ".xls": Table,
+  ".xlsx": Table,
+  ".tsv": Table,
 };
 
 function FileIcon({
@@ -245,16 +249,16 @@ function FileIcon({
 
   if (type === "directory") {
     return expanded ? (
-      <FolderOpen className={iconClass} />
+      <FolderOpen className={iconClass} size={16} />
     ) : (
-      <Folder className={iconClass} />
+      <Folder className={iconClass} size={16} />
     );
   }
 
   const ext = filename ? getFileExtension(filename) : "";
   const IconComponent = FILE_ICON_MAP[ext] || File;
 
-  return <IconComponent className={iconClass} />;
+  return <IconComponent className={iconClass} size={16} />;
 }
 
 // --- react-arborist data types ---
@@ -387,9 +391,7 @@ function NodeRenderer({
             animate={{ rotate: node.isOpen ? 90 : 0 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
           >
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
+            <CaretRight className="w-3 h-3" weight="fill" />
           </motion.div>
         )}
         {!isDirectory && <span className="w-3" />}
@@ -618,47 +620,20 @@ export const FileTree = memo(function FileTree({
           label: "New File",
           onClick: () =>
             setDialog({ type: "create-file", parentPath: node.path }),
-          icon: (
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-          ),
+          icon: <FilePlus size={16} />,
         });
         items.push({
           label: "New Folder",
           onClick: () =>
             setDialog({ type: "create-directory", parentPath: node.path }),
-          icon: (
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
-              />
-            </svg>
-          ),
+          icon: <FolderPlus size={16} />,
         });
       }
 
       items.push({
         label: "Rename",
         onClick: () => setDialog({ type: "rename", node }),
-        icon: (
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-            />
-          </svg>
-        ),
+        icon: <PencilLine size={16} />,
       });
 
       items.push({
@@ -677,16 +652,7 @@ export const FileTree = memo(function FileTree({
           }
         },
         danger: true,
-        icon: (
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-            />
-          </svg>
-        ),
+        icon: <Trash size={16} />,
       });
 
       if (projectPath) {
@@ -707,16 +673,7 @@ export const FileTree = memo(function FileTree({
               console.error("Failed to reveal in file manager:", error);
             }
           },
-          icon: (
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-              />
-            </svg>
-          ),
+          icon: <ArrowSquareOut size={16} />,
         });
       }
 
@@ -724,16 +681,7 @@ export const FileTree = memo(function FileTree({
         items.push({
           label: "Refresh",
           onClick: onRefresh,
-          icon: (
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-          ),
+          icon: <ArrowClockwise size={16} />,
         });
       }
 
@@ -750,30 +698,12 @@ export const FileTree = memo(function FileTree({
       items.push({
         label: "New File",
         onClick: () => setDialog({ type: "create-file", parentPath: "" }),
-        icon: (
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-        ),
+        icon: <FilePlus size={16} />,
       });
       items.push({
         label: "New Folder",
         onClick: () => setDialog({ type: "create-directory", parentPath: "" }),
-        icon: (
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
-            />
-          </svg>
-        ),
+        icon: <FolderPlus size={16} />,
       });
     }
 
@@ -794,16 +724,7 @@ export const FileTree = memo(function FileTree({
             console.error("Failed to reveal in file manager:", error);
           }
         },
-        icon: (
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-            />
-          </svg>
-        ),
+        icon: <ArrowSquareOut size={16} />,
       });
     }
 
@@ -811,16 +732,7 @@ export const FileTree = memo(function FileTree({
       items.push({
         label: "Refresh",
         onClick: onRefresh,
-        icon: (
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-        ),
+        icon: <ArrowClockwise size={16} />,
       });
     }
 
