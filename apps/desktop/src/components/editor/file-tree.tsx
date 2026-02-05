@@ -19,6 +19,15 @@ import { platform } from "@tauri-apps/plugin-os";
 import { normalize } from "@tauri-apps/api/path";
 import { pathSync } from "@/lib/path";
 
+async function runCommand(cmd: string, args: string[]): Promise<boolean> {
+  try {
+    const result = await Command.create(cmd, args).execute();
+    return result.code === 0;
+  } catch {
+    return false;
+  }
+}
+
 // Reveal file/folder in system file manager
 async function revealInFileManager(path: string): Promise<void> {
   const os = platform();
@@ -26,14 +35,21 @@ async function revealInFileManager(path: string): Promise<void> {
 
   if (os === "macos") {
     // macOS: open -R reveals the item in Finder
-    await Command.create("open", ["-R", normalizedPath]).execute();
+    const ok = await runCommand("open", ["-R", normalizedPath]);
+    if (!ok) {
+      await runCommand("open", [normalizedPath]);
+    }
   } else if (os === "windows") {
     // Windows: explorer /select, highlights the item
-    await Command.create("explorer", [`/select,${normalizedPath}`]).execute();
+    const escaped = normalizedPath.replace(/"/g, '\\"');
+    await runCommand("explorer", [`/select,"${escaped}"`]);
   } else {
     // Linux: xdg-open opens the containing folder
     const parentPath = pathSync.dirname(normalizedPath) || normalizedPath;
-    await Command.create("xdg-open", [parentPath]).execute();
+    const ok = await runCommand("xdg-open", [parentPath]);
+    if (!ok) {
+      await runCommand("gio", ["open", parentPath]);
+    }
   }
 }
 import type { FileNode } from "@lmms-lab/writer-shared";

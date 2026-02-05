@@ -345,14 +345,34 @@ pub async fn kill_port_process(port: u16) -> Result<(), String> {
 
     #[cfg(not(target_os = "windows"))]
     {
-        let lsof_output = command("lsof")
+        let mut pids: Vec<String> = Vec::new();
+
+        if let Ok(lsof_output) = command("lsof")
             .args(["-t", "-i", &format!(":{}", port)])
             .output()
             .await
-            .map_err(|e| format!("Failed to run lsof: {}", e))?;
+        {
+            if lsof_output.status.success() {
+                let raw = String::from_utf8_lossy(&lsof_output.stdout);
+                pids = raw.trim().lines().map(|s| s.trim().to_string()).collect();
+            }
+        }
 
-        let pids = String::from_utf8_lossy(&lsof_output.stdout);
-        let pids: Vec<&str> = pids.trim().lines().collect();
+        #[cfg(target_os = "linux")]
+        {
+            if pids.is_empty() {
+                if let Ok(fuser_output) = command("fuser")
+                    .args(["-k", &format!("{}/tcp", port)])
+                    .output()
+                    .await
+                {
+                    if fuser_output.status.success() {
+                        sleep(Duration::from_millis(500)).await;
+                        return Ok(());
+                    }
+                }
+            }
+        }
 
         if pids.is_empty() {
             return Err(format!("No process found on port {}", port));
@@ -362,11 +382,10 @@ pub async fn kill_port_process(port: u16) -> Result<(), String> {
             if pid.is_empty() {
                 continue;
             }
-            command("kill")
-                .args(["-9", pid])
-                .output()
-                .await
-                .map_err(|e| format!("Failed to kill PID {}: {}", pid, e))?;
+            // Try graceful shutdown first
+            let _ = command("kill").args(["-15", &pid]).output().await;
+            // Fallback to force kill if needed
+            let _ = command("kill").args(["-9", &pid]).output().await;
         }
     }
 

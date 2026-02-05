@@ -5,6 +5,29 @@ use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, State};
 
+#[cfg(target_os = "windows")]
+fn build_env_path(original: String) -> String {
+    original
+}
+
+#[cfg(target_os = "macos")]
+fn build_env_path(original: String) -> String {
+    let mut env_path = original;
+    if !env_path.contains("/opt/homebrew/bin") {
+        env_path = format!("/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:{}", env_path);
+    }
+    env_path
+}
+
+#[cfg(target_os = "linux")]
+fn build_env_path(original: String) -> String {
+    let mut env_path = original;
+    if !env_path.contains("/usr/local/bin") {
+        env_path = format!("/usr/local/bin:/usr/bin:/bin:{}", env_path);
+    }
+    env_path
+}
+
 pub struct PtyInstance {
     pub master: Box<dyn MasterPty + Send>,
     pub writer: Box<dyn Write + Send>,
@@ -38,8 +61,10 @@ pub struct PtyExitEvent {
 fn get_default_shell() -> String {
     if cfg!(target_os = "windows") {
         std::env::var("COMSPEC").unwrap_or_else(|_| "powershell.exe".to_string())
-    } else {
+    } else if cfg!(target_os = "macos") {
         std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string())
+    } else {
+        std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string())
     }
 }
 
@@ -66,13 +91,8 @@ pub async fn spawn_pty(
     let mut cmd = CommandBuilder::new(&shell);
     cmd.cwd(&cwd);
 
-    let mut env_path = std::env::var("PATH").unwrap_or_default();
-    if !env_path.contains("/opt/homebrew/bin") {
-        env_path = format!(
-            "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:{}",
-            env_path
-        );
-    }
+    let env_path = build_env_path(std::env::var("PATH").unwrap_or_default());
+
     cmd.env("PATH", env_path);
     cmd.env("TERM", "xterm-256color");
     cmd.env("COLORTERM", "truecolor");

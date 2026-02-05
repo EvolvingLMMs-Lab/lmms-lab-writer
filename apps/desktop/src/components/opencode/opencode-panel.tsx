@@ -85,6 +85,9 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   useEffect(() => {
     if (!onCaptureFileContent && !onEditCompleted) return;
 
+    // Tool names that modify files (case-insensitive)
+    const FILE_WRITE_TOOLS = ['write', 'edit', 'file_write', 'file_edit', 'writefile', 'editfile'];
+
     // Scan all parts for write/edit tools
     opencode.parts.forEach((partsArray) => {
       partsArray.forEach((part) => {
@@ -93,19 +96,25 @@ export const OpenCodePanel = memo(function OpenCodePanel({
         const toolPart = part as ToolPart;
         const toolName = toolPart.tool.toLowerCase();
 
-        // Only process write/edit tools
-        if (toolName !== "write" && toolName !== "edit") return;
+        // Check if this is a file-modifying tool
+        const isFileTool = FILE_WRITE_TOOLS.includes(toolName);
+        if (!isFileTool) return;
 
         const toolId = toolPart.id;
         const messageId = toolPart.messageID;
         const filePath =
           (toolPart.state.input.filePath as string) ||
-          (toolPart.state.input.file_path as string);
+          (toolPart.state.input.file_path as string) ||
+          (toolPart.state.input.path as string);
 
-        if (!filePath) return;
+        if (!filePath) {
+          console.log("[Review] Tool missing file path:", toolName, toolPart.state.input);
+          return;
+        }
 
         // When tool starts running, capture the file content
         if (toolPart.state.status === "running" && !runningToolsRef.current.has(toolId)) {
+          console.log("[Review] Capturing file content before edit:", filePath);
           runningToolsRef.current.set(toolId, filePath);
           onCaptureFileContent?.(toolId, filePath);
         }
@@ -116,6 +125,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
           runningToolsRef.current.has(toolId) &&
           !processedToolsRef.current.has(toolId)
         ) {
+          console.log("[Review] Tool completed, creating pending edit:", filePath);
           processedToolsRef.current.add(toolId);
           runningToolsRef.current.delete(toolId);
 
@@ -134,13 +144,17 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     const prevStatus = previousStatusRef.current;
     const currentStatus = opencode.status.type;
 
+    console.log("[Review] Status change:", prevStatus, "->", currentStatus);
+
     if (
       (prevStatus === "running" || prevStatus === "busy") &&
       currentStatus === "idle" &&
       onTurnComplete
     ) {
+      console.log("[Review] Turn completed, will trigger review in 800ms");
       // Longer delay to ensure all edits are processed (async file reads)
       setTimeout(() => {
+        console.log("[Review] Triggering onTurnComplete callback");
         onTurnComplete();
       }, 800);
     }
@@ -322,8 +336,10 @@ export const OpenCodePanel = memo(function OpenCodePanel({
               {currentSession?.title || "New Chat"}
             </h2>
             <div className="flex items-center gap-1.5 text-[10px] text-muted font-mono">
-              <span className={`inline-block size-1.5 ${isWorking ? 'bg-accent animate-pulse' : 'bg-neutral-300'}`} />
-              <span>{opencode.status.type === 'running' ? 'thinking' : opencode.status.type === 'busy' ? 'busy' : 'ready'}</span>
+              <span className={`inline-block size-1.5 rounded-full transition-colors ${isWorking ? 'bg-accent animate-pulse' : 'bg-neutral-300'}`} />
+              <span className={isWorking ? 'text-accent' : ''}>
+                {opencode.status.type === 'running' ? 'writing' : opencode.status.type === 'busy' ? 'busy' : 'ready'}
+              </span>
               {baseUrl && <a href={baseUrl} target="_blank" rel="noopener noreferrer" className="text-muted/60 hover:text-accent hover:underline cursor-pointer transition-colors">· {baseUrl.replace(/^https?:\/\//, '')}</a>}
             </div>
           </div>

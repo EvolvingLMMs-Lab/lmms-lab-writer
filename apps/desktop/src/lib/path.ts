@@ -26,17 +26,21 @@ function detectSeparator(path: string): string {
   return "/";
 }
 
+function isWindowsPathLike(path: string): boolean {
+  return /^[a-zA-Z]:[\\/]/.test(path) || path.startsWith("\\\\") || path.includes("\\");
+}
+
 /**
  * Check if two paths are equal (handles case sensitivity per platform)
- * Windows/macOS: case-insensitive
- * Linux: case-sensitive
+ * Windows: case-insensitive
+ * Others: case-sensitive
  */
 export function pathsEqual(path1: string, path2: string): boolean {
   const normalized1 = path1.replace(/\\/g, "/");
   const normalized2 = path2.replace(/\\/g, "/");
 
-  // On Windows (backslash in original path), compare case-insensitively
-  const isWindows = path1.includes("\\") || path2.includes("\\");
+  // On Windows, compare case-insensitively
+  const isWindows = isWindowsPathLike(path1) || isWindowsPathLike(path2);
   if (isWindows) {
     return normalized1.toLowerCase() === normalized2.toLowerCase();
   }
@@ -67,9 +71,18 @@ export const pathSync = {
   dirname(path: string): string {
     const sep = detectSeparator(path);
     const normalized = path.replace(/\\/g, "/");
-    const lastSlash = normalized.lastIndexOf("/");
-    if (lastSlash <= 0) return "";
-    const result = normalized.substring(0, lastSlash);
+    const isDriveRoot = /^[a-zA-Z]:\/?$/.test(normalized);
+    const trimmed =
+      !isDriveRoot && normalized.length > 1
+        ? normalized.replace(/\/+$/, "")
+        : normalized;
+    const lastSlash = trimmed.lastIndexOf("/");
+    if (lastSlash === -1) return "";
+    if (lastSlash === 0) return sep === "\\" ? "\\" : "/";
+    let result = trimmed.substring(0, lastSlash);
+    if (/^[a-zA-Z]:$/.test(result)) {
+      result = `${result}/`;
+    }
     // Restore original separator if needed
     return sep === "\\" ? result.replace(/\//g, "\\") : result;
   },
@@ -119,8 +132,13 @@ export const pathSync = {
     const parts = normalized.split("/").filter(Boolean);
     const ancestors: string[] = [];
     for (let i = 1; i < parts.length; i++) {
-      const ancestorPath = parts.slice(0, i).join("/");
-      ancestors.push(sep === "\\" ? ancestorPath.replace(/\//g, "\\") : ancestorPath);
+      let ancestorPath = parts.slice(0, i).join("/");
+      if (/^[a-zA-Z]:$/.test(ancestorPath)) {
+        ancestorPath = `${ancestorPath}/`;
+      }
+      ancestors.push(
+        sep === "\\" ? ancestorPath.replace(/\//g, "\\") : ancestorPath,
+      );
     }
     return ancestors;
   },
@@ -129,8 +147,8 @@ export const pathSync = {
    * Check if path has a parent (not root level)
    */
   hasParent(path: string): boolean {
-    const normalized = path.replace(/\\/g, "/");
-    return normalized.includes("/") && normalized.lastIndexOf("/") > 0;
+    const parent = pathSync.dirname(path);
+    return parent !== "" && parent !== path;
   },
 };
 

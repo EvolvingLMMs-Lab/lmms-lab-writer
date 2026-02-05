@@ -858,14 +858,20 @@ The AI assistant will read and update this file during compilation.
   // Capture file content before AI edit starts
   const handleCaptureFileContent = useCallback(
     async (toolPartId: string, filePath: string) => {
-      if (!daemon.projectPath) return;
+      console.log("[Review] handleCaptureFileContent called:", { toolPartId, filePath });
+      if (!daemon.projectPath) {
+        console.log("[Review] No project path, skipping capture");
+        return;
+      }
 
       try {
         const content = await daemon.readFile(filePath);
         if (content !== null) {
           fileContentCacheRef.current.set(toolPartId, content);
+          console.log("[Review] Captured file content, length:", content.length);
         }
-      } catch {
+      } catch (err) {
+        console.log("[Review] Could not read file (might be new):", err);
         // Silently ignore - file might not exist yet for new files
       }
     },
@@ -875,14 +881,18 @@ The AI assistant will read and update this file during compilation.
   // Handle when AI edit completes
   const handleEditCompleted = useCallback(
     async (toolPartId: string, filePath: string, _toolOutput: string, messageId?: string) => {
+      console.log("[Review] handleEditCompleted called:", { toolPartId, filePath, messageId });
       const beforeContent = fileContentCacheRef.current.get(toolPartId) || "";
+      console.log("[Review] Before content length:", beforeContent.length);
 
       // Read the actual file content after the edit
       let afterContent = "";
       try {
         const content = await daemon.readFile(filePath);
         afterContent = content || "";
-      } catch {
+        console.log("[Review] After content length:", afterContent.length);
+      } catch (err) {
+        console.log("[Review] Failed to read file after edit:", err);
         // Clean up cache and skip creating pending edit
         fileContentCacheRef.current.delete(toolPartId);
         return;
@@ -890,6 +900,7 @@ The AI assistant will read and update this file during compilation.
 
       // Skip if content is the same (no actual change)
       if (beforeContent === afterContent) {
+        console.log("[Review] No changes detected, skipping");
         fileContentCacheRef.current.delete(toolPartId);
         return;
       }
@@ -910,6 +921,13 @@ The AI assistant will read and update this file during compilation.
         messageId,
         status: "pending",
       };
+
+      console.log("[Review] Creating pending edit:", {
+        id: pendingEdit.id,
+        filePath: pendingEdit.filePath,
+        additions: pendingEdit.additions,
+        deletions: pendingEdit.deletions,
+      });
 
       setPendingEdits((prev) => new Map(prev).set(toolPartId, pendingEdit));
 
@@ -1097,12 +1115,18 @@ The AI assistant will read and update this file during compilation.
 
   // Handle when AI turn completes
   const handleTurnComplete = useCallback(() => {
+    console.log("[Review] handleTurnComplete called, pendingEditCount:", pendingEditCountRef.current);
+    console.log("[Review] pendingEdits map size:", pendingEdits.size);
+
     // Use ref to get the latest pendingEditCount (avoids stale closure)
     if (pendingEditCountRef.current > 0) {
+      console.log("[Review] Opening changes review panel");
       // Automatically open changes review when turn completes with edits
       setShowChangesReview(true);
+    } else {
+      console.log("[Review] No pending edits, not opening review panel");
     }
-  }, []);
+  }, [pendingEdits.size]);
 
   // Open the changes review panel
   const handleOpenChangesReview = useCallback(() => {
