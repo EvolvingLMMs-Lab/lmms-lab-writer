@@ -461,14 +461,12 @@ function NodeRenderer({
       } ${isHighlighted && !isSelected ? "animate-highlight" : ""}`}
     >
       <div
-        className="w-3 h-3 flex-shrink-0 transition-transform duration-150"
+        className="w-3 h-3 flex-shrink-0"
         style={{
           marginLeft: `${node.level * 12}px`,
-          transform: isDirectory && node.isOpen ? "rotate(90deg)" : "rotate(0deg)",
         }}
-      >
-        {isDirectory && <CaretRightIcon className="w-3 h-3" weight="fill" />}
-      </div>
+        aria-hidden="true"
+      />
       <FileIcon
         type={node.data.type}
         expanded={node.isOpen}
@@ -589,6 +587,17 @@ function FileTreeInner({
         }
       }
     }
+
+    // If we're inside the tree container but not over a node, treat as root drop target
+    const container = containerRef.current;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        console.log("[DnD] Returning root target");
+        return { path: "", type: "directory" };
+      }
+    }
+
     console.log("[DnD] No valid target found");
     return null;
   }, []);
@@ -637,7 +646,7 @@ function FileTreeInner({
     if (!fileOperations) return;
 
     const fileName = pathSync.basename(dragged.path);
-    const newPath = pathSync.join(targetPath, fileName);
+    const newPath = targetPath ? pathSync.join(targetPath, fileName) : fileName;
 
     // Check if target already exists
     const targetExists = nodeMap.has(newPath);
