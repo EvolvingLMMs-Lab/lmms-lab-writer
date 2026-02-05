@@ -9,6 +9,12 @@
   "engines": {
     "node": ">=20.0.0"
   },
+  "pnpm": {
+    "overrides": {
+      "react-dnd": "^16.0.1",
+      "react-dnd-html5-backend": "^16.0.1"
+    }
+  },
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",

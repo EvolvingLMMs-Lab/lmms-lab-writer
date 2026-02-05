@@ -639,15 +639,21 @@ kbd {
   bottom: 0;
 }
 
-/* Dragging cursor */
-[role="tree"][data-dragging="true"] {
-  cursor: grabbing;
-}
-
+/* File tree items - cursor managed by JS during drag */
 [role="treeitem"] {
-  cursor: grab;
+  cursor: default;
 }
 
-[role="treeitem"]:active {
-  cursor: grabbing;
+/* File tree highlight animation */
+@keyframes file-highlight {
+  0%, 100% {
+    background-color: transparent;
+  }
+  25%, 75% {
+    background-color: rgba(0, 0, 0, 0.15);
+  }
+}
+
+.animate-highlight {
+  animation: file-highlight 1.5s ease-in-out;
 }

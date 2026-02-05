@@ -10,9 +10,9 @@ import {
   createContext,
   useContext,
 } from "react";
+import { createPortal } from "react-dom";
 import { Tree } from "react-arborist";
-import type { NodeRendererProps, TreeApi, MoveHandler } from "react-arborist";
-import { motion } from "framer-motion";
+import type { NodeRendererProps, TreeApi } from "react-arborist";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { Command } from "@tauri-apps/plugin-shell";
 import { platform } from "@tauri-apps/plugin-os";
@@ -333,6 +333,16 @@ function convertToArboristData(nodes: FileNode[]): ArboristFileNode[] {
 
 // --- Context for passing data to node renderer ---
 
+interface DragState {
+  isDragging: boolean;
+  draggedPath: string | null;
+  draggedName: string | null;
+  draggedType: "file" | "directory" | null;
+  dragOverPath: string | null;
+  mouseX: number;
+  mouseY: number;
+}
+
 interface FileTreeContextValue {
   selectedFile?: string;
   highlightedFile?: string | null;
@@ -342,43 +352,65 @@ interface FileTreeContextValue {
     parentPath: string,
   ) => void;
   onFileSelect?: (path: string) => void;
+  // Mouse-based drag-and-drop
+  dragState: DragState;
+  onDragMouseDown?: (e: React.MouseEvent, path: string, name: string, type: "file" | "directory") => void;
 }
 
-const FileTreeContext = createContext<FileTreeContextValue>({});
+const initialDragState: DragState = {
+  isDragging: false,
+  draggedPath: null,
+  draggedName: null,
+  draggedType: null,
+  dragOverPath: null,
+  mouseX: 0,
+  mouseY: 0,
+};
+
+const FileTreeContext = createContext<FileTreeContextValue>({
+  dragState: initialDragState,
+});
 
 // --- Node renderer ---
 
 function NodeRenderer({
   node,
   style,
-  dragHandle,
 }: NodeRendererProps<ArboristFileNode>) {
-  const { selectedFile, highlightedFile, onContextMenu, onFileSelect } =
-    useContext(FileTreeContext);
+  const {
+    selectedFile,
+    highlightedFile,
+    onContextMenu,
+    onFileSelect,
+    dragState,
+    onDragMouseDown,
+  } = useContext(FileTreeContext);
 
   const isDirectory = node.data.type === "directory";
   const isSelected = selectedFile === node.data.path;
   const isHighlighted = highlightedFile === node.data.path;
   const isFocused = node.isFocused && !isSelected;
+  const isDragging = dragState.draggedPath === node.data.path;
+  const isDragOver = dragState.dragOverPath === node.data.path && isDirectory;
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
-      e.stopPropagation();
+      // Don't handle click if we just finished dragging
+      if (dragState.isDragging) return;
+      node.handleClick(e);
       if (isDirectory) {
         node.toggle();
       } else {
         onFileSelect?.(node.data.path);
       }
-      node.focus();
     },
-    [isDirectory, node, onFileSelect],
+    [isDirectory, node, onFileSelect, dragState.isDragging],
   );
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      // Find parent path from the node's path
       const parentPath = pathSync.dirname(node.data.path);
       onContextMenu?.(
         e,
@@ -393,59 +425,56 @@ function NodeRenderer({
     [onContextMenu, node.data],
   );
 
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      // Only left mouse button, and only if drag is enabled
+      if (e.button !== 0 || !onDragMouseDown) return;
+      onDragMouseDown(e, node.data.path, node.data.name, node.data.type);
+    },
+    [onDragMouseDown, node.data.path, node.data.name, node.data.type],
+  );
+
   return (
-    <div style={style} ref={dragHandle}>
-      <motion.button
-        onClick={handleClick}
-        onContextMenu={handleContextMenu}
-        role="treeitem"
-        aria-expanded={isDirectory ? node.isOpen : undefined}
-        aria-selected={isSelected}
-        tabIndex={-1}
-        data-path={node.data.path}
-        className={`w-full flex items-center gap-2 px-2 py-1 text-left text-sm transition-colors ${
-          isSelected
+    <div
+      style={style}
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
+      onMouseDown={handleMouseDown}
+      role="treeitem"
+      aria-expanded={isDirectory ? node.isOpen : undefined}
+      aria-selected={isSelected}
+      tabIndex={-1}
+      data-path={node.data.path}
+      data-type={node.data.type}
+      className={`w-full flex items-center gap-2 px-2 py-1 text-left text-sm transition-colors select-none ${
+        isDragging
+          ? "opacity-50"
+          : ""
+      } ${
+        isDragOver
+          ? "bg-blue-100 ring-2 ring-blue-400 ring-inset"
+          : isSelected
             ? "bg-black text-white"
             : isFocused
               ? "bg-black/10"
               : "hover:bg-black/5"
-        }`}
-        style={{ paddingLeft: `${node.level * 12 + 8}px`, height: "28px" }}
-        whileTap={{ scale: 0.98 }}
-        initial={false}
-        animate={
-          isHighlighted && !isSelected
-            ? {
-                backgroundColor: [
-                  "rgba(0, 0, 0, 0)",
-                  "rgba(0, 0, 0, 0.15)",
-                  "rgba(0, 0, 0, 0)",
-                  "rgba(0, 0, 0, 0.15)",
-                  "rgba(0, 0, 0, 0)",
-                ],
-                transition: { duration: 1.5, ease: "easeInOut" },
-              }
-            : {}
-        }
+      } ${isHighlighted && !isSelected ? "animate-highlight" : ""}`}
+    >
+      <div
+        className="w-3 h-3 flex-shrink-0 transition-transform duration-150"
+        style={{
+          marginLeft: `${node.level * 12}px`,
+          transform: isDirectory && node.isOpen ? "rotate(90deg)" : "rotate(0deg)",
+        }}
       >
-        {isDirectory && (
-          <motion.div
-            className="w-3 h-3 flex-shrink-0"
-            initial={false}
-            animate={{ rotate: node.isOpen ? 90 : 0 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-          >
-            <CaretRightIcon className="w-3 h-3" weight="fill" />
-          </motion.div>
-        )}
-        {!isDirectory && <span className="w-3" />}
-        <FileIcon
-          type={node.data.type}
-          expanded={node.isOpen}
-          filename={node.data.name}
-        />
-        <span className="truncate">{node.data.name}</span>
-      </motion.button>
+        {isDirectory && <CaretRightIcon className="w-3 h-3" weight="fill" />}
+      </div>
+      <FileIcon
+        type={node.data.type}
+        expanded={node.isOpen}
+        filename={node.data.name}
+      />
+      <span className="truncate">{node.data.name}</span>
     </div>
   );
 }
@@ -474,9 +503,9 @@ function buildNodeMap(nodes: FileNode[]): Map<string, FileNode> {
   return map;
 }
 
-// --- Main component ---
+// --- Inner component ---
 
-export const FileTree = memo(function FileTree({
+function FileTreeInner({
   files,
   onFileSelect,
   selectedFile,
@@ -492,6 +521,10 @@ export const FileTree = memo(function FileTree({
 
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+
+  // Mouse-based drag-and-drop state
+  const [dragState, setDragState] = useState<DragState>(initialDragState);
+  const draggedNodeRef = useRef<{ path: string; type: "file" | "directory" } | null>(null);
 
   const arboristData = useMemo(() => convertToArboristData(files), [files]);
   const nodeMap = useMemo(() => buildNodeMap(files), [files]);
@@ -528,6 +561,167 @@ export const FileTree = memo(function FileTree({
     });
   }, [highlightedFile]);
 
+  // --- Mouse-based drag-and-drop ---
+
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
+  const isDraggingRef = useRef(false);
+  const DRAG_THRESHOLD = 5; // pixels before drag starts
+
+  // Find drop target from mouse position
+  const findDropTarget = useCallback((x: number, y: number): { path: string; type: "file" | "directory" } | null => {
+    const elements = document.elementsFromPoint(x, y);
+    for (const el of elements) {
+      const treeItem = el.closest("[data-path]") as HTMLElement | null;
+      if (treeItem && containerRef.current?.contains(treeItem)) {
+        const path = treeItem.dataset.path;
+        const type = treeItem.dataset.type as "file" | "directory";
+        if (path && type) {
+          return { path, type };
+        }
+      }
+    }
+    return null;
+  }, []);
+
+  // Check if drop target is valid
+  const isValidDropTarget = useCallback((targetPath: string, targetType: string): boolean => {
+    const dragged = draggedNodeRef.current;
+    if (!dragged) return false;
+
+    // Can only drop into directories
+    if (targetType !== "directory") return false;
+
+    // Cannot drop into itself or its descendants
+    if (targetPath === dragged.path || targetPath.startsWith(dragged.path + "/")) return false;
+
+    // Cannot drop into current parent (no-op)
+    const currentParent = pathSync.dirname(dragged.path);
+    if (targetPath === currentParent) return false;
+
+    return true;
+  }, []);
+
+  // Perform the move operation
+  const performMove = useCallback(async (targetPath: string) => {
+    const dragged = draggedNodeRef.current;
+    if (!dragged || !fileOperations) return;
+
+    const fileName = pathSync.basename(dragged.path);
+    const newPath = `${targetPath}/${fileName}`;
+
+    // Check if target already exists
+    const targetExists = nodeMap.has(newPath);
+    if (targetExists) {
+      const confirmed = await ask(
+        `A file or folder named "${fileName}" already exists in this location. Do you want to replace it?`,
+        { title: "Confirm Replace", kind: "warning" },
+      );
+      if (!confirmed) return;
+    }
+
+    try {
+      await fileOperations.renamePath(dragged.path, newPath);
+    } catch (error) {
+      console.error("Failed to move:", error);
+      alert(`Failed to move "${fileName}": ${error}`);
+    }
+  }, [fileOperations, nodeMap]);
+
+  // Mouse move handler (attached to document during drag)
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!draggedNodeRef.current) return;
+
+    const startPos = dragStartPos.current;
+    if (startPos && !isDraggingRef.current) {
+      // Check if we've moved past threshold to start dragging
+      const dx = e.clientX - startPos.x;
+      const dy = e.clientY - startPos.y;
+      if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return;
+      isDraggingRef.current = true;
+    }
+
+    // Find what we're hovering over
+    const target = findDropTarget(e.clientX, e.clientY);
+    let dragOverPath: string | null = null;
+
+    if (target && isValidDropTarget(target.path, target.type)) {
+      dragOverPath = target.path;
+    }
+
+    setDragState(prev => ({
+      ...prev,
+      isDragging: true,
+      dragOverPath,
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+    }));
+  }, [findDropTarget, isValidDropTarget]);
+
+  // Mouse up handler (attached to document during drag)
+  const handleMouseUp = useCallback((e: MouseEvent) => {
+    const dragged = draggedNodeRef.current;
+    const wasDragging = isDraggingRef.current;
+
+    // Clean up
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+
+    if (!dragged || !wasDragging) {
+      draggedNodeRef.current = null;
+      dragStartPos.current = null;
+      isDraggingRef.current = false;
+      setDragState(initialDragState);
+      return;
+    }
+
+    // Find drop target
+    const target = findDropTarget(e.clientX, e.clientY);
+
+    // Reset state
+    draggedNodeRef.current = null;
+    dragStartPos.current = null;
+    isDraggingRef.current = false;
+    setDragState(initialDragState);
+
+    // Perform move if valid target
+    if (target && isValidDropTarget(target.path, target.type)) {
+      performMove(target.path);
+    }
+  }, [handleMouseMove, findDropTarget, isValidDropTarget, performMove]);
+
+  // Mouse down handler (called from NodeRenderer)
+  const handleDragMouseDown = useCallback(
+    (e: React.MouseEvent, path: string, name: string, type: "file" | "directory") => {
+      if (!fileOperations) return;
+
+      // Store drag info
+      draggedNodeRef.current = { path, type };
+      dragStartPos.current = { x: e.clientX, y: e.clientY };
+      isDraggingRef.current = false;
+
+      setDragState({
+        isDragging: false,
+        draggedPath: path,
+        draggedName: name,
+        draggedType: type,
+        dragOverPath: null,
+        mouseX: e.clientX,
+        mouseY: e.clientY,
+      });
+
+      // Set cursor and prevent text selection
+      document.body.style.cursor = "grabbing";
+      document.body.style.userSelect = "none";
+
+      // Attach document-level listeners
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    },
+    [fileOperations, handleMouseMove, handleMouseUp],
+  );
+
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, node: FileNode, parentPath: string) => {
       if (!fileOperations) return;
@@ -549,44 +743,6 @@ export const FileTree = memo(function FileTree({
   const closeDialog = useCallback(() => {
     setDialog(null);
   }, []);
-
-  // Handle drag and drop move
-  const handleMove: MoveHandler<ArboristFileNode> = useCallback(
-    async ({ dragIds, parentId, index }) => {
-      if (!fileOperations) return;
-
-      for (const dragId of dragIds) {
-        const draggedNode = nodeMap.get(dragId);
-        if (!draggedNode) continue;
-
-        // Calculate new path
-        const fileName = draggedNode.name;
-        const newParentPath = parentId || ""; // Empty string means root
-        const newPath = newParentPath ? `${newParentPath}/${fileName}` : fileName;
-
-        // Skip if moving to the same location
-        if (draggedNode.path === newPath) continue;
-
-        // Check if target already exists
-        const targetExists = nodeMap.has(newPath);
-        if (targetExists) {
-          const confirmed = await ask(
-            `A file or folder named "${fileName}" already exists in this location. Do you want to replace it?`,
-            { title: "Confirm Replace", kind: "warning" },
-          );
-          if (!confirmed) continue;
-        }
-
-        try {
-          await fileOperations.renamePath(draggedNode.path, newPath);
-        } catch (error) {
-          console.error("Failed to move:", error);
-          alert(`Failed to move "${fileName}": ${error}`);
-        }
-      }
-    },
-    [fileOperations, nodeMap],
-  );
 
   // Handle right-click on empty area
   const handleRootContextMenu = useCallback(
@@ -960,8 +1116,18 @@ export const FileTree = memo(function FileTree({
       highlightedFile,
       onContextMenu: handleContextMenu,
       onFileSelect,
+      dragState,
+      onDragMouseDown: fileOperations ? handleDragMouseDown : undefined,
     }),
-    [selectedFile, highlightedFile, handleContextMenu, onFileSelect],
+    [
+      selectedFile,
+      highlightedFile,
+      handleContextMenu,
+      onFileSelect,
+      dragState,
+      fileOperations,
+      handleDragMouseDown,
+    ],
   );
 
   if (files.length === 0) {
@@ -991,11 +1157,10 @@ export const FileTree = memo(function FileTree({
               rowHeight={28}
               indent={12}
               openByDefault={true}
-              disableDrag={!fileOperations}
-              disableDrop={!fileOperations}
+              disableDrag={true}
+              disableDrop={true}
               disableEdit={true}
               disableMultiSelection={true}
-              onMove={handleMove}
             >
               {NodeRenderer}
             </Tree>
@@ -1038,6 +1203,34 @@ export const FileTree = memo(function FileTree({
           validator={validateFileName}
         />
       )}
+
+      {/* Drag preview - rendered via portal to avoid stacking context issues */}
+      {dragState.isDragging && dragState.draggedName && createPortal(
+        <div
+          className="fixed pointer-events-none z-[9999] flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-md shadow-lg text-sm"
+          style={{
+            left: dragState.mouseX + 16,
+            top: dragState.mouseY + 16,
+          }}
+        >
+          {dragState.draggedType === "directory" ? (
+            <FolderIcon className="w-4 h-4 text-gray-600" size={16} />
+          ) : (
+            <FileIconSymbol className="w-4 h-4 text-gray-600" size={16} />
+          )}
+          <span className="truncate max-w-[200px]">{dragState.draggedName}</span>
+          {dragState.dragOverPath && (
+            <span className="text-blue-600 text-xs ml-1">
+              → {pathSync.basename(dragState.dragOverPath)}
+            </span>
+          )}
+        </div>,
+        document.body
+      )}
     </>
   );
-});
+}
+
+// --- Main component ---
+
+export const FileTree = memo(FileTreeInner);
