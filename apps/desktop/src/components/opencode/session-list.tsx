@@ -20,6 +20,7 @@ export function SessionList({
   onDelete: (id: string) => void;
 }) {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [listParent] = useAutoAnimate({ duration: 200 });
   const sortedSessions = useMemo(
     () => [...sessions].sort((a, b) => b.time.updated - a.time.updated),
     [sessions],
@@ -37,8 +38,6 @@ export function SessionList({
       </div>
     );
   }
-
-  const [listParent] = useAutoAnimate({ duration: 200 });
 
   return (
     <div ref={listParent} className="flex-1 min-h-0 overflow-y-auto">

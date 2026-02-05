@@ -28,6 +28,8 @@ import {
 } from "@/components/latex";
 import { InlineDiffReview } from "@/components/editor/inline-diff-review";
 import { ChangesReviewPanel } from "@/components/editor/changes-review-panel";
+import { RecentProjects } from "@/components/recent-projects";
+import { useRecentProjects } from "@/lib/recent-projects";
 import type { MainFileDetectionResult } from "@/lib/latex/types";
 import type { PendingEdit } from "@/lib/opencode/types";
 
@@ -111,6 +113,7 @@ export default function EditorPage() {
   const prefersReducedMotion = useReducedMotion();
   const auth = useAuth();
   const { toast } = useToast();
+  const recentProjects = useRecentProjects();
 
   const [selectedFile, setSelectedFile] = useState<string>();
   const [fileContent, setFileContent] = useState<string>("");
@@ -1121,13 +1124,30 @@ The AI assistant will read and update this file during compilation.
 
       if (selected && typeof selected === "string") {
         await daemon.setProject(selected);
+        recentProjects.addProject(selected);
         setShowSidebar(true);
         setShowRightPanel(true);
       }
     } catch (err) {
       console.error("Failed to open project:", err);
     }
-  }, [daemon]);
+  }, [daemon, recentProjects]);
+
+  const handleOpenRecentProject = useCallback(
+    async (path: string) => {
+      try {
+        await daemon.setProject(path);
+        recentProjects.addProject(path);
+        setShowSidebar(true);
+        setShowRightPanel(true);
+      } catch (err) {
+        console.error("Failed to open project:", err);
+        toast("Failed to open project", "error");
+        recentProjects.removeProject(path);
+      }
+    },
+    [daemon, recentProjects, toast]
+  );
 
   const handleStageAll = useCallback(() => {
     if (!gitStatus) return;
@@ -1984,6 +2004,12 @@ The AI assistant will read and update this file during compilation.
                   >
                     Open Folder
                   </button>
+                  <RecentProjects
+                    projects={recentProjects.projects}
+                    onSelect={handleOpenRecentProject}
+                    onRemove={recentProjects.removeProject}
+                    onClearAll={recentProjects.clearAll}
+                  />
                 </div>
               )}
             </div>
