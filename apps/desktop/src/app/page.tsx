@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/toast";
 import { FileTree } from "@/components/editor/file-tree";
 import { InputDialog } from "@/components/ui/input-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ContextMenu, ContextMenuItem } from "@/components/ui/context-menu";
 import { Spinner } from "@/components/ui/spinner";
 import { EditorSkeleton } from "@/components/editor/editor-skeleton";
 import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
@@ -218,6 +219,11 @@ export default function EditorPage() {
   }, [selectedFile, pendingEdits]);
   const [showMainFileDialog, setShowMainFileDialog] = useState(false);
   const [mainFileDetectionResult, setMainFileDetectionResult] = useState<MainFileDetectionResult | null>(null);
+  const [tabContextMenu, setTabContextMenu] = useState<{
+    x: number;
+    y: number;
+    tab: string;
+  } | null>(null);
 
   const contentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const opencodeStartedForPathRef = useRef<string | null>(null);
@@ -825,6 +831,52 @@ The AI assistant will read and update this file during compilation.
     },
     [selectedFile, handleFileSelect],
   );
+
+  const handleCloseOtherTabs = useCallback(
+    (keepPath: string) => {
+      setOpenTabs([keepPath]);
+      if (selectedFile !== keepPath) {
+        handleFileSelect(keepPath);
+      }
+    },
+    [selectedFile, handleFileSelect],
+  );
+
+  const handleCloseTabsToLeft = useCallback(
+    (path: string) => {
+      setOpenTabs((prev) => {
+        const idx = prev.indexOf(path);
+        if (idx <= 0) return prev;
+        const newTabs = prev.slice(idx);
+        if (selectedFile && !newTabs.includes(selectedFile)) {
+          handleFileSelect(path);
+        }
+        return newTabs;
+      });
+    },
+    [selectedFile, handleFileSelect],
+  );
+
+  const handleCloseTabsToRight = useCallback(
+    (path: string) => {
+      setOpenTabs((prev) => {
+        const idx = prev.indexOf(path);
+        if (idx === prev.length - 1) return prev;
+        const newTabs = prev.slice(0, idx + 1);
+        if (selectedFile && !newTabs.includes(selectedFile)) {
+          handleFileSelect(path);
+        }
+        return newTabs;
+      });
+    },
+    [selectedFile, handleFileSelect],
+  );
+
+  const handleCloseAllTabs = useCallback(() => {
+    setOpenTabs([]);
+    setSelectedFile(undefined);
+    setFileContent("");
+  }, []);
 
   const handleContentChange = useCallback(
     (content: string) => {
@@ -1766,6 +1818,17 @@ The AI assistant will read and update this file during compilation.
                         : "text-muted hover:text-black hover:bg-white/50"
                     }`}
                     title={tab}
+                    onMouseDown={(e) => {
+                      // Middle click to close
+                      if (e.button === 1) {
+                        e.preventDefault();
+                        handleCloseTab(tab);
+                      }
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setTabContextMenu({ x: e.clientX, y: e.clientY, tab });
+                    }}
                   >
                     <button
                       onClick={() => handleFileSelect(tab)}
@@ -2052,6 +2115,44 @@ The AI assistant will read and update this file during compilation.
           }
         }}
       />
+
+      {tabContextMenu && (
+        <ContextMenu
+          x={tabContextMenu.x}
+          y={tabContextMenu.y}
+          onClose={() => setTabContextMenu(null)}
+          items={(() => {
+            const tabIndex = openTabs.indexOf(tabContextMenu.tab);
+            const items: ContextMenuItem[] = [
+              {
+                label: "Close",
+                onClick: () => handleCloseTab(tabContextMenu.tab),
+              },
+              {
+                label: "Close Others",
+                onClick: () => handleCloseOtherTabs(tabContextMenu.tab),
+                disabled: openTabs.length <= 1,
+              },
+              {
+                label: "Close to the Left",
+                onClick: () => handleCloseTabsToLeft(tabContextMenu.tab),
+                disabled: tabIndex === 0,
+              },
+              {
+                label: "Close to the Right",
+                onClick: () => handleCloseTabsToRight(tabContextMenu.tab),
+                disabled: tabIndex === openTabs.length - 1,
+              },
+              {
+                label: "Close All",
+                onClick: handleCloseAllTabs,
+                danger: true,
+              },
+            ];
+            return items;
+          })()}
+        />
+      )}
 
     </div>
   );

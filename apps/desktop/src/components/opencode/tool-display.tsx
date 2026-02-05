@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import type { ToolPart } from "@/lib/opencode/types";
 import { getToolInfo } from "@/lib/opencode/types";
 import { Spinner } from "@/components/ui/spinner";
-import { ChevronIcon, FileTypeIcon } from "./icons";
+import { ChevronIcon, ToolIcon } from "./icons";
 import { TasksDisplay, parseTasks } from "./tasks-display";
 import { formatValue } from "./utils";
 
@@ -85,7 +85,7 @@ export function ToolDisplay({
         {isRunning ? (
           <Spinner className="size-4 flex-shrink-0" />
         ) : (
-          <FileTypeIcon filename={info.subtitle || info.title} />
+          <ToolIcon tool={part.tool} />
         )}
         {isClickableFile ? (
           <span

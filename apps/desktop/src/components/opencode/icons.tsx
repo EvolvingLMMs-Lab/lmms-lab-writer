@@ -1,19 +1,29 @@
 import {
   Archive,
+  BookOpenText,
   CaretDown,
   CaretRight,
   Check,
   File,
+  FilePlus,
   FileText,
+  Folder,
+  FolderOpen,
   Gear,
+  Globe,
   Image,
-  MagnifyingGlass,
+  ListChecks,
   Monitor,
+  NotePencil,
   PaperPlaneRight,
+  Plug,
   Plus,
+  Question,
+  Robot,
   StarFour,
   Stop,
   Terminal,
+  TextT,
   Trash,
   Warning,
 } from "@phosphor-icons/react";
@@ -52,19 +62,64 @@ export function ProviderIcon({ providerId }: { providerId?: string }) {
 }
 
 export function ToolIcon({ tool }: { tool: string }) {
-  const className = "size-4 text-neutral-500 flex-shrink-0";
-  switch (tool) {
+  const baseClassName = "size-4 flex-shrink-0";
+  const toolLower = tool.toLowerCase();
+
+  switch (toolLower) {
+    // Terminal/Shell operations
     case "bash":
-      return <Terminal className={className} />;
-    case "glob":
-    case "grep":
-      return <MagnifyingGlass className={className} />;
+      return <Terminal className={`${baseClassName} text-emerald-600`} />;
+
+    // File reading - eye/book icon in blue
     case "read":
+      return <BookOpenText className={`${baseClassName} text-sky-500`} />;
+
+    // File writing - file plus icon in green
     case "write":
+      return <FilePlus className={`${baseClassName} text-green-500`} />;
+
+    // File editing - pencil icon in amber
     case "edit":
-      return <FileText className={className} />;
+      return <NotePencil className={`${baseClassName} text-amber-500`} />;
+
+    // Search operations
+    case "glob":
+      return <FolderOpen className={`${baseClassName} text-violet-500`} />;
+    case "grep":
+      return <TextT className={`${baseClassName} text-violet-500`} />;
+
+    // Web operations
+    case "webfetch":
+    case "websearch":
+      return <Globe className={`${baseClassName} text-blue-500`} />;
+
+    // Agent/Task operations
+    case "task":
+      return <Robot className={`${baseClassName} text-purple-500`} />;
+
+    // Todo/Task list operations
+    case "todowrite":
+    case "todocreate":
+    case "todoread":
+    case "todolist":
+    case "todoupdate":
+      return <ListChecks className={`${baseClassName} text-teal-500`} />;
+
+    // MCP/Plugin operations
+    case "mcp":
+      return <Plug className={`${baseClassName} text-orange-500`} />;
+
+    // Question/User input
+    case "question":
+    case "askuserquestion":
+      return <Question className={`${baseClassName} text-pink-500`} />;
+
+    // List directory
+    case "list":
+      return <Folder className={`${baseClassName} text-yellow-600`} />;
+
     default:
-      return <StarFour className={className} />;
+      return <StarFour className={`${baseClassName} text-neutral-400`} />;
   }
 }
 
@@ -135,20 +190,75 @@ export function FileTypeIcon({ filename }: { filename: string }) {
   const className = "size-4 flex-shrink-0";
   const ext = filename.split(".").pop()?.toLowerCase();
 
+  // PDF files - red
   if (ext === "pdf") {
     return <File className={`${className} text-red-500`} />;
   }
 
+  // Log and auxiliary files - gray
   if (ext === "log" || ext === "aux" || ext === "fdb_latexmk") {
     return <FileText className={`${className} text-neutral-400`} />;
   }
 
+  // LaTeX files - teal
   if (ext === "tex" || ext === "bib" || ext === "cls" || ext === "sty") {
     return <FileText className={`${className} text-teal-600`} />;
   }
 
-  if (ext === "gz" || ext === "synctex" || ext === "xdv") {
+  // Archive files - amber
+  if (ext === "gz" || ext === "synctex" || ext === "xdv" || ext === "zip" || ext === "tar") {
     return <Archive className={`${className} text-amber-500`} />;
+  }
+
+  // TypeScript/JavaScript files - blue/yellow
+  if (ext === "ts" || ext === "tsx") {
+    return <FileText className={`${className} text-blue-500`} />;
+  }
+  if (ext === "js" || ext === "jsx" || ext === "mjs") {
+    return <FileText className={`${className} text-yellow-500`} />;
+  }
+
+  // Python files - green
+  if (ext === "py" || ext === "pyw" || ext === "pyi") {
+    return <FileText className={`${className} text-green-500`} />;
+  }
+
+  // Rust files - orange
+  if (ext === "rs") {
+    return <FileText className={`${className} text-orange-500`} />;
+  }
+
+  // Go files - cyan
+  if (ext === "go") {
+    return <FileText className={`${className} text-cyan-500`} />;
+  }
+
+  // HTML/CSS files - orange/pink
+  if (ext === "html" || ext === "htm") {
+    return <FileText className={`${className} text-orange-600`} />;
+  }
+  if (ext === "css" || ext === "scss" || ext === "sass" || ext === "less") {
+    return <FileText className={`${className} text-pink-500`} />;
+  }
+
+  // Config files - purple
+  if (ext === "json" || ext === "yaml" || ext === "yml" || ext === "toml") {
+    return <FileText className={`${className} text-violet-500`} />;
+  }
+
+  // Markdown files - indigo
+  if (ext === "md" || ext === "mdx") {
+    return <FileText className={`${className} text-indigo-500`} />;
+  }
+
+  // Shell scripts - emerald
+  if (ext === "sh" || ext === "bash" || ext === "zsh") {
+    return <FileText className={`${className} text-emerald-500`} />;
+  }
+
+  // Image files - rose
+  if (ext === "png" || ext === "jpg" || ext === "jpeg" || ext === "gif" || ext === "svg" || ext === "webp") {
+    return <Image className={`${className} text-rose-500`} />;
   }
 
   return <File className={`${className} text-neutral-500`} />;
