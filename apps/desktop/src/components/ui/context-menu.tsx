@@ -102,7 +102,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.1 }}
-        className="fixed z-50 min-w-[180px] rounded-md border border-black/10 bg-white shadow-lg"
+        className="fixed z-50 min-w-[180px] border border-black bg-white text-black shadow-[3px_3px_0_#000]"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
@@ -114,12 +114,12 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
               key={index}
               onClick={() => handleItemClick(item)}
               disabled={item.disabled}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors ${
+              className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors border-l-2 ${
                 item.disabled
-                  ? "opacity-50 cursor-not-allowed"
+                  ? "opacity-50 cursor-not-allowed border-transparent"
                   : item.danger
-                    ? "hover:bg-red-50 hover:text-red-600"
-                    : "hover:bg-black/5"
+                    ? "border-black hover:bg-black/10"
+                    : "border-transparent hover:bg-black/5"
               }`}
             >
               {item.icon && <span className="w-4 h-4">{item.icon}</span>}

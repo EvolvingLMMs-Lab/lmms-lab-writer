@@ -13,7 +13,6 @@ import {
 import { createPortal } from "react-dom";
 import { Tree } from "react-arborist";
 import type { NodeRendererProps, TreeApi } from "react-arborist";
-import { ask } from "@tauri-apps/plugin-dialog";
 import { Command } from "@tauri-apps/plugin-shell";
 import { platform } from "@tauri-apps/plugin-os";
 import { normalize } from "@tauri-apps/api/path";
@@ -94,6 +93,7 @@ async function copyToClipboard(text: string): Promise<void> {
 }
 import type { FileNode } from "@lmms-lab/writer-shared";
 import { ContextMenu, type ContextMenuItem } from "../ui/context-menu";
+import { ConfirmDialog } from "../ui/confirm-dialog";
 import { InputDialog } from "../ui/input-dialog";
 import {
   ArchiveIcon,
@@ -152,6 +152,13 @@ interface DialogState {
   type: "create-file" | "create-directory" | "rename";
   parentPath?: string;
   node?: FileNode;
+}
+
+interface ConfirmDialogState {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
 }
 
 function getFileExtension(filename: string): string {
@@ -519,6 +526,26 @@ function FileTreeInner({
 
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
+  const confirmResolverRef = useRef<((value: boolean) => void) | null>(null);
+
+  const requestConfirm = useCallback((payload: ConfirmDialogState) => {
+    if (confirmResolverRef.current) {
+      confirmResolverRef.current(false);
+    }
+    setConfirmDialog(payload);
+    return new Promise<boolean>((resolve) => {
+      confirmResolverRef.current = resolve;
+    });
+  }, []);
+
+  const closeConfirm = useCallback((result: boolean) => {
+    if (confirmResolverRef.current) {
+      confirmResolverRef.current(result);
+      confirmResolverRef.current = null;
+    }
+    setConfirmDialog(null);
+  }, []);
 
   // Mouse-based drag-and-drop state
   const [dragState, setDragState] = useState<DragState>(initialDragState);
@@ -651,10 +678,12 @@ function FileTreeInner({
     // Check if target already exists
     const targetExists = nodeMap.has(newPath);
     if (targetExists) {
-      const confirmed = await ask(
-        `A file or folder named "${fileName}" already exists in this location. Do you want to replace it?`,
-        { title: "Confirm Replace", kind: "warning" },
-      );
+      const confirmed = await requestConfirm({
+        title: "Confirm Replace",
+        message: `A file or folder named "${fileName}" already exists in this location.\nDo you want to replace it?`,
+        confirmLabel: "Replace",
+        cancelLabel: "Cancel",
+      });
       if (!confirmed) return;
     }
 
@@ -664,7 +693,7 @@ function FileTreeInner({
       console.error("Failed to move:", error);
       alert(`Failed to move "${fileName}": ${error}`);
     }
-  }, [fileOperations, nodeMap]);
+  }, [fileOperations, nodeMap, requestConfirm]);
 
   // Mouse move handler (attached to document during drag)
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -808,6 +837,7 @@ function FileTreeInner({
     setDialog(null);
   }, []);
 
+
   // Handle right-click on empty area
   const handleRootContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -828,7 +858,7 @@ function FileTreeInner({
   );
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    async (e: React.KeyboardEvent) => {
       const tree = treeRef.current;
       if (!tree) return;
 
@@ -855,19 +885,19 @@ function FileTreeInner({
             const isDirectory = currentNode.type === "directory";
             const nodePath = currentNode.path;
             const nodeName = currentNode.name;
-            (async () => {
-              const confirmed = await ask(
-                `Are you sure you want to delete "${nodeName}"?${isDirectory ? " This will delete all files inside." : ""}`,
-                { title: "Confirm Delete", kind: "warning" },
-              );
-              if (confirmed) {
-                try {
-                  await fileOperations.deletePath(nodePath);
-                } catch (error) {
-                  alert(`Failed to delete: ${error}`);
-                }
+            const confirmed = await requestConfirm({
+              title: "Confirm Delete",
+              message: `Are you sure you want to delete "${nodeName}"?${isDirectory ? "\nThis will delete all files inside." : ""}`,
+              confirmLabel: "Delete",
+              cancelLabel: "Cancel",
+            });
+            if (confirmed) {
+              try {
+                await fileOperations.deletePath(nodePath);
+              } catch (error) {
+                alert(`Failed to delete: ${error}`);
               }
-            })();
+            }
           }
           break;
         }
@@ -909,7 +939,7 @@ function FileTreeInner({
         }
       }
     },
-    [nodeMap, fileOperations, onRefresh, projectPath],
+    [nodeMap, fileOperations, onRefresh, projectPath, requestConfirm],
   );
 
   const getContextMenuItems = useCallback(
@@ -996,10 +1026,12 @@ function FileTreeInner({
       items.push({
         label: "Delete",
         onClick: async () => {
-          const confirmed = await ask(
-            `Are you sure you want to delete "${node.name}"?${isDirectory ? " This will delete all files inside." : ""}`,
-            { title: "Confirm Delete", kind: "warning" },
-          );
+          const confirmed = await requestConfirm({
+            title: "Confirm Delete",
+            message: `Are you sure you want to delete "${node.name}"?${isDirectory ? "\nThis will delete all files inside." : ""}`,
+            confirmLabel: "Delete",
+            cancelLabel: "Cancel",
+          });
           if (confirmed) {
             try {
               await fileOperations?.deletePath(node.path);
@@ -1061,7 +1093,7 @@ function FileTreeInner({
 
       return items;
     },
-    [fileOperations, projectPath, onRefresh],
+    [fileOperations, projectPath, onRefresh, requestConfirm],
   );
 
   // Context menu items for empty area (root level)
@@ -1240,6 +1272,17 @@ function FileTreeInner({
               : getContextMenuItems(contextMenu.node, contextMenu.parentPath)
           }
           onClose={closeContextMenu}
+        />
+      )}
+
+      {confirmDialog && (
+        <ConfirmDialog
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmLabel={confirmDialog.confirmLabel}
+          cancelLabel={confirmDialog.cancelLabel}
+          onConfirm={() => closeConfirm(true)}
+          onCancel={() => closeConfirm(false)}
         />
       )}
 
