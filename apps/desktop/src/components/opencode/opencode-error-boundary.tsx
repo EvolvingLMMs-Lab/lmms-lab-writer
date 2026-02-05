@@ -1,7 +1,7 @@
 "use client";
 
 import { Component, ErrorInfo, ReactNode } from "react";
-import { Warning } from "@phosphor-icons/react";
+import { WarningIcon } from "@phosphor-icons/react";
 
 type Props = {
   children: ReactNode;
@@ -37,7 +37,7 @@ export class OpenCodeErrorBoundary extends Component<Props, State> {
       return (
         <div className="h-full flex flex-col items-center justify-center p-6 text-center">
           <div className="size-12 border border-neutral-300 flex items-center justify-center mb-4">
-            <Warning className="size-6 text-neutral-400" />
+            <WarningIcon className="size-6 text-neutral-400" />
           </div>
           <h3 className="text-sm font-medium text-neutral-900 mb-1">
             OpenCode Panel Error

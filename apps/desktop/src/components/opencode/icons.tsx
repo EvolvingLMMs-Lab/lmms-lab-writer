@@ -1,31 +1,31 @@
 import {
-  Archive,
-  BookOpenText,
-  CaretDown,
-  CaretRight,
-  Check,
-  File,
-  FilePlus,
-  FileText,
-  Folder,
-  FolderOpen,
-  Gear,
-  Globe,
-  Image,
-  ListChecks,
-  Monitor,
-  NotePencil,
-  PaperPlaneRight,
-  Plug,
-  Plus,
-  Question,
-  Robot,
-  StarFour,
-  Stop,
-  Terminal,
-  TextT,
-  Trash,
-  Warning,
+  ArchiveIcon,
+  BookOpenTextIcon,
+  CaretDownIcon,
+  CaretRightIcon,
+  CheckIcon as PhosphorCheckIcon,
+  FileIcon,
+  FilePlusIcon,
+  FileTextIcon,
+  FolderIcon as PhosphorFolderIcon,
+  FolderOpenIcon,
+  GearIcon,
+  GlobeIcon,
+  ImageIcon as PhosphorImageIcon,
+  ListChecksIcon,
+  MonitorIcon,
+  NotePencilIcon,
+  PaperPlaneRightIcon,
+  PlugIcon,
+  PlusIcon as PhosphorPlusIcon,
+  QuestionIcon,
+  RobotIcon,
+  StarFourIcon,
+  StopIcon as PhosphorStopIcon,
+  TerminalIcon as PhosphorTerminalIcon,
+  TextTIcon,
+  TrashIcon as PhosphorTrashIcon,
+  WarningIcon as PhosphorWarningIcon,
 } from "@phosphor-icons/react";
 
 export function ProviderIcon({ providerId }: { providerId?: string }) {
@@ -58,7 +58,7 @@ export function ProviderIcon({ providerId }: { providerId?: string }) {
     );
   }
 
-  return <Monitor className={iconClass} />;
+  return <MonitorIcon className={iconClass} />;
 }
 
 export function ToolIcon({ tool }: { tool: string }) {
@@ -68,34 +68,34 @@ export function ToolIcon({ tool }: { tool: string }) {
   switch (toolLower) {
     // Terminal/Shell operations
     case "bash":
-      return <Terminal className={`${baseClassName} text-emerald-600`} />;
+      return <PhosphorTerminalIcon className={`${baseClassName} text-emerald-600`} />;
 
     // File reading - eye/book icon in blue
     case "read":
-      return <BookOpenText className={`${baseClassName} text-sky-500`} />;
+      return <BookOpenTextIcon className={`${baseClassName} text-sky-500`} />;
 
     // File writing - file plus icon in green
     case "write":
-      return <FilePlus className={`${baseClassName} text-green-500`} />;
+      return <FilePlusIcon className={`${baseClassName} text-green-500`} />;
 
     // File editing - pencil icon in amber
     case "edit":
-      return <NotePencil className={`${baseClassName} text-amber-500`} />;
+      return <NotePencilIcon className={`${baseClassName} text-amber-500`} />;
 
     // Search operations
     case "glob":
-      return <FolderOpen className={`${baseClassName} text-violet-500`} />;
+      return <FolderOpenIcon className={`${baseClassName} text-violet-500`} />;
     case "grep":
-      return <TextT className={`${baseClassName} text-violet-500`} />;
+      return <TextTIcon className={`${baseClassName} text-violet-500`} />;
 
     // Web operations
     case "webfetch":
     case "websearch":
-      return <Globe className={`${baseClassName} text-blue-500`} />;
+      return <GlobeIcon className={`${baseClassName} text-blue-500`} />;
 
     // Agent/Task operations
     case "task":
-      return <Robot className={`${baseClassName} text-purple-500`} />;
+      return <RobotIcon className={`${baseClassName} text-purple-500`} />;
 
     // Todo/Task list operations
     case "todowrite":
@@ -103,72 +103,72 @@ export function ToolIcon({ tool }: { tool: string }) {
     case "todoread":
     case "todolist":
     case "todoupdate":
-      return <ListChecks className={`${baseClassName} text-teal-500`} />;
+      return <ListChecksIcon className={`${baseClassName} text-teal-500`} />;
 
     // MCP/Plugin operations
     case "mcp":
-      return <Plug className={`${baseClassName} text-orange-500`} />;
+      return <PlugIcon className={`${baseClassName} text-orange-500`} />;
 
     // Question/User input
     case "question":
     case "askuserquestion":
-      return <Question className={`${baseClassName} text-pink-500`} />;
+      return <QuestionIcon className={`${baseClassName} text-pink-500`} />;
 
     // List directory
     case "list":
-      return <Folder className={`${baseClassName} text-yellow-600`} />;
+      return <PhosphorFolderIcon className={`${baseClassName} text-yellow-600`} />;
 
     default:
-      return <StarFour className={`${baseClassName} text-neutral-400`} />;
+      return <StarFourIcon className={`${baseClassName} text-neutral-400`} />;
   }
 }
 
 export function ChevronIcon({ className }: { className?: string }) {
-  return <CaretDown className={className} />;
+  return <CaretDownIcon className={className} />;
 }
 
 export function ChevronRightIcon({ className }: { className?: string }) {
-  return <CaretRight className={className} />;
+  return <CaretRightIcon className={className} />;
 }
 
 export function WarningIcon({ className }: { className?: string }) {
-  return <Warning className={className} />;
+  return <PhosphorWarningIcon className={className} />;
 }
 
 export function TrashIcon({ className }: { className?: string }) {
-  return <Trash className={className} />;
+  return <PhosphorTrashIcon className={className} />;
 }
 
 export function PlusIcon({ className }: { className?: string }) {
-  return <Plus className={className} />;
+  return <PhosphorPlusIcon className={className} />;
 }
 
 export function CheckIcon({ className }: { className?: string }) {
-  return <Check className={className} weight="bold" />;
+  return <PhosphorCheckIcon className={className} weight="bold" />;
 }
 
 export function FolderIcon({ className }: { className?: string }) {
-  return <Folder className={className} />;
+  return <PhosphorFolderIcon className={className} />;
 }
 
 export function TerminalIcon({ className }: { className?: string }) {
-  return <Terminal className={className} />;
+  return <PhosphorTerminalIcon className={className} />;
 }
 
 export function SendIcon({ className }: { className?: string }) {
-  return <PaperPlaneRight className={className} />;
+  return <PaperPlaneRightIcon className={className} />;
 }
 
 export function ImageIcon({ className }: { className?: string }) {
-  return <Image className={className} />;
+  return <PhosphorImageIcon className={className} />;
 }
 
 export function StopIcon({ className }: { className?: string }) {
-  return <Stop className={className} />;
+  return <PhosphorStopIcon className={className} />;
 }
 
 export function SettingsIcon({ className }: { className?: string }) {
-  return <Gear className={className} />;
+  return <GearIcon className={className} />;
 }
 
 export function DisclosureTriangle({
@@ -179,7 +179,7 @@ export function DisclosureTriangle({
   className?: string;
 }) {
   return (
-    <CaretRight
+    <CaretRightIcon
       className={`size-3 transition-transform ${open ? "rotate-90" : ""} ${className || ""}`}
       weight="fill"
     />
@@ -192,74 +192,74 @@ export function FileTypeIcon({ filename }: { filename: string }) {
 
   // PDF files - red
   if (ext === "pdf") {
-    return <File className={`${className} text-red-500`} />;
+    return <FileIcon className={`${className} text-red-500`} />;
   }
 
   // Log and auxiliary files - gray
   if (ext === "log" || ext === "aux" || ext === "fdb_latexmk") {
-    return <FileText className={`${className} text-neutral-400`} />;
+    return <FileTextIcon className={`${className} text-neutral-400`} />;
   }
 
   // LaTeX files - teal
   if (ext === "tex" || ext === "bib" || ext === "cls" || ext === "sty") {
-    return <FileText className={`${className} text-teal-600`} />;
+    return <FileTextIcon className={`${className} text-teal-600`} />;
   }
 
   // Archive files - amber
   if (ext === "gz" || ext === "synctex" || ext === "xdv" || ext === "zip" || ext === "tar") {
-    return <Archive className={`${className} text-amber-500`} />;
+    return <ArchiveIcon className={`${className} text-amber-500`} />;
   }
 
   // TypeScript/JavaScript files - blue/yellow
   if (ext === "ts" || ext === "tsx") {
-    return <FileText className={`${className} text-blue-500`} />;
+    return <FileTextIcon className={`${className} text-blue-500`} />;
   }
   if (ext === "js" || ext === "jsx" || ext === "mjs") {
-    return <FileText className={`${className} text-yellow-500`} />;
+    return <FileTextIcon className={`${className} text-yellow-500`} />;
   }
 
   // Python files - green
   if (ext === "py" || ext === "pyw" || ext === "pyi") {
-    return <FileText className={`${className} text-green-500`} />;
+    return <FileTextIcon className={`${className} text-green-500`} />;
   }
 
   // Rust files - orange
   if (ext === "rs") {
-    return <FileText className={`${className} text-orange-500`} />;
+    return <FileTextIcon className={`${className} text-orange-500`} />;
   }
 
   // Go files - cyan
   if (ext === "go") {
-    return <FileText className={`${className} text-cyan-500`} />;
+    return <FileTextIcon className={`${className} text-cyan-500`} />;
   }
 
   // HTML/CSS files - orange/pink
   if (ext === "html" || ext === "htm") {
-    return <FileText className={`${className} text-orange-600`} />;
+    return <FileTextIcon className={`${className} text-orange-600`} />;
   }
   if (ext === "css" || ext === "scss" || ext === "sass" || ext === "less") {
-    return <FileText className={`${className} text-pink-500`} />;
+    return <FileTextIcon className={`${className} text-pink-500`} />;
   }
 
   // Config files - purple
   if (ext === "json" || ext === "yaml" || ext === "yml" || ext === "toml") {
-    return <FileText className={`${className} text-violet-500`} />;
+    return <FileTextIcon className={`${className} text-violet-500`} />;
   }
 
   // Markdown files - indigo
   if (ext === "md" || ext === "mdx") {
-    return <FileText className={`${className} text-indigo-500`} />;
+    return <FileTextIcon className={`${className} text-indigo-500`} />;
   }
 
   // Shell scripts - emerald
   if (ext === "sh" || ext === "bash" || ext === "zsh") {
-    return <FileText className={`${className} text-emerald-500`} />;
+    return <FileTextIcon className={`${className} text-emerald-500`} />;
   }
 
   // Image files - rose
   if (ext === "png" || ext === "jpg" || ext === "jpeg" || ext === "gif" || ext === "svg" || ext === "webp") {
-    return <Image className={`${className} text-rose-500`} />;
+    return <PhosphorImageIcon className={`${className} text-rose-500`} />;
   }
 
-  return <File className={`${className} text-neutral-500`} />;
+  return <FileIcon className={`${className} text-neutral-500`} />;
 }

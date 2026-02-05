@@ -35,13 +35,13 @@ import { pathSync } from "@/lib/path";
 import type { MainFileDetectionResult } from "@/lib/latex/types";
 import type { PendingEdit } from "@/lib/opencode/types";
 import {
-  ArrowClockwise,
-  FilePlus,
-  Folder,
-  FolderPlus,
-  Gear,
-  GitBranch,
-  PlayCircle,
+  ArrowClockwiseIcon,
+  FilePlusIcon,
+  FolderIcon,
+  FolderPlusIcon,
+  GearIcon,
+  GitBranchIcon,
+  PlayCircleIcon,
 } from "@phosphor-icons/react";
 
 function throttle<T extends (...args: Parameters<T>) => void>(
@@ -1405,7 +1405,7 @@ The AI assistant will read and update this file during compilation.
                     }`}
                     title="Compile (Ctrl+Shift+B)"
                   >
-                    <PlayCircle className="size-4" />
+                    <PlayCircleIcon className="size-4" />
                   </button>
 
                   <button
@@ -1414,7 +1414,7 @@ The AI assistant will read and update this file during compilation.
                     title="LaTeX Settings"
                     aria-label="LaTeX Settings"
                   >
-                    <Gear className="size-4" />
+                    <GearIcon className="size-4" />
                   </button>
                 </div>
               </>
@@ -1498,7 +1498,7 @@ The AI assistant will read and update this file during compilation.
                               title="New File"
                               aria-label="New File"
                             >
-                              <FilePlus className="w-4 h-4" />
+                              <FilePlusIcon className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() =>
@@ -1508,7 +1508,7 @@ The AI assistant will read and update this file during compilation.
                               title="New Folder"
                               aria-label="New Folder"
                             >
-                              <FolderPlus className="w-4 h-4" />
+                              <FolderPlusIcon className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => daemon.refreshFiles()}
@@ -1516,7 +1516,7 @@ The AI assistant will read and update this file during compilation.
                               title="Refresh Files"
                               aria-label="Refresh Files"
                             >
-                              <ArrowClockwise className="w-4 h-4" />
+                              <ArrowClockwiseIcon className="w-4 h-4" />
                             </button>
                           </div>
                         </div>
@@ -1540,7 +1540,7 @@ The AI assistant will read and update this file during compilation.
                       </>
                     ) : (
                       <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
-                        <Folder className="w-8 h-8 mb-2 opacity-30" />
+                        <FolderIcon className="w-8 h-8 mb-2 opacity-30" />
                         <p className="text-xs">No folder open</p>
                       </div>
                     )}
@@ -1551,12 +1551,12 @@ The AI assistant will read and update this file during compilation.
                   <div className="flex-1 flex flex-col overflow-hidden">
                     {!daemon.projectPath ? (
                       <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
-                        <GitBranch className="w-8 h-8 mb-2 opacity-30" />
+                        <GitBranchIcon className="w-8 h-8 mb-2 opacity-30" />
                         <p className="text-xs">No folder open</p>
                       </div>
                     ) : !gitStatus?.isRepo ? (
                       <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
-                        <GitBranch className="w-8 h-8 mb-2 opacity-30" />
+                        <GitBranchIcon className="w-8 h-8 mb-2 opacity-30" />
                         <p className="text-xs mb-3">Not a git repository</p>
                         <button
                           onClick={() => daemon.gitInit()}
@@ -1580,7 +1580,7 @@ The AI assistant will read and update this file during compilation.
                               className="text-muted hover:text-black"
                               aria-label="Refresh git status"
                             >
-                              <ArrowClockwise className="w-4 h-4" />
+                              <ArrowClockwiseIcon className="w-4 h-4" />
                             </button>
                           </div>
                           {!gitStatus.remote && (
@@ -1845,7 +1845,7 @@ The AI assistant will read and update this file during compilation.
                       className="flex items-center gap-1.5 px-2 py-1 text-xs text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200 rounded transition-colors"
                       title="Refresh PDF"
                     >
-                      <ArrowClockwise className="w-3.5 h-3.5" />
+                      <ArrowClockwiseIcon className="w-3.5 h-3.5" />
                       Refresh
                     </button>
                   </div>

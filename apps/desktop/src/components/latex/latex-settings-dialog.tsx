@@ -3,11 +3,11 @@
 import { useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowCounterClockwise,
-  Check,
-  Minus,
-  Plus,
-  X,
+  ArrowCounterClockwiseIcon,
+  CheckIcon,
+  MinusIcon,
+  PlusIcon,
+  XIcon,
 } from "@phosphor-icons/react";
 import {
   LaTeXSettings,
@@ -62,7 +62,7 @@ function CheckboxItem({
             : "border-neutral-300 group-hover:border-black"
         }`}
       >
-        {checked && <Check className="size-3 text-white" weight="bold" />}
+        {checked && <CheckIcon className="size-3 text-white" weight="bold" />}
       </div>
       <input
         type="checkbox"
@@ -187,7 +187,7 @@ export function LaTeXSettingsDialog({
                   className="p-1.5 hover:bg-neutral-100 transition-colors border border-transparent hover:border-neutral-200"
                   aria-label="Close"
                 >
-                  <X className="size-4" />
+                  <XIcon className="size-4" />
                 </button>
               </div>
 
@@ -276,7 +276,7 @@ export function LaTeXSettingsDialog({
                                 </span>
                               </div>
                               {isSelected && (
-                                <Check className="size-4 flex-shrink-0 text-black" />
+                                <CheckIcon className="size-4 flex-shrink-0 text-black" />
                               )}
                             </button>
                           );
@@ -303,7 +303,7 @@ export function LaTeXSettingsDialog({
                           className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-r border-neutral-200"
                           aria-label="Decrease font size"
                         >
-                          <Minus className="size-3" />
+                          <MinusIcon className="size-3" />
                         </button>
                         <input
                           type="number"
@@ -332,7 +332,7 @@ export function LaTeXSettingsDialog({
                           className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-l border-neutral-200"
                           aria-label="Increase font size"
                         >
-                          <Plus className="size-3" />
+                          <PlusIcon className="size-3" />
                         </button>
                         <span className="text-xs text-neutral-400 px-2 border-l border-neutral-200">
                           px
@@ -359,7 +359,7 @@ export function LaTeXSettingsDialog({
                           className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-r border-neutral-200"
                           aria-label="Decrease line height"
                         >
-                          <Minus className="size-3" />
+                          <MinusIcon className="size-3" />
                         </button>
                         <input
                           type="number"
@@ -394,7 +394,7 @@ export function LaTeXSettingsDialog({
                           className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-l border-neutral-200"
                           aria-label="Increase line height"
                         >
-                          <Plus className="size-3" />
+                          <PlusIcon className="size-3" />
                         </button>
                       </div>
                     </div>
@@ -805,7 +805,7 @@ export function LaTeXSettingsDialog({
                   }
                   className="text-xs text-neutral-500 hover:text-black transition-colors flex items-center gap-1.5 group"
                 >
-                  <ArrowCounterClockwise className="size-3.5 group-hover:rotate-[-45deg] transition-transform" />
+                  <ArrowCounterClockwiseIcon className="size-3.5 group-hover:rotate-[-45deg] transition-transform" />
                   Reset to Defaults
                 </button>
                 <button

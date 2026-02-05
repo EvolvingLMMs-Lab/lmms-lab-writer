@@ -96,31 +96,31 @@ import type { FileNode } from "@lmms-lab/writer-shared";
 import { ContextMenu, type ContextMenuItem } from "../ui/context-menu";
 import { InputDialog } from "../ui/input-dialog";
 import {
-  Archive,
-  ArrowClockwise,
-  ArrowSquareOut,
-  BookOpenText,
-  BracketsCurly,
-  CaretRight,
+  ArchiveIcon,
+  ArrowClockwiseIcon,
+  ArrowSquareOutIcon,
+  BookOpenTextIcon,
+  BracketsCurlyIcon,
+  CaretRightIcon,
   ClipboardTextIcon,
   CopyIcon,
-  Cube,
-  File,
-  FileCode,
-  FilePlus,
-  FileText,
-  Folder,
-  FolderOpen,
-  FolderPlus,
-  Gear,
-  Image,
-  MusicNote,
-  PencilLine,
-  Table,
-  Terminal,
+  CubeIcon,
+  FileCodeIcon,
+  FileIcon as FileIconSymbol,
+  FilePlusIcon,
+  FileTextIcon,
+  FolderIcon,
+  FolderOpenIcon,
+  FolderPlusIcon,
+  GearIcon,
+  ImageIcon,
+  MusicNoteIcon,
+  PencilLineIcon,
+  TableIcon,
+  TerminalIcon,
   TerminalWindowIcon,
-  Trash,
-  VideoCamera,
+  TrashIcon,
+  VideoCameraIcon,
 } from "@phosphor-icons/react";
 
 export interface FileOperations {
@@ -164,119 +164,119 @@ type IconType = React.ComponentType<{ className?: string; size?: number }>;
 
 const FILE_ICON_MAP: Record<string, IconType> = {
   // LaTeX source files
-  ".tex": FileText,
-  ".ltx": FileText,
+  ".tex": FileTextIcon,
+  ".ltx": FileTextIcon,
   // LaTeX bibliography
-  ".bib": BookOpenText,
+  ".bib": BookOpenTextIcon,
   // LaTeX document class (template)
-  ".cls": Cube,
+  ".cls": CubeIcon,
   // LaTeX style packages
-  ".sty": Cube,
+  ".sty": CubeIcon,
   // LaTeX package source
-  ".dtx": Cube,
-  ".ins": Cube,
+  ".dtx": CubeIcon,
+  ".ins": CubeIcon,
   // LaTeX output
-  ".pdf": File,
-  ".dvi": File,
-  ".ps": File,
+  ".pdf": FileIconSymbol,
+  ".dvi": FileIconSymbol,
+  ".ps": FileIconSymbol,
   // LaTeX config
-  ".latexmkrc": Gear,
+  ".latexmkrc": GearIcon,
   // Documents
-  ".doc": FileText,
-  ".docx": FileText,
-  ".txt": FileText,
-  ".rtf": FileText,
-  ".md": FileText,
-  ".mdx": FileText,
-  ".rst": FileText,
+  ".doc": FileTextIcon,
+  ".docx": FileTextIcon,
+  ".txt": FileTextIcon,
+  ".rtf": FileTextIcon,
+  ".md": FileTextIcon,
+  ".mdx": FileTextIcon,
+  ".rst": FileTextIcon,
   // Code
-  ".js": FileCode,
-  ".jsx": FileCode,
-  ".ts": FileCode,
-  ".tsx": FileCode,
-  ".mjs": FileCode,
-  ".cjs": FileCode,
-  ".py": FileCode,
-  ".rb": FileCode,
-  ".go": FileCode,
-  ".rs": FileCode,
-  ".c": FileCode,
-  ".cpp": FileCode,
-  ".h": FileCode,
-  ".hpp": FileCode,
-  ".java": FileCode,
-  ".kt": FileCode,
-  ".swift": FileCode,
-  ".lua": FileCode,
-  ".r": FileCode,
-  ".m": FileCode,
-  ".html": FileCode,
-  ".htm": FileCode,
-  ".css": FileCode,
-  ".scss": FileCode,
-  ".sass": FileCode,
-  ".less": FileCode,
-  ".vue": FileCode,
-  ".svelte": FileCode,
+  ".js": FileCodeIcon,
+  ".jsx": FileCodeIcon,
+  ".ts": FileCodeIcon,
+  ".tsx": FileCodeIcon,
+  ".mjs": FileCodeIcon,
+  ".cjs": FileCodeIcon,
+  ".py": FileCodeIcon,
+  ".rb": FileCodeIcon,
+  ".go": FileCodeIcon,
+  ".rs": FileCodeIcon,
+  ".c": FileCodeIcon,
+  ".cpp": FileCodeIcon,
+  ".h": FileCodeIcon,
+  ".hpp": FileCodeIcon,
+  ".java": FileCodeIcon,
+  ".kt": FileCodeIcon,
+  ".swift": FileCodeIcon,
+  ".lua": FileCodeIcon,
+  ".r": FileCodeIcon,
+  ".m": FileCodeIcon,
+  ".html": FileCodeIcon,
+  ".htm": FileCodeIcon,
+  ".css": FileCodeIcon,
+  ".scss": FileCodeIcon,
+  ".sass": FileCodeIcon,
+  ".less": FileCodeIcon,
+  ".vue": FileCodeIcon,
+  ".svelte": FileCodeIcon,
   // Shell/Scripts
-  ".sh": Terminal,
-  ".bash": Terminal,
-  ".zsh": Terminal,
-  ".fish": Terminal,
-  ".ps1": Terminal,
-  ".bat": Terminal,
-  ".cmd": Terminal,
+  ".sh": TerminalIcon,
+  ".bash": TerminalIcon,
+  ".zsh": TerminalIcon,
+  ".fish": TerminalIcon,
+  ".ps1": TerminalIcon,
+  ".bat": TerminalIcon,
+  ".cmd": TerminalIcon,
   // Config/Data
-  ".json": BracketsCurly,
-  ".yaml": BracketsCurly,
-  ".yml": BracketsCurly,
-  ".toml": BracketsCurly,
-  ".xml": BracketsCurly,
-  ".ini": Gear,
-  ".cfg": Gear,
-  ".conf": Gear,
-  ".env": Gear,
-  ".gitignore": Gear,
-  ".editorconfig": Gear,
-  ".prettierrc": Gear,
-  ".eslintrc": Gear,
+  ".json": BracketsCurlyIcon,
+  ".yaml": BracketsCurlyIcon,
+  ".yml": BracketsCurlyIcon,
+  ".toml": BracketsCurlyIcon,
+  ".xml": BracketsCurlyIcon,
+  ".ini": GearIcon,
+  ".cfg": GearIcon,
+  ".conf": GearIcon,
+  ".env": GearIcon,
+  ".gitignore": GearIcon,
+  ".editorconfig": GearIcon,
+  ".prettierrc": GearIcon,
+  ".eslintrc": GearIcon,
   // Images
-  ".png": Image,
-  ".jpg": Image,
-  ".jpeg": Image,
-  ".gif": Image,
-  ".svg": Image,
-  ".webp": Image,
-  ".ico": Image,
-  ".bmp": Image,
-  ".tiff": Image,
-  ".tif": Image,
-  ".eps": Image,
-  ".pgf": Image,
-  ".tikz": Image,
+  ".png": ImageIcon,
+  ".jpg": ImageIcon,
+  ".jpeg": ImageIcon,
+  ".gif": ImageIcon,
+  ".svg": ImageIcon,
+  ".webp": ImageIcon,
+  ".ico": ImageIcon,
+  ".bmp": ImageIcon,
+  ".tiff": ImageIcon,
+  ".tif": ImageIcon,
+  ".eps": ImageIcon,
+  ".pgf": ImageIcon,
+  ".tikz": ImageIcon,
   // Archives
-  ".zip": Archive,
-  ".tar": Archive,
-  ".gz": Archive,
-  ".rar": Archive,
-  ".7z": Archive,
+  ".zip": ArchiveIcon,
+  ".tar": ArchiveIcon,
+  ".gz": ArchiveIcon,
+  ".rar": ArchiveIcon,
+  ".7z": ArchiveIcon,
   // Video
-  ".mp4": VideoCamera,
-  ".mkv": VideoCamera,
-  ".avi": VideoCamera,
-  ".mov": VideoCamera,
-  ".webm": VideoCamera,
+  ".mp4": VideoCameraIcon,
+  ".mkv": VideoCameraIcon,
+  ".avi": VideoCameraIcon,
+  ".mov": VideoCameraIcon,
+  ".webm": VideoCameraIcon,
   // Audio
-  ".mp3": MusicNote,
-  ".wav": MusicNote,
-  ".flac": MusicNote,
-  ".ogg": MusicNote,
-  ".m4a": MusicNote,
+  ".mp3": MusicNoteIcon,
+  ".wav": MusicNoteIcon,
+  ".flac": MusicNoteIcon,
+  ".ogg": MusicNoteIcon,
+  ".m4a": MusicNoteIcon,
   // Spreadsheet/Data
-  ".csv": Table,
-  ".xls": Table,
-  ".xlsx": Table,
-  ".tsv": Table,
+  ".csv": TableIcon,
+  ".xls": TableIcon,
+  ".xlsx": TableIcon,
+  ".tsv": TableIcon,
 };
 
 function FileIcon({
@@ -292,14 +292,14 @@ function FileIcon({
 
   if (type === "directory") {
     return expanded ? (
-      <FolderOpen className={iconClass} size={16} />
+      <FolderOpenIcon className={iconClass} size={16} />
     ) : (
-      <Folder className={iconClass} size={16} />
+      <FolderIcon className={iconClass} size={16} />
     );
   }
 
   const ext = filename ? getFileExtension(filename) : "";
-  const IconComponent = FILE_ICON_MAP[ext] || File;
+  const IconComponent = FILE_ICON_MAP[ext] || FileIconSymbol;
 
   return <IconComponent className={iconClass} size={16} />;
 }
@@ -434,7 +434,7 @@ function NodeRenderer({
             animate={{ rotate: node.isOpen ? 90 : 0 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
           >
-            <CaretRight className="w-3 h-3" weight="fill" />
+            <CaretRightIcon className="w-3 h-3" weight="fill" />
           </motion.div>
         )}
         {!isDirectory && <span className="w-3" />}
@@ -664,13 +664,13 @@ export const FileTree = memo(function FileTree({
           label: "New File",
           onClick: () =>
             setDialog({ type: "create-file", parentPath: node.path }),
-          icon: <FilePlus size={16} />,
+          icon: <FilePlusIcon size={16} />,
         });
         items.push({
           label: "New Folder",
           onClick: () =>
             setDialog({ type: "create-directory", parentPath: node.path }),
-          icon: <FolderPlus size={16} />,
+          icon: <FolderPlusIcon size={16} />,
         });
       }
 
@@ -693,7 +693,7 @@ export const FileTree = memo(function FileTree({
       items.push({
         label: "Rename",
         onClick: () => setDialog({ type: "rename", node }),
-        icon: <PencilLine size={16} />,
+        icon: <PencilLineIcon size={16} />,
       });
 
       // Duplicate (for files only)
@@ -750,7 +750,7 @@ export const FileTree = memo(function FileTree({
           }
         },
         danger: true,
-        icon: <Trash size={16} />,
+        icon: <TrashIcon size={16} />,
       });
 
       // --- External actions ---
@@ -772,7 +772,7 @@ export const FileTree = memo(function FileTree({
               console.error("Failed to reveal in file manager:", error);
             }
           },
-          icon: <ArrowSquareOut size={16} />,
+          icon: <ArrowSquareOutIcon size={16} />,
         });
 
         // Open in Terminal (for directories)
@@ -796,7 +796,7 @@ export const FileTree = memo(function FileTree({
         items.push({
           label: "Refresh",
           onClick: onRefresh,
-          icon: <ArrowClockwise size={16} />,
+          icon: <ArrowClockwiseIcon size={16} />,
         });
       }
 
@@ -813,12 +813,12 @@ export const FileTree = memo(function FileTree({
       items.push({
         label: "New File",
         onClick: () => setDialog({ type: "create-file", parentPath: "" }),
-        icon: <FilePlus size={16} />,
+        icon: <FilePlusIcon size={16} />,
       });
       items.push({
         label: "New Folder",
         onClick: () => setDialog({ type: "create-directory", parentPath: "" }),
-        icon: <FolderPlus size={16} />,
+        icon: <FolderPlusIcon size={16} />,
       });
     }
 
@@ -845,7 +845,7 @@ export const FileTree = memo(function FileTree({
             console.error("Failed to reveal in file manager:", error);
           }
         },
-        icon: <ArrowSquareOut size={16} />,
+        icon: <ArrowSquareOutIcon size={16} />,
       });
 
       items.push({
@@ -865,7 +865,7 @@ export const FileTree = memo(function FileTree({
       items.push({
         label: "Refresh",
         onClick: onRefresh,
-        icon: <ArrowClockwise size={16} />,
+        icon: <ArrowClockwiseIcon size={16} />,
       });
     }
 

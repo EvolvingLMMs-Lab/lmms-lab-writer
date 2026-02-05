@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
-  ArrowSquareOut,
-  Check,
-  CircleNotch,
-  Copy,
-  X,
+  ArrowSquareOutIcon,
+  CheckIcon,
+  CircleNotchIcon,
+  CopyIcon,
+  XIcon,
 } from "@phosphor-icons/react";
 import { getSupabaseClient } from "@/lib/supabase";
 import { invoke } from "@tauri-apps/api/core";
@@ -326,7 +326,7 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
             disabled={isLoading}
             className="p-1 hover:bg-neutral-100 transition-colors disabled:opacity-50"
           >
-            <X className="w-5 h-5" />
+            <XIcon className="w-5 h-5" />
           </button>
         </div>
 
@@ -347,9 +347,9 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
                   title="Copy link"
                 >
                   {linkCopied ? (
-                    <Check className="w-3.5 h-3.5 text-green-600" />
+                    <CheckIcon className="w-3.5 h-3.5 text-green-600" />
                   ) : (
-                    <Copy className="w-3.5 h-3.5" />
+                    <CopyIcon className="w-3.5 h-3.5" />
                   )}
                 </button>
                 <button
@@ -357,7 +357,7 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
                   className="p-1 text-muted hover:text-black hover:bg-neutral-200 transition-colors"
                   title="Open in browser"
                 >
-                  <ArrowSquareOut className="w-3.5 h-3.5" />
+                  <ArrowSquareOutIcon className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -408,12 +408,12 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
             >
               {isSuccess ? (
                 <>
-                  <Check className="w-4 h-4" />
+                  <CheckIcon className="w-4 h-4" />
                   Success!
                 </>
               ) : isLoading ? (
                 <>
-                  <CircleNotch className="w-4 h-4 animate-spin" />
+                  <CircleNotchIcon className="w-4 h-4 animate-spin" />
                   Logging in...
                 </>
               ) : (

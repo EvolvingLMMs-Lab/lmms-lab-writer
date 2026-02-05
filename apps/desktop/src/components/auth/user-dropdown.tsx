@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, CaretDown, CaretRight } from "@phosphor-icons/react";
+import {
+  ArrowRightIcon,
+  CaretDownIcon,
+  CaretRightIcon,
+} from "@phosphor-icons/react";
 import { useAuth, type UserProfile } from "@/lib/auth";
 
 type Props = {
@@ -85,7 +89,7 @@ export function UserDropdown({ profile }: Props) {
             </span>
           </div>
         )}
-        <CaretDown
+        <CaretDownIcon
           className={`size-4 text-muted transition-transform ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
@@ -117,7 +121,7 @@ export function UserDropdown({ profile }: Props) {
               {name && <p className="font-medium truncate">{name}</p>}
               <p className="text-sm text-muted truncate">{email}</p>
             </div>
-            <CaretRight className="size-4 text-muted group-hover:text-black transition-colors flex-shrink-0" />
+            <CaretRightIcon className="size-4 text-muted group-hover:text-black transition-colors flex-shrink-0" />
           </button>
 
           <div className="px-5 py-4 border-b border-border bg-neutral-50">
@@ -150,7 +154,7 @@ export function UserDropdown({ profile }: Props) {
                 </span>
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-muted group-hover:text-black transition-colors">
                   Unlock
-                  <ArrowRight className="size-3" weight="bold" />
+                  <ArrowRightIcon className="size-3" weight="bold" />
                 </span>
               </button>
             )}

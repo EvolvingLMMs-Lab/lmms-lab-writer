@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { Warning, X } from "@phosphor-icons/react";
+import { WarningIcon, XIcon } from "@phosphor-icons/react";
 
 type Props = {
   open: boolean;
@@ -89,14 +89,14 @@ export function OpenCodeDisconnectedDialog({
             className="p-1 text-muted hover:text-black transition-colors"
             aria-label="Close dialog"
           >
-            <X className="size-4" />
+            <XIcon className="size-4" />
           </button>
         </div>
 
         <div className="px-4 py-4">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 mt-0.5">
-              <Warning className="size-5 text-muted" />
+              <WarningIcon className="size-5 text-muted" />
             </div>
             <div className="flex-1">
               <p className="text-sm text-foreground">

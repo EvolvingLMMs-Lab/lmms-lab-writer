@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
-import { Warning, X } from "@phosphor-icons/react";
+import { WarningIcon, XIcon } from "@phosphor-icons/react";
 
 type ErrorType = "port_in_use" | "not_installed" | "generic";
 
@@ -127,14 +127,14 @@ export function OpenCodeErrorDialog({
             className="p-1 text-muted hover:text-black transition-colors"
             aria-label="Close dialog"
           >
-            <X className="size-4" />
+            <XIcon className="size-4" />
           </button>
         </div>
 
         <div className="px-4 py-4">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 mt-0.5">
-              <Warning className="size-5 text-red-500" />
+              <WarningIcon className="size-5 text-red-500" />
             </div>
             <div className="flex-1 min-w-0">
               {errorType === "port_in_use" && (
