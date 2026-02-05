@@ -16,22 +16,23 @@ import { motion } from "framer-motion";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { Command } from "@tauri-apps/plugin-shell";
 import { platform } from "@tauri-apps/plugin-os";
+import { normalize } from "@tauri-apps/api/path";
+import { pathSync } from "@/lib/path";
 
 // Reveal file/folder in system file manager
 async function revealInFileManager(path: string): Promise<void> {
   const os = platform();
+  const normalizedPath = await normalize(path);
 
   if (os === "macos") {
     // macOS: open -R reveals the item in Finder
-    await Command.create("open", ["-R", path]).execute();
+    await Command.create("open", ["-R", normalizedPath]).execute();
   } else if (os === "windows") {
     // Windows: explorer /select, highlights the item
-    // Convert forward slashes to backslashes for Windows
-    const winPath = path.replace(/\//g, "\\");
-    await Command.create("explorer", [`/select,${winPath}`]).execute();
+    await Command.create("explorer", [`/select,${normalizedPath}`]).execute();
   } else {
     // Linux: xdg-open opens the containing folder
-    const parentPath = path.replace(/\/[^/]*$/, "") || path;
+    const parentPath = pathSync.dirname(normalizedPath) || normalizedPath;
     await Command.create("xdg-open", [parentPath]).execute();
   }
 }
@@ -314,9 +315,7 @@ function NodeRenderer({
       e.preventDefault();
       e.stopPropagation();
       // Find parent path from the node's path
-      const parentPath = node.data.path.includes("/")
-        ? node.data.path.substring(0, node.data.path.lastIndexOf("/"))
-        : "";
+      const parentPath = pathSync.dirname(node.data.path);
       onContextMenu?.(
         e,
         {
@@ -392,17 +391,12 @@ function NodeRenderer({
 // --- Helpers ---
 
 function getParentPath(path: string): string | null {
-  const lastSlash = path.lastIndexOf("/");
-  return lastSlash > 0 ? path.substring(0, lastSlash) : null;
+  const parent = pathSync.dirname(path);
+  return parent || null;
 }
 
 function collectAllAncestorPaths(path: string): string[] {
-  const parts = path.split("/");
-  const ancestors: string[] = [];
-  for (let i = 1; i < parts.length; i++) {
-    ancestors.push(parts.slice(0, i).join("/"));
-  }
-  return ancestors;
+  return pathSync.ancestors(path);
 }
 
 // Build a flat lookup from path -> FileNode for keyboard shortcuts

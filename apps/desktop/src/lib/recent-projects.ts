@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { normalize, basename } from "@/lib/path";
 
 const STORAGE_KEY = "recent-projects";
 const MAX_PROJECTS = 10;
@@ -10,12 +11,6 @@ export type RecentProject = {
   name: string;
   lastOpened: number;
 };
-
-function getProjectName(path: string): string {
-  const normalized = path.replace(/\\/g, "/");
-  const parts = normalized.split("/").filter(Boolean);
-  return parts[parts.length - 1] || path;
-}
 
 export function useRecentProjects() {
   const [projects, setProjects] = useState<RecentProject[]>([]);
@@ -39,12 +34,14 @@ export function useRecentProjects() {
   }, []);
 
   const addProject = useCallback(
-    (path: string) => {
-      const normalized = path.replace(/\\/g, "/");
-      const existing = projects.filter((p) => p.path !== normalized);
+    async (path: string) => {
+      // Use Tauri's normalize to ensure correct path format for the OS
+      const normalizedPath = await normalize(path);
+      const name = await basename(normalizedPath);
+      const existing = projects.filter((p) => p.path !== normalizedPath);
       const newProject: RecentProject = {
-        path: normalized,
-        name: getProjectName(normalized),
+        path: normalizedPath,
+        name,
         lastOpened: Date.now(),
       };
       const updated = [newProject, ...existing].slice(0, MAX_PROJECTS);

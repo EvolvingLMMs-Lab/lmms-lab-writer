@@ -30,6 +30,7 @@ import { InlineDiffReview } from "@/components/editor/inline-diff-review";
 import { ChangesReviewPanel } from "@/components/editor/changes-review-panel";
 import { RecentProjects } from "@/components/recent-projects";
 import { useRecentProjects } from "@/lib/recent-projects";
+import { pathSync } from "@/lib/path";
 import type { MainFileDetectionResult } from "@/lib/latex/types";
 import type { PendingEdit } from "@/lib/opencode/types";
 
@@ -696,7 +697,7 @@ The AI assistant will read and update this file during compilation.
 
           // Handle file not found - remove from tabs and notify user
           if (errorStr.includes("FILE_NOT_FOUND")) {
-            const fileName = path.split("/").pop() || path;
+            const fileName = pathSync.basename(path);
             toast(
               `File "${fileName}" no longer exists and has been removed from tabs`,
               "error",
@@ -731,7 +732,7 @@ The AI assistant will read and update this file during compilation.
         }
       } else {
         const fullPath = daemon.projectPath
-          ? `${daemon.projectPath}/${path}`
+          ? pathSync.join(daemon.projectPath, path)
           : path;
         setBinaryPreviewUrl(convertFileSrc(fullPath));
         setFileContent("");
@@ -1124,7 +1125,7 @@ The AI assistant will read and update this file during compilation.
 
       if (selected && typeof selected === "string") {
         await daemon.setProject(selected);
-        recentProjects.addProject(selected);
+        await recentProjects.addProject(selected);
         setShowSidebar(true);
         setShowRightPanel(true);
       }
@@ -1137,7 +1138,7 @@ The AI assistant will read and update this file during compilation.
     async (path: string) => {
       try {
         await daemon.setProject(path);
-        recentProjects.addProject(path);
+        await recentProjects.addProject(path);
         setShowSidebar(true);
         setShowRightPanel(true);
       } catch (err) {
@@ -1262,7 +1263,7 @@ The AI assistant will read and update this file during compilation.
             <div className="flex items-center gap-2 min-w-0">
               <div className="text-sm font-medium px-2 py-1 -ml-2 truncate">
                 {daemon.projectPath
-                  ? daemon.projectPath.split("/").pop()
+                  ? pathSync.basename(daemon.projectPath)
                   : "LMMs-Lab Writer"}
               </div>
               {isSaving && (
@@ -1438,7 +1439,7 @@ The AI assistant will read and update this file during compilation.
                           title={daemon.projectPath}
                         >
                           <span className="text-xs text-muted truncate">
-                            {daemon.projectPath.split("/").pop()}
+                            {pathSync.basename(daemon.projectPath)}
                           </span>
                           <div className="flex items-center gap-1 flex-shrink-0">
                             <button
@@ -1840,7 +1841,7 @@ The AI assistant will read and update this file during compilation.
           {selectedFile && (
             <div className="flex items-center border-b border-border bg-neutral-50 overflow-x-auto min-h-[34px]">
               {openTabs.map((tab) => {
-                const fileName = tab.split("/").pop() || tab;
+                const fileName = pathSync.basename(tab);
                 const isActive = tab === selectedFile;
                 return (
                   <div

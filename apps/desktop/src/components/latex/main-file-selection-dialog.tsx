@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { pathSync } from "@/lib/path";
 import type { MainFileDetectionResult } from "@/lib/latex/types";
 
 interface MainFileSelectionDialogProps {
@@ -45,10 +46,7 @@ export function MainFileSelectionDialog({
 
   if (!open) return null;
 
-  const getFileName = (path: string) => {
-    const parts = path.replace(/\\/g, "/").split("/");
-    return parts.pop() || path;
-  };
+  const getFileName = (path: string) => pathSync.basename(path);
 
   return createPortal(
     <AnimatePresence>

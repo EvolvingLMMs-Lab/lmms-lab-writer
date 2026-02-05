@@ -1,4 +1,5 @@
 import type { FileNode } from "@lmms-lab/writer-shared";
+import { pathSync } from "@/lib/path";
 
 /**
  * Recursively find all .tex files in a file tree
@@ -49,7 +50,7 @@ export function findMainTexFile(files: FileNode[]): string | null {
   if (allTexFiles.length > 0) {
     // Prefer files with common names
     for (const file of allTexFiles) {
-      const fileName = file.split("/").pop()?.toLowerCase() || "";
+      const fileName = pathSync.basename(file).toLowerCase();
       if (commonMainNames.includes(fileName)) {
         return file;
       }
@@ -71,7 +72,7 @@ export function getPdfPathFromTex(texPath: string): string {
  * Extract file name from path
  */
 export function getFileName(path: string): string {
-  return path.split("/").pop() || path;
+  return pathSync.basename(path);
 }
 
 /**

@@ -8,6 +8,7 @@ import type {
   GitStatus,
   GitLogEntry,
 } from "@lmms-lab/writer-shared";
+import { pathSync } from "@/lib/path";
 
 function debounce<T extends (...args: Parameters<T>) => void>(
   fn: T,
@@ -199,7 +200,7 @@ export function useTauriDaemon() {
     async (relativePath: string): Promise<string | null> => {
       if (!projectState.projectPath || !relativePath) return null;
 
-      const fullPath = `${projectState.projectPath}/${relativePath}`;
+      const fullPath = pathSync.join(projectState.projectPath, relativePath);
       try {
         return await invoke<string>("read_file", { path: fullPath });
       } catch (error) {
@@ -221,7 +222,7 @@ export function useTauriDaemon() {
       if (!projectState.projectPath) return;
 
       try {
-        const fullPath = `${projectState.projectPath}/${relativePath}`;
+        const fullPath = pathSync.join(projectState.projectPath, relativePath);
         await invoke("write_file", { path: fullPath, content });
       } catch (error) {
         console.error("Failed to write file:", error);
@@ -252,7 +253,7 @@ export function useTauriDaemon() {
       if (!projectState.projectPath) return;
 
       try {
-        const fullPath = `${projectState.projectPath}/${relativePath}`;
+        const fullPath = pathSync.join(projectState.projectPath, relativePath);
         await invoke("create_file", { path: fullPath });
         await refreshFiles();
       } catch (error) {
@@ -269,7 +270,7 @@ export function useTauriDaemon() {
       if (!projectState.projectPath) return;
 
       try {
-        const fullPath = `${projectState.projectPath}/${relativePath}`;
+        const fullPath = pathSync.join(projectState.projectPath, relativePath);
         await invoke("create_directory", { path: fullPath });
         await refreshFiles();
       } catch (error) {
@@ -286,8 +287,8 @@ export function useTauriDaemon() {
       if (!projectState.projectPath) return;
 
       try {
-        const oldFullPath = `${projectState.projectPath}/${oldRelativePath}`;
-        const newFullPath = `${projectState.projectPath}/${newRelativePath}`;
+        const oldFullPath = pathSync.join(projectState.projectPath, oldRelativePath);
+        const newFullPath = pathSync.join(projectState.projectPath, newRelativePath);
         await invoke("rename_path", {
           oldPath: oldFullPath,
           newPath: newFullPath,
@@ -307,7 +308,7 @@ export function useTauriDaemon() {
       if (!projectState.projectPath) return;
 
       try {
-        const fullPath = `${projectState.projectPath}/${relativePath}`;
+        const fullPath = pathSync.join(projectState.projectPath, relativePath);
         await invoke("delete_path", { path: fullPath });
         await refreshFiles();
       } catch (error) {
