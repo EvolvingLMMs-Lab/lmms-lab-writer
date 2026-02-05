@@ -2,11 +2,11 @@
 
 import { useCallback, useState } from "react";
 import {
-  X,
-  XCircle,
-  CaretLineLeft,
-  CaretLineRight,
-  Trash,
+  XIcon,
+  XCircleIcon,
+  CaretLineLeftIcon,
+  CaretLineRightIcon,
+  TrashIcon,
 } from "@phosphor-icons/react";
 import { ContextMenu, ContextMenuItem } from "./context-menu";
 
@@ -78,7 +78,7 @@ export function TabBar<T extends TabItem>({
         items.push({
           label: "Close",
           onClick: () => onTabClose(tabId),
-          icon: <X className="w-4 h-4" />,
+          icon: <XIcon className="w-4 h-4" />,
         });
       }
 
@@ -87,7 +87,7 @@ export function TabBar<T extends TabItem>({
           label: "Close Others",
           onClick: () => onCloseOthers(tabId),
           disabled: tabs.length <= 1,
-          icon: <XCircle className="w-4 h-4" />,
+          icon: <XCircleIcon className="w-4 h-4" />,
         });
       }
 
@@ -96,7 +96,7 @@ export function TabBar<T extends TabItem>({
           label: "Close to the Left",
           onClick: () => onCloseToLeft(tabId),
           disabled: tabIndex === 0,
-          icon: <CaretLineLeft className="w-4 h-4" />,
+          icon: <CaretLineLeftIcon className="w-4 h-4" />,
         });
       }
 
@@ -105,7 +105,7 @@ export function TabBar<T extends TabItem>({
           label: "Close to the Right",
           onClick: () => onCloseToRight(tabId),
           disabled: tabIndex === tabs.length - 1,
-          icon: <CaretLineRight className="w-4 h-4" />,
+          icon: <CaretLineRightIcon className="w-4 h-4" />,
         });
       }
 
@@ -114,7 +114,7 @@ export function TabBar<T extends TabItem>({
           label: "Close All",
           onClick: onCloseAll,
           danger: true,
-          icon: <Trash className="w-4 h-4" />,
+          icon: <TrashIcon className="w-4 h-4" />,
         });
       }
 
@@ -190,7 +190,7 @@ export function TabBar<T extends TabItem>({
                   }`}
                   aria-label="Close tab"
                 >
-                  <X className="w-3 h-3" />
+                  <XIcon className="w-3 h-3" />
                 </button>
               )}
             </div>
