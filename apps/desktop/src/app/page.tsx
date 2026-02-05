@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/toast";
 import { FileTree } from "@/components/editor/file-tree";
 import { InputDialog } from "@/components/ui/input-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ContextMenu, ContextMenuItem } from "@/components/ui/context-menu";
+import { TabBar, TabItem } from "@/components/ui/tab-bar";
 import { Spinner } from "@/components/ui/spinner";
 import { EditorSkeleton } from "@/components/editor/editor-skeleton";
 import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
@@ -42,7 +42,6 @@ import {
   Gear,
   GitBranch,
   PlayCircle,
-  X,
 } from "@phosphor-icons/react";
 
 function throttle<T extends (...args: Parameters<T>) => void>(
@@ -219,11 +218,6 @@ export default function EditorPage() {
   }, [selectedFile, pendingEdits]);
   const [showMainFileDialog, setShowMainFileDialog] = useState(false);
   const [mainFileDetectionResult, setMainFileDetectionResult] = useState<MainFileDetectionResult | null>(null);
-  const [tabContextMenu, setTabContextMenu] = useState<{
-    x: number;
-    y: number;
-    tab: string;
-  } | null>(null);
 
   const contentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const opencodeStartedForPathRef = useRef<string | null>(null);
@@ -878,6 +872,33 @@ The AI assistant will read and update this file during compilation.
     setFileContent("");
   }, []);
 
+  // Convert openTabs to TabItem format for TabBar
+  const editorTabs = useMemo(
+    (): TabItem[] =>
+      openTabs.map((path) => ({
+        id: path,
+        label: pathSync.basename(path),
+        title: path,
+      })),
+    [openTabs],
+  );
+
+  // Sidebar tabs configuration
+  const sidebarTabs = useMemo(
+    (): TabItem[] => [
+      { id: "files", label: "Files" },
+      {
+        id: "git",
+        label: "Git",
+        badge:
+          gitStatus && gitStatus.changes.length > 0
+            ? gitStatus.changes.length
+            : undefined,
+      },
+    ],
+    [gitStatus],
+  );
+
   const handleContentChange = useCallback(
     (content: string) => {
       setFileContent(content);
@@ -1452,33 +1473,12 @@ The AI assistant will read and update this file during compilation.
                 }}
                 className="border-r border-border flex flex-col flex-shrink-0 overflow-hidden"
               >
-                <div className="flex items-center border-b border-border">
-                  <button
-                    onClick={() => setSidebarTab("files")}
-                    className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
-                      sidebarTab === "files"
-                        ? "text-black border-b-2 border-black -mb-px"
-                        : "text-muted hover:text-black"
-                    }`}
-                  >
-                    Files
-                  </button>
-                  <button
-                    onClick={() => setSidebarTab("git")}
-                    className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
-                      sidebarTab === "git"
-                        ? "text-black border-b-2 border-black -mb-px"
-                        : "text-muted hover:text-black"
-                    }`}
-                  >
-                    Git
-                    {gitStatus && gitStatus.changes.length > 0 && (
-                      <span className="ml-1 text-xs bg-neutral-200 px-1 tabular-nums">
-                        {gitStatus.changes.length}
-                      </span>
-                    )}
-                  </button>
-                </div>
+                <TabBar
+                  tabs={sidebarTabs}
+                  activeTab={sidebarTab}
+                  onTabSelect={(id) => setSidebarTab(id as "files" | "git")}
+                  variant="sidebar"
+                />
 
                 {sidebarTab === "files" && (
                   <>
@@ -1805,52 +1805,17 @@ The AI assistant will read and update this file during compilation.
 
         <div className="flex-1 min-w-0 w-0 flex flex-col overflow-hidden">
           {selectedFile && (
-            <div className="flex items-center border-b border-border bg-neutral-50 overflow-x-auto min-h-[34px]">
-              {openTabs.map((tab) => {
-                const fileName = pathSync.basename(tab);
-                const isActive = tab === selectedFile;
-                return (
-                  <div
-                    key={tab}
-                    className={`group flex items-center border-r border-border transition-colors ${
-                      isActive
-                        ? "bg-white text-black"
-                        : "text-muted hover:text-black hover:bg-white/50"
-                    }`}
-                    title={tab}
-                    onMouseDown={(e) => {
-                      // Middle click to close
-                      if (e.button === 1) {
-                        e.preventDefault();
-                        handleCloseTab(tab);
-                      }
-                    }}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setTabContextMenu({ x: e.clientX, y: e.clientY, tab });
-                    }}
-                  >
-                    <button
-                      onClick={() => handleFileSelect(tab)}
-                      className="px-3 py-1.5 text-sm truncate max-w-[120px]"
-                    >
-                      {fileName}
-                    </button>
-                    <button
-                      onClick={(e) => handleCloseTab(tab, e)}
-                      className={`w-6 h-full flex items-center justify-center hover:bg-neutral-200 ${
-                        isActive
-                          ? "opacity-100"
-                          : "opacity-0 group-hover:opacity-100"
-                      }`}
-                      aria-label="Close tab"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+            <TabBar
+              tabs={editorTabs}
+              activeTab={selectedFile}
+              onTabSelect={handleFileSelect}
+              onTabClose={handleCloseTab}
+              onCloseOthers={handleCloseOtherTabs}
+              onCloseToLeft={handleCloseTabsToLeft}
+              onCloseToRight={handleCloseTabsToRight}
+              onCloseAll={handleCloseAllTabs}
+              variant="editor"
+            />
           )}
           {showChangesReview && pendingEditsArray.length > 0 ? (
             <motion.div
@@ -2115,45 +2080,6 @@ The AI assistant will read and update this file during compilation.
           }
         }}
       />
-
-      {tabContextMenu && (
-        <ContextMenu
-          x={tabContextMenu.x}
-          y={tabContextMenu.y}
-          onClose={() => setTabContextMenu(null)}
-          items={(() => {
-            const tabIndex = openTabs.indexOf(tabContextMenu.tab);
-            const items: ContextMenuItem[] = [
-              {
-                label: "Close",
-                onClick: () => handleCloseTab(tabContextMenu.tab),
-              },
-              {
-                label: "Close Others",
-                onClick: () => handleCloseOtherTabs(tabContextMenu.tab),
-                disabled: openTabs.length <= 1,
-              },
-              {
-                label: "Close to the Left",
-                onClick: () => handleCloseTabsToLeft(tabContextMenu.tab),
-                disabled: tabIndex === 0,
-              },
-              {
-                label: "Close to the Right",
-                onClick: () => handleCloseTabsToRight(tabContextMenu.tab),
-                disabled: tabIndex === openTabs.length - 1,
-              },
-              {
-                label: "Close All",
-                onClick: handleCloseAllTabs,
-                danger: true,
-              },
-            ];
-            return items;
-          })()}
-        />
-      )}
-
     </div>
   );
 }
