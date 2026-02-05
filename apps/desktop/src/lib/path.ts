@@ -27,6 +27,25 @@ function detectSeparator(path: string): string {
 }
 
 /**
+ * Check if two paths are equal (handles case sensitivity per platform)
+ * Windows/macOS: case-insensitive
+ * Linux: case-sensitive
+ */
+export function pathsEqual(path1: string, path2: string): boolean {
+  const normalized1 = path1.replace(/\\/g, "/");
+  const normalized2 = path2.replace(/\\/g, "/");
+
+  // On Windows (backslash in original path), compare case-insensitively
+  const isWindows = path1.includes("\\") || path2.includes("\\");
+  if (isWindows) {
+    return normalized1.toLowerCase() === normalized2.toLowerCase();
+  }
+
+  // On Unix, compare case-sensitively
+  return normalized1 === normalized2;
+}
+
+/**
  * Synchronous path utilities for use in render functions where async is not possible.
  * These work correctly on both Windows and Unix by handling both separators.
  */
@@ -112,5 +131,31 @@ export const pathSync = {
   hasParent(path: string): boolean {
     const normalized = path.replace(/\\/g, "/");
     return normalized.includes("/") && normalized.lastIndexOf("/") > 0;
+  },
+};
+
+/**
+ * Cross-platform line ending utilities
+ */
+export const lineEndings = {
+  /**
+   * Normalize line endings to LF (\n)
+   */
+  normalize(text: string): string {
+    return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  },
+
+  /**
+   * Split text into lines (handles all line ending styles)
+   */
+  split(text: string): string[] {
+    return text.split(/\r\n|\r|\n/);
+  },
+
+  /**
+   * Count lines in text (handles all line ending styles)
+   */
+  count(text: string): number {
+    return lineEndings.split(text).length;
   },
 };

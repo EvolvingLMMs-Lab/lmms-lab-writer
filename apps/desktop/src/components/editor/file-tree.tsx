@@ -674,9 +674,15 @@ export const FileTree = memo(function FileTree({
       });
 
       if (projectPath) {
+        const os = platform();
+        const revealLabel =
+          os === "macos"
+            ? "Reveal in Finder"
+            : os === "windows"
+              ? "Reveal in Explorer"
+              : "Reveal in File Manager";
         items.push({
-          label:
-            platform() === "macos" ? "Reveal in Finder" : "Reveal in Explorer",
+          label: revealLabel,
           onClick: async () => {
             const fullPath = `${projectPath}/${node.path}`;
             try {
@@ -756,9 +762,15 @@ export const FileTree = memo(function FileTree({
     }
 
     if (projectPath) {
+      const os = platform();
+      const revealLabel =
+        os === "macos"
+          ? "Reveal in Finder"
+          : os === "windows"
+            ? "Reveal in Explorer"
+            : "Reveal in File Manager";
       items.push({
-        label:
-          platform() === "macos" ? "Reveal in Finder" : "Reveal in Explorer",
+        label: revealLabel,
         onClick: async () => {
           try {
             await revealInFileManager(projectPath);
