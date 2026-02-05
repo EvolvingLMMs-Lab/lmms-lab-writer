@@ -26,7 +26,9 @@ import {
   LaTeXInstallPrompt,
   MainFileSelectionDialog,
 } from "@/components/latex";
+import { DiffReviewModal } from "@/components/opencode/diff-review-modal";
 import type { MainFileDetectionResult } from "@/lib/latex/types";
+import type { PendingEdit } from "@/lib/opencode/types";
 
 function throttle<T extends (...args: Parameters<T>) => void>(
   fn: T,
@@ -152,6 +154,13 @@ export default function EditorPage() {
     string | null
   >(null);
   const [opencodeError, setOpencodeError] = useState<string | null>(null);
+
+  // Pending edits state for accept/reject functionality
+  const [pendingEdits, setPendingEdits] = useState<Map<string, PendingEdit>>(
+    () => new Map()
+  );
+  const [activeEditId, setActiveEditId] = useState<string | null>(null);
+  const fileContentCacheRef = useRef<Map<string, string>>(new Map());
   const [showMainFileDialog, setShowMainFileDialog] = useState(false);
   const [mainFileDetectionResult, setMainFileDetectionResult] = useState<MainFileDetectionResult | null>(null);
 
@@ -799,6 +808,179 @@ The AI assistant will read and update this file during compilation.
       }, 500);
     },
     [selectedFile, daemon],
+  );
+
+  // Capture file content before AI edit starts
+  const handleCaptureFileContent = useCallback(
+    async (toolPartId: string, filePath: string) => {
+      if (!daemon.projectPath) return;
+
+      try {
+        const content = await daemon.readFile(filePath);
+        if (content !== null) {
+          fileContentCacheRef.current.set(toolPartId, content);
+        }
+      } catch {
+        // Silently ignore - file might not exist yet for new files
+      }
+    },
+    [daemon]
+  );
+
+  // Handle when AI edit completes
+  const handleEditCompleted = useCallback(
+    async (toolPartId: string, filePath: string, _toolOutput: string) => {
+      const beforeContent = fileContentCacheRef.current.get(toolPartId) || "";
+
+      // Read the actual file content after the edit
+      let afterContent = "";
+      try {
+        const content = await daemon.readFile(filePath);
+        afterContent = content || "";
+      } catch {
+        // Clean up cache and skip creating pending edit
+        fileContentCacheRef.current.delete(toolPartId);
+        return;
+      }
+
+      // Skip if content is the same (no actual change)
+      if (beforeContent === afterContent) {
+        fileContentCacheRef.current.delete(toolPartId);
+        return;
+      }
+
+      // Calculate additions/deletions (simple line count diff)
+      const beforeLines = beforeContent.split("\n").length;
+      const afterLines = afterContent.split("\n").length;
+
+      const pendingEdit: PendingEdit = {
+        id: toolPartId,
+        filePath,
+        before: beforeContent,
+        after: afterContent,
+        additions: Math.max(0, afterLines - beforeLines),
+        deletions: Math.max(0, beforeLines - afterLines),
+        timestamp: Date.now(),
+        toolPartId,
+        status: "pending",
+      };
+
+      setPendingEdits((prev) => new Map(prev).set(toolPartId, pendingEdit));
+      setActiveEditId(toolPartId);
+
+      // Clean up cache
+      fileContentCacheRef.current.delete(toolPartId);
+    },
+    [daemon]
+  );
+
+  // Accept edit - changes are already applied, just update status
+  const handleAcceptEdit = useCallback((editId: string) => {
+    setPendingEdits((prev) => {
+      const next = new Map(prev);
+      const edit = next.get(editId);
+      if (edit) {
+        next.set(editId, { ...edit, status: "accepted" });
+      }
+      return next;
+    });
+    setActiveEditId(null);
+  }, []);
+
+  // Reject edit - restore original content
+  const handleRejectEdit = useCallback(
+    async (editId: string) => {
+      const edit = pendingEdits.get(editId);
+      if (!edit) return;
+
+      try {
+        // Write the "before" content back to the file
+        await daemon.writeFile(edit.filePath, edit.before);
+
+        // Update the editor if this file is currently open
+        if (selectedFile === edit.filePath) {
+          setFileContent(edit.before);
+        }
+
+        setPendingEdits((prev) => {
+          const next = new Map(prev);
+          next.set(editId, { ...edit, status: "rejected" });
+          return next;
+        });
+
+        toast("Changes reverted", "success");
+      } catch {
+        toast(`Failed to restore ${edit.filePath}`, "error");
+      }
+
+      setActiveEditId(null);
+    },
+    [pendingEdits, daemon, selectedFile, toast]
+  );
+
+  // Dismiss edit review (review later)
+  const handleDismissEdit = useCallback(() => {
+    setActiveEditId(null);
+  }, []);
+
+  // Open a pending edit for review
+  const handleReviewEdit = useCallback(
+    async (editId: string, filePath: string) => {
+      // If we already have this edit in pendingEdits, just show it
+      if (pendingEdits.has(editId)) {
+        setActiveEditId(editId);
+        return;
+      }
+
+      // Otherwise, create a new pending edit by reading the current file content
+      // Note: We don't have the "before" content, so we'll just show the current content
+      // This happens when the tool completed before we could capture the original
+      if (!filePath) {
+        toast("Cannot review: file path not available", "error");
+        return;
+      }
+
+      // Normalize the path - convert absolute path to relative if needed
+      let relativePath = filePath;
+      if (daemon.projectPath) {
+        // Normalize slashes to forward slashes for comparison
+        const normalizedFilePath = filePath.replace(/\\/g, "/");
+        const normalizedProjectPath = daemon.projectPath.replace(/\\/g, "/");
+
+        if (normalizedFilePath.startsWith(normalizedProjectPath)) {
+          // Remove project path prefix and leading slash
+          relativePath = normalizedFilePath.slice(normalizedProjectPath.length).replace(/^\//, "");
+        }
+      }
+
+      try {
+        const afterContent = await daemon.readFile(relativePath);
+        if (afterContent === null) {
+          toast("Cannot review: file not found", "error");
+          return;
+        }
+
+        // Create a pending edit with empty "before" (we don't have it)
+        // This will show just the current content in the diff viewer
+        const pendingEdit: PendingEdit = {
+          id: editId,
+          filePath: relativePath,
+          before: "", // We don't have the original content
+          after: afterContent,
+          additions: afterContent.split("\n").length,
+          deletions: 0,
+          timestamp: Date.now(),
+          toolPartId: editId,
+          status: "pending",
+        };
+
+        setPendingEdits((prev) => new Map(prev).set(editId, pendingEdit));
+        setActiveEditId(editId);
+      } catch {
+        toast("Failed to read file for review", "error");
+      }
+    },
+    [pendingEdits, daemon, toast]
   );
 
   const handleOpenFolder = useCallback(async () => {
@@ -1722,6 +1904,9 @@ The AI assistant will read and update this file during compilation.
                     onFileClick={handleFileSelect}
                     pendingMessage={pendingOpenCodeMessage}
                     onPendingMessageSent={() => setPendingOpenCodeMessage(null)}
+                    onCaptureFileContent={handleCaptureFileContent}
+                    onEditCompleted={handleEditCompleted}
+                    onReviewEdit={handleReviewEdit}
                   />
                 </OpenCodeErrorBoundary>
               </aside>
@@ -1786,6 +1971,16 @@ The AI assistant will read and update this file during compilation.
           }
         }}
       />
+
+      {/* Diff Review Modal for AI edits */}
+      {activeEditId && pendingEdits.get(activeEditId) && (
+        <DiffReviewModal
+          edit={pendingEdits.get(activeEditId)!}
+          onAccept={() => handleAcceptEdit(activeEditId)}
+          onReject={() => handleRejectEdit(activeEditId)}
+          onDismiss={handleDismissEdit}
+        />
+      )}
     </div>
   );
 }

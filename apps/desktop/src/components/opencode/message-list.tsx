@@ -21,11 +21,13 @@ export function MessageList({
   getPartsForMessage,
   onFileClick,
   onAnswer,
+  onReviewEdit,
 }: {
   messages: Message[];
   getPartsForMessage: (messageId: string) => Part[];
   onFileClick?: (path: string) => void;
   onAnswer?: (questionID: string, answers: string[][]) => void;
+  onReviewEdit?: (editId: string, filePath: string) => void;
 }) {
   const turns = useMemo(() => {
     const result: { user: Message; assistantMessages: Message[]; assistantParts: Part[] }[] = [];
@@ -77,6 +79,7 @@ export function MessageList({
             startTime={turn.user.time?.created}
             endTime={endTime}
             onAnswer={isLastTurn ? onAnswer : undefined}
+            onReviewEdit={onReviewEdit}
           />
         );
       })}
@@ -92,6 +95,7 @@ function MessageTurn({
   startTime,
   endTime,
   onAnswer,
+  onReviewEdit,
 }: {
   userText: string;
   userImages?: FilePart[];
@@ -100,6 +104,7 @@ function MessageTurn({
   startTime?: number;
   endTime?: number;
   onAnswer?: (questionID: string, answers: string[][]) => void;
+  onReviewEdit?: (editId: string, filePath: string) => void;
 }) {
   const [stepsParent] = useAutoAnimate({ duration: 150 });
   const [now, setNow] = useState(Date.now());
@@ -205,7 +210,7 @@ function MessageTurn({
               if (toolName === "question" || toolName === "askuserquestion") {
                 return <AskUserQuestionDisplay key={p.id} part={toolPart} onAnswer={onAnswer} />;
               }
-              return <ToolDisplay key={p.id} part={toolPart} onFileClick={onFileClick} />;
+              return <ToolDisplay key={p.id} part={toolPart} onFileClick={onFileClick} onReviewEdit={onReviewEdit} />;
             }
 
             // Text Part — rendered as markdown

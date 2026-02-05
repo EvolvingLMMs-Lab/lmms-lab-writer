@@ -23,6 +23,9 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   onFileClick,
   pendingMessage,
   onPendingMessageSent,
+  onCaptureFileContent,
+  onEditCompleted,
+  onReviewEdit,
 }: Props) {
   const opencode = useOpenCode({ baseUrl, directory, autoConnect });
   const [input, setInput] = useState("");
@@ -70,6 +73,56 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [opencode.messages, opencode.parts, opencode.status]);
+
+  // Track tool states for accept/reject functionality
+  const processedToolsRef = useRef<Set<string>>(new Set());
+  const runningToolsRef = useRef<Map<string, string>>(new Map()); // toolId -> filePath
+
+  useEffect(() => {
+    if (!onCaptureFileContent && !onEditCompleted) return;
+
+    // Scan all parts for write/edit tools
+    opencode.parts.forEach((partsArray) => {
+      partsArray.forEach((part) => {
+        if (part.type !== "tool") return;
+
+        const toolPart = part as ToolPart;
+        const toolName = toolPart.tool.toLowerCase();
+
+        // Only process write/edit tools
+        if (toolName !== "write" && toolName !== "edit") return;
+
+        const toolId = toolPart.id;
+        const filePath =
+          (toolPart.state.input.filePath as string) ||
+          (toolPart.state.input.file_path as string);
+
+        if (!filePath) return;
+
+        // When tool starts running, capture the file content
+        if (toolPart.state.status === "running" && !runningToolsRef.current.has(toolId)) {
+          runningToolsRef.current.set(toolId, filePath);
+          onCaptureFileContent?.(toolId, filePath);
+        }
+
+        // When tool completes, trigger edit completed callback
+        if (
+          toolPart.state.status === "completed" &&
+          runningToolsRef.current.has(toolId) &&
+          !processedToolsRef.current.has(toolId)
+        ) {
+          processedToolsRef.current.add(toolId);
+          runningToolsRef.current.delete(toolId);
+
+          // Try to get the new content from the tool output or re-read the file
+          // For now, we'll read the file content in the parent component
+          // since we need access to the daemon
+          const afterContent = (toolPart.state as { output?: string }).output || "";
+          onEditCompleted?.(toolId, filePath, afterContent);
+        }
+      });
+    });
+  }, [opencode.parts, onCaptureFileContent, onEditCompleted]);
 
   // Handle pending message from external source
   useEffect(() => {
@@ -275,6 +328,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
                 getPartsForMessage={opencode.getPartsForMessage}
                 onFileClick={onFileClick}
                 onAnswer={handleAnswer}
+                onReviewEdit={onReviewEdit}
               />
             )}
             <div ref={messagesEndRef} />

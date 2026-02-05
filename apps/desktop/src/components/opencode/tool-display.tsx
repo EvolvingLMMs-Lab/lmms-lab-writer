@@ -11,9 +11,11 @@ import { formatValue } from "./utils";
 export function ToolDisplay({
   part,
   onFileClick,
+  onReviewEdit,
 }: {
   part: ToolPart;
   onFileClick?: (path: string) => void;
+  onReviewEdit?: (editId: string, filePath: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const info = getToolInfo(part.tool, part.state.input);
@@ -60,13 +62,24 @@ export function ToolDisplay({
     return null;
   }, [output, part.tool]);
 
+  const isFileEditTool =
+    (part.tool === "write" || part.tool === "edit") &&
+    part.state.status === "completed";
+
   return (
     <div
       className={`text-[13px] bg-neutral-50 hover:bg-neutral-100 transition-colors ${isError ? "bg-red-50" : ""}`}
     >
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={hasDetails ? 0 : undefined}
         onClick={() => hasDetails && setExpanded(!expanded)}
+        onKeyDown={(e) => {
+          if (hasDetails && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            setExpanded(!expanded);
+          }
+        }}
         className={`w-full flex items-center gap-3 px-3 py-2.5 text-left ${hasDetails ? "cursor-pointer" : "cursor-default"}`}
       >
         {isRunning ? (
@@ -99,12 +112,28 @@ export function ToolDisplay({
             )}
           </span>
         )}
+        {onReviewEdit && isFileEditTool && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              const filePath =
+                (part.state.input.filePath as string) ||
+                (part.state.input.file_path as string) ||
+                "";
+              onReviewEdit(part.id, filePath);
+            }}
+            className="text-[10px] font-mono px-2 py-0.5 border border-neutral-300 text-neutral-600 hover:border-black hover:text-black hover:bg-neutral-100 transition-colors flex-shrink-0"
+          >
+            Review
+          </button>
+        )}
         {hasDetails && (
           <ChevronIcon
             className={`size-4 text-neutral-400 flex-shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
           />
         )}
-      </button>
+      </div>
 
       {expanded && (
         <div className="border-t border-neutral-200 bg-white">

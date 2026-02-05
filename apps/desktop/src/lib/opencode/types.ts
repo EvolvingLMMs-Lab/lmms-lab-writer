@@ -8,6 +8,19 @@ export type FileDiff = {
   deletions: number
 }
 
+// Pending edit awaiting user review (Accept/Reject)
+export type PendingEdit = {
+  id: string
+  filePath: string
+  before: string
+  after: string
+  additions: number
+  deletions: number
+  timestamp: number
+  toolPartId: string
+  status: 'pending' | 'accepted' | 'rejected'
+}
+
 export type UserMessage = {
   id: string
   sessionID: string
