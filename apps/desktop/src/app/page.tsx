@@ -26,7 +26,7 @@ import {
   LaTeXInstallPrompt,
   MainFileSelectionDialog,
 } from "@/components/latex";
-import { DiffReviewModal } from "@/components/opencode/diff-review-modal";
+import { InlineDiffReview } from "@/components/editor/inline-diff-review";
 import type { MainFileDetectionResult } from "@/lib/latex/types";
 import type { PendingEdit } from "@/lib/opencode/types";
 
@@ -159,8 +159,21 @@ export default function EditorPage() {
   const [pendingEdits, setPendingEdits] = useState<Map<string, PendingEdit>>(
     () => new Map()
   );
-  const [activeEditId, setActiveEditId] = useState<string | null>(null);
   const fileContentCacheRef = useRef<Map<string, string>>(new Map());
+
+  // Find pending edit for the currently selected file (most recent one)
+  const pendingEditForCurrentFile = useMemo(() => {
+    if (!selectedFile) return null;
+    let latestEdit: PendingEdit | null = null;
+    for (const edit of pendingEdits.values()) {
+      if (edit.filePath === selectedFile && edit.status === "pending") {
+        if (!latestEdit || edit.timestamp > latestEdit.timestamp) {
+          latestEdit = edit;
+        }
+      }
+    }
+    return latestEdit;
+  }, [selectedFile, pendingEdits]);
   const [showMainFileDialog, setShowMainFileDialog] = useState(false);
   const [mainFileDetectionResult, setMainFileDetectionResult] = useState<MainFileDetectionResult | null>(null);
 
@@ -866,7 +879,6 @@ The AI assistant will read and update this file during compilation.
       };
 
       setPendingEdits((prev) => new Map(prev).set(toolPartId, pendingEdit));
-      setActiveEditId(toolPartId);
 
       // Clean up cache
       fileContentCacheRef.current.delete(toolPartId);
@@ -874,18 +886,22 @@ The AI assistant will read and update this file during compilation.
     [daemon]
   );
 
-  // Accept edit - changes are already applied, just update status
+  // Accept edit - changes are already applied, just update status and sync editor content
   const handleAcceptEdit = useCallback((editId: string) => {
-    setPendingEdits((prev) => {
-      const next = new Map(prev);
-      const edit = next.get(editId);
-      if (edit) {
-        next.set(editId, { ...edit, status: "accepted" });
+    const edit = pendingEdits.get(editId);
+    if (edit) {
+      // Update editor content to the "after" content so it shows correctly when diff view closes
+      if (selectedFile === edit.filePath) {
+        setFileContent(edit.after);
       }
-      return next;
-    });
-    setActiveEditId(null);
-  }, []);
+      setPendingEdits((prev) => {
+        const next = new Map(prev);
+        next.set(editId, { ...edit, status: "accepted" });
+        return next;
+      });
+      toast("Changes accepted", "success");
+    }
+  }, [pendingEdits, selectedFile, toast]);
 
   // Reject edit - restore original content
   const handleRejectEdit = useCallback(
@@ -912,29 +928,29 @@ The AI assistant will read and update this file during compilation.
       } catch {
         toast(`Failed to restore ${edit.filePath}`, "error");
       }
-
-      setActiveEditId(null);
     },
     [pendingEdits, daemon, selectedFile, toast]
   );
 
-  // Dismiss edit review (review later)
-  const handleDismissEdit = useCallback(() => {
-    setActiveEditId(null);
-  }, []);
+  // Dismiss edit review - just mark it as accepted (keeping changes) and sync editor content
+  const handleDismissEdit = useCallback((editId: string) => {
+    const edit = pendingEdits.get(editId);
+    if (edit) {
+      // Update editor content to the "after" content so it shows correctly when diff view closes
+      if (selectedFile === edit.filePath) {
+        setFileContent(edit.after);
+      }
+      setPendingEdits((prev) => {
+        const next = new Map(prev);
+        next.set(editId, { ...edit, status: "accepted" });
+        return next;
+      });
+    }
+  }, [pendingEdits, selectedFile]);
 
-  // Open a pending edit for review
+  // Open a pending edit for review - selects the file to show inline diff
   const handleReviewEdit = useCallback(
     async (editId: string, filePath: string) => {
-      // If we already have this edit in pendingEdits, just show it
-      if (pendingEdits.has(editId)) {
-        setActiveEditId(editId);
-        return;
-      }
-
-      // Otherwise, create a new pending edit by reading the current file content
-      // Note: We don't have the "before" content, so we'll just show the current content
-      // This happens when the tool completed before we could capture the original
       if (!filePath) {
         toast("Cannot review: file path not available", "error");
         return;
@@ -953,6 +969,16 @@ The AI assistant will read and update this file during compilation.
         }
       }
 
+      // If we already have this edit in pendingEdits, just select the file
+      if (pendingEdits.has(editId)) {
+        const edit = pendingEdits.get(editId)!;
+        setSelectedFile(edit.filePath);
+        return;
+      }
+
+      // Otherwise, create a new pending edit by reading the current file content
+      // Note: We don't have the "before" content, so we'll just show the current content
+      // This happens when the tool completed before we could capture the original
       try {
         const afterContent = await daemon.readFile(relativePath);
         if (afterContent === null) {
@@ -975,7 +1001,8 @@ The AI assistant will read and update this file during compilation.
         };
 
         setPendingEdits((prev) => new Map(prev).set(editId, pendingEdit));
-        setActiveEditId(editId);
+        // Select the file to show the inline diff
+        setSelectedFile(relativePath);
       } catch {
         toast("Failed to read file for review", "error");
       }
@@ -1785,6 +1812,22 @@ The AI assistant will read and update this file during compilation.
               </div>
             ) : isLoadingFile ? (
               <EditorSkeleton className="flex-1 min-h-0" />
+            ) : pendingEditForCurrentFile ? (
+              <motion.div
+                key={`diff-${pendingEditForCurrentFile.id}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className="flex-1 min-h-0"
+              >
+                <InlineDiffReview
+                  edit={pendingEditForCurrentFile}
+                  onAccept={() => handleAcceptEdit(pendingEditForCurrentFile.id)}
+                  onReject={() => handleRejectEdit(pendingEditForCurrentFile.id)}
+                  onDismiss={() => handleDismissEdit(pendingEditForCurrentFile.id)}
+                  className="h-full"
+                />
+              </motion.div>
             ) : (
               <motion.div
                 key={selectedFile}
@@ -1972,15 +2015,6 @@ The AI assistant will read and update this file during compilation.
         }}
       />
 
-      {/* Diff Review Modal for AI edits */}
-      {activeEditId && pendingEdits.get(activeEditId) && (
-        <DiffReviewModal
-          edit={pendingEdits.get(activeEditId)!}
-          onAccept={() => handleAcceptEdit(activeEditId)}
-          onReject={() => handleRejectEdit(activeEditId)}
-          onDismiss={handleDismissEdit}
-        />
-      )}
     </div>
   );
 }
