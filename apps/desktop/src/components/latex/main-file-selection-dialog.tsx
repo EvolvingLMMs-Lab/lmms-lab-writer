@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { pathSync } from "@/lib/path";
 import type { MainFileDetectionResult } from "@/lib/latex/types";
-import { Check, FileText } from "@phosphor-icons/react";
+import { CheckIcon, FileTextIcon } from "@phosphor-icons/react";
 
 interface MainFileSelectionDialogProps {
   open: boolean;
@@ -101,7 +101,7 @@ export function MainFileSelectionDialog({
                       }`}
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <FileText
+                        <FileTextIcon
                           className={`size-4 flex-shrink-0 ${isSelected ? "text-white" : "text-neutral-400"}`}
                         />
                         <span className="truncate font-medium">{fileName}</span>
@@ -114,7 +114,7 @@ export function MainFileSelectionDialog({
                             Recommended
                           </span>
                         )}
-                        {isSelected && <Check className="size-4" />}
+                        {isSelected && <CheckIcon className="size-4" />}
                       </div>
                     </button>
                   );

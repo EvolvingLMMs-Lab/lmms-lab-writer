@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Info, X } from "@phosphor-icons/react";
+import { CheckIcon, InfoIcon, XIcon } from "@phosphor-icons/react";
 
 type ToastType = "success" | "error" | "info";
 
@@ -82,7 +82,7 @@ function ToastItem({
           className="flex-shrink-0 text-black hover:opacity-60 transition-opacity"
           aria-label="Dismiss"
         >
-          <X className="w-3.5 h-3.5" />
+          <XIcon className="w-3.5 h-3.5" />
         </button>
       </div>
     </motion.div>
@@ -92,11 +92,11 @@ function ToastItem({
 function getIcon(type: ToastType) {
   switch (type) {
     case "success":
-      return <Check size={18} className="text-black" />;
+      return <CheckIcon size={18} className="text-black" />;
     case "error":
-      return <X size={18} className="text-black" />;
+      return <XIcon size={18} className="text-black" />;
     case "info":
-      return <Info size={18} className="text-black" />;
+      return <InfoIcon size={18} className="text-black" />;
   }
 }
 

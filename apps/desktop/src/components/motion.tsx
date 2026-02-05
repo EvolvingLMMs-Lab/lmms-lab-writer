@@ -7,7 +7,7 @@ import {
   type HTMLMotionProps,
 } from "framer-motion";
 import { forwardRef, type ReactNode } from "react";
-import { CaretRight } from "@phosphor-icons/react";
+import { CaretRightIcon } from "@phosphor-icons/react";
 
 const GPU_SPRING = {
   type: "spring",
@@ -181,7 +181,7 @@ export function MotionChevron({ expanded }: { expanded: boolean }) {
       }
       style={prefersReducedMotion ? undefined : { willChange: "transform" }}
     >
-      <CaretRight className="w-3 h-3" weight="fill" />
+      <CaretRightIcon className="w-3 h-3" weight="fill" />
     </motion.div>
   );
 }

@@ -3,7 +3,13 @@
 import { useState, useCallback, useEffect, useMemo, memo } from "react";
 import dynamic from "next/dynamic";
 import type { PendingEdit } from "@/lib/opencode/types";
-import { CaretLeft, CaretRight, Check, CheckCircle, X } from "@phosphor-icons/react";
+import {
+  CaretLeftIcon,
+  CaretRightIcon,
+  CheckIcon,
+  CheckCircleIcon,
+  XIcon,
+} from "@phosphor-icons/react";
 
 const MonacoDiffEditor = dynamic(
   () =>
@@ -181,7 +187,7 @@ export const ChangesReviewPanel = memo(function ChangesReviewPanel({
       <div className="flex items-center justify-between px-3 py-2 border-b border-neutral-200 bg-amber-50">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-amber-600" />
+            <CheckCircleIcon className="w-4 h-4 text-amber-600" />
             <span className="text-sm font-medium text-amber-800">
               Review Changes
             </span>
@@ -250,10 +256,10 @@ export const ChangesReviewPanel = memo(function ChangesReviewPanel({
               >
                 <div className="flex items-center gap-2">
                   {edit.status === "accepted" && (
-                    <Check className="w-3 h-3 text-green-600 flex-shrink-0" />
+                    <CheckIcon className="w-3 h-3 text-green-600 flex-shrink-0" />
                   )}
                   {edit.status === "rejected" && (
-                    <X className="w-3 h-3 text-red-500 flex-shrink-0" />
+                    <XIcon className="w-3 h-3 text-red-500 flex-shrink-0" />
                   )}
                   {edit.status === "pending" && (
                     <span className="w-2 h-2 bg-amber-500 rounded-full flex-shrink-0" />
@@ -302,7 +308,7 @@ export const ChangesReviewPanel = memo(function ChangesReviewPanel({
                   disabled={currentIndex === 0 || isProcessing}
                   className="p-1 text-neutral-500 hover:text-neutral-900 disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  <CaretLeft className="w-4 h-4" />
+                  <CaretLeftIcon className="w-4 h-4" />
                 </button>
                 <span className="text-xs text-neutral-500 font-mono tabular-nums">
                   {currentIndex + 1} / {totalCount}
@@ -312,7 +318,7 @@ export const ChangesReviewPanel = memo(function ChangesReviewPanel({
                   disabled={currentIndex === edits.length - 1 || isProcessing}
                   className="p-1 text-neutral-500 hover:text-neutral-900 disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  <CaretRight className="w-4 h-4" />
+                  <CaretRightIcon className="w-4 h-4" />
                 </button>
               </div>
               <span className="text-sm font-mono text-neutral-700 truncate">

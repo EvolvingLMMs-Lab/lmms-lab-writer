@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
-import { CaretLeft, CaretRight, X } from "@phosphor-icons/react";
+import { CaretLeftIcon, CaretRightIcon, XIcon } from "@phosphor-icons/react";
 import { ChevronIcon, ImageIcon, SendIcon, StopIcon } from "./icons";
 import type { AttachedFile } from "./types";
 
@@ -192,7 +192,7 @@ export function InputArea({
                   className="absolute -top-1.5 -right-1.5 size-5 bg-black text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Remove"
                 >
-                  <X className="size-3" />
+                  <XIcon className="size-3" />
                 </button>
               </div>
             ))}
@@ -331,7 +331,7 @@ export function InputArea({
                 className="absolute top-2 right-2 size-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
                 title="Close"
               >
-                <X className="size-5" />
+                <XIcon className="size-5" />
               </button>
               {/* Navigation arrows */}
               {attachedFiles.length > 1 && (
@@ -344,7 +344,7 @@ export function InputArea({
                     className="absolute left-2 top-1/2 -translate-y-1/2 size-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
                     title="Previous"
                   >
-                    <CaretLeft className="size-6" />
+                    <CaretLeftIcon className="size-6" />
                   </button>
                   <button
                     onClick={(e) => {
@@ -354,7 +354,7 @@ export function InputArea({
                     className="absolute right-2 top-1/2 -translate-y-1/2 size-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
                     title="Next"
                   >
-                    <CaretRight className="size-6" />
+                    <CaretRightIcon className="size-6" />
                   </button>
                 </>
               )}

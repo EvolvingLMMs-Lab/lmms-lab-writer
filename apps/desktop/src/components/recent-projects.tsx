@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Folder, Trash } from "@phosphor-icons/react";
+import { FolderIcon, TrashIcon } from "@phosphor-icons/react";
 import type { RecentProject } from "@/lib/recent-projects";
 import { formatRelativeTime } from "./opencode/utils";
 
@@ -48,7 +48,7 @@ export function RecentProjects({
                 onClick={() => onSelect(project.path)}
                 className="flex-1 text-left px-3 py-2.5 flex items-center gap-3 min-w-0"
               >
-                <Folder className="size-4 text-muted flex-shrink-0" />
+                <FolderIcon className="size-4 text-muted flex-shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{project.name}</p>
                   <p className="text-xs text-muted truncate">{project.path}</p>
@@ -65,7 +65,7 @@ export function RecentProjects({
                 className="px-3 py-2 text-muted hover:text-red-600 transition-colors"
                 title="Remove from history"
               >
-                <Trash className="size-4" />
+                <TrashIcon className="size-4" />
               </button>
             </div>
           );

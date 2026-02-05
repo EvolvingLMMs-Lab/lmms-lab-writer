@@ -4,7 +4,7 @@ import { useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLatexInstaller } from "@/lib/latex";
 import { Spinner } from "@/components/ui/spinner";
-import { ArrowClockwise, Warning } from "@phosphor-icons/react";
+import { ArrowClockwiseIcon, WarningIcon } from "@phosphor-icons/react";
 
 interface LaTeXInstallPromptProps {
   onRefreshCompilers?: () => void;
@@ -43,7 +43,7 @@ export function LaTeXInstallPrompt({ onRefreshCompilers }: LaTeXInstallPromptPro
     <div className="bg-amber-50 border-2 border-amber-400 p-4">
       <div className="flex items-start gap-3">
         {/* Warning Icon */}
-        <Warning className="size-6 text-amber-600 flex-shrink-0 mt-0.5" />
+        <WarningIcon className="size-6 text-amber-600 flex-shrink-0 mt-0.5" />
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
@@ -59,7 +59,7 @@ export function LaTeXInstallPrompt({ onRefreshCompilers }: LaTeXInstallPromptPro
                 className="flex-shrink-0 p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-100 rounded transition-colors"
                 title="Refresh compiler detection"
               >
-                <ArrowClockwise className="size-4" />
+                <ArrowClockwiseIcon className="size-4" />
               </button>
             )}
           </div>
