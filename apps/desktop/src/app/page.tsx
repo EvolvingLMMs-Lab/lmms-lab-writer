@@ -13,7 +13,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { EditorSkeleton } from "@/components/editor/editor-skeleton";
 import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion, type PanInfo } from "framer-motion";
 import { UserDropdown, LoginCodeModal } from "@/components/auth";
 import {
   useLatexSettings,
@@ -118,6 +118,9 @@ const INSTANT_TRANSITION = { duration: 0 } as const;
 
 const WEB_URL =
   process.env.NEXT_PUBLIC_WEB_URL || "https://writer.lmms-lab.com";
+
+const MIN_PANEL_WIDTH = 200;
+const MAX_SIDEBAR_WIDTH = 480;
 
 export default function EditorPage() {
   const daemon = useTauriDaemon();
@@ -542,73 +545,64 @@ The AI assistant will read and update this file during compilation.
     };
   }, []);
 
-  useEffect(() => {
-    if (!resizing) return;
+  const startResize = useCallback(
+    (panel: "sidebar" | "right") => {
+      setResizing(panel);
+      sidebarWidthRef.current = sidebarWidth;
+      rightPanelWidthRef.current = rightPanelWidth;
+      document.documentElement.style.setProperty(
+        "--sidebar-width",
+        `${sidebarWidth}px`,
+      );
+      document.documentElement.style.setProperty(
+        "--right-panel-width",
+        `${rightPanelWidth}px`,
+      );
+    },
+    [sidebarWidth, rightPanelWidth],
+  );
 
-    const MIN_PANEL_WIDTH = 200;
-    const MAX_SIDEBAR_WIDTH = 480;
+  const handleResizeDrag = useCallback((panel: "sidebar" | "right", info: PanInfo) => {
+    if (rafIdRef.current !== null) return;
 
-    document.documentElement.style.setProperty(
-      "--sidebar-width",
-      `${sidebarWidth}px`,
-    );
-    document.documentElement.style.setProperty(
-      "--right-panel-width",
-      `${rightPanelWidth}px`,
-    );
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (rafIdRef.current !== null) return;
-
-      rafIdRef.current = requestAnimationFrame(() => {
-        if (resizing === "sidebar") {
-          const newWidth = Math.min(
-            Math.max(e.clientX, MIN_PANEL_WIDTH),
-            MAX_SIDEBAR_WIDTH,
-          );
-          sidebarWidthRef.current = newWidth;
-          document.documentElement.style.setProperty(
-            "--sidebar-width",
-            `${newWidth}px`,
-          );
-        } else if (resizing === "right") {
-          const maxRightWidth = Math.floor(window.innerWidth / 2);
-          const newWidth = Math.min(
-            Math.max(window.innerWidth - e.clientX, MIN_PANEL_WIDTH),
-            maxRightWidth,
-          );
-          rightPanelWidthRef.current = newWidth;
-          document.documentElement.style.setProperty(
-            "--right-panel-width",
-            `${newWidth}px`,
-          );
-        }
-        rafIdRef.current = null;
-      });
-    };
-
-    const handleMouseUp = () => {
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
+    rafIdRef.current = requestAnimationFrame(() => {
+      if (panel === "sidebar") {
+        const newWidth = Math.min(
+          Math.max(info.point.x, MIN_PANEL_WIDTH),
+          MAX_SIDEBAR_WIDTH,
+        );
+        sidebarWidthRef.current = newWidth;
+        document.documentElement.style.setProperty(
+          "--sidebar-width",
+          `${newWidth}px`,
+        );
+      } else {
+        const maxRightWidth = Math.floor(window.innerWidth / 2);
+        const newWidth = Math.min(
+          Math.max(window.innerWidth - info.point.x, MIN_PANEL_WIDTH),
+          maxRightWidth,
+        );
+        rightPanelWidthRef.current = newWidth;
+        document.documentElement.style.setProperty(
+          "--right-panel-width",
+          `${newWidth}px`,
+        );
       }
-      setSidebarWidth(sidebarWidthRef.current);
-      setRightPanelWidth(rightPanelWidthRef.current);
-      document.documentElement.style.removeProperty("--sidebar-width");
-      document.documentElement.style.removeProperty("--right-panel-width");
-      setResizing(null);
-    };
+      rafIdRef.current = null;
+    });
+  }, []);
 
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-      }
-    };
-  }, [resizing, sidebarWidth, rightPanelWidth]);
+  const endResize = useCallback(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    setSidebarWidth(sidebarWidthRef.current);
+    setRightPanelWidth(rightPanelWidthRef.current);
+    document.documentElement.style.removeProperty("--sidebar-width");
+    document.documentElement.style.removeProperty("--right-panel-width");
+    setResizing(null);
+  }, []);
 
   useEffect(() => {
     const COMPACT_THRESHOLD = 1100;
@@ -1791,9 +1785,18 @@ The AI assistant will read and update this file during compilation.
                 )}
               </aside>
               <div className="relative group w-1 flex-shrink-0">
-                <div
-                  onMouseDown={() => setResizing("sidebar")}
+                <motion.div
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0}
+                  dragMomentum={false}
+                  onDragStart={() => startResize("sidebar")}
+                  onDrag={(event, info) =>
+                    handleResizeDrag("sidebar", info)
+                  }
+                  onDragEnd={endResize}
                   className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize z-10"
+                  style={{ x: 0 }}
                 />
                 <div
                   className={`w-full h-full transition-colors ${resizing === "sidebar" ? "bg-black/20" : "group-hover:bg-black/20"}`}
@@ -1978,9 +1981,16 @@ The AI assistant will read and update this file during compilation.
               }}
             >
               <div className="relative group w-1 flex-shrink-0">
-                <div
-                  onMouseDown={() => setResizing("right")}
+                <motion.div
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0}
+                  dragMomentum={false}
+                  onDragStart={() => startResize("right")}
+                  onDrag={(event, info) => handleResizeDrag("right", info)}
+                  onDragEnd={endResize}
                   className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize z-10"
+                  style={{ x: 0 }}
                 />
                 <div
                   className={`w-full h-full transition-colors ${resizing === "right" ? "bg-black/20" : "group-hover:bg-black/20"}`}

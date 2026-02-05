@@ -461,14 +461,12 @@ function NodeRenderer({
       } ${isHighlighted && !isSelected ? "animate-highlight" : ""}`}
     >
       <div
-        className="w-3 h-3 flex-shrink-0 transition-transform duration-150"
+        className="w-3 h-3 flex-shrink-0"
         style={{
           marginLeft: `${node.level * 12}px`,
-          transform: isDirectory && node.isOpen ? "rotate(90deg)" : "rotate(0deg)",
         }}
-      >
-        {isDirectory && <CaretRightIcon className="w-3 h-3" weight="fill" />}
-      </div>
+        aria-hidden="true"
+      />
       <FileIcon
         type={node.data.type}
         expanded={node.isOpen}
@@ -567,47 +565,88 @@ function FileTreeInner({
   const isDraggingRef = useRef(false);
   const DRAG_THRESHOLD = 5; // pixels before drag starts
 
+  // Store handler refs to avoid stale closure issues with event listeners
+  const handleMouseMoveRef = useRef<((e: MouseEvent) => void) | null>(null);
+  const handleMouseUpRef = useRef<((e: MouseEvent) => void) | null>(null);
+
   // Find drop target from mouse position
   const findDropTarget = useCallback((x: number, y: number): { path: string; type: "file" | "directory" } | null => {
     const elements = document.elementsFromPoint(x, y);
+    console.log("[DnD] findDropTarget at", x, y, "found", elements.length, "elements");
     for (const el of elements) {
       const treeItem = el.closest("[data-path]") as HTMLElement | null;
+      if (treeItem) {
+        console.log("[DnD] Found tree item:", treeItem.dataset.path, "type:", treeItem.dataset.type, "contained:", containerRef.current?.contains(treeItem));
+      }
       if (treeItem && containerRef.current?.contains(treeItem)) {
         const path = treeItem.dataset.path;
         const type = treeItem.dataset.type as "file" | "directory";
         if (path && type) {
+          console.log("[DnD] Returning target:", { path, type });
           return { path, type };
         }
       }
     }
+
+    // If we're inside the tree container but not over a node, treat as root drop target
+    const container = containerRef.current;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        console.log("[DnD] Returning root target");
+        return { path: "", type: "directory" };
+      }
+    }
+
+    console.log("[DnD] No valid target found");
     return null;
   }, []);
 
   // Check if drop target is valid
   const isValidDropTarget = useCallback((targetPath: string, targetType: string): boolean => {
     const dragged = draggedNodeRef.current;
-    if (!dragged) return false;
+    console.log("[DnD] isValidDropTarget:", { targetPath, targetType, dragged });
+    if (!dragged) {
+      console.log("[DnD] Invalid: no dragged node");
+      return false;
+    }
 
     // Can only drop into directories
-    if (targetType !== "directory") return false;
+    if (targetType !== "directory") {
+      console.log("[DnD] Invalid: target is not a directory");
+      return false;
+    }
+
+    // Normalize paths for cross-platform comparison (handles both / and \)
+    const normalizedTarget = pathSync.normalizeForCompare(targetPath);
+    const normalizedDragged = pathSync.normalizeForCompare(dragged.path);
+    console.log("[DnD] Normalized paths:", { normalizedTarget, normalizedDragged });
 
     // Cannot drop into itself or its descendants
-    if (targetPath === dragged.path || targetPath.startsWith(dragged.path + "/")) return false;
+    if (normalizedTarget === normalizedDragged || normalizedTarget.startsWith(normalizedDragged + "/")) {
+      console.log("[DnD] Invalid: dropping into self or descendant");
+      return false;
+    }
 
     // Cannot drop into current parent (no-op)
     const currentParent = pathSync.dirname(dragged.path);
-    if (targetPath === currentParent) return false;
+    const normalizedParent = pathSync.normalizeForCompare(currentParent);
+    console.log("[DnD] Parent check:", { currentParent, normalizedParent });
+    if (normalizedTarget === normalizedParent) {
+      console.log("[DnD] Invalid: dropping into current parent (no-op)");
+      return false;
+    }
 
+    console.log("[DnD] Valid drop target!");
     return true;
   }, []);
 
   // Perform the move operation
-  const performMove = useCallback(async (targetPath: string) => {
-    const dragged = draggedNodeRef.current;
-    if (!dragged || !fileOperations) return;
+  const performMove = useCallback(async (dragged: { path: string; type: "file" | "directory" }, targetPath: string) => {
+    if (!fileOperations) return;
 
     const fileName = pathSync.basename(dragged.path);
-    const newPath = `${targetPath}/${fileName}`;
+    const newPath = targetPath ? pathSync.join(targetPath, fileName) : fileName;
 
     // Check if target already exists
     const targetExists = nodeMap.has(newPath);
@@ -638,9 +677,10 @@ function FileTreeInner({
       const dy = e.clientY - startPos.y;
       if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return;
       isDraggingRef.current = true;
+      console.log("[DnD] Drag threshold passed, dragging started for:", draggedNodeRef.current);
     }
 
-    // Find what we're hovering over
+    // Find what we're hovering over (only log occasionally to avoid spam)
     const target = findDropTarget(e.clientX, e.clientY);
     let dragOverPath: string | null = null;
 
@@ -661,14 +701,22 @@ function FileTreeInner({
   const handleMouseUp = useCallback((e: MouseEvent) => {
     const dragged = draggedNodeRef.current;
     const wasDragging = isDraggingRef.current;
+    console.log("[DnD] handleMouseUp:", { dragged, wasDragging, x: e.clientX, y: e.clientY });
 
-    // Clean up
-    document.removeEventListener("mousemove", handleMouseMove);
-    document.removeEventListener("mouseup", handleMouseUp);
+    // Clean up using refs to avoid stale closure issues
+    if (handleMouseMoveRef.current) {
+      document.removeEventListener("mousemove", handleMouseMoveRef.current);
+      handleMouseMoveRef.current = null;
+    }
+    if (handleMouseUpRef.current) {
+      document.removeEventListener("mouseup", handleMouseUpRef.current);
+      handleMouseUpRef.current = null;
+    }
     document.body.style.cursor = "";
     document.body.style.userSelect = "";
 
     if (!dragged || !wasDragging) {
+      console.log("[DnD] Aborting: no dragged node or wasn't dragging");
       draggedNodeRef.current = null;
       dragStartPos.current = null;
       isDraggingRef.current = false;
@@ -678,6 +726,11 @@ function FileTreeInner({
 
     // Find drop target
     const target = findDropTarget(e.clientX, e.clientY);
+    console.log("[DnD] Drop target found:", target);
+    const canDrop = !!(target && isValidDropTarget(target.path, target.type));
+
+    // Snapshot dragged info before clearing refs
+    const draggedSnapshot = draggedNodeRef.current;
 
     // Reset state
     draggedNodeRef.current = null;
@@ -686,15 +739,22 @@ function FileTreeInner({
     setDragState(initialDragState);
 
     // Perform move if valid target
-    if (target && isValidDropTarget(target.path, target.type)) {
-      performMove(target.path);
+    if (target && canDrop && draggedSnapshot) {
+      console.log("[DnD] Performing move to:", target.path);
+      performMove(draggedSnapshot, target.path);
+    } else {
+      console.log("[DnD] Not performing move - target invalid or null");
     }
-  }, [handleMouseMove, findDropTarget, isValidDropTarget, performMove]);
+  }, [findDropTarget, isValidDropTarget, performMove]);
 
   // Mouse down handler (called from NodeRenderer)
   const handleDragMouseDown = useCallback(
     (e: React.MouseEvent, path: string, name: string, type: "file" | "directory") => {
-      if (!fileOperations) return;
+      console.log("[DnD] handleDragMouseDown:", { path, name, type });
+      if (!fileOperations) {
+        console.log("[DnD] No fileOperations, aborting");
+        return;
+      }
 
       // Store drag info
       draggedNodeRef.current = { path, type };
@@ -714,6 +774,10 @@ function FileTreeInner({
       // Set cursor and prevent text selection
       document.body.style.cursor = "grabbing";
       document.body.style.userSelect = "none";
+
+      // Store current handlers in refs to ensure we remove the exact same functions later
+      handleMouseMoveRef.current = handleMouseMove;
+      handleMouseUpRef.current = handleMouseUp;
 
       // Attach document-level listeners
       document.addEventListener("mousemove", handleMouseMove);
@@ -839,7 +903,7 @@ function FileTreeInner({
         case "R": {
           if (!currentNode || !projectPath) break;
           e.preventDefault();
-          const fullPath = `${projectPath}/${currentNode.path}`;
+          const fullPath = pathSync.join(projectPath, currentNode.path);
           revealInFileManager(fullPath).catch(console.error);
           break;
         }
@@ -879,7 +943,7 @@ function FileTreeInner({
       if (projectPath) {
         items.push({
           label: "Copy Absolute Path",
-          onClick: () => copyToClipboard(`${projectPath}/${node.path}`),
+          onClick: () => copyToClipboard(pathSync.join(projectPath, node.path)),
           icon: <CopyIcon size={16} />,
         });
       }
@@ -904,7 +968,7 @@ function FileTreeInner({
               : node.name;
             const parentPath = pathSync.dirname(node.path);
             const newName = `${baseName}_copy${ext}`;
-            const newPath = parentPath ? `${parentPath}/${newName}` : newName;
+            const newPath = parentPath ? pathSync.join(parentPath, newName) : newName;
 
             try {
               // Read original file content
@@ -960,7 +1024,7 @@ function FileTreeInner({
         items.push({
           label: revealLabel,
           onClick: async () => {
-            const fullPath = `${projectPath}/${node.path}`;
+            const fullPath = pathSync.join(projectPath, node.path);
             try {
               await revealInFileManager(fullPath);
             } catch (error) {
@@ -975,7 +1039,7 @@ function FileTreeInner({
           items.push({
             label: "Open in Terminal",
             onClick: async () => {
-              const fullPath = `${projectPath}/${node.path}`;
+              const fullPath = pathSync.join(projectPath, node.path);
               try {
                 await openInTerminal(fullPath);
               } catch (error) {
@@ -1087,19 +1151,17 @@ function FileTreeInner({
       try {
         if (dialog.type === "create-file") {
           const newPath = dialog.parentPath
-            ? `${dialog.parentPath}/${value}`
+            ? pathSync.join(dialog.parentPath, value)
             : value;
           await fileOperations.createFile(newPath);
         } else if (dialog.type === "create-directory") {
           const newPath = dialog.parentPath
-            ? `${dialog.parentPath}/${value}`
+            ? pathSync.join(dialog.parentPath, value)
             : value;
           await fileOperations.createDirectory(newPath);
         } else if (dialog.type === "rename" && dialog.node) {
-          const parentPath = dialog.node.path.includes("/")
-            ? dialog.node.path.substring(0, dialog.node.path.lastIndexOf("/"))
-            : "";
-          const newPath = parentPath ? `${parentPath}/${value}` : value;
+          const parentPath = pathSync.dirname(dialog.node.path);
+          const newPath = parentPath ? pathSync.join(parentPath, value) : value;
           await fileOperations.renamePath(dialog.node.path, newPath);
         }
         closeDialog();
