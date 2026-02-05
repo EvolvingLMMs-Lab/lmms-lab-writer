@@ -139,14 +139,14 @@ export const OpenCodePanel = memo(function OpenCodePanel({
       currentStatus === "idle" &&
       onTurnComplete
     ) {
-      // Small delay to ensure all edits are processed
+      // Longer delay to ensure all edits are processed (async file reads)
       setTimeout(() => {
-        onTurnComplete(pendingEditCount);
-      }, 100);
+        onTurnComplete();
+      }, 800);
     }
 
     previousStatusRef.current = currentStatus;
-  }, [opencode.status.type, onTurnComplete, pendingEditCount]);
+  }, [opencode.status.type, onTurnComplete]);
 
   // Handle pending message from external source
   useEffect(() => {

@@ -16,7 +16,7 @@ export type Props = {
   onEditCompleted?: (toolPartId: string, filePath: string, afterContent: string, messageId?: string) => void;
   onReviewEdit?: (editId: string, filePath: string) => void;
   // Callback when AI turn completes (goes from running/busy to idle)
-  onTurnComplete?: (pendingEditCount: number) => void;
+  onTurnComplete?: () => void;
   // Count of pending edits for the current turn
   pendingEditCount?: number;
   // Callback to open the changes review panel

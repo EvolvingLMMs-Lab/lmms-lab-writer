@@ -174,6 +174,10 @@ export default function EditorPage() {
     return count;
   }, [pendingEdits]);
 
+  // Ref to always have latest pending edit count (for callbacks)
+  const pendingEditCountRef = useRef(pendingEditCount);
+  pendingEditCountRef.current = pendingEditCount;
+
   // Get all edits for the review panel (sorted by timestamp, pending first)
   const pendingEditsArray = useMemo(() => {
     return Array.from(pendingEdits.values()).sort((a, b) => {
@@ -1088,8 +1092,9 @@ The AI assistant will read and update this file during compilation.
   }, [pendingEdits, daemon, selectedFile, toast]);
 
   // Handle when AI turn completes
-  const handleTurnComplete = useCallback((editCount: number) => {
-    if (editCount > 0) {
+  const handleTurnComplete = useCallback(() => {
+    // Use ref to get the latest pendingEditCount (avoids stale closure)
+    if (pendingEditCountRef.current > 0) {
       // Automatically open changes review when turn completes with edits
       setShowChangesReview(true);
     }
