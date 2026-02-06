@@ -39,9 +39,9 @@ async function revealInFileManager(path: string): Promise<void> {
       await runCommand("open", [normalizedPath]);
     }
   } else if (os === "windows") {
-    // Windows: explorer /select, highlights the item
-    const escaped = normalizedPath.replace(/"/g, '\\"');
-    await runCommand("explorer", [`/select,"${escaped}"`]);
+    // Windows: explorer /select, requires the path as part of the argument
+    // Pass /select,<path> as a single argument (Tauri will handle quoting)
+    await runCommand("explorer", [`/select,${normalizedPath}`]);
   } else {
     // Linux: xdg-open opens the containing folder
     const parentPath = pathSync.dirname(normalizedPath) || normalizedPath;

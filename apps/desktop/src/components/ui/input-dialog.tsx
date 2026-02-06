@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useId } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -24,6 +24,7 @@ export function InputDialog({
   const [value, setValue] = useState(defaultValue);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -66,7 +67,12 @@ export function InputDialog({
 
   return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -78,19 +84,19 @@ export function InputDialog({
 
         {/* Dialog */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          initial={{ opacity: 0, scale: 0.98, y: 6 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          transition={{ duration: 0.15 }}
-          className="relative z-10 w-full max-w-md rounded-lg border border-black/10 bg-white shadow-xl"
+          exit={{ opacity: 0, scale: 0.98, y: 6 }}
+          transition={{ duration: 0.12 }}
+          className="relative z-10 w-full max-w-sm border border-black bg-white text-black shadow-[3px_3px_0_#000]"
         >
           {/* Header */}
-          <div className="px-6 pt-5 pb-4">
-            <h3 className="text-lg font-semibold text-black">{title}</h3>
+          <div className="px-5 py-4 border-b border-border">
+            <h3 id={titleId} className="text-sm font-medium">{title}</h3>
           </div>
 
           {/* Content */}
-          <div className="px-6 pb-4">
+          <div className="px-5 py-4">
             <input
               ref={inputRef}
               type="text"
@@ -98,10 +104,10 @@ export function InputDialog({
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
-              className={`w-full px-3 py-2 text-sm border rounded-md outline-none transition-colors ${
+              className={`w-full px-3 py-2 text-sm border outline-none transition-colors ${
                 error
                   ? "border-red-500 focus:border-red-600"
-                  : "border-black/20 focus:border-black/50"
+                  : "border-border focus:border-black"
               }`}
             />
             {error && (
@@ -116,17 +122,11 @@ export function InputDialog({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-2 px-6 pb-5">
-            <button
-              onClick={onCancel}
-              className="px-4 py-2 text-sm font-medium text-black/70 hover:bg-black/5 rounded-md transition-colors"
-            >
+          <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
+            <button type="button" onClick={onCancel} className="btn btn-sm btn-secondary">
               Cancel
             </button>
-            <button
-              onClick={handleConfirm}
-              className="px-4 py-2 text-sm font-medium text-white bg-black hover:bg-black/90 rounded-md transition-colors"
-            >
+            <button type="button" onClick={handleConfirm} className="btn btn-sm btn-primary">
               Confirm
             </button>
           </div>

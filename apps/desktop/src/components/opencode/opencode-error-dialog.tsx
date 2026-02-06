@@ -116,7 +116,7 @@ export function OpenCodeErrorDialog({
 
       <div
         ref={dialogRef}
-        className="relative bg-white border border-black w-full max-w-md mx-4 shadow-lg"
+        className="relative bg-white border border-black w-full max-w-md mx-4 shadow-[3px_3px_0_#000]"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h2 id="error-dialog-title" className="text-sm font-medium">

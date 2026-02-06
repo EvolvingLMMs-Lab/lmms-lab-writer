@@ -317,7 +317,7 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
         }
       }}
     >
-      <div className="bg-background border border-border w-full max-w-md mx-4 p-6 shadow-lg">
+      <div className="bg-background border border-black w-full max-w-md mx-4 p-6 shadow-[3px_3px_0_#000]">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium">Login with Code</h2>

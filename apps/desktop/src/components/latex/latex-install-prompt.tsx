@@ -56,7 +56,7 @@ export function LaTeXInstallPrompt({ onRefreshCompilers }: LaTeXInstallPromptPro
             {!isInstalling && !result && (
               <button
                 onClick={handleRefresh}
-                className="flex-shrink-0 p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-100 rounded transition-colors"
+                className="flex-shrink-0 p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-100 transition-colors"
                 title="Refresh compiler detection"
               >
                 <ArrowClockwiseIcon className="size-4" />
@@ -71,7 +71,7 @@ export function LaTeXInstallPrompt({ onRefreshCompilers }: LaTeXInstallPromptPro
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-3 p-3 bg-white border border-amber-300 rounded"
+                className="mt-3 p-3 bg-white border border-amber-300"
               >
                 <div className="flex items-center gap-2">
                   <Spinner className="size-4" />
@@ -94,7 +94,7 @@ export function LaTeXInstallPrompt({ onRefreshCompilers }: LaTeXInstallPromptPro
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className={`mt-3 p-3 border rounded ${
+                className={`mt-3 p-3 border ${
                   result.success
                     ? "bg-green-50 border-green-300"
                     : "bg-white border-amber-300"
