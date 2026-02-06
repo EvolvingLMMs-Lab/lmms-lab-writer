@@ -5,13 +5,12 @@ import dynamic from "next/dynamic";
 import { useTauriDaemon } from "@/lib/tauri";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
-import { FileTree } from "@/components/editor/file-tree";
 import { InputDialog } from "@/components/ui/input-dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { TabBar, TabItem } from "@/components/ui/tab-bar";
-import { Spinner } from "@/components/ui/spinner";
 import { EditorSkeleton } from "@/components/editor/editor-skeleton";
 import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
+import { FileSidebarPanel } from "@/components/editor/sidebar-file-panel";
+import { GitSidebarPanel } from "@/components/editor/sidebar-git-panel";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { motion, AnimatePresence, useReducedMotion, type PanInfo } from "framer-motion";
 import { UserDropdown, LoginCodeModal } from "@/components/auth";
@@ -36,11 +35,7 @@ import type { MainFileDetectionResult } from "@/lib/latex/types";
 import type { PendingEdit } from "@/lib/opencode/types";
 import {
   ArrowClockwiseIcon,
-  FilePlusIcon,
-  FolderIcon,
-  FolderPlusIcon,
   GearIcon,
-  GitBranchIcon,
   PlayCircleIcon,
 } from "@phosphor-icons/react";
 
@@ -1261,6 +1256,39 @@ The AI assistant will read and update this file during compilation.
     }
   }, [gitStatus, daemon]);
 
+  const handleStageFile = useCallback(
+    (path: string) => {
+      daemon.gitAdd([path]);
+    },
+    [daemon],
+  );
+
+  const handleRemoteSubmit = useCallback(() => {
+    const trimmed = remoteUrl.trim();
+    if (!trimmed) return;
+    daemon.gitAddRemote(trimmed);
+    setRemoteUrl("");
+    setShowRemoteInput(false);
+  }, [daemon, remoteUrl]);
+
+  const handleGitPush = useCallback(async () => {
+    const result = await daemon.gitPush();
+    if (result.success) {
+      toast("Changes pushed successfully", "success");
+    } else {
+      toast(result.error || "Failed to push changes", "error");
+    }
+  }, [daemon, toast]);
+
+  const handleGitPull = useCallback(async () => {
+    const result = await daemon.gitPull();
+    if (result.success) {
+      toast("Changes pulled successfully", "success");
+    } else {
+      toast(result.error || "Failed to pull changes", "error");
+    }
+  }, [daemon, toast]);
+
   const handleCommit = useCallback(async () => {
     if (!commitMessage.trim()) return;
     const result = await daemon.gitCommit(commitMessage.trim());
@@ -1475,312 +1503,53 @@ The AI assistant will read and update this file during compilation.
                 />
 
                 {sidebarTab === "files" && (
-                  <>
-                    {daemon.projectPath ? (
-                      <>
-                        <div
-                          className="px-3 py-2 border-b border-border flex items-center justify-between gap-2"
-                          title={daemon.projectPath}
-                        >
-                          <span className="text-xs text-muted truncate">
-                            {pathSync.basename(daemon.projectPath)}
-                          </span>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <button
-                              onClick={() => setCreateDialog({ type: "file" })}
-                              className="p-1 text-muted hover:text-black hover:bg-black/5 transition-colors"
-                              title="New File"
-                              aria-label="New File"
-                            >
-                              <FilePlusIcon className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() =>
-                                setCreateDialog({ type: "directory" })
-                              }
-                              className="p-1 text-muted hover:text-black hover:bg-black/5 transition-colors"
-                              title="New Folder"
-                              aria-label="New Folder"
-                            >
-                              <FolderPlusIcon className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => daemon.refreshFiles()}
-                              className="p-1 text-muted hover:text-black hover:bg-black/5 transition-colors"
-                              title="Refresh Files"
-                              aria-label="Refresh Files"
-                            >
-                              <ArrowClockwiseIcon className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                        <EditorErrorBoundary>
-                          <FileTree
-                            files={daemon.files}
-                            selectedFile={selectedFile}
-                            highlightedFile={highlightedFile}
-                            onFileSelect={handleFileSelect}
-                            className="flex-1 min-h-0 overflow-hidden"
-                            fileOperations={{
-                              createFile: daemon.createFile,
-                              createDirectory: daemon.createDirectory,
-                              renamePath: daemon.renamePath,
-                              deletePath: daemon.deletePath,
-                            }}
-                            projectPath={daemon.projectPath ?? undefined}
-                            onRefresh={daemon.refreshFiles}
-                          />
-                        </EditorErrorBoundary>
-                      </>
-                    ) : (
-                      <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
-                        <FolderIcon className="w-8 h-8 mb-2 opacity-30" />
-                        <p className="text-xs">No folder open</p>
-                      </div>
-                    )}
-                  </>
+                  <FileSidebarPanel
+                    projectPath={daemon.projectPath}
+                    files={daemon.files}
+                    selectedFile={selectedFile}
+                    highlightedFile={highlightedFile}
+                    onFileSelect={handleFileSelect}
+                    onCreateFile={() => setCreateDialog({ type: "file" })}
+                    onCreateDirectory={() => setCreateDialog({ type: "directory" })}
+                    onRefreshFiles={daemon.refreshFiles}
+                    fileOperations={{
+                      createFile: daemon.createFile,
+                      createDirectory: daemon.createDirectory,
+                      renamePath: daemon.renamePath,
+                      deletePath: daemon.deletePath,
+                    }}
+                  />
                 )}
 
                 {sidebarTab === "git" && (
                   <div className="flex-1 flex flex-col overflow-hidden">
-                    {!daemon.projectPath ? (
-                      <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
-                        <GitBranchIcon className="w-8 h-8 mb-2 opacity-30" />
-                        <p className="text-xs">No folder open</p>
-                      </div>
-                    ) : !gitStatus?.isRepo ? (
-                      <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
-                        <GitBranchIcon className="w-8 h-8 mb-2 opacity-30" />
-                        <p className="text-xs mb-3">Not a git repository</p>
-                        <button
-                          onClick={() => daemon.gitInit()}
-                          disabled={daemon.isInitializingGit}
-                          className="btn btn-sm btn-primary"
-                        >
-                          {daemon.isInitializingGit
-                            ? "Initializing..."
-                            : "Init Git"}
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="px-3 py-2 border-b border-border bg-neutral-50">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium text-sm">
-                              {gitStatus.branch}
-                            </span>
-                            <button
-                              onClick={() => daemon.refreshGitStatus()}
-                              className="text-muted hover:text-black"
-                              aria-label="Refresh git status"
-                            >
-                              <ArrowClockwiseIcon className="w-4 h-4" />
-                            </button>
-                          </div>
-                          {!gitStatus.remote && (
-                            <div className="mt-2">
-                              {showRemoteInput ? (
-                                <div className="space-y-2">
-                                  <input
-                                    type="text"
-                                    value={remoteUrl}
-                                    onChange={(e) =>
-                                      setRemoteUrl(e.target.value)
-                                    }
-                                    placeholder="https://github.com/user/repo.git"
-                                    className="w-full px-2 py-1 text-xs border border-border focus:outline-none focus:border-black"
-                                    onKeyDown={(e) => {
-                                      if (
-                                        e.key === "Enter" &&
-                                        remoteUrl.trim()
-                                      ) {
-                                        daemon.gitAddRemote(remoteUrl.trim());
-                                        setRemoteUrl("");
-                                        setShowRemoteInput(false);
-                                      }
-                                      if (e.key === "Escape") {
-                                        setShowRemoteInput(false);
-                                      }
-                                    }}
-                                    autoFocus
-                                  />
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => setShowRemoteInput(true)}
-                                  className="text-xs text-black hover:underline"
-                                >
-                                  + Connect to GitHub
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        <ScrollArea className="flex-1">
-                          {stagedChanges.length > 0 && (
-                            <div className="border-b border-border">
-                              <div className="px-3 py-1 bg-neutral-50 text-xs font-medium uppercase tracking-wider text-muted">
-                                Staged ({stagedChanges.length})
-                              </div>
-                              {stagedChanges.map((c) => (
-                                <div
-                                  key={c.path}
-                                  className="px-3 py-1 text-sm flex items-center gap-2"
-                                >
-                                  <span className="font-mono text-xs text-green-700">
-                                    {c.status[0]?.toUpperCase()}
-                                  </span>
-                                  <span className="truncate">{c.path}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {unstagedChanges.length > 0 && (
-                            <div className="border-b border-border">
-                              <div className="px-3 py-1 bg-neutral-50 text-xs font-medium uppercase tracking-wider text-muted flex justify-between">
-                                <span>Changes ({unstagedChanges.length})</span>
-                                <button
-                                  onClick={handleStageAll}
-                                  className="text-black hover:underline normal-case tracking-normal font-normal"
-                                >
-                                  Stage all
-                                </button>
-                              </div>
-                              {unstagedChanges.map((c) => (
-                                <div
-                                  key={c.path}
-                                  className="px-3 py-1 text-sm flex items-center gap-2 group"
-                                >
-                                  <span className="font-mono text-xs text-muted">
-                                    {c.status[0]?.toUpperCase()}
-                                  </span>
-                                  <span className="truncate flex-1">
-                                    {c.path}
-                                  </span>
-                                  <button
-                                    onClick={() => daemon.gitAdd([c.path])}
-                                    className="opacity-0 group-hover:opacity-100 text-xs"
-                                    aria-label="Stage file"
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {gitStatus.changes.length === 0 && (
-                            <div className="px-3 py-8 text-center text-muted text-sm">
-                              No changes
-                            </div>
-                          )}
-                        </ScrollArea>
-
-                        {showCommitInput && stagedChanges.length > 0 && (
-                          <div className="border-t border-border p-3 space-y-2">
-                            <textarea
-                              value={commitMessage}
-                              onChange={(e) => setCommitMessage(e.target.value)}
-                              placeholder="Commit message..."
-                              className="w-full px-2 py-1 text-sm border border-border resize-none focus:outline-none focus:border-black"
-                              rows={2}
-                              onKeyDown={(e) => {
-                                if (
-                                  e.key === "Enter" &&
-                                  (e.metaKey || e.ctrlKey)
-                                ) {
-                                  handleCommit();
-                                }
-                              }}
-                            />
-                            <div className="flex justify-between items-center">
-                              <button
-                                onClick={() => setShowCommitInput(false)}
-                                className="text-xs text-muted hover:text-black"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                onClick={handleCommit}
-                                disabled={!commitMessage.trim()}
-                                className="btn btn-sm btn-primary"
-                              >
-                                Commit
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="border-t border-border p-3 flex items-center gap-2">
-                          {stagedChanges.length > 0 && !showCommitInput && (
-                            <button
-                              onClick={() => setShowCommitInput(true)}
-                              className="btn btn-sm btn-primary flex-1"
-                            >
-                              Commit ({stagedChanges.length})
-                            </button>
-                          )}
-                          {gitStatus.ahead > 0 && (
-                            <button
-                              onClick={async () => {
-                                const result = await daemon.gitPush();
-                                if (result.success) {
-                                  toast(
-                                    "Changes pushed successfully",
-                                    "success",
-                                  );
-                                } else {
-                                  toast(
-                                    result.error || "Failed to push changes",
-                                    "error",
-                                  );
-                                }
-                              }}
-                              disabled={daemon.isPushing}
-                              className="btn btn-sm btn-secondary flex-1 flex items-center justify-center gap-1.5"
-                            >
-                              {daemon.isPushing ? (
-                                <>
-                                  <Spinner className="size-3" />
-                                  <span>Pushing...</span>
-                                </>
-                              ) : (
-                                `Push (${gitStatus.ahead})`
-                              )}
-                            </button>
-                          )}
-                          {gitStatus.behind > 0 && (
-                            <button
-                              onClick={async () => {
-                                const result = await daemon.gitPull();
-                                if (result.success) {
-                                  toast(
-                                    "Changes pulled successfully",
-                                    "success",
-                                  );
-                                } else {
-                                  toast(
-                                    result.error || "Failed to pull changes",
-                                    "error",
-                                  );
-                                }
-                              }}
-                              disabled={daemon.isPulling}
-                              className="btn btn-sm btn-secondary flex-1 flex items-center justify-center gap-1.5"
-                            >
-                              {daemon.isPulling ? (
-                                <>
-                                  <Spinner className="size-3" />
-                                  <span>Pulling...</span>
-                                </>
-                              ) : (
-                                `Pull (${gitStatus.behind})`
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      </>
-                    )}
+                    <GitSidebarPanel
+                      projectPath={daemon.projectPath}
+                      gitStatus={gitStatus}
+                      stagedChanges={stagedChanges}
+                      unstagedChanges={unstagedChanges}
+                      showRemoteInput={showRemoteInput}
+                      remoteUrl={remoteUrl}
+                      onRemoteUrlChange={(value) => setRemoteUrl(value)}
+                      onShowRemoteInput={() => setShowRemoteInput(true)}
+                      onHideRemoteInput={() => setShowRemoteInput(false)}
+                      onSubmitRemote={handleRemoteSubmit}
+                      onInitGit={daemon.gitInit}
+                      isInitializingGit={daemon.isInitializingGit}
+                      onRefreshStatus={daemon.refreshGitStatus}
+                      onStageAll={handleStageAll}
+                      onStageFile={handleStageFile}
+                      showCommitInput={showCommitInput}
+                      commitMessage={commitMessage}
+                      onCommitMessageChange={(value) => setCommitMessage(value)}
+                      onShowCommitInput={() => setShowCommitInput(true)}
+                      onHideCommitInput={() => setShowCommitInput(false)}
+                      onCommit={handleCommit}
+                      onPush={handleGitPush}
+                      onPull={handleGitPull}
+                      isPushing={daemon.isPushing}
+                      isPulling={daemon.isPulling}
+                    />
                   </div>
                 )}
               </aside>
