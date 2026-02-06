@@ -1,5 +1,11 @@
 export type OpenCodeDaemonStatus = "stopped" | "starting" | "running" | "unavailable";
 
+export type PendingEditFileSummary = {
+  filePath: string;
+  additions: number;
+  deletions: number;
+};
+
 export type Props = {
   className?: string;
   baseUrl?: string;
@@ -19,8 +25,12 @@ export type Props = {
   onTurnComplete?: () => void;
   // Count of pending edits for the current turn
   pendingEditCount?: number;
+  // Pending edit summary grouped by file
+  pendingEditSummary?: PendingEditFileSummary[];
   // Callback to open the changes review panel
   onOpenChangesReview?: () => void;
+  // Callback to revert all pending edits
+  onUndoPendingEdits?: () => void;
 };
 
 export type TaskItem = {

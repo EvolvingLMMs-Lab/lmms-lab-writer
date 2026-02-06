@@ -4,13 +4,82 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { useOpenCode } from "@/lib/opencode/use-opencode";
 import type { ToolPart } from "@/lib/opencode/types";
-import type { Props } from "./types";
+import type { PendingEditFileSummary, Props } from "./types";
 import { parseTasks, CollapsibleTasksBar } from "./tasks-display";
 import { SessionList, EmptyState } from "./session-list";
 import { MessageList } from "./message-list";
 import { InputArea } from "./input-area";
 import { OnboardingState } from "./onboarding";
 import { ChevronIcon, PlusIcon } from "./icons";
+
+const REVIEW_DEBUG = true;
+
+function extractFilePathFromInput(input: Record<string, unknown>): string | null {
+  const directKeys = [
+    "filePath",
+    "file_path",
+    "filepath",
+    "path",
+    "target_file",
+    "targetFile",
+    "target_path",
+    "targetPath",
+    "filename",
+    "file",
+  ] as const;
+
+  for (const key of directKeys) {
+    const value = input[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value;
+    }
+    if (value && typeof value === "object") {
+      const nested = value as Record<string, unknown>;
+      const nestedPath =
+        (typeof nested.filePath === "string" && nested.filePath) ||
+        (typeof nested.file_path === "string" && nested.file_path) ||
+        (typeof nested.path === "string" && nested.path) ||
+        null;
+      if (nestedPath) return nestedPath;
+    }
+  }
+
+  const args = input.args;
+  if (args && typeof args === "object") {
+    return extractFilePathFromInput(args as Record<string, unknown>);
+  }
+
+  return null;
+}
+
+function isLikelyFileWriteTool(
+  toolName: string,
+  input: Record<string, unknown>,
+): boolean {
+  const explicitTools = new Set([
+    "write",
+    "edit",
+    "file_write",
+    "file_edit",
+    "writefile",
+    "editfile",
+    "multi_edit",
+    "multiedit",
+    "apply_patch",
+    "replace",
+    "modify",
+    "update_file",
+    "create_file",
+  ]);
+
+  if (explicitTools.has(toolName)) return true;
+
+  const hasPath = !!extractFilePathFromInput(input);
+  if (!hasPath) return false;
+
+  // Heuristic fallback for providers that use different tool names.
+  return /(write|edit|patch|replace|modify|update|create)/i.test(toolName);
+}
 
 export const OpenCodePanel = memo(function OpenCodePanel({
   className = "",
@@ -28,7 +97,9 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   onReviewEdit,
   onTurnComplete,
   pendingEditCount = 0,
+  pendingEditSummary = [],
   onOpenChangesReview,
+  onUndoPendingEdits,
 }: Props) {
   const opencode = useOpenCode({ baseUrl, directory, autoConnect });
   const [input, setInput] = useState("");
@@ -81,12 +152,41 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   const processedToolsRef = useRef<Set<string>>(new Set());
   const runningToolsRef = useRef<Map<string, string>>(new Map()); // toolId -> filePath
   const previousStatusRef = useRef<string>("idle");
+  const hasCompletedFileEditRef = useRef(false);
+  const turnCompleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const seenToolKindsRef = useRef<Set<string>>(new Set());
+
+  const scheduleTurnComplete = useCallback(
+    (reason: string) => {
+      if (!onTurnComplete) return;
+
+      if (turnCompleteTimeoutRef.current) {
+        clearTimeout(turnCompleteTimeoutRef.current);
+      }
+
+      console.log(`[Review] Scheduling onTurnComplete (${reason}) in 800ms`);
+      // Wait briefly to ensure async capture/read operations have settled.
+      turnCompleteTimeoutRef.current = setTimeout(() => {
+        console.log("[Review] Triggering onTurnComplete callback");
+        onTurnComplete();
+        hasCompletedFileEditRef.current = false;
+        turnCompleteTimeoutRef.current = null;
+      }, 800);
+    },
+    [onTurnComplete],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (turnCompleteTimeoutRef.current) {
+        clearTimeout(turnCompleteTimeoutRef.current);
+        turnCompleteTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!onCaptureFileContent && !onEditCompleted) return;
-
-    // Tool names that modify files (case-insensitive)
-    const FILE_WRITE_TOOLS = ['write', 'edit', 'file_write', 'file_edit', 'writefile', 'editfile'];
 
     // Scan all parts for write/edit tools
     opencode.parts.forEach((partsArray) => {
@@ -96,19 +196,29 @@ export const OpenCodePanel = memo(function OpenCodePanel({
         const toolPart = part as ToolPart;
         const toolName = toolPart.tool.toLowerCase();
 
-        // Check if this is a file-modifying tool
-        const isFileTool = FILE_WRITE_TOOLS.includes(toolName);
+        const input = toolPart.state.input as Record<string, unknown>;
+        const filePath = extractFilePathFromInput(input);
+        const isFileTool = isLikelyFileWriteTool(toolName, input);
+
+        const toolKey = `${toolName}:${toolPart.state.status}`;
+        if (REVIEW_DEBUG && !seenToolKindsRef.current.has(toolKey)) {
+          seenToolKindsRef.current.add(toolKey);
+          console.log("[Review][ToolSeen]", {
+            tool: toolName,
+            status: toolPart.state.status,
+            isFileTool,
+            filePath,
+            inputKeys: Object.keys(input),
+          });
+        }
+
         if (!isFileTool) return;
 
         const toolId = toolPart.id;
         const messageId = toolPart.messageID;
-        const filePath =
-          (toolPart.state.input.filePath as string) ||
-          (toolPart.state.input.file_path as string) ||
-          (toolPart.state.input.path as string);
 
         if (!filePath) {
-          console.log("[Review] Tool missing file path:", toolName, toolPart.state.input);
+          console.log("[Review] File-write tool missing file path:", toolName, input);
           return;
         }
 
@@ -119,48 +229,74 @@ export const OpenCodePanel = memo(function OpenCodePanel({
           onCaptureFileContent?.(toolId, filePath);
         }
 
-        // When tool completes, trigger edit completed callback
+        // When tool completes, trigger edit completed callback.
+        // Do not require a prior "running" event because SSE updates can skip states.
         if (
           toolPart.state.status === "completed" &&
-          runningToolsRef.current.has(toolId) &&
           !processedToolsRef.current.has(toolId)
         ) {
+          if (!runningToolsRef.current.has(toolId)) {
+            console.log(
+              "[Review] Tool completed without prior running state, using fallback path:",
+              filePath,
+            );
+          }
           console.log("[Review] Tool completed, creating pending edit:", filePath);
           processedToolsRef.current.add(toolId);
           runningToolsRef.current.delete(toolId);
+          hasCompletedFileEditRef.current = true;
 
           // Try to get the new content from the tool output or re-read the file
           // For now, we'll read the file content in the parent component
           // since we need access to the daemon
           const afterContent = (toolPart.state as { output?: string }).output || "";
           onEditCompleted?.(toolId, filePath, afterContent, messageId);
+
+          // Sometimes status is already idle when tool completion arrives.
+          if (opencode.status.type === "idle") {
+            scheduleTurnComplete("file tool completed while idle");
+          }
         }
       });
     });
-  }, [opencode.parts, onCaptureFileContent, onEditCompleted]);
+  }, [
+    opencode.parts,
+    opencode.status.type,
+    onCaptureFileContent,
+    onEditCompleted,
+    scheduleTurnComplete,
+  ]);
 
-  // Detect when turn completes (status changes from running/busy to idle)
+  // Detect when turn completes (status transitions to idle after edit activity)
   useEffect(() => {
     const prevStatus = previousStatusRef.current;
     const currentStatus = opencode.status.type;
 
     console.log("[Review] Status change:", prevStatus, "->", currentStatus);
 
+    const previousWasActive =
+      prevStatus === "running" || prevStatus === "busy" || prevStatus === "retry";
     if (
-      (prevStatus === "running" || prevStatus === "busy") &&
-      currentStatus === "idle" &&
-      onTurnComplete
+      previousWasActive &&
+      currentStatus === "idle"
     ) {
-      console.log("[Review] Turn completed, will trigger review in 800ms");
-      // Longer delay to ensure all edits are processed (async file reads)
-      setTimeout(() => {
-        console.log("[Review] Triggering onTurnComplete callback");
-        onTurnComplete();
-      }, 800);
+      scheduleTurnComplete("status transitioned to idle");
     }
 
     previousStatusRef.current = currentStatus;
-  }, [opencode.status.type, onTurnComplete]);
+  }, [opencode.status.type, scheduleTurnComplete]);
+
+  useEffect(() => {
+    if (!REVIEW_DEBUG) return;
+    console.log("[Review][PanelState]", {
+      status: opencode.status.type,
+      pendingEditCount,
+      hasCompletedFileEdit: hasCompletedFileEditRef.current,
+      processedTools: processedToolsRef.current.size,
+      runningTools: runningToolsRef.current.size,
+      partGroups: opencode.parts.size,
+    });
+  }, [opencode.status.type, pendingEditCount, opencode.parts]);
 
   // Handle pending message from external source
   useEffect(() => {
@@ -271,6 +407,49 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     opencode.status.type === "running" ||
     opencode.status.type === "busy" ||
     opencode.status.type === "retry";
+
+  const pendingTotals = useMemo(() => {
+    return pendingEditSummary.reduce(
+      (acc, item) => {
+        acc.additions += item.additions;
+        acc.deletions += item.deletions;
+        return acc;
+      },
+      { additions: 0, deletions: 0 },
+    );
+  }, [pendingEditSummary]);
+
+  const visiblePendingSummary = useMemo(() => {
+    return pendingEditSummary.slice(0, 4);
+  }, [pendingEditSummary]);
+
+  const getFileName = useCallback((filePath: string) => {
+    const normalized = filePath.replace(/\\/g, "/");
+    const parts = normalized.split("/");
+    return parts[parts.length - 1] || filePath;
+  }, []);
+
+  const renderPendingSummaryRow = useCallback(
+    (item: PendingEditFileSummary) => (
+      <div
+        key={item.filePath}
+        className="grid grid-cols-[1fr_auto] gap-2 px-2 py-1 border-t border-border first:border-t-0"
+      >
+        <div className="min-w-0">
+          <div className="truncate text-[11px] text-neutral-900 font-medium">
+            {getFileName(item.filePath)}
+          </div>
+          <div className="truncate text-[10px] text-neutral-500 font-mono">
+            {item.filePath}
+          </div>
+        </div>
+        <div className="text-[10px] text-neutral-700 font-mono whitespace-nowrap self-center">
+          +{item.additions} -{item.deletions}
+        </div>
+      </div>
+    ),
+    [getFileName],
+  );
 
   // Not connected - show onboarding
   if (!opencode.connected) {
@@ -387,6 +566,43 @@ export const OpenCodePanel = memo(function OpenCodePanel({
           </div>
 
           <div className="border-t border-border bg-white p-3">
+            {pendingEditSummary.length > 0 && (
+              <div className="mb-3 border border-border bg-neutral-50">
+                <div className="flex items-center justify-between gap-2 border-b border-border px-2 py-1.5">
+                  <div className="text-[10px] font-mono text-neutral-700">
+                    {pendingEditSummary.length} files changed +{pendingTotals.additions} -{pendingTotals.deletions}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {onUndoPendingEdits && (
+                      <button
+                        onClick={onUndoPendingEdits}
+                        className="px-2 py-0.5 text-[10px] font-mono border border-border bg-white text-neutral-700 hover:text-black hover:border-black transition-colors"
+                        title="Revert all pending edits"
+                      >
+                        Undo
+                      </button>
+                    )}
+                    {onOpenChangesReview && (
+                      <button
+                        onClick={onOpenChangesReview}
+                        className="px-2 py-0.5 text-[10px] font-mono border border-border bg-white text-neutral-700 hover:text-black hover:border-black transition-colors"
+                        title="Open detailed review"
+                      >
+                        Review
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="max-h-28 overflow-y-auto">
+                  {visiblePendingSummary.map(renderPendingSummaryRow)}
+                  {pendingEditSummary.length > visiblePendingSummary.length && (
+                    <div className="border-t border-border px-2 py-1 text-[10px] text-neutral-500 font-mono">
+                      +{pendingEditSummary.length - visiblePendingSummary.length} more files
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             <InputArea
               input={input}
               setInput={setInput}

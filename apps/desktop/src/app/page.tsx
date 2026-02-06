@@ -116,6 +116,7 @@ const WEB_URL =
 
 const MIN_PANEL_WIDTH = 200;
 const MAX_SIDEBAR_WIDTH = 480;
+const REVIEW_DEBUG = true;
 
 export default function EditorPage() {
   const daemon = useTauriDaemon();
@@ -186,9 +187,73 @@ export default function EditorPage() {
     return count;
   }, [pendingEdits]);
 
+  const pendingEditSummary = useMemo(() => {
+    const fileMap = new Map<
+      string,
+      {
+        filePath: string;
+        additions: number;
+        deletions: number;
+        latestTimestamp: number;
+      }
+    >();
+
+    for (const edit of pendingEdits.values()) {
+      if (edit.status !== "pending") continue;
+
+      const existing = fileMap.get(edit.filePath);
+      if (existing) {
+        existing.additions += edit.additions;
+        existing.deletions += edit.deletions;
+        existing.latestTimestamp = Math.max(existing.latestTimestamp, edit.timestamp);
+      } else {
+        fileMap.set(edit.filePath, {
+          filePath: edit.filePath,
+          additions: edit.additions,
+          deletions: edit.deletions,
+          latestTimestamp: edit.timestamp,
+        });
+      }
+    }
+
+    return Array.from(fileMap.values())
+      .sort((a, b) => {
+        if (a.latestTimestamp !== b.latestTimestamp) {
+          return b.latestTimestamp - a.latestTimestamp;
+        }
+        return (b.additions + b.deletions) - (a.additions + a.deletions);
+      })
+      .map(({ latestTimestamp: _latestTimestamp, ...summary }) => summary);
+  }, [pendingEdits]);
+
+  useEffect(() => {
+    if (!REVIEW_DEBUG) return;
+
+    const pendingPreview = Array.from(pendingEdits.values())
+      .filter((edit) => edit.status === "pending")
+      .slice(0, 5)
+      .map((edit) => ({
+        id: edit.id,
+        filePath: edit.filePath,
+        additions: edit.additions,
+        deletions: edit.deletions,
+      }));
+
+    console.log("[Review][PageState]", {
+      pendingEditCount,
+      showChangesReview,
+      pendingPreview,
+    });
+  }, [pendingEdits, pendingEditCount, showChangesReview]);
+
   // Ref to always have latest pending edit count (for callbacks)
   const pendingEditCountRef = useRef(pendingEditCount);
   pendingEditCountRef.current = pendingEditCount;
+  const awaitingAutoReviewRef = useRef(false);
+  const autoReviewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingAutoOpenTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const showChangesReviewRef = useRef(showChangesReview);
+  showChangesReviewRef.current = showChangesReview;
 
   // Get all edits for the review panel (sorted by timestamp, pending first)
   const pendingEditsArray = useMemo(() => {
@@ -1247,30 +1312,114 @@ The AI assistant will read and update this file during compilation.
     toast("All changes reverted", "success");
   }, [pendingEdits, daemon, selectedFile, toast]);
 
+  const clearAutoReviewTimeout = useCallback(() => {
+    if (autoReviewTimeoutRef.current) {
+      clearTimeout(autoReviewTimeoutRef.current);
+      autoReviewTimeoutRef.current = null;
+    }
+  }, []);
+
+  const clearPendingAutoOpenTimeout = useCallback(() => {
+    if (pendingAutoOpenTimeoutRef.current) {
+      clearTimeout(pendingAutoOpenTimeoutRef.current);
+      pendingAutoOpenTimeoutRef.current = null;
+    }
+  }, []);
+
+  // If turn has completed and pending edits arrive slightly later, auto-open review.
+  useEffect(() => {
+    if (!awaitingAutoReviewRef.current) return;
+    if (pendingEditCount <= 0) return;
+
+    console.log("[Review] Pending edits arrived after turn completion, opening review");
+    awaitingAutoReviewRef.current = false;
+    clearAutoReviewTimeout();
+    setShowChangesReview(true);
+  }, [pendingEditCount, clearAutoReviewTimeout]);
+
+  // Final fallback: if pending edits appear and settle briefly, auto-open review.
+  useEffect(() => {
+    if (pendingEditCount <= 0 || showChangesReview) {
+      clearPendingAutoOpenTimeout();
+      return;
+    }
+
+    clearPendingAutoOpenTimeout();
+    pendingAutoOpenTimeoutRef.current = setTimeout(() => {
+      if (pendingEditCountRef.current > 0 && !showChangesReviewRef.current) {
+        console.log("[Review] Auto-opening review after pending edits settled");
+        awaitingAutoReviewRef.current = false;
+        clearAutoReviewTimeout();
+        setShowChangesReview(true);
+      }
+      pendingAutoOpenTimeoutRef.current = null;
+    }, 1200);
+
+    return () => {
+      clearPendingAutoOpenTimeout();
+    };
+  }, [
+    pendingEditCount,
+    showChangesReview,
+    clearPendingAutoOpenTimeout,
+    clearAutoReviewTimeout,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      awaitingAutoReviewRef.current = false;
+      clearAutoReviewTimeout();
+      clearPendingAutoOpenTimeout();
+    };
+  }, [clearAutoReviewTimeout, clearPendingAutoOpenTimeout]);
+
   // Handle when AI turn completes
   const handleTurnComplete = useCallback(() => {
-    console.log("[Review] handleTurnComplete called, pendingEditCount:", pendingEditCountRef.current);
+    console.log(
+      "[Review] handleTurnComplete called, pendingEditCount:",
+      pendingEditCountRef.current,
+    );
     console.log("[Review] pendingEdits map size:", pendingEdits.size);
 
     // Use ref to get the latest pendingEditCount (avoids stale closure)
+    awaitingAutoReviewRef.current = true;
+    clearAutoReviewTimeout();
+
     if (pendingEditCountRef.current > 0) {
       console.log("[Review] Opening changes review panel");
       // Automatically open changes review when turn completes with edits
+      awaitingAutoReviewRef.current = false;
       setShowChangesReview(true);
     } else {
-      console.log("[Review] No pending edits, not opening review panel");
+      console.log("[Review] No pending edits yet, waiting briefly for async capture");
+      autoReviewTimeoutRef.current = setTimeout(() => {
+        if (awaitingAutoReviewRef.current && pendingEditCountRef.current > 0) {
+          console.log("[Review] Pending edits detected before timeout, opening review");
+          setShowChangesReview(true);
+        } else {
+          console.log("[Review] No pending edits detected before timeout");
+        }
+        awaitingAutoReviewRef.current = false;
+        autoReviewTimeoutRef.current = null;
+      }, 2500);
     }
-  }, [pendingEdits.size]);
+  }, [pendingEdits.size, clearAutoReviewTimeout]);
 
   // Open the changes review panel
   const handleOpenChangesReview = useCallback(() => {
+    awaitingAutoReviewRef.current = false;
+    clearAutoReviewTimeout();
+    clearPendingAutoOpenTimeout();
     setShowChangesReview(true);
-  }, []);
+  }, [clearAutoReviewTimeout, clearPendingAutoOpenTimeout]);
 
   // Close the changes review panel
   const handleCloseChangesReview = useCallback(() => {
+    awaitingAutoReviewRef.current = false;
+    clearAutoReviewTimeout();
+    clearPendingAutoOpenTimeout();
     setShowChangesReview(false);
-  }, []);
+  }, [clearAutoReviewTimeout, clearPendingAutoOpenTimeout]);
 
   const handleOpenFolder = useCallback(async () => {
     try {
@@ -1856,7 +2005,9 @@ The AI assistant will read and update this file during compilation.
                     onReviewEdit={handleReviewEdit}
                     onTurnComplete={handleTurnComplete}
                     pendingEditCount={pendingEditCount}
+                    pendingEditSummary={pendingEditSummary}
                     onOpenChangesReview={handleOpenChangesReview}
+                    onUndoPendingEdits={handleRejectAll}
                   />
                 </OpenCodeErrorBoundary>
               </aside>
