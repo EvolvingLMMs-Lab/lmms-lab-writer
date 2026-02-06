@@ -267,12 +267,12 @@ export default function EditorPage() {
       latexCompiler.compilersStatus.lualatex.available ||
       latexCompiler.compilersStatus.latexmk.available);
 
-  // Ensure .lmms_lab_writer/COMPILE_NOTES exists
+  // Ensure .lmms_lab_writer/COMPILE_NOTES.md exists
   const ensureCompileNotesFile = useCallback(async () => {
     if (!daemon.projectPath) return;
 
     const dirPath = ".lmms_lab_writer";
-    const filePath = ".lmms_lab_writer/COMPILE_NOTES";
+    const filePath = ".lmms_lab_writer/COMPILE_NOTES.md";
 
     try {
       // Try to read the file first to check if it exists
@@ -304,7 +304,7 @@ The AI assistant will read and update this file during compilation.
   const handleCompileWithDetection = useCallback(async () => {
     if (!daemon.projectPath) return;
 
-    // Ensure COMPILE_NOTES file exists before compilation
+    // Ensure COMPILE_NOTES.md file exists before compilation
     await ensureCompileNotesFile();
 
     // Run detection
@@ -927,17 +927,79 @@ The AI assistant will read and update this file during compilation.
     [selectedFile, daemon],
   );
 
+  const normalizeReviewFilePath = useCallback(
+    (inputPath: string): string | null => {
+      if (!inputPath) return null;
+
+      let candidate = inputPath.trim();
+      if (
+        (candidate.startsWith("\"") && candidate.endsWith("\"")) ||
+        (candidate.startsWith("'") && candidate.endsWith("'")) ||
+        (candidate.startsWith("`") && candidate.endsWith("`"))
+      ) {
+        candidate = candidate.slice(1, -1).trim();
+      }
+
+      candidate = candidate.replace(/^file:\/\//i, "");
+
+      // file:// URIs on Windows may look like "/C:/path/to/file"
+      const drivePathMatch = candidate.match(/^\/([a-zA-Z]:\/.*)$/);
+      if (drivePathMatch?.[1]) {
+        candidate = drivePathMatch[1];
+      }
+
+      if (!candidate) return null;
+
+      const normalized = candidate.replace(/\\/g, "/");
+      const projectPath = daemon.projectPath;
+
+      let relativePath = normalized;
+      if (projectPath) {
+        const normalizedProject = projectPath.replace(/\\/g, "/");
+        const normalizedLower = normalized.toLowerCase();
+        const projectLower = normalizedProject.toLowerCase();
+
+        if (normalizedLower === projectLower) {
+          return null;
+        }
+
+        if (normalizedLower.startsWith(`${projectLower}/`)) {
+          relativePath = normalized.slice(normalizedProject.length + 1);
+        } else if (
+          /^[a-zA-Z]:\//.test(normalized) ||
+          normalized.startsWith("//") ||
+          normalized.startsWith("/")
+        ) {
+          return null;
+        }
+      }
+
+      relativePath = relativePath.replace(/^\.\/+/, "").replace(/^\/+/, "");
+      return relativePath || null;
+    },
+    [daemon.projectPath],
+  );
+
   // Capture file content before AI edit starts
   const handleCaptureFileContent = useCallback(
     async (toolPartId: string, filePath: string) => {
-      console.log("[Review] handleCaptureFileContent called:", { toolPartId, filePath });
+      const normalizedPath = normalizeReviewFilePath(filePath);
+      console.log("[Review] handleCaptureFileContent called:", {
+        toolPartId,
+        filePath,
+        normalizedPath,
+      });
       if (!daemon.projectPath) {
         console.log("[Review] No project path, skipping capture");
         return;
       }
+      if (!normalizedPath) {
+        console.log("[Review] Invalid file path, skipping capture:", filePath);
+        return;
+      }
 
       try {
-        const content = await daemon.readFile(filePath);
+        const content = await daemon.readFile(normalizedPath);
         if (content !== null) {
           fileContentCacheRef.current.set(toolPartId, content);
           console.log("[Review] Captured file content, length:", content.length);
@@ -947,20 +1009,32 @@ The AI assistant will read and update this file during compilation.
         // Silently ignore - file might not exist yet for new files
       }
     },
-    [daemon]
+    [daemon, normalizeReviewFilePath]
   );
 
   // Handle when AI edit completes
   const handleEditCompleted = useCallback(
     async (toolPartId: string, filePath: string, _toolOutput: string, messageId?: string) => {
-      console.log("[Review] handleEditCompleted called:", { toolPartId, filePath, messageId });
+      const normalizedPath = normalizeReviewFilePath(filePath);
+      console.log("[Review] handleEditCompleted called:", {
+        toolPartId,
+        filePath,
+        normalizedPath,
+        messageId,
+      });
       const beforeContent = fileContentCacheRef.current.get(toolPartId) || "";
       console.log("[Review] Before content length:", beforeContent.length);
+
+      if (!normalizedPath) {
+        console.log("[Review] Invalid file path after edit, skipping:", filePath);
+        fileContentCacheRef.current.delete(toolPartId);
+        return;
+      }
 
       // Read the actual file content after the edit
       let afterContent = "";
       try {
-        const content = await daemon.readFile(filePath);
+        const content = await daemon.readFile(normalizedPath);
         afterContent = content || "";
         console.log("[Review] After content length:", afterContent.length);
       } catch (err) {
@@ -983,7 +1057,7 @@ The AI assistant will read and update this file during compilation.
 
       const pendingEdit: PendingEdit = {
         id: toolPartId,
-        filePath,
+        filePath: normalizedPath,
         before: beforeContent,
         after: afterContent,
         additions: Math.max(0, afterLines - beforeLines),
@@ -1006,7 +1080,7 @@ The AI assistant will read and update this file during compilation.
       // Clean up cache
       fileContentCacheRef.current.delete(toolPartId);
     },
-    [daemon]
+    [daemon, normalizeReviewFilePath]
   );
 
   // Accept edit - changes are already applied, just update status and sync editor content
@@ -1074,22 +1148,10 @@ The AI assistant will read and update this file during compilation.
   // Open a pending edit for review - selects the file to show inline diff
   const handleReviewEdit = useCallback(
     async (editId: string, filePath: string) => {
-      if (!filePath) {
-        toast("Cannot review: file path not available", "error");
+      const relativePath = normalizeReviewFilePath(filePath);
+      if (!relativePath) {
+        toast("Cannot review: invalid file path", "error");
         return;
-      }
-
-      // Normalize the path - convert absolute path to relative if needed
-      let relativePath = filePath;
-      if (daemon.projectPath) {
-        // Normalize slashes to forward slashes for comparison
-        const normalizedFilePath = filePath.replace(/\\/g, "/");
-        const normalizedProjectPath = daemon.projectPath.replace(/\\/g, "/");
-
-        if (normalizedFilePath.startsWith(normalizedProjectPath)) {
-          // Remove project path prefix and leading slash
-          relativePath = normalizedFilePath.slice(normalizedProjectPath.length).replace(/^\//, "");
-        }
       }
 
       // If we already have this edit in pendingEdits, just select the file
@@ -1130,7 +1192,7 @@ The AI assistant will read and update this file during compilation.
         toast("Failed to read file for review", "error");
       }
     },
-    [pendingEdits, daemon, toast]
+    [pendingEdits, daemon, toast, normalizeReviewFilePath]
   );
 
   // Accept all pending edits

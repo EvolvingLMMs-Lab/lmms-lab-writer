@@ -1,5 +1,11 @@
 import type { Event, Message, Part, SessionInfo, SessionStatus } from "./types";
 
+export function isAbortError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === "AbortError") return true;
+  if (error instanceof Error && error.name === "AbortError") return true;
+  return false;
+}
+
 export type OpenCodeClientOptions = {
   baseUrl: string;
   directory?: string;
@@ -126,6 +132,10 @@ export class OpenCodeClient {
   }
 
   connect(): void {
+    if (!this.abortController || this.abortController.signal.aborted) {
+      this.abortController = new AbortController();
+    }
+
     if (this.eventSource) {
       this.eventSource.close();
     }
@@ -203,7 +213,9 @@ export class OpenCodeClient {
   disconnect(): void {
     // Abort all pending fetch requests
     if (this.abortController) {
-      this.abortController.abort();
+      this.abortController.abort(
+        new DOMException("OpenCode client disconnected", "AbortError"),
+      );
       this.abortController = null;
     }
 
@@ -355,7 +367,7 @@ export class OpenCodeClient {
       );
       return Array.isArray(data) ? data : [];
     } catch (error) {
-      if ((error as Error).name === "AbortError") return [];
+      if (isAbortError(error)) return [];
       console.error("Failed to list sessions:", error);
       return [];
     }
@@ -634,7 +646,7 @@ export class OpenCodeClient {
         })
         .filter((a) => a.id && !(a as Record<string, unknown>).hidden);
     } catch (error) {
-      if ((error as Error).name === "AbortError") return [];
+      if (isAbortError(error)) return [];
       console.error("Failed to get agents:", error);
       return [];
     }
@@ -728,7 +740,7 @@ export class OpenCodeClient {
       );
       return result;
     } catch (error) {
-      if ((error as Error).name === "AbortError") return [];
+      if (isAbortError(error)) return [];
       console.error("Failed to get providers:", error);
       return [];
     }

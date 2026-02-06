@@ -41,13 +41,13 @@ export const DEFAULT_LATEX_SETTINGS: LaTeXSettings = {
 Main file: {mainFile}
 
 Guidelines:
-1. First, read .lmms_lab_writer/COMPILE_NOTES for previous compilation notes and preferences
+1. First, read .lmms_lab_writer/COMPILE_NOTES.md for previous compilation notes and preferences
 2. If the main file does not exist, auto-detect the correct main .tex file (look for \\documentclass in .tex files)
 3. Prefer xelatex or pdflatex, but feel free to choose the most appropriate compiler based on the document content
 4. If packages are missing, try installing them with tlmgr
 5. For bibliography or cross-references, consider running multiple passes or using latexmk
 6. If compilation fails, check the .log file to diagnose and fix the issue
-7. After compilation (success or failure), update .lmms_lab_writer/COMPILE_NOTES with any useful information: working compiler, installed packages, resolved issues, or tips for future compilations
+7. After compilation (success or failure), update .lmms_lab_writer/COMPILE_NOTES.md with any useful information: working compiler, installed packages, resolved issues, or tips for future compilations
 8. After successful compilation, let me know the output PDF path`,
 };
 

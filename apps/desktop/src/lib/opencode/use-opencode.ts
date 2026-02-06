@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { OpenCodeClient, createOpenCodeClient } from "./client";
+import {
+  OpenCodeClient,
+  createOpenCodeClient,
+  isAbortError,
+} from "./client";
 import type { Event, Message, Part, SessionInfo, SessionStatus, QuestionAsked } from "./types";
 
 export type UseOpenCodeOptions = {
@@ -334,6 +338,10 @@ export function useOpenCode(
         setConnecting(false);
       },
       onError: (err) => {
+        if (isAbortError(err)) {
+          setConnecting(false);
+          return;
+        }
         setError(err.message);
         setConnecting(false);
         if (err.message.includes("Max reconnection attempts")) {
@@ -391,6 +399,7 @@ export function useOpenCode(
         }
       }
     } catch (err) {
+      if (isAbortError(err)) return;
       console.error("Failed to load sessions:", err);
       setSessions([]);
     }
@@ -504,6 +513,7 @@ export function useOpenCode(
         }
       }
     } catch (err) {
+      if (isAbortError(err)) return;
       console.error("Failed to load config:", err);
       setAgents([]);
       setProviders([]);
@@ -566,6 +576,7 @@ export function useOpenCode(
       sessionErrorRetryCountRef.current = 0;
       return session;
     } catch (err) {
+      if (isAbortError(err)) return null;
       setError(err instanceof Error ? err.message : "Failed to create session");
       return null;
     }
@@ -619,6 +630,7 @@ export function useOpenCode(
           }
         }
       } catch (err) {
+        if (isAbortError(err)) return;
         setError(err instanceof Error ? err.message : "Failed to load session");
       }
     },
@@ -640,6 +652,7 @@ export function useOpenCode(
         }
         syncFromStore();
       } catch (err) {
+        if (isAbortError(err)) return;
         setError(
           err instanceof Error ? err.message : "Failed to delete session",
         );
@@ -709,6 +722,10 @@ export function useOpenCode(
           syncMessagesAndParts();
         }, 500);
       } catch (err) {
+        if (isAbortError(err)) {
+          setStatus({ type: "idle" });
+          return;
+        }
         console.error("[OpenCode] sendMessage error:", err);
         // On error, reset status to idle and show error
         setStatus({ type: "idle" });
@@ -733,6 +750,7 @@ export function useOpenCode(
     try {
       await client.abort(currentSessionId);
     } catch (err) {
+      if (isAbortError(err)) return;
       setError(err instanceof Error ? err.message : "Failed to abort");
     }
   }, [connected, currentSessionId]);
@@ -753,6 +771,7 @@ export function useOpenCode(
         await client.answerQuestion(questionID, answers);
         setCurrentQuestion(null);
       } catch (err) {
+        if (isAbortError(err)) return;
         console.error("[OpenCode] Failed to answer question:", err);
         setError(err instanceof Error ? err.message : "Failed to answer question");
       }

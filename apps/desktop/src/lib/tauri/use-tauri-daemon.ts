@@ -61,6 +61,65 @@ interface FileChangeEvent {
   kind: "create" | "modify" | "remove" | "rename" | "access" | "other" | "unknown";
 }
 
+function stripWrappingQuotes(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length < 2) return trimmed;
+
+  const first = trimmed[0];
+  const last = trimmed[trimmed.length - 1];
+  if (
+    (first === "\"" && last === "\"") ||
+    (first === "'" && last === "'") ||
+    (first === "`" && last === "`")
+  ) {
+    return trimmed.slice(1, -1).trim();
+  }
+
+  return trimmed;
+}
+
+function isAbsolutePath(path: string): boolean {
+  return /^[a-zA-Z]:[\\/]/.test(path) || path.startsWith("\\\\") || path.startsWith("/");
+}
+
+function normalizeForCompare(path: string): string {
+  return path.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+}
+
+function resolvePathWithinProject(projectPath: string, pathInput: string): string {
+  let cleanedPath = stripWrappingQuotes(pathInput).replace(/^file:\/\//i, "");
+
+  // file:// URIs on Windows may look like "/C:/path/to/file"
+  const drivePathMatch = cleanedPath.match(/^\/([a-zA-Z]:\/.*)$/);
+  if (drivePathMatch?.[1]) {
+    cleanedPath = drivePathMatch[1];
+  }
+
+  if (!cleanedPath) {
+    throw new Error("INVALID_PATH:empty path");
+  }
+
+  const normalizedProject = normalizeForCompare(projectPath);
+  const normalizedPath = normalizeForCompare(cleanedPath);
+
+  if (isAbsolutePath(cleanedPath)) {
+    if (
+      normalizedPath === normalizedProject ||
+      normalizedPath.startsWith(`${normalizedProject}/`)
+    ) {
+      return cleanedPath;
+    }
+    throw new Error(`PATH_OUTSIDE_PROJECT:${pathInput}`);
+  }
+
+  const relativePath = cleanedPath.replace(/^\.([\\/])+/, "").replace(/^[/\\]+/, "");
+  if (!relativePath) {
+    throw new Error(`INVALID_PATH:${pathInput}`);
+  }
+
+  return pathSync.join(projectPath, relativePath);
+}
+
 function convertFileNode(node: {
   name: string;
   path: string;
@@ -200,7 +259,7 @@ export function useTauriDaemon() {
     async (relativePath: string): Promise<string | null> => {
       if (!projectState.projectPath || !relativePath) return null;
 
-      const fullPath = pathSync.join(projectState.projectPath, relativePath);
+      const fullPath = resolvePathWithinProject(projectState.projectPath, relativePath);
       try {
         return await invoke<string>("read_file", { path: fullPath });
       } catch (error) {
@@ -222,7 +281,7 @@ export function useTauriDaemon() {
       if (!projectState.projectPath) return;
 
       try {
-        const fullPath = pathSync.join(projectState.projectPath, relativePath);
+        const fullPath = resolvePathWithinProject(projectState.projectPath, relativePath);
         await invoke("write_file", { path: fullPath, content });
       } catch (error) {
         console.error("Failed to write file:", error);
@@ -253,7 +312,7 @@ export function useTauriDaemon() {
       if (!projectState.projectPath) return;
 
       try {
-        const fullPath = pathSync.join(projectState.projectPath, relativePath);
+        const fullPath = resolvePathWithinProject(projectState.projectPath, relativePath);
         await invoke("create_file", { path: fullPath });
         await refreshFiles();
       } catch (error) {
@@ -270,7 +329,7 @@ export function useTauriDaemon() {
       if (!projectState.projectPath) return;
 
       try {
-        const fullPath = pathSync.join(projectState.projectPath, relativePath);
+        const fullPath = resolvePathWithinProject(projectState.projectPath, relativePath);
         await invoke("create_directory", { path: fullPath });
         await refreshFiles();
       } catch (error) {
@@ -287,8 +346,14 @@ export function useTauriDaemon() {
       if (!projectState.projectPath) return;
 
       try {
-        const oldFullPath = pathSync.join(projectState.projectPath, oldRelativePath);
-        const newFullPath = pathSync.join(projectState.projectPath, newRelativePath);
+        const oldFullPath = resolvePathWithinProject(
+          projectState.projectPath,
+          oldRelativePath,
+        );
+        const newFullPath = resolvePathWithinProject(
+          projectState.projectPath,
+          newRelativePath,
+        );
         await invoke("rename_path", {
           oldPath: oldFullPath,
           newPath: newFullPath,
@@ -308,7 +373,7 @@ export function useTauriDaemon() {
       if (!projectState.projectPath) return;
 
       try {
-        const fullPath = pathSync.join(projectState.projectPath, relativePath);
+        const fullPath = resolvePathWithinProject(projectState.projectPath, relativePath);
         await invoke("delete_path", { path: fullPath });
         await refreshFiles();
       } catch (error) {
