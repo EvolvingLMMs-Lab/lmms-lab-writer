@@ -15,11 +15,16 @@
   --color-surface-text: #fafafa;
 
   --font-family-sans:
-    var(--font-geist-sans),
-    system-ui,
     -apple-system,
-    "Segoe UI",
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "SF Pro Display",
+    "Google Sans Text",
+    "Google Sans",
+    var(--font-geist-sans),
     Roboto,
+    system-ui,
+    "Segoe UI",
     "Helvetica Neue",
     Arial,
     "PingFang SC",
@@ -29,10 +34,13 @@
     "Noto Sans CJK SC",
     sans-serif;
   --font-family-mono:
+    "SF Mono",
+    SFMono-Regular,
+    "SF Pro Mono",
+    "Google Sans Code",
+    "Roboto Mono",
     var(--font-geist-mono),
     ui-monospace,
-    SFMono-Regular,
-    "SF Mono",
     Menlo,
     Consolas,
     "Liberation Mono",

@@ -1,18 +1,22 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Roboto, Roboto_Mono } from "next/font/google";
 import { ExternalLinkHandler } from "@/components/external-link-handler";
 import { DeepLinkHandler } from "@/components/auth/deep-link-handler";
 import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
-const geistSans = Geist({
+const modernSans = Roboto({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "700"],
 });
 
-const geistMono = Geist_Mono({
+const modernMono = Roboto_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "700"],
 });
 
 export const metadata: Metadata = {
@@ -28,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${modernSans.variable} ${modernMono.variable} antialiased`}
       >
         <ToastProvider>
           <ExternalLinkHandler />

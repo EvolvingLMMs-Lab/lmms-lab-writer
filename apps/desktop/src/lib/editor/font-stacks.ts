@@ -16,11 +16,14 @@ const CJK_SANS_FALLBACK_FONTS = [
   '"Noto Sans CJK SC"',
 ];
 
-const ENGLISH_MONO_FONTS = [
+const APPLE_GOOGLE_MONO_FONTS = [
+  '"SF Mono"',
+  "SFMono-Regular",
+  '"SF Pro Mono"',
+  '"Google Sans Code"',
+  '"Roboto Mono"',
   'var(--font-geist-mono)',
   "ui-monospace",
-  "SFMono-Regular",
-  '"SF Mono"',
   "Menlo",
   "Consolas",
   '"Liberation Mono"',
@@ -28,7 +31,7 @@ const ENGLISH_MONO_FONTS = [
 ];
 
 export const EDITOR_MONO_FONT_FAMILY = [
-  ...ENGLISH_MONO_FONTS,
+  ...APPLE_GOOGLE_MONO_FONTS,
   ...CJK_MONO_FONTS,
   ...CJK_SANS_FALLBACK_FONTS,
   "monospace",
