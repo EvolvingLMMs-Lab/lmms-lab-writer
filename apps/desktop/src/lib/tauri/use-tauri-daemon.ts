@@ -282,7 +282,11 @@ export function useTauriDaemon() {
 
       try {
         const fullPath = resolvePathWithinProject(projectState.projectPath, relativePath);
-        await invoke("write_file", { path: fullPath, content });
+        await invoke("write_file", {
+          path: fullPath,
+          content,
+          encoding: "utf-8",
+        });
       } catch (error) {
         console.error("Failed to write file:", error);
         setError(String(error), "save file");
@@ -313,7 +317,10 @@ export function useTauriDaemon() {
 
       try {
         const fullPath = resolvePathWithinProject(projectState.projectPath, relativePath);
-        await invoke("create_file", { path: fullPath });
+        await invoke("create_file", {
+          path: fullPath,
+          encoding: "utf-8",
+        });
         await refreshFiles();
       } catch (error) {
         console.error("Failed to create file:", error);

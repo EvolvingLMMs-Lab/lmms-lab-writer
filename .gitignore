@@ -9,6 +9,7 @@ dist
 .next
 .turbo
 out
+*.tsbuildinfo
 
 # Environment files
 .env
@@ -58,3 +59,7 @@ apps/video/out/
 *.local.json
 supabase/
 .agent/
+
+# Local desktop Rust check artifacts
+apps/desktop/src-tauri/target-check*/
+apps/desktop/src-tauri/temp-check-dir/

@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 use tokio::fs;
+use tokio::io::AsyncWriteExt;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileNode {
@@ -85,6 +86,35 @@ const IGNORED_DIRS: &[&str] = &[
 ];
 
 const DEBOUNCE_MS: u64 = 100;
+const DEFAULT_TEXT_ENCODING: &str = "utf-8";
+
+fn ensure_utf8_encoding(encoding: Option<&str>) -> Result<(), String> {
+    let requested = encoding.unwrap_or(DEFAULT_TEXT_ENCODING).trim();
+    let normalized = requested.to_ascii_lowercase();
+    if normalized == "utf-8" || normalized == "utf8" {
+        return Ok(());
+    }
+    Err(format!(
+        "Unsupported encoding '{}'. Only UTF-8 is supported for text files.",
+        requested
+    ))
+}
+
+async fn write_utf8_file(path: &str, content: &str) -> Result<(), String> {
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(path)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // String in Rust is guaranteed UTF-8; write bytes directly as UTF-8 (no BOM).
+    file.write_all(content.as_bytes())
+        .await
+        .map_err(|e| e.to_string())?;
+    file.flush().await.map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 pub async fn set_project_path(
@@ -128,6 +158,7 @@ pub async fn write_file(
     state: tauri::State<'_, Mutex<ProjectState>>,
     path: String,
     content: String,
+    encoding: Option<String>,
 ) -> Result<(), String> {
     let project_path = {
         let state_guard = state.lock().map_err(|e| e.to_string())?;
@@ -136,12 +167,15 @@ pub async fn write_file(
     };
     
     validate_path_within_project(&path, &project_path)?;
-    
-    fs::write(&path, content).await.map_err(|e| e.to_string())
+
+    ensure_utf8_encoding(encoding.as_deref())?;
+    write_utf8_file(&path, &content).await
 }
 
 #[tauri::command]
-pub async fn create_file(path: String) -> Result<(), String> {
+pub async fn create_file(path: String, encoding: Option<String>) -> Result<(), String> {
+    ensure_utf8_encoding(encoding.as_deref())?;
+
     // Create parent directory if it doesn't exist
     if let Some(parent) = Path::new(&path).parent() {
         if !parent.exists() {
@@ -155,7 +189,7 @@ pub async fn create_file(path: String) -> Result<(), String> {
     }
 
     // Create empty file
-    fs::write(&path, "").await.map_err(|e| e.to_string())
+    write_utf8_file(&path, "").await
 }
 
 #[tauri::command]

@@ -1,5 +1,7 @@
 # Rust build artifacts
 /target/
+/target-check*/
+/temp-check-dir/
 
 # Generated files
 gen/schemas/
