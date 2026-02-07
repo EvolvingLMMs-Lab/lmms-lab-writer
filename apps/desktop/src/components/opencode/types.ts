@@ -1,11 +1,5 @@
 export type OpenCodeDaemonStatus = "stopped" | "starting" | "running" | "unavailable";
 
-export type PendingEditFileSummary = {
-  filePath: string;
-  additions: number;
-  deletions: number;
-};
-
 export type Props = {
   className?: string;
   baseUrl?: string;
@@ -17,20 +11,6 @@ export type Props = {
   onFileClick?: (path: string) => void;
   pendingMessage?: string | null;
   onPendingMessageSent?: () => void;
-  // Callbacks for AI edit accept/reject functionality
-  onCaptureFileContent?: (toolPartId: string, filePath: string) => void;
-  onEditCompleted?: (toolPartId: string, filePath: string, afterContent: string, messageId?: string) => void;
-  onReviewEdit?: (editId: string, filePath: string) => void;
-  // Callback when AI turn completes. Includes assistant message IDs that used file edit tools.
-  onTurnComplete?: (messageIdsWithFileEdits: string[]) => void;
-  // Count of pending edits for the current turn
-  pendingEditCount?: number;
-  // Pending edit summary grouped by file
-  pendingEditSummary?: PendingEditFileSummary[];
-  // Callback to open the changes review panel
-  onOpenChangesReview?: () => void;
-  // Callback to revert all pending edits
-  onUndoPendingEdits?: () => void;
 };
 
 export type TaskItem = {

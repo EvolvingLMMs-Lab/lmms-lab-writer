@@ -8,7 +8,7 @@ export type FileDiff = {
   deletions: number
 }
 
-// Pending edit awaiting user review (Accept/Reject)
+// Legacy type retained for compatibility with unused review components.
 export type PendingEdit = {
   id: string
   filePath: string
@@ -18,7 +18,7 @@ export type PendingEdit = {
   deletions: number
   timestamp: number
   toolPartId: string
-  messageId?: string  // The assistant message ID that generated this edit (for grouping by turn)
+  messageId?: string
   status: 'pending' | 'accepted' | 'rejected'
 }
 

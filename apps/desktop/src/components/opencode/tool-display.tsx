@@ -11,11 +11,9 @@ import { formatValue } from "./utils";
 export function ToolDisplay({
   part,
   onFileClick,
-  onReviewEdit,
 }: {
   part: ToolPart;
   onFileClick?: (path: string) => void;
-  onReviewEdit?: (editId: string, filePath: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const info = getToolInfo(part.tool, part.state.input);
@@ -62,10 +60,6 @@ export function ToolDisplay({
     return null;
   }, [output, part.tool]);
 
-  const isFileEditTool =
-    (part.tool === "write" || part.tool === "edit") &&
-    part.state.status === "completed";
-
   return (
     <div
       className={`text-[13px] bg-neutral-50 hover:bg-neutral-100 transition-colors ${isError ? "bg-red-50" : ""}`}
@@ -111,22 +105,6 @@ export function ToolDisplay({
               <span className="text-red-500">-{diffStats.deleted}</span>
             )}
           </span>
-        )}
-        {onReviewEdit && isFileEditTool && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              const filePath =
-                (part.state.input.filePath as string) ||
-                (part.state.input.file_path as string) ||
-                "";
-              onReviewEdit(part.id, filePath);
-            }}
-            className="text-[10px] font-mono px-2 py-0.5 border border-neutral-300 text-neutral-600 hover:border-black hover:text-black hover:bg-neutral-100 transition-colors flex-shrink-0"
-          >
-            Review
-          </button>
         )}
         {hasDetails && (
           <ChevronIcon
