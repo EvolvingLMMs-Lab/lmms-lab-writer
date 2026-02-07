@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
 import type { GitFileChange, GitStatus } from "@lmms-lab/writer-shared";
@@ -17,14 +17,6 @@ const STATUS_SHORT: Record<GitFileChange["status"], string> = {
   deleted: "D",
   renamed: "R",
   untracked: "?",
-};
-
-const STATUS_LABEL: Record<GitFileChange["status"], string> = {
-  modified: "Modified",
-  added: "Added",
-  deleted: "Deleted",
-  renamed: "Renamed",
-  untracked: "Untracked",
 };
 
 type GitSidebarPanelProps = {
@@ -52,7 +44,9 @@ type GitSidebarPanelProps = {
   onPush: () => void | Promise<void>;
   onPull: () => void | Promise<void>;
   onPreviewDiff: (path: string, staged: boolean) => void | Promise<void>;
+  onGenerateCommitMessageAI: () => void | Promise<void>;
   onOpenFile?: (path: string) => void | Promise<void>;
+  isGeneratingCommitMessageAI: boolean;
   isPushing: boolean;
   isPulling: boolean;
 };
@@ -82,7 +76,9 @@ export function GitSidebarPanel({
   onPush,
   onPull,
   onPreviewDiff,
+  onGenerateCommitMessageAI,
   onOpenFile,
+  isGeneratingCommitMessageAI,
   isPushing,
   isPulling,
 }: GitSidebarPanelProps) {
@@ -116,26 +112,6 @@ export function GitSidebarPanel({
   }
 
   const changeCount = gitStatus.changes.length;
-  const changeSummary = useMemo(() => {
-    const summary: Record<GitFileChange["status"], number> = {
-      modified: 0,
-      added: 0,
-      deleted: 0,
-      renamed: 0,
-      untracked: 0,
-    };
-
-    for (const change of gitStatus.changes) {
-      summary[change.status] += 1;
-    }
-    return summary;
-  }, [gitStatus.changes]);
-
-  const selectedChangeData = useMemo(() => {
-    if (!selectedChange) return null;
-    const source = selectedChange.staged ? stagedChanges : unstagedChanges;
-    return source.find((change) => change.path === selectedChange.path) ?? null;
-  }, [selectedChange, stagedChanges, unstagedChanges]);
 
   const handleSelectChange = useCallback((path: string, staged: boolean) => {
     setSelectedChange({ path, staged });
@@ -169,9 +145,6 @@ export function GitSidebarPanel({
               </span>
               <span className="truncate text-sm">{change.path}</span>
             </div>
-            <div className="text-[11px] text-muted mt-1">
-              {STATUS_LABEL[change.status]}
-            </div>
           </button>
           {!staged && (
             <button
@@ -203,13 +176,7 @@ export function GitSidebarPanel({
           </button>
         </div>
         <div className="mt-1 text-xs text-muted">
-          {changeCount} changed / {unstagedChanges.length} unstaged /{" "}
-          {stagedChanges.length} staged
-        </div>
-        <div className="mt-1 text-[11px] text-muted">
-          M {changeSummary.modified} / A {changeSummary.added} / D{" "}
-          {changeSummary.deleted} / R {changeSummary.renamed} / ?{" "}
-          {changeSummary.untracked}
+          {changeCount} changed
         </div>
         {!gitStatus.remote && (
           <div className="mt-2">
@@ -248,7 +215,7 @@ export function GitSidebarPanel({
         <ScrollArea className="flex-1 min-h-0">
           {unstagedChanges.length > 0 && (
             <div className="border-b border-border">
-              <div className="px-3 py-1 bg-neutral-50 text-xs font-medium uppercase tracking-wider text-muted flex items-center justify-between">
+              <div className="px-3 py-1.5 bg-neutral-50 text-xs font-medium text-muted flex items-center justify-between">
                 <span>Changes ({unstagedChanges.length})</span>
                 <button
                   type="button"
@@ -264,7 +231,7 @@ export function GitSidebarPanel({
 
           {stagedChanges.length > 0 && (
             <div className="border-b border-border">
-              <div className="px-3 py-1 bg-neutral-50 text-xs font-medium uppercase tracking-wider text-muted">
+              <div className="px-3 py-1.5 bg-neutral-50 text-xs font-medium text-muted">
                 Staged ({stagedChanges.length})
               </div>
               {stagedChanges.map((change) => renderChangeRow(change, true))}
@@ -288,9 +255,7 @@ export function GitSidebarPanel({
                 Diff is shown in the editor panel
               </div>
             </div>
-            {selectedChangeData &&
-              selectedChangeData.status !== "deleted" &&
-              onOpenFile && (
+            {onOpenFile && (
                 <button
                   type="button"
                   onClick={handleOpenSelectedFile}
@@ -317,20 +282,31 @@ export function GitSidebarPanel({
               }
             }}
           />
-          <div className="flex justify-between items-center">
+          <div className="flex items-center justify-between gap-2">
             <button
               onClick={onHideCommitInput}
               className="text-xs text-muted hover:text-black"
             >
               Cancel
             </button>
-            <button
-              onClick={onCommit}
-              disabled={!commitMessage.trim()}
-              className="btn btn-sm btn-primary"
-            >
-              Commit
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  void onGenerateCommitMessageAI();
+                }}
+                disabled={isGeneratingCommitMessageAI}
+                className="btn btn-sm btn-secondary"
+              >
+                {isGeneratingCommitMessageAI ? "AI..." : "AI Draft"}
+              </button>
+              <button
+                onClick={onCommit}
+                disabled={!commitMessage.trim()}
+                className="btn btn-sm btn-primary"
+              >
+                Commit
+              </button>
+            </div>
           </div>
         </div>
       )}

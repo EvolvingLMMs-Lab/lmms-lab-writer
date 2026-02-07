@@ -136,6 +136,128 @@ function parseUnifiedDiffContent(content: string): ParsedUnifiedDiff {
   };
 }
 
+const AI_COMMIT_DIFF_LIMIT = 30000;
+const AI_COMMIT_TIMEOUT_MS = 90000;
+const OPENCODE_STORAGE_KEY_AGENT = "opencode-selected-agent";
+const OPENCODE_STORAGE_KEY_MODEL = "opencode-selected-model";
+
+type OpenCodeMessagePart = {
+  type?: string;
+  text?: string;
+};
+
+type OpenCodeMessageInfo = {
+  id?: string;
+  role?: string;
+  parentID?: string;
+  error?: {
+    data?: {
+      message?: string;
+    };
+  };
+};
+
+type OpenCodeMessageItem = {
+  info?: OpenCodeMessageInfo;
+  parts?: OpenCodeMessagePart[];
+};
+
+type PreferredOpenCodeConfig = {
+  agent?: string;
+  model?: {
+    providerID: string;
+    modelID: string;
+  };
+};
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function extractTextParts(parts: OpenCodeMessagePart[] | undefined): string[] {
+  if (!Array.isArray(parts)) return [];
+  return parts
+    .filter((part) => part.type === "text" && typeof part.text === "string")
+    .map((part) => part.text as string);
+}
+
+function parseOpenCodeMessageResponse(data: unknown): OpenCodeMessageItem | null {
+  if (!data || typeof data !== "object") return null;
+  const candidate = data as OpenCodeMessageItem;
+  return candidate;
+}
+
+function getPreferredOpenCodeConfig(): PreferredOpenCodeConfig {
+  if (typeof window === "undefined") return {};
+
+  let agent: string | undefined;
+  let model:
+    | {
+        providerID: string;
+        modelID: string;
+      }
+    | undefined;
+
+  try {
+    const savedAgent = localStorage.getItem(OPENCODE_STORAGE_KEY_AGENT);
+    if (savedAgent) {
+      agent = savedAgent;
+    }
+
+    const savedModelRaw = localStorage.getItem(OPENCODE_STORAGE_KEY_MODEL);
+    if (savedModelRaw) {
+      const savedModel = JSON.parse(savedModelRaw) as {
+        providerId?: unknown;
+        modelId?: unknown;
+      };
+      if (
+        typeof savedModel.providerId === "string" &&
+        typeof savedModel.modelId === "string"
+      ) {
+        model = {
+          providerID: savedModel.providerId,
+          modelID: savedModel.modelId,
+        };
+      }
+    }
+  } catch {
+    return {};
+  }
+
+  return { agent, model };
+}
+
+function sanitizeAiCommitMessage(raw: string): string {
+  let text = raw.trim();
+
+  text = text.replace(/^```[a-zA-Z]*\s*/m, "");
+  text = text.replace(/\s*```$/, "");
+  text = text.replace(/^commit message\s*[:：]\s*/i, "");
+
+  if (
+    (text.startsWith('"') && text.endsWith('"')) ||
+    (text.startsWith("'") && text.endsWith("'"))
+  ) {
+    text = text.slice(1, -1).trim();
+  }
+
+  return text.trim();
+}
+
+function buildAiCommitPrompt(diff: string, scope: "staged" | "unstaged"): string {
+  return [
+    `Generate a git commit message from the following ${scope} changes.`,
+    "Do not call tools. Only output the final commit message.",
+    "Output rules:",
+    "1. Return only the commit message text, no markdown and no code block.",
+    "2. First line is a concise subject in imperative mood, <= 72 chars.",
+    "3. Add a short body only when necessary.",
+    "",
+    "Diff:",
+    diff,
+  ].join("\n");
+}
+
 const MonacoEditor = dynamic(
   () =>
     import("@/components/editor/monaco-editor").then((mod) => mod.MonacoEditor),
@@ -239,6 +361,8 @@ export default function EditorPage() {
 
   const [commitMessage, setCommitMessage] = useState("");
   const [showCommitInput, setShowCommitInput] = useState(false);
+  const [isGeneratingCommitMessageAI, setIsGeneratingCommitMessageAI] =
+    useState(false);
   const [showRemoteInput, setShowRemoteInput] = useState(false);
   const [remoteUrl, setRemoteUrl] = useState("");
   const [createDialog, setCreateDialog] = useState<{
@@ -1105,6 +1229,229 @@ The AI assistant will read and update this file during compilation.
     }
   }, [daemon, toast]);
 
+  const runOpenCodePrompt = useCallback(
+    async (prompt: string): Promise<string> => {
+      if (!daemon.projectPath) {
+        throw new Error("Project path is missing");
+      }
+
+      const baseUrl = `http://localhost:${opencodePort}`;
+      const query = `?directory=${encodeURIComponent(daemon.projectPath)}`;
+      const headers = {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "x-opencode-directory": encodeURIComponent(daemon.projectPath),
+      };
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), AI_COMMIT_TIMEOUT_MS);
+      let sessionId: string | null = null;
+
+      try {
+        const createSessionResponse = await fetch(`${baseUrl}/session${query}`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({}),
+          signal: controller.signal,
+        });
+
+        if (!createSessionResponse.ok) {
+          const errorText = await createSessionResponse.text().catch(() => "");
+          throw new Error(
+            `Failed to create OpenCode session: ${createSessionResponse.status} ${errorText}`,
+          );
+        }
+
+        const sessionData = (await createSessionResponse.json()) as {
+          id?: string;
+        };
+        if (!sessionData.id) {
+          throw new Error("OpenCode session response missing id");
+        }
+        sessionId = sessionData.id;
+        const preferred = getPreferredOpenCodeConfig();
+        const requestBody: {
+          parts: Array<{ type: "text"; text: string }>;
+          noReply: boolean;
+          agent?: string;
+          model?: { providerID: string; modelID: string };
+        } = {
+          parts: [{ type: "text", text: prompt }],
+          noReply: false,
+        };
+        if (preferred.agent) {
+          requestBody.agent = preferred.agent;
+        }
+        if (preferred.model) {
+          requestBody.model = preferred.model;
+        }
+
+        const messageResponse = await fetch(
+          `${baseUrl}/session/${sessionId}/message${query}`,
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify(requestBody),
+            signal: controller.signal,
+          },
+        );
+
+        if (!messageResponse.ok) {
+          const errorText = await messageResponse.text().catch(() => "");
+          throw new Error(
+            `OpenCode message failed: ${messageResponse.status} ${errorText}`,
+          );
+        }
+
+        const messageDataRaw = (await messageResponse.json()) as unknown;
+        const messageData = parseOpenCodeMessageResponse(messageDataRaw);
+        const initialText = extractTextParts(messageData?.parts).join("\n").trim();
+        if (initialText) {
+          return initialText;
+        }
+
+        const parentMessageId =
+          messageData?.info?.role === "user" ? messageData.info.id : undefined;
+        const startedAt = Date.now();
+        while (Date.now() - startedAt < AI_COMMIT_TIMEOUT_MS) {
+          const messagesResponse = await fetch(
+            `${baseUrl}/session/${sessionId}/message${query}`,
+            {
+              method: "GET",
+              headers,
+              signal: controller.signal,
+            },
+          );
+
+          if (!messagesResponse.ok) {
+            const errorText = await messagesResponse.text().catch(() => "");
+            throw new Error(
+              `Failed to poll OpenCode messages: ${messagesResponse.status} ${errorText}`,
+            );
+          }
+
+          const messagesData = (await messagesResponse.json()) as unknown;
+          const items = Array.isArray(messagesData)
+            ? (messagesData as OpenCodeMessageItem[])
+            : messagesData &&
+                typeof messagesData === "object" &&
+                Array.isArray(
+                  (messagesData as { messages?: OpenCodeMessageItem[] })
+                    .messages,
+                )
+              ? (messagesData as { messages: OpenCodeMessageItem[] }).messages
+              : [];
+
+          for (let i = items.length - 1; i >= 0; i--) {
+            const item = items[i];
+            const info = item?.info;
+            if (!info || info.role !== "assistant") continue;
+            if (parentMessageId && info.parentID && info.parentID !== parentMessageId) {
+              continue;
+            }
+
+            const text = extractTextParts(item.parts).join("\n").trim();
+            if (text) {
+              return text;
+            }
+
+            const errorMessage = info.error?.data?.message;
+            if (errorMessage) {
+              throw new Error(errorMessage);
+            }
+          }
+
+          await sleep(500);
+        }
+
+        throw new Error("OpenCode returned an empty response");
+      } finally {
+        clearTimeout(timeoutId);
+        if (sessionId) {
+          void fetch(`${baseUrl}/session/${sessionId}${query}`, {
+            method: "DELETE",
+            headers,
+          }).catch(() => {});
+        }
+      }
+    },
+    [daemon.projectPath, opencodePort],
+  );
+
+  const handleGenerateCommitMessageAI = useCallback(async () => {
+    if (!daemon.projectPath) {
+      toast("Please open a project first.", "error");
+      return;
+    }
+
+    if (stagedChanges.length === 0) {
+      toast("Stage files before generating commit message.", "error");
+      return;
+    }
+
+    setShowCommitInput(true);
+    setIsGeneratingCommitMessageAI(true);
+
+    try {
+      const status = await checkOpencodeStatus();
+      if (!status?.installed) {
+        toast(
+          "OpenCode is not installed. Run: npm i -g opencode-ai@latest",
+          "error",
+        );
+        return;
+      }
+
+      if (!status.running) {
+        const started = await startOpencode(daemon.projectPath);
+        if (!started) {
+          toast("Failed to start OpenCode daemon.", "error");
+          return;
+        }
+      }
+
+      const diffChunks = await Promise.all(
+        stagedChanges.map((change) => daemon.gitDiff(change.path, true)),
+      );
+      const mergedDiff = diffChunks
+        .filter((chunk) => chunk.trim().length > 0)
+        .join("\n\n")
+        .slice(0, AI_COMMIT_DIFF_LIMIT)
+        .trim();
+
+      if (!mergedDiff) {
+        toast("No textual staged diff available.", "error");
+        return;
+      }
+
+      const prompt = buildAiCommitPrompt(mergedDiff, "staged");
+      const aiRaw = await runOpenCodePrompt(prompt);
+      const aiMessage = sanitizeAiCommitMessage(aiRaw);
+
+      if (!aiMessage) {
+        toast("AI returned an empty commit message.", "error");
+        return;
+      }
+
+      setCommitMessage(aiMessage);
+      toast("AI commit draft generated.", "success");
+    } catch (error) {
+      console.error("Failed to generate AI commit message:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      toast(`AI draft failed: ${errorMessage}`, "error");
+    } finally {
+      setIsGeneratingCommitMessageAI(false);
+    }
+  }, [
+    daemon,
+    stagedChanges,
+    checkOpencodeStatus,
+    startOpencode,
+    runOpenCodePrompt,
+    toast,
+  ]);
+
   const handleCommit = useCallback(async () => {
     if (!commitMessage.trim()) return;
     const result = await daemon.gitCommit(commitMessage.trim());
@@ -1374,9 +1721,11 @@ The AI assistant will read and update this file during compilation.
                       onPush={handleGitPush}
                       onPull={handleGitPull}
                       onPreviewDiff={handlePreviewGitDiff}
+                      onGenerateCommitMessageAI={handleGenerateCommitMessageAI}
                       onOpenFile={(path) => {
                         void handleFileSelect(path);
                       }}
+                      isGeneratingCommitMessageAI={isGeneratingCommitMessageAI}
                       isPushing={daemon.isPushing}
                       isPulling={daemon.isPulling}
                     />

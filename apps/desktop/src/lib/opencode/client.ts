@@ -247,10 +247,18 @@ export class OpenCodeClient {
         break;
 
       case "session.error":
-        console.error("[OpenCode Client] Session error:", {
-          sessionID: (event.properties as { sessionID?: string }).sessionID,
-          error: (event.properties as { error?: unknown }).error,
-        });
+        {
+          const sessionID = (event.properties as { sessionID?: string })
+            .sessionID;
+          const error = (event.properties as { error?: unknown }).error;
+          // Some OpenCode builds emit empty session.error events; suppress noisy console errors.
+          if (sessionID || error) {
+            console.warn("[OpenCode Client] Session error:", {
+              sessionID,
+              error,
+            });
+          }
+        }
         break;
 
       case "message.updated": {
