@@ -14,6 +14,7 @@ import {
   DEFAULT_LATEX_SETTINGS,
 } from "@/lib/latex/types";
 import { EditorSettings, MinimapSettings, DEFAULT_EDITOR_SETTINGS, EDITOR_THEMES } from "@/lib/editor/types";
+import { Switch } from "@/components/ui/switch";
 
 interface LaTeXSettingsDialogProps {
   open: boolean;
@@ -286,14 +287,36 @@ export function LaTeXSettingsDialog({
 
                     <SectionHeader>Keybindings</SectionHeader>
 
-                    <div className="space-y-3">
-                      <CheckboxItem
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 border flex items-center justify-center font-mono text-xs font-bold tracking-tight transition-colors ${
+                          editorSettings.vimMode
+                            ? "bg-black border-black text-white"
+                            : "bg-neutral-50 border-neutral-200 text-neutral-400"
+                        }`}>
+                          Vi
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-neutral-700">
+                              Vim Mode
+                            </span>
+                            {editorSettings.vimMode && (
+                              <span className="text-[10px] px-1.5 py-0.5 bg-black text-white font-mono font-bold tracking-wider">
+                                NORMAL
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-neutral-500 mt-0.5">
+                            Modal Vim-style keybindings in editor
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
                         checked={editorSettings.vimMode}
-                        onChange={(v) =>
+                        onCheckedChange={(v) =>
                           onUpdateEditorSettings({ vimMode: v })
                         }
-                        label="Vim Mode"
-                        description="Use modal Vim-style keybindings in editor"
                       />
                     </div>
 
@@ -473,29 +496,17 @@ export function LaTeXSettingsDialog({
                           Code overview panel
                         </p>
                       </div>
-                      <button
-                        onClick={() =>
+                      <Switch
+                        checked={editorSettings.minimap.enabled}
+                        onCheckedChange={(v) =>
                           onUpdateEditorSettings({
                             minimap: {
                               ...editorSettings.minimap,
-                              enabled: !editorSettings.minimap.enabled,
+                              enabled: v,
                             },
                           })
                         }
-                        className={`relative w-10 h-5 border transition-colors ${
-                          editorSettings.minimap.enabled
-                            ? "bg-black border-black"
-                            : "bg-neutral-100 border-neutral-300 hover:border-neutral-400"
-                        }`}
-                      >
-                        <span
-                          className={`absolute top-0.5 w-4 h-4 transition-all ${
-                            editorSettings.minimap.enabled
-                              ? "left-[calc(100%-18px)] bg-white"
-                              : "left-0.5 bg-neutral-400"
-                          }`}
-                        />
-                      </button>
+                      />
                     </div>
 
                     {editorSettings.minimap.enabled && (
@@ -807,39 +818,76 @@ export function LaTeXSettingsDialog({
 
                     <SectionHeader>Git</SectionHeader>
 
-                    <div className="space-y-2">
-                      <CheckboxItem
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 border flex items-center justify-center transition-colors ${
+                          editorSettings.gitAutoFetchEnabled
+                            ? "bg-black border-black"
+                            : "bg-neutral-50 border-neutral-200"
+                        }`}>
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className={editorSettings.gitAutoFetchEnabled ? "text-white" : "text-neutral-400"}>
+                            <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 2.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5ZM4.5 8a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5Zm7 0a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5Z" fill="currentColor" fillRule="evenodd"/>
+                            <path d="M8 5.75v2.5M6 9l-1-.5M10 9l1-.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-neutral-700">
+                              Auto Fetch
+                            </span>
+                            {editorSettings.gitAutoFetchEnabled && (
+                              <span className="text-[10px] px-1.5 py-0.5 border border-emerald-300 text-emerald-600 font-medium uppercase tracking-wider bg-emerald-50">
+                                Active
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-neutral-500 mt-0.5">
+                            Periodically sync remote refs in background
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
                         checked={editorSettings.gitAutoFetchEnabled}
-                        onChange={(v) =>
+                        onCheckedChange={(v) =>
                           onUpdateEditorSettings({ gitAutoFetchEnabled: v })
                         }
-                        label="Auto Fetch Remote"
-                        description="Periodically sync remote refs in background"
                       />
-
-                      {editorSettings.gitAutoFetchEnabled && (
-                        <SelectField
-                          label="Fetch Interval"
-                          value={editorSettings.gitAutoFetchIntervalSeconds}
-                          onChange={(v) =>
-                            onUpdateEditorSettings({
-                              gitAutoFetchIntervalSeconds: Math.min(
-                                3600,
-                                Math.max(15, parseInt(v, 10) || 120),
-                              ),
-                            })
-                          }
-                          options={[
-                            { value: 15, label: "15 sec" },
-                            { value: 30, label: "30 sec" },
-                            { value: 60, label: "1 min" },
-                            { value: 120, label: "2 min" },
-                            { value: 300, label: "5 min" },
-                            { value: 600, label: "10 min" },
-                          ]}
-                        />
-                      )}
                     </div>
+
+                    {editorSettings.gitAutoFetchEnabled && (
+                      <div className="pl-4 border-l-2 border-neutral-200 ml-1">
+                        <div className="flex items-center justify-between py-2">
+                          <label className="text-sm font-medium text-neutral-700">
+                            Interval
+                          </label>
+                          <div className="flex flex-wrap justify-end gap-1">
+                            {([
+                              { value: 30, label: "30s" },
+                              { value: 60, label: "1m" },
+                              { value: 120, label: "2m" },
+                              { value: 300, label: "5m" },
+                              { value: 600, label: "10m" },
+                            ] as const).map((opt) => (
+                              <button
+                                key={opt.value}
+                                onClick={() =>
+                                  onUpdateEditorSettings({
+                                    gitAutoFetchIntervalSeconds: opt.value,
+                                  })
+                                }
+                                className={`px-2.5 py-1 text-xs font-medium border transition-all ${
+                                  editorSettings.gitAutoFetchIntervalSeconds === opt.value
+                                    ? "bg-black text-white border-black"
+                                    : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
