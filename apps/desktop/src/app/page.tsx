@@ -1203,6 +1203,15 @@ The AI assistant will read and update this file during compilation.
     [daemon],
   );
 
+  const handleUnstageAll = useCallback(() => {
+    const stagedPaths = (daemon.gitStatus?.changes ?? [])
+      .filter((c) => c.staged)
+      .map((c) => c.path);
+    if (stagedPaths.length > 0) {
+      daemon.gitUnstage(stagedPaths);
+    }
+  }, [daemon]);
+
   const handleUnstageFile = useCallback(
     (path: string) => {
       daemon.gitUnstage([path]);
@@ -1742,6 +1751,7 @@ The AI assistant will read and update this file during compilation.
                       onDiscardFile={handleDiscardFile}
                       onStageFile={handleStageFile}
                       onUnstageFile={handleUnstageFile}
+                      onUnstageAll={handleUnstageAll}
                       showCommitInput={showCommitInput}
                       commitMessage={commitMessage}
                       onCommitMessageChange={(value) => setCommitMessage(value)}

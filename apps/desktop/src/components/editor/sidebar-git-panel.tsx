@@ -151,6 +151,7 @@ type GitSidebarPanelProps = {
   onDiscardFile: (path: string) => void | Promise<void>;
   onStageFile: (path: string) => void;
   onUnstageFile: (path: string) => void;
+  onUnstageAll: () => void;
   showCommitInput: boolean;
   commitMessage: string;
   onCommitMessageChange: (value: string) => void;
@@ -188,6 +189,7 @@ export function GitSidebarPanel({
   onDiscardFile,
   onStageFile,
   onUnstageFile,
+  onUnstageAll,
   commitMessage,
   onCommitMessageChange,
   onCommit,
@@ -492,12 +494,22 @@ export function GitSidebarPanel({
           {/* Staged Changes */}
           {stagedChanges.length > 0 && (
             <div className="border-b border-border">
-              <div className="px-3 py-1.5 flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider text-muted">
-                <CheckIcon className="w-3 h-3" />
-                Staged
-                <span className="inline-flex items-center justify-center w-4 h-4 bg-black text-white text-[9px] font-bold">
-                  {stagedChanges.length}
+              <div className="px-3 py-1.5 flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-muted">
+                <span className="flex items-center gap-1.5">
+                  <CheckIcon className="w-3 h-3" />
+                  Staged
+                  <span className="inline-flex items-center justify-center w-4 h-4 bg-black text-white text-[9px] font-bold">
+                    {stagedChanges.length}
+                  </span>
                 </span>
+                <button
+                  type="button"
+                  onClick={onUnstageAll}
+                  className="normal-case tracking-normal text-muted hover:text-black transition-colors p-0.5"
+                  title="Unstage all"
+                >
+                  <MinusIcon className="w-3.5 h-3.5" />
+                </button>
               </div>
               <div className="border-t border-neutral-100">
                 {stagedChanges.map((change) => renderChangeRow(change, true))}
