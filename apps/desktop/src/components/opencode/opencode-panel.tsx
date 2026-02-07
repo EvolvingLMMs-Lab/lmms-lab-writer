@@ -152,26 +152,23 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   const processedToolsRef = useRef<Set<string>>(new Set());
   const runningToolsRef = useRef<Map<string, string>>(new Map()); // toolId -> filePath
   const previousStatusRef = useRef<string>("idle");
-  const hasCompletedFileEditRef = useRef(false);
+  const turnEditedMessageIdsRef = useRef<Set<string>>(new Set());
   const turnCompleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const seenToolKindsRef = useRef<Set<string>>(new Set());
 
-  const scheduleTurnComplete = useCallback(
-    (reason: string) => {
-      if (!onTurnComplete) return;
+  const scheduleTurnComplete = useCallback(() => {
+    if (!onTurnComplete) return;
 
-      if (turnCompleteTimeoutRef.current) {
-        clearTimeout(turnCompleteTimeoutRef.current);
-      }
-      // Wait briefly to ensure async capture/read operations have settled.
-      turnCompleteTimeoutRef.current = setTimeout(() => {
-        onTurnComplete();
-        hasCompletedFileEditRef.current = false;
-        turnCompleteTimeoutRef.current = null;
-      }, 800);
-    },
-    [onTurnComplete],
-  );
+    if (turnCompleteTimeoutRef.current) {
+      clearTimeout(turnCompleteTimeoutRef.current);
+    }
+    // Wait briefly to ensure async capture/read operations have settled.
+    turnCompleteTimeoutRef.current = setTimeout(() => {
+      onTurnComplete(Array.from(turnEditedMessageIdsRef.current));
+      turnEditedMessageIdsRef.current.clear();
+      turnCompleteTimeoutRef.current = null;
+    }, 800);
+  }, [onTurnComplete]);
 
   useEffect(() => {
     return () => {
@@ -227,7 +224,9 @@ export const OpenCodePanel = memo(function OpenCodePanel({
           }
           processedToolsRef.current.add(toolId);
           runningToolsRef.current.delete(toolId);
-          hasCompletedFileEditRef.current = true;
+          if (typeof messageId === "string" && messageId.length > 0) {
+            turnEditedMessageIdsRef.current.add(messageId);
+          }
 
           // Try to get the new content from the tool output or re-read the file
           // For now, we'll read the file content in the parent component
@@ -237,7 +236,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
 
           // Sometimes status is already idle when tool completion arrives.
           if (opencode.status.type === "idle") {
-            scheduleTurnComplete("file tool completed while idle");
+            scheduleTurnComplete();
           }
         }
       });
@@ -261,7 +260,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
       previousWasActive &&
       currentStatus === "idle"
     ) {
-      scheduleTurnComplete("status transitioned to idle");
+      scheduleTurnComplete();
     }
 
     previousStatusRef.current = currentStatus;

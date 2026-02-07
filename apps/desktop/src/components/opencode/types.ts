@@ -21,8 +21,8 @@ export type Props = {
   onCaptureFileContent?: (toolPartId: string, filePath: string) => void;
   onEditCompleted?: (toolPartId: string, filePath: string, afterContent: string, messageId?: string) => void;
   onReviewEdit?: (editId: string, filePath: string) => void;
-  // Callback when AI turn completes (goes from running/busy to idle)
-  onTurnComplete?: () => void;
+  // Callback when AI turn completes. Includes assistant message IDs that used file edit tools.
+  onTurnComplete?: (messageIdsWithFileEdits: string[]) => void;
   // Count of pending edits for the current turn
   pendingEditCount?: number;
   // Pending edit summary grouped by file

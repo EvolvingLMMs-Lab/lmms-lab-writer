@@ -240,14 +240,12 @@ export default function EditorPage() {
       }));
   }, [pendingEdits, pendingEditCount, showChangesReview]);
 
-  // Ref to always have latest pending edit count (for callbacks)
-  const pendingEditCountRef = useRef(pendingEditCount);
-  pendingEditCountRef.current = pendingEditCount;
+  // Refs used by delayed auto-review checks to avoid stale closure values.
+  const pendingEditsRef = useRef(pendingEdits);
+  pendingEditsRef.current = pendingEdits;
   const awaitingAutoReviewRef = useRef(false);
+  const awaitingAutoReviewMessageIdsRef = useRef<Set<string>>(new Set());
   const autoReviewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pendingAutoOpenTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const showChangesReviewRef = useRef(showChangesReview);
-  showChangesReviewRef.current = showChangesReview;
 
   // Get all edits for the review panel (sorted by timestamp, pending first)
   const pendingEditsArray = useMemo(() => {
@@ -1285,95 +1283,94 @@ The AI assistant will read and update this file during compilation.
     }
   }, []);
 
-  const clearPendingAutoOpenTimeout = useCallback(() => {
-    if (pendingAutoOpenTimeoutRef.current) {
-      clearTimeout(pendingAutoOpenTimeoutRef.current);
-      pendingAutoOpenTimeoutRef.current = null;
+  const hasPendingEditsForMessageIds = useCallback((messageIds: Set<string>) => {
+    if (messageIds.size === 0) return false;
+    for (const edit of pendingEditsRef.current.values()) {
+      if (
+        edit.status === "pending" &&
+        typeof edit.messageId === "string" &&
+        messageIds.has(edit.messageId)
+      ) {
+        return true;
+      }
     }
+    return false;
   }, []);
 
   // If turn has completed and pending edits arrive slightly later, auto-open review.
   useEffect(() => {
     if (!awaitingAutoReviewRef.current) return;
-    if (pendingEditCount <= 0) return;
+    if (
+      !hasPendingEditsForMessageIds(awaitingAutoReviewMessageIdsRef.current)
+    ) {
+      return;
+    }
     awaitingAutoReviewRef.current = false;
+    awaitingAutoReviewMessageIdsRef.current.clear();
     clearAutoReviewTimeout();
     setShowChangesReview(true);
-  }, [pendingEditCount, clearAutoReviewTimeout]);
+  }, [pendingEdits, clearAutoReviewTimeout, hasPendingEditsForMessageIds]);
 
-  // Final fallback: if pending edits appear and settle briefly, auto-open review.
   useEffect(() => {
-    if (pendingEditCount <= 0 || showChangesReview) {
-      clearPendingAutoOpenTimeout();
+    return () => {
+      awaitingAutoReviewRef.current = false;
+      awaitingAutoReviewMessageIdsRef.current.clear();
+      clearAutoReviewTimeout();
+    };
+  }, [clearAutoReviewTimeout]);
+
+  // Handle when AI turn completes
+  const handleTurnComplete = useCallback((messageIdsWithFileEdits: string[]) => {
+    const validMessageIds = messageIdsWithFileEdits.filter(
+      (messageId) => typeof messageId === "string" && messageId.length > 0,
+    );
+
+    clearAutoReviewTimeout();
+
+    if (validMessageIds.length === 0) {
+      awaitingAutoReviewRef.current = false;
+      awaitingAutoReviewMessageIdsRef.current.clear();
       return;
     }
 
-    clearPendingAutoOpenTimeout();
-    pendingAutoOpenTimeoutRef.current = setTimeout(() => {
-      if (pendingEditCountRef.current > 0 && !showChangesReviewRef.current) {
-        awaitingAutoReviewRef.current = false;
-        clearAutoReviewTimeout();
-        setShowChangesReview(true);
-      }
-      pendingAutoOpenTimeoutRef.current = null;
-    }, 1200);
-
-    return () => {
-      clearPendingAutoOpenTimeout();
-    };
-  }, [
-    pendingEditCount,
-    showChangesReview,
-    clearPendingAutoOpenTimeout,
-    clearAutoReviewTimeout,
-  ]);
-
-  useEffect(() => {
-    return () => {
-      awaitingAutoReviewRef.current = false;
-      clearAutoReviewTimeout();
-      clearPendingAutoOpenTimeout();
-    };
-  }, [clearAutoReviewTimeout, clearPendingAutoOpenTimeout]);
-
-  // Handle when AI turn completes
-  const handleTurnComplete = useCallback(() => {
-
-    // Use ref to get the latest pendingEditCount (avoids stale closure)
     awaitingAutoReviewRef.current = true;
-    clearAutoReviewTimeout();
+    awaitingAutoReviewMessageIdsRef.current = new Set(validMessageIds);
 
-    if (pendingEditCountRef.current > 0) {
+    if (hasPendingEditsForMessageIds(awaitingAutoReviewMessageIdsRef.current)) {
       // Automatically open changes review when turn completes with edits
       awaitingAutoReviewRef.current = false;
+      awaitingAutoReviewMessageIdsRef.current.clear();
       setShowChangesReview(true);
     } else {
       autoReviewTimeoutRef.current = setTimeout(() => {
-        if (awaitingAutoReviewRef.current && pendingEditCountRef.current > 0) {
+        if (
+          awaitingAutoReviewRef.current &&
+          hasPendingEditsForMessageIds(awaitingAutoReviewMessageIdsRef.current)
+        ) {
           setShowChangesReview(true);
-        } else {
         }
         awaitingAutoReviewRef.current = false;
+        awaitingAutoReviewMessageIdsRef.current.clear();
         autoReviewTimeoutRef.current = null;
       }, 2500);
     }
-  }, [pendingEdits.size, clearAutoReviewTimeout]);
+  }, [clearAutoReviewTimeout, hasPendingEditsForMessageIds]);
 
   // Open the changes review panel
   const handleOpenChangesReview = useCallback(() => {
     awaitingAutoReviewRef.current = false;
+    awaitingAutoReviewMessageIdsRef.current.clear();
     clearAutoReviewTimeout();
-    clearPendingAutoOpenTimeout();
     setShowChangesReview(true);
-  }, [clearAutoReviewTimeout, clearPendingAutoOpenTimeout]);
+  }, [clearAutoReviewTimeout]);
 
   // Close the changes review panel
   const handleCloseChangesReview = useCallback(() => {
     awaitingAutoReviewRef.current = false;
+    awaitingAutoReviewMessageIdsRef.current.clear();
     clearAutoReviewTimeout();
-    clearPendingAutoOpenTimeout();
     setShowChangesReview(false);
-  }, [clearAutoReviewTimeout, clearPendingAutoOpenTimeout]);
+  }, [clearAutoReviewTimeout]);
 
   const handleOpenFolder = useCallback(async () => {
     try {
