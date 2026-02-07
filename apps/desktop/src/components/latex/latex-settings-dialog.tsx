@@ -809,36 +809,25 @@ export function LaTeXSettingsDialog({
 
               {editorSettings.gitAutoFetchEnabled && (
                 <div className="pl-4 border-l-2 border-neutral-200 ml-1">
-                  <div className="flex items-center justify-between py-2">
-                    <label className="text-sm font-medium text-neutral-700">
-                      Interval
-                    </label>
-                    <div className="flex flex-wrap justify-end gap-1">
-                      {([
-                        { value: 30, label: "30s" },
-                        { value: 60, label: "1m" },
-                        { value: 120, label: "2m" },
-                        { value: 300, label: "5m" },
-                        { value: 600, label: "10m" },
-                      ] as const).map((opt) => (
-                        <button
-                          key={opt.value}
-                          onClick={() =>
-                            onUpdateEditorSettings({
-                              gitAutoFetchIntervalSeconds: opt.value,
-                            })
-                          }
-                          className={`px-2.5 py-1 text-xs font-medium border transition-all ${
-                            editorSettings.gitAutoFetchIntervalSeconds === opt.value
-                              ? "bg-black text-white border-black"
-                              : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <SelectField
+                    label="Interval"
+                    value={editorSettings.gitAutoFetchIntervalSeconds}
+                    onChange={(v) =>
+                      onUpdateEditorSettings({
+                        gitAutoFetchIntervalSeconds: Math.min(
+                          3600,
+                          Math.max(15, parseInt(v, 10) || 120),
+                        ),
+                      })
+                    }
+                    options={[
+                      { value: 30, label: "30 seconds" },
+                      { value: 60, label: "1 minute" },
+                      { value: 120, label: "2 minutes" },
+                      { value: 300, label: "5 minutes" },
+                      { value: 600, label: "10 minutes" },
+                    ]}
+                  />
                 </div>
               )}
             </Tabs.Content>
