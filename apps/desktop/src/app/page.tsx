@@ -66,10 +66,91 @@ type GitDiffPreviewState = {
   error: string | null;
 };
 
+type ParsedUnifiedDiff = {
+  original: string;
+  modified: string;
+  added: number;
+  removed: number;
+  hasRenderableHunks: boolean;
+  isBinary: boolean;
+};
+
+function parseUnifiedDiffContent(content: string): ParsedUnifiedDiff {
+  const normalized = content.replace(/\r\n/g, "\n");
+  const lines = normalized.split("\n");
+  const originalLines: string[] = [];
+  const modifiedLines: string[] = [];
+  let inHunk = false;
+  let added = 0;
+  let removed = 0;
+  let isBinary = false;
+
+  for (const line of lines) {
+    if (
+      line.startsWith("Binary files ") ||
+      line.startsWith("GIT binary patch")
+    ) {
+      isBinary = true;
+    }
+
+    if (line.startsWith("@@")) {
+      inHunk = true;
+      continue;
+    }
+
+    if (!inHunk) continue;
+    if (line === "\\ No newline at end of file") continue;
+
+    if (line.startsWith("+") && !line.startsWith("+++")) {
+      modifiedLines.push(line.slice(1));
+      added += 1;
+      continue;
+    }
+
+    if (line.startsWith("-") && !line.startsWith("---")) {
+      originalLines.push(line.slice(1));
+      removed += 1;
+      continue;
+    }
+
+    if (line.startsWith(" ")) {
+      const contextLine = line.slice(1);
+      originalLines.push(contextLine);
+      modifiedLines.push(contextLine);
+      continue;
+    }
+
+    if (line.length === 0) {
+      originalLines.push("");
+      modifiedLines.push("");
+    }
+  }
+
+  return {
+    original: originalLines.join("\n"),
+    modified: modifiedLines.join("\n"),
+    added,
+    removed,
+    hasRenderableHunks: originalLines.length > 0 || modifiedLines.length > 0,
+    isBinary,
+  };
+}
+
 const MonacoEditor = dynamic(
   () =>
     import("@/components/editor/monaco-editor").then((mod) => mod.MonacoEditor),
   { ssr: false },
+);
+
+const GitMonacoDiffEditor = dynamic(
+  () =>
+    import("@/components/editor/monaco-diff-editor").then(
+      (mod) => mod.MonacoDiffEditor,
+    ),
+  {
+    ssr: false,
+    loading: () => <EditorSkeleton className="h-full" />,
+  },
 );
 
 const OpenCodePanel = dynamic(
@@ -1105,6 +1186,11 @@ The AI assistant will read and update this file during compilation.
     !!gitDiffPreview &&
     selectedFile === gitDiffPreview.path;
 
+  const parsedGitDiff = useMemo(() => {
+    if (!gitDiffPreview?.content) return null;
+    return parseUnifiedDiffContent(gitDiffPreview.content);
+  }, [gitDiffPreview?.content]);
+
   return (
     <div className="h-dvh flex flex-col">
       <header className="border-b border-border flex-shrink-0 h-[72px] flex items-center">
@@ -1341,10 +1427,17 @@ The AI assistant will read and update this file during compilation.
                     <div className="text-sm font-medium truncate">
                       {gitDiffPreview.path}
                     </div>
-                    <div className="text-xs text-muted">
-                      {gitDiffPreview.staged
-                        ? "Staged changes"
-                        : "Working tree changes"}
+                    <div className="text-xs text-muted flex items-center gap-2">
+                      <span>
+                        {gitDiffPreview.staged
+                          ? "Staged changes"
+                          : "Working tree changes"}
+                      </span>
+                      {parsedGitDiff && parsedGitDiff.hasRenderableHunks && (
+                        <span>
+                          +{parsedGitDiff.added} / -{parsedGitDiff.removed}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1372,10 +1465,21 @@ The AI assistant will read and update this file during compilation.
                     <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
                       Failed to load diff: {gitDiffPreview.error}
                     </div>
+                  ) : parsedGitDiff?.isBinary ? (
+                    <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
+                      Binary file diff is not previewable in editor.
+                    </div>
                   ) : !gitDiffPreview.content.trim() ? (
                     <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
                       No textual diff available for this file.
                     </div>
+                  ) : parsedGitDiff && parsedGitDiff.hasRenderableHunks ? (
+                    <GitMonacoDiffEditor
+                      original={parsedGitDiff.original}
+                      modified={parsedGitDiff.modified}
+                      filePath={gitDiffPreview.path}
+                      className="h-full"
+                    />
                   ) : (
                     <MonacoEditor
                       content={gitDiffPreview.content}
