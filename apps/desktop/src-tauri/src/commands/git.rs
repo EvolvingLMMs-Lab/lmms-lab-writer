@@ -27,6 +27,10 @@ pub struct GitStatus {
     pub remote: Option<String>,
     pub ahead: i32,
     pub behind: i32,
+    #[serde(rename = "hasUpstream")]
+    pub has_upstream: bool,
+    #[serde(rename = "hasCommits")]
+    pub has_commits: bool,
     pub changes: Vec<GitFileChange>,
     #[serde(rename = "isRepo")]
     pub is_repo: bool,
@@ -66,6 +70,8 @@ pub async fn git_status(dir: String) -> Result<GitStatus, String> {
             remote: None,
             ahead: 0,
             behind: 0,
+            has_upstream: false,
+            has_commits: false,
             changes: Vec::new(),
             is_repo: false,
         });
@@ -76,7 +82,7 @@ pub async fn git_status(dir: String) -> Result<GitStatus, String> {
     // Check if repo has any commits
     let has_commits = run_git(dir_ref, &["rev-parse", "HEAD"]).await.is_ok();
     
-    let (branch_result, status_result, remote_result, ahead_behind_result) = tokio::join!(
+    let (branch_result, status_result, remote_result, upstream_result, ahead_behind_result) = tokio::join!(
         async {
             if has_commits {
                 run_git(dir_ref, &["rev-parse", "--abbrev-ref", "HEAD"]).await
@@ -90,6 +96,17 @@ pub async fn git_status(dir: String) -> Result<GitStatus, String> {
         run_git(dir_ref, &["remote"]),
         async {
             if has_commits {
+                run_git(
+                    dir_ref,
+                    &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+                )
+                .await
+            } else {
+                Err("no commits".to_string())
+            }
+        },
+        async {
+            if has_commits {
                 run_git(dir_ref, &["rev-list", "--left-right", "--count", "HEAD...@{u}"]).await
             } else {
                 Ok("0\t0".to_string())
@@ -99,6 +116,7 @@ pub async fn git_status(dir: String) -> Result<GitStatus, String> {
 
     let branch = branch_result.unwrap_or_else(|_| "main".to_string()).trim().to_string();
     let status_output = status_result.unwrap_or_default();
+    let has_upstream = upstream_result.is_ok();
 
     let mut changes = Vec::new();
     for line in status_output.lines() {
@@ -164,6 +182,8 @@ pub async fn git_status(dir: String) -> Result<GitStatus, String> {
         remote: remote_url,
         ahead,
         behind,
+        has_upstream,
+        has_commits,
         changes,
         is_repo: true,
     })
@@ -304,7 +324,37 @@ pub async fn git_commit(dir: String, message: String) -> Result<String, String> 
 
 #[tauri::command]
 pub async fn git_push(dir: String) -> Result<(), String> {
-    run_git(&dir, &["push"]).await?;
+    let has_commits = run_git(&dir, &["rev-parse", "--verify", "HEAD"]).await.is_ok();
+    if !has_commits {
+        return Err("No commits to push".to_string());
+    }
+
+    if run_git(&dir, &["remote", "get-url", "origin"]).await.is_err() {
+        return Err("No remote named 'origin'. Add or publish a remote first.".to_string());
+    }
+
+    let branch = run_git(&dir, &["rev-parse", "--abbrev-ref", "HEAD"])
+        .await?
+        .trim()
+        .to_string();
+
+    if branch == "HEAD" {
+        return Err("Cannot push from detached HEAD".to_string());
+    }
+
+    let has_upstream = run_git(
+        &dir,
+        &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+    )
+    .await
+    .is_ok();
+
+    if has_upstream {
+        run_git(&dir, &["push"]).await?;
+    } else {
+        run_git(&dir, &["push", "-u", "origin", &branch]).await?;
+    }
+
     Ok(())
 }
 

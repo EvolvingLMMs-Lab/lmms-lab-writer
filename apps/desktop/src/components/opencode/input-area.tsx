@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { CaretLeftIcon, CaretRightIcon, XIcon } from "@phosphor-icons/react";
 import { ChevronIcon, ImageIcon, SendIcon, StopIcon } from "./icons";
@@ -17,18 +17,24 @@ interface SelectOptionGroup {
 }
 
 function useDropdownPosition(
-  open: boolean,
   triggerRef: React.RefObject<HTMLButtonElement | null>,
   menuRef: React.RefObject<HTMLDivElement | null>,
 ) {
-  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [positioned, setPositioned] = useState(false);
 
   const openMenu = useCallback(() => {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    setMenuPos({ x: rect.left, y: rect.top });
-  }, [triggerRef]);
+    setPositioned(false);
+    setOpen(true);
+  }, []);
 
+  const close = useCallback(() => {
+    setOpen(false);
+    setPositioned(false);
+  }, []);
+
+  // Close on outside click or Escape
   useEffect(() => {
     if (!open) return;
     const handleClick = (e: MouseEvent) => {
@@ -38,11 +44,11 @@ function useDropdownPosition(
         triggerRef.current &&
         !triggerRef.current.contains(e.target as Node)
       ) {
-        setMenuPos(null);
+        close();
       }
     };
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuPos(null);
+      if (e.key === "Escape") close();
     };
     document.addEventListener("mousedown", handleClick);
     document.addEventListener("keydown", handleEsc);
@@ -50,22 +56,36 @@ function useDropdownPosition(
       document.removeEventListener("mousedown", handleClick);
       document.removeEventListener("keydown", handleEsc);
     };
-  }, [open, menuRef, triggerRef]);
+  }, [open, menuRef, triggerRef, close]);
 
-  useEffect(() => {
-    if (!open || !menuRef.current || !menuPos) return;
-    const menu = menuRef.current;
-    const rect = menu.getBoundingClientRect();
-    let x = menuPos.x;
-    let y = menuPos.y - rect.height - 4;
-    if (x + rect.width > window.innerWidth) x = window.innerWidth - rect.width - 8;
-    if (y < 8) y = menuPos.y + 28;
+  // Calculate position before paint, re-runs when content changes
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current || !menuRef.current) return;
+    const triggerRect = triggerRef.current.getBoundingClientRect();
+    const menuRect = menuRef.current.getBoundingClientRect();
+
+    let x = triggerRect.left;
+    let y = triggerRect.top - menuRect.height - 4; // above trigger
+
+    // Keep within viewport horizontally
+    if (x + menuRect.width > window.innerWidth) {
+      x = window.innerWidth - menuRect.width - 8;
+    }
     x = Math.max(8, x);
-    menu.style.left = `${x}px`;
-    menu.style.top = `${y}px`;
-  }, [open, menuPos, menuRef]);
 
-  return { menuPos, openMenu, close: () => setMenuPos(null) };
+    // If not enough space above, position below
+    if (y < 8) {
+      y = triggerRect.bottom + 4;
+    }
+
+    setPos((prev) => {
+      if (prev.x === x && prev.y === y) return prev;
+      return { x, y };
+    });
+    setPositioned(true);
+  });
+
+  return { open, pos, positioned, openMenu, close };
 }
 
 function CustomSelect({
@@ -81,12 +101,10 @@ function CustomSelect({
 }) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { menuPos, openMenu, close } = useDropdownPosition(
-    !!true,
+  const { open, pos, positioned, openMenu, close } = useDropdownPosition(
     triggerRef,
     menuRef,
   );
-  const open = !!menuPos;
 
   const selectedLabel = options.find((o) => o.value === value)?.label || value;
 
@@ -107,7 +125,7 @@ function CustomSelect({
           <div
             ref={menuRef}
             className="fixed z-[9999] min-w-[160px] max-h-[240px] overflow-y-auto border border-neutral-200 bg-white shadow-lg rounded-lg py-1"
-            style={{ left: menuPos.x, top: menuPos.y }}
+            style={{ left: pos.x, top: pos.y, visibility: positioned ? "visible" : "hidden" }}
           >
             {options.map((opt) => (
               <button
@@ -149,12 +167,10 @@ function GroupedSelect({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [activeGroup, setActiveGroup] = useState<string | null>(null);
-  const { menuPos, openMenu: rawOpen, close: rawClose } = useDropdownPosition(
-    !!true,
+  const { open, pos, positioned, openMenu: rawOpen, close: rawClose } = useDropdownPosition(
     triggerRef,
     menuRef,
   );
-  const open = !!menuPos;
 
   const openMenu = useCallback(() => {
     setActiveGroup(null);
@@ -204,7 +220,7 @@ function GroupedSelect({
           <div
             ref={menuRef}
             className="fixed z-[9999] min-w-[180px] max-h-[300px] overflow-y-auto border border-neutral-200 bg-white shadow-lg rounded-lg py-1"
-            style={{ left: menuPos.x, top: menuPos.y }}
+            style={{ left: pos.x, top: pos.y, visibility: positioned ? "visible" : "hidden" }}
           >
             {currentGroup ? (
               <>

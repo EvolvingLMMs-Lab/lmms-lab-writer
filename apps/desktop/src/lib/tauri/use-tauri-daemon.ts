@@ -233,6 +233,8 @@ export function useTauriDaemon() {
           branch: "",
           ahead: 0,
           behind: 0,
+          hasUpstream: false,
+          hasCommits: false,
           changes: [],
           isRepo: false,
         },

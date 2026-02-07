@@ -345,6 +345,16 @@ export function GitSidebarPanel({
   }
 
   const changeCount = gitStatus.changes.length;
+  const showPushButton = Boolean(gitStatus.remote);
+  const canPush = gitStatus.hasUpstream
+    ? gitStatus.ahead > 0
+    : gitStatus.hasCommits;
+  const pushTitle =
+    !canPush
+      ? "Nothing to push"
+      : gitStatus.hasUpstream
+      ? `Push ${gitStatus.ahead} commit${gitStatus.ahead > 1 ? "s" : ""}`
+      : "Push current branch to origin";
 
   return (
     <>
@@ -464,21 +474,21 @@ export function GitSidebarPanel({
             <SparkleIcon className="w-3 h-3" />
             {isGeneratingCommitMessageAI ? "..." : "AI"}
           </button>
-          {gitStatus.ahead > 0 && (
+          {showPushButton && (
             <button
               onClick={() => {
                 void onPush();
               }}
-              disabled={isPushing}
+              disabled={isPushing || !canPush}
               className="text-[11px] font-mono px-2.5 py-1.5 border border-border hover:border-black hover:bg-neutral-50 disabled:opacity-30 transition-colors flex items-center gap-1"
-              title={`Push ${gitStatus.ahead} commit${gitStatus.ahead > 1 ? "s" : ""}`}
+              title={pushTitle}
             >
               {isPushing ? (
                 <Spinner className="size-3" />
               ) : (
                 <>
                   <ArrowUpIcon className="w-3 h-3" />
-                  {gitStatus.ahead}
+                  {gitStatus.hasUpstream ? gitStatus.ahead : "Push"}
                 </>
               )}
             </button>

@@ -126,6 +126,8 @@ export interface GitStatus {
   remote?: string;
   ahead: number;
   behind: number;
+  hasUpstream: boolean;
+  hasCommits: boolean;
   changes: GitFileChange[];
   isRepo: boolean;
 }
