@@ -599,17 +599,14 @@ function FileTreeInner({
   // Find drop target from mouse position
   const findDropTarget = useCallback((x: number, y: number): { path: string; type: "file" | "directory" } | null => {
     const elements = document.elementsFromPoint(x, y);
-    console.log("[DnD] findDropTarget at", x, y, "found", elements.length, "elements");
     for (const el of elements) {
       const treeItem = el.closest("[data-path]") as HTMLElement | null;
       if (treeItem) {
-        console.log("[DnD] Found tree item:", treeItem.dataset.path, "type:", treeItem.dataset.type, "contained:", containerRef.current?.contains(treeItem));
       }
       if (treeItem && containerRef.current?.contains(treeItem)) {
         const path = treeItem.dataset.path;
         const type = treeItem.dataset.type as "file" | "directory";
         if (path && type) {
-          console.log("[DnD] Returning target:", { path, type });
           return { path, type };
         }
       }
@@ -620,51 +617,39 @@ function FileTreeInner({
     if (container) {
       const rect = container.getBoundingClientRect();
       if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-        console.log("[DnD] Returning root target");
         return { path: "", type: "directory" };
       }
     }
-
-    console.log("[DnD] No valid target found");
     return null;
   }, []);
 
   // Check if drop target is valid
   const isValidDropTarget = useCallback((targetPath: string, targetType: string): boolean => {
     const dragged = draggedNodeRef.current;
-    console.log("[DnD] isValidDropTarget:", { targetPath, targetType, dragged });
     if (!dragged) {
-      console.log("[DnD] Invalid: no dragged node");
       return false;
     }
 
     // Can only drop into directories
     if (targetType !== "directory") {
-      console.log("[DnD] Invalid: target is not a directory");
       return false;
     }
 
     // Normalize paths for cross-platform comparison (handles both / and \)
     const normalizedTarget = pathSync.normalizeForCompare(targetPath);
     const normalizedDragged = pathSync.normalizeForCompare(dragged.path);
-    console.log("[DnD] Normalized paths:", { normalizedTarget, normalizedDragged });
 
     // Cannot drop into itself or its descendants
     if (normalizedTarget === normalizedDragged || normalizedTarget.startsWith(normalizedDragged + "/")) {
-      console.log("[DnD] Invalid: dropping into self or descendant");
       return false;
     }
 
     // Cannot drop into current parent (no-op)
     const currentParent = pathSync.dirname(dragged.path);
     const normalizedParent = pathSync.normalizeForCompare(currentParent);
-    console.log("[DnD] Parent check:", { currentParent, normalizedParent });
     if (normalizedTarget === normalizedParent) {
-      console.log("[DnD] Invalid: dropping into current parent (no-op)");
       return false;
     }
-
-    console.log("[DnD] Valid drop target!");
     return true;
   }, []);
 
@@ -706,7 +691,6 @@ function FileTreeInner({
       const dy = e.clientY - startPos.y;
       if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return;
       isDraggingRef.current = true;
-      console.log("[DnD] Drag threshold passed, dragging started for:", draggedNodeRef.current);
     }
 
     // Find what we're hovering over (only log occasionally to avoid spam)
@@ -730,7 +714,6 @@ function FileTreeInner({
   const handleMouseUp = useCallback((e: MouseEvent) => {
     const dragged = draggedNodeRef.current;
     const wasDragging = isDraggingRef.current;
-    console.log("[DnD] handleMouseUp:", { dragged, wasDragging, x: e.clientX, y: e.clientY });
 
     // Clean up using refs to avoid stale closure issues
     if (handleMouseMoveRef.current) {
@@ -745,7 +728,6 @@ function FileTreeInner({
     document.body.style.userSelect = "";
 
     if (!dragged || !wasDragging) {
-      console.log("[DnD] Aborting: no dragged node or wasn't dragging");
       draggedNodeRef.current = null;
       dragStartPos.current = null;
       isDraggingRef.current = false;
@@ -755,7 +737,6 @@ function FileTreeInner({
 
     // Find drop target
     const target = findDropTarget(e.clientX, e.clientY);
-    console.log("[DnD] Drop target found:", target);
     const canDrop = !!(target && isValidDropTarget(target.path, target.type));
 
     // Snapshot dragged info before clearing refs
@@ -769,19 +750,15 @@ function FileTreeInner({
 
     // Perform move if valid target
     if (target && canDrop && draggedSnapshot) {
-      console.log("[DnD] Performing move to:", target.path);
       performMove(draggedSnapshot, target.path);
     } else {
-      console.log("[DnD] Not performing move - target invalid or null");
     }
   }, [findDropTarget, isValidDropTarget, performMove]);
 
   // Mouse down handler (called from NodeRenderer)
   const handleDragMouseDown = useCallback(
     (e: React.MouseEvent, path: string, name: string, type: "file" | "directory") => {
-      console.log("[DnD] handleDragMouseDown:", { path, name, type });
       if (!fileOperations) {
-        console.log("[DnD] No fileOperations, aborting");
         return;
       }
 

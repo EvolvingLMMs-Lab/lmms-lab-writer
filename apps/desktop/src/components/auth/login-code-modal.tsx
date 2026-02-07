@@ -52,15 +52,12 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
     setError(null);
     setState("loading");
 
-    console.log("[LoginCode] Step 1: Decoding login code...");
-
     // Step 1: Decode and validate
     let accessToken: string;
     let refreshToken: string;
 
     try {
       const decoded = atob(code.trim());
-      console.log("[LoginCode] Decoded base64, parsing JSON...");
       const tokens = JSON.parse(decoded);
       accessToken = tokens.accessToken;
       refreshToken = tokens.refreshToken;
@@ -68,9 +65,6 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
       if (!accessToken || !refreshToken) {
         throw new Error("missing tokens");
       }
-      console.log("[LoginCode] Tokens extracted successfully");
-      console.log("[LoginCode] Access token length:", accessToken.length);
-      console.log("[LoginCode] Refresh token length:", refreshToken.length);
     } catch (err) {
       console.error("[LoginCode] Decode error:", err);
       setError("Invalid login code format. Please copy the code again.");
@@ -81,71 +75,37 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
 
     // Step 2: Set session
     try {
-      console.log("[LoginCode] Step 2: Getting Supabase client...");
       const supabase = getSupabaseClient();
-      console.log("[LoginCode] Supabase client obtained");
-
-      // Set session with the tokens
-      // Note: With noOpLock configured in the Supabase client, this should not hang
-      console.log("[LoginCode] Calling setSession...");
       const { data: setSessionData, error: setSessionError } = await supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
       });
 
-      console.log("[LoginCode] setSession returned:", {
-        hasData: !!setSessionData,
-        hasSession: !!setSessionData?.session,
-        error: setSessionError?.message
-      });
-
       if (setSessionError || !setSessionData?.session) {
-        // setSession failed - validate token and use fallback
-        console.log("[LoginCode] setSession failed, validating access token...");
 
         const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
-        console.log("[LoginCode] getUser returned:", {
-          hasUser: !!userData?.user,
-          error: userError?.message
-        });
 
         if (userError || !userData?.user) {
           throw new Error("invalid_token");
         }
 
-        console.log("[LoginCode] Access token valid, user:", userData.user.email);
-        console.log("[LoginCode] Will pass access token to onSuccess for fallback auth");
-
         // Success - access token is valid
         setState("success");
 
         setTimeout(() => {
-          console.log("[LoginCode] Closing modal and calling onSuccess with token...");
           onClose();
           onSuccess?.(accessToken);
         }, 500);
         return;
       }
-
-      // Step 3: Verify session
-      console.log("[LoginCode] Step 3: Verifying session...");
       const { data: { session } } = await supabase.auth.getSession();
-
-      console.log("[LoginCode] Verification:", {
-        hasSession: !!session,
-        userEmail: session?.user?.email
-      });
 
       if (!session) {
         throw new Error("no session");
       }
-
-      // Success!
-      console.log("[LoginCode] Success! Setting success state...");
       setState("success");
 
       setTimeout(() => {
-        console.log("[LoginCode] Closing modal and calling onSuccess...");
         onClose();
         onSuccess?.();
       }, 500);
@@ -188,12 +148,10 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
         const port = await invoke<number>("start_auth_callback_server");
         if (mounted && !hasOpenedBrowserRef.current) {
           setCallbackPort(port);
-          console.log("[LoginCode] Auth callback server started on port:", port);
 
           // Automatically open browser with callback port
           hasOpenedBrowserRef.current = true;
           const urlWithPort = `${baseLoginUrl}&callback_port=${port}`;
-          console.log("[LoginCode] Opening browser with URL:", urlWithPort);
           try {
             const { open } = await import("@tauri-apps/plugin-shell");
             await open(urlWithPort);
@@ -222,7 +180,6 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
 
       try {
         unlistenRef.current = await listen<{ code: string }>("auth-code-received", (event) => {
-          console.log("[LoginCode] Received auth code from callback server");
           if (mounted && event.payload.code && processLoginCodeRef.current) {
             processLoginCodeRef.current(event.payload.code);
           }

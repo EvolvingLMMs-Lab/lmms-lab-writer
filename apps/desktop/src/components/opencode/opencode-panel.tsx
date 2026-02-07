@@ -163,11 +163,8 @@ export const OpenCodePanel = memo(function OpenCodePanel({
       if (turnCompleteTimeoutRef.current) {
         clearTimeout(turnCompleteTimeoutRef.current);
       }
-
-      console.log(`[Review] Scheduling onTurnComplete (${reason}) in 800ms`);
       // Wait briefly to ensure async capture/read operations have settled.
       turnCompleteTimeoutRef.current = setTimeout(() => {
-        console.log("[Review] Triggering onTurnComplete callback");
         onTurnComplete();
         hasCompletedFileEditRef.current = false;
         turnCompleteTimeoutRef.current = null;
@@ -203,13 +200,6 @@ export const OpenCodePanel = memo(function OpenCodePanel({
         const toolKey = `${toolName}:${toolPart.state.status}`;
         if (REVIEW_DEBUG && !seenToolKindsRef.current.has(toolKey)) {
           seenToolKindsRef.current.add(toolKey);
-          console.log("[Review][ToolSeen]", {
-            tool: toolName,
-            status: toolPart.state.status,
-            isFileTool,
-            filePath,
-            inputKeys: Object.keys(input),
-          });
         }
 
         if (!isFileTool) return;
@@ -218,13 +208,11 @@ export const OpenCodePanel = memo(function OpenCodePanel({
         const messageId = toolPart.messageID;
 
         if (!filePath) {
-          console.log("[Review] File-write tool missing file path:", toolName, input);
           return;
         }
 
         // When tool starts running, capture the file content
         if (toolPart.state.status === "running" && !runningToolsRef.current.has(toolId)) {
-          console.log("[Review] Capturing file content before edit:", filePath);
           runningToolsRef.current.set(toolId, filePath);
           onCaptureFileContent?.(toolId, filePath);
         }
@@ -236,12 +224,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
           !processedToolsRef.current.has(toolId)
         ) {
           if (!runningToolsRef.current.has(toolId)) {
-            console.log(
-              "[Review] Tool completed without prior running state, using fallback path:",
-              filePath,
-            );
           }
-          console.log("[Review] Tool completed, creating pending edit:", filePath);
           processedToolsRef.current.add(toolId);
           runningToolsRef.current.delete(toolId);
           hasCompletedFileEditRef.current = true;
@@ -272,8 +255,6 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     const prevStatus = previousStatusRef.current;
     const currentStatus = opencode.status.type;
 
-    console.log("[Review] Status change:", prevStatus, "->", currentStatus);
-
     const previousWasActive =
       prevStatus === "running" || prevStatus === "busy" || prevStatus === "retry";
     if (
@@ -288,14 +269,6 @@ export const OpenCodePanel = memo(function OpenCodePanel({
 
   useEffect(() => {
     if (!REVIEW_DEBUG) return;
-    console.log("[Review][PanelState]", {
-      status: opencode.status.type,
-      pendingEditCount,
-      hasCompletedFileEdit: hasCompletedFileEditRef.current,
-      processedTools: processedToolsRef.current.size,
-      runningTools: runningToolsRef.current.size,
-      partGroups: opencode.parts.size,
-    });
   }, [opencode.status.type, pendingEditCount, opencode.parts]);
 
   // Handle pending message from external source

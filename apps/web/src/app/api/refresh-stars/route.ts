@@ -29,25 +29,15 @@ export async function POST() {
   }
 
   try {
-    console.log("[refresh-stars] Checking starred repos...");
     const { allStarred, eligibleCount } = await checkStarredRepos(
       tokenInfo.accessToken,
     );
-    console.log(
-      "[refresh-stars] Found starred repos:",
-      allStarred.length,
-      "eligible:",
-      eligibleCount,
-    );
-
-    console.log("[refresh-stars] Updating membership...");
     const result = await updateMembershipFromStars(
       supabase,
       user.id,
       allStarred,
       eligibleCount,
     );
-    console.log("[refresh-stars] Update result:", result);
 
     if (result.error) {
       console.error("[refresh-stars] Membership update error:", result.error);

@@ -238,12 +238,6 @@ export default function EditorPage() {
         additions: edit.additions,
         deletions: edit.deletions,
       }));
-
-    console.log("[Review][PageState]", {
-      pendingEditCount,
-      showChangesReview,
-      pendingPreview,
-    });
   }, [pendingEdits, pendingEditCount, showChangesReview]);
 
   // Ref to always have latest pending edit count (for callbacks)
@@ -593,7 +587,6 @@ The AI assistant will read and update this file during compilation.
         if (type === "stderr") {
           console.error("[OpenCode]", message);
         } else {
-          console.log("[OpenCode]", message);
         }
       }).then((fn) => {
         unlisten = fn;
@@ -1049,17 +1042,10 @@ The AI assistant will read and update this file during compilation.
   const handleCaptureFileContent = useCallback(
     async (toolPartId: string, filePath: string) => {
       const normalizedPath = normalizeReviewFilePath(filePath);
-      console.log("[Review] handleCaptureFileContent called:", {
-        toolPartId,
-        filePath,
-        normalizedPath,
-      });
       if (!daemon.projectPath) {
-        console.log("[Review] No project path, skipping capture");
         return;
       }
       if (!normalizedPath) {
-        console.log("[Review] Invalid file path, skipping capture:", filePath);
         return;
       }
 
@@ -1067,10 +1053,8 @@ The AI assistant will read and update this file during compilation.
         const content = await daemon.readFile(normalizedPath);
         if (content !== null) {
           fileContentCacheRef.current.set(toolPartId, content);
-          console.log("[Review] Captured file content, length:", content.length);
         }
       } catch (err) {
-        console.log("[Review] Could not read file (might be new):", err);
         // Silently ignore - file might not exist yet for new files
       }
     },
@@ -1081,17 +1065,9 @@ The AI assistant will read and update this file during compilation.
   const handleEditCompleted = useCallback(
     async (toolPartId: string, filePath: string, _toolOutput: string, messageId?: string) => {
       const normalizedPath = normalizeReviewFilePath(filePath);
-      console.log("[Review] handleEditCompleted called:", {
-        toolPartId,
-        filePath,
-        normalizedPath,
-        messageId,
-      });
       const beforeContent = fileContentCacheRef.current.get(toolPartId) || "";
-      console.log("[Review] Before content length:", beforeContent.length);
 
       if (!normalizedPath) {
-        console.log("[Review] Invalid file path after edit, skipping:", filePath);
         fileContentCacheRef.current.delete(toolPartId);
         return;
       }
@@ -1101,9 +1077,7 @@ The AI assistant will read and update this file during compilation.
       try {
         const content = await daemon.readFile(normalizedPath);
         afterContent = content || "";
-        console.log("[Review] After content length:", afterContent.length);
       } catch (err) {
-        console.log("[Review] Failed to read file after edit:", err);
         // Clean up cache and skip creating pending edit
         fileContentCacheRef.current.delete(toolPartId);
         return;
@@ -1111,7 +1085,6 @@ The AI assistant will read and update this file during compilation.
 
       // Skip if content is the same (no actual change)
       if (beforeContent === afterContent) {
-        console.log("[Review] No changes detected, skipping");
         fileContentCacheRef.current.delete(toolPartId);
         return;
       }
@@ -1132,13 +1105,6 @@ The AI assistant will read and update this file during compilation.
         messageId,
         status: "pending",
       };
-
-      console.log("[Review] Creating pending edit:", {
-        id: pendingEdit.id,
-        filePath: pendingEdit.filePath,
-        additions: pendingEdit.additions,
-        deletions: pendingEdit.deletions,
-      });
 
       setPendingEdits((prev) => new Map(prev).set(toolPartId, pendingEdit));
 
@@ -1330,8 +1296,6 @@ The AI assistant will read and update this file during compilation.
   useEffect(() => {
     if (!awaitingAutoReviewRef.current) return;
     if (pendingEditCount <= 0) return;
-
-    console.log("[Review] Pending edits arrived after turn completion, opening review");
     awaitingAutoReviewRef.current = false;
     clearAutoReviewTimeout();
     setShowChangesReview(true);
@@ -1347,7 +1311,6 @@ The AI assistant will read and update this file during compilation.
     clearPendingAutoOpenTimeout();
     pendingAutoOpenTimeoutRef.current = setTimeout(() => {
       if (pendingEditCountRef.current > 0 && !showChangesReviewRef.current) {
-        console.log("[Review] Auto-opening review after pending edits settled");
         awaitingAutoReviewRef.current = false;
         clearAutoReviewTimeout();
         setShowChangesReview(true);
@@ -1375,29 +1338,20 @@ The AI assistant will read and update this file during compilation.
 
   // Handle when AI turn completes
   const handleTurnComplete = useCallback(() => {
-    console.log(
-      "[Review] handleTurnComplete called, pendingEditCount:",
-      pendingEditCountRef.current,
-    );
-    console.log("[Review] pendingEdits map size:", pendingEdits.size);
 
     // Use ref to get the latest pendingEditCount (avoids stale closure)
     awaitingAutoReviewRef.current = true;
     clearAutoReviewTimeout();
 
     if (pendingEditCountRef.current > 0) {
-      console.log("[Review] Opening changes review panel");
       // Automatically open changes review when turn completes with edits
       awaitingAutoReviewRef.current = false;
       setShowChangesReview(true);
     } else {
-      console.log("[Review] No pending edits yet, waiting briefly for async capture");
       autoReviewTimeoutRef.current = setTimeout(() => {
         if (awaitingAutoReviewRef.current && pendingEditCountRef.current > 0) {
-          console.log("[Review] Pending edits detected before timeout, opening review");
           setShowChangesReview(true);
         } else {
-          console.log("[Review] No pending edits detected before timeout");
         }
         awaitingAutoReviewRef.current = false;
         autoReviewTimeoutRef.current = null;

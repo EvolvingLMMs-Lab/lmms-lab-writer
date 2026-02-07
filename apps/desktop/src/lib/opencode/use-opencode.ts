@@ -133,10 +133,6 @@ export function useOpenCode(
     const sessionId = currentSessionIdRef.current;
     if (sessionId) {
       const newMessages = client.store.messages.get(sessionId) || [];
-      console.log("[OpenCode] syncMessagesAndParts:", {
-        sessionId,
-        messageCount: newMessages.length,
-      });
 
       setMessages(newMessages);
 
@@ -162,13 +158,6 @@ export function useOpenCode(
       const newMessages = client.store.messages.get(sessionId) || [];
       const newStatus = client.store.status.get(sessionId) || { type: "idle" };
 
-      console.log("[OpenCode] syncFromStore:", {
-        sessionId,
-        messageCount: newMessages.length,
-        status: newStatus,
-        storeStatus: client.store.status.get(sessionId),
-      });
-
       setMessages(newMessages);
       setStatus(newStatus);
 
@@ -188,7 +177,6 @@ export function useOpenCode(
 
   const handleEventRef = useRef<(event: Event) => void>(() => {});
   handleEventRef.current = (event: Event) => {
-    console.log("[OpenCode] Event received:", event.type, event);
 
     if ("properties" in event) {
       const props = event.properties as Record<string, unknown>;
@@ -196,13 +184,6 @@ export function useOpenCode(
         props.sessionID ||
         (props.info as { sessionID?: string })?.sessionID ||
         (props.part as { sessionID?: string })?.sessionID;
-
-      console.log("[OpenCode] Event details:", {
-        type: event.type,
-        eventSessionId,
-        currentSessionId: currentSessionIdRef.current,
-        props,
-      });
 
       if (
         event.type === "session.updated" ||
@@ -218,10 +199,6 @@ export function useOpenCode(
         eventSessionId === currentSessionIdRef.current
       ) {
         const statusData = props.status as SessionStatus | undefined;
-        console.log(
-          "[OpenCode] Status update for current session:",
-          statusData,
-        );
         if (statusData) {
           setStatus(statusData);
         }
@@ -231,7 +208,6 @@ export function useOpenCode(
       if (event.type === "question.asked") {
         const questionData = event.properties as QuestionAsked;
         if (questionData.sessionID === currentSessionIdRef.current) {
-          console.log("[OpenCode] Question asked:", questionData);
           setCurrentQuestion(questionData);
         }
       }
@@ -241,10 +217,6 @@ export function useOpenCode(
         const errorSessionId = event.properties.sessionID;
         if (errorSessionId === currentSessionIdRef.current) {
           const errorData = event.properties.error;
-          console.log(
-            "[OpenCode] Session error for current session:",
-            errorData,
-          );
 
           // Parse error message
           let errorMessage =
@@ -278,9 +250,6 @@ export function useOpenCode(
           } else {
             // Recoverable error - try to auto-recover by creating new session
             sessionErrorRetryCountRef.current++;
-            console.log(
-              `[OpenCode] Session error (attempt ${sessionErrorRetryCountRef.current}/${maxSessionErrorRetries}), attempting recovery...`,
-            );
 
             if (sessionErrorRetryCountRef.current <= maxSessionErrorRetries) {
               // Clear error and create new session
@@ -291,10 +260,6 @@ export function useOpenCode(
                   .createSession()
                   .then((newSession) => {
                     if (newSession) {
-                      console.log(
-                        "[OpenCode] Auto-recovered with new session:",
-                        newSession.id,
-                      );
                       setCurrentSessionId(newSession.id);
                       syncFromStoreRef.current();
                       sessionErrorRetryCountRef.current = 0;
@@ -417,15 +382,6 @@ export function useOpenCode(
       const safeAgents = Array.isArray(agentList) ? agentList : [];
       const safeProviders = Array.isArray(providerList) ? providerList : [];
 
-      console.log("[OpenCode] Loaded config:", {
-        agents: safeAgents.map((a) => ({ id: a.id, name: a.name })),
-        providers: safeProviders.map((p) => ({
-          id: p.id,
-          name: p.name,
-          modelCount: p.models?.length || 0,
-        })),
-      });
-
       setAgents(safeAgents);
       setProviders(safeProviders);
 
@@ -445,12 +401,10 @@ export function useOpenCode(
       // Agent selection: prefer saved, then first available
       if (!selectedAgentRef.current) {
         if (savedAgent && safeAgents.some((a) => a.id === savedAgent)) {
-          console.log("[OpenCode] Restoring saved agent:", savedAgent);
           setSelectedAgent(savedAgent);
         } else {
           const firstAgent = safeAgents[0];
           if (firstAgent) {
-            console.log("[OpenCode] Auto-selecting agent:", firstAgent.id);
             setSelectedAgent(firstAgent.id);
           }
         }
@@ -467,7 +421,6 @@ export function useOpenCode(
             (m) => m.id === savedModel!.modelId,
           );
           if (savedModelValid) {
-            console.log("[OpenCode] Restoring saved model:", savedModel);
             setSelectedModel(savedModel);
             return;
           }
@@ -501,11 +454,6 @@ export function useOpenCode(
         }
 
         if (selectedProvider && selectedProviderModel) {
-          console.log("[OpenCode] Auto-selecting model (smart selection):", {
-            provider: selectedProvider.id,
-            model: selectedProviderModel.id,
-            reason: "preferred provider order",
-          });
           setSelectedModel({
             providerId: selectedProvider.id,
             modelId: selectedProviderModel.id,
@@ -668,40 +616,17 @@ export function useOpenCode(
   const sendMessage = useCallback(
     async (content: string, files?: { url: string; mime: string; filename?: string }[]) => {
       const client = clientRef.current;
-      console.log("[OpenCode] sendMessage called:", {
-        hasClient: !!client,
-        connected,
-        currentSessionId,
-        content: content.slice(0, 50) + (content.length > 50 ? "..." : ""),
-        fileCount: files?.length || 0,
-        selectedAgent,
-        selectedModel,
-        availableAgents: agents.map((a) => a.id),
-        availableProviders: providers.map((p) => p.id),
-      });
 
       if (!client || !connected || !currentSessionId) {
-        console.log("[OpenCode] sendMessage aborted - preconditions not met");
         return;
       }
-
-      // Clear previous error and set optimistic "running" status
-      console.log(
-        "[OpenCode] Clearing error and setting optimistic running status",
-      );
       setError(null);
       setStatus({ type: "running" });
 
       // Use first available agent if none selected
       const agentToUse = selectedAgent || agents[0]?.id || undefined;
-      console.log("[OpenCode] Agent to use:", agentToUse);
 
       try {
-        console.log("[OpenCode] Calling client.chat with:", {
-          agent: agentToUse,
-          model: selectedModel,
-          fileCount: files?.length || 0,
-        });
         await client.chat(currentSessionId, content, {
           agent: agentToUse,
           model: selectedModel
@@ -712,13 +637,9 @@ export function useOpenCode(
             : undefined,
           files,
         });
-        console.log("[OpenCode] client.chat completed successfully");
         // Sync messages/parts after a short delay, but NOT status
         // Status will be updated by session.status events from server
         setTimeout(() => {
-          console.log(
-            "[OpenCode] Running delayed syncMessagesAndParts (not status)",
-          );
           syncMessagesAndParts();
         }, 500);
       } catch (err) {
@@ -759,15 +680,10 @@ export function useOpenCode(
     async (questionID: string, answers: string[][]) => {
       const client = clientRef.current;
       if (!client || !connected) {
-        console.log("[OpenCode] answerQuestion: preconditions not met", {
-          hasClient: !!client,
-          connected,
-        });
         return;
       }
 
       try {
-        console.log("[OpenCode] Answering question:", questionID, answers);
         await client.answerQuestion(questionID, answers);
         setCurrentQuestion(null);
       } catch (err) {
