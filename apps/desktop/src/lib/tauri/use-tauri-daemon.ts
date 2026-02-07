@@ -34,6 +34,26 @@ interface GitInitResult {
   error?: string;
 }
 
+export interface GhStatus {
+  installed: boolean;
+  authenticated: boolean;
+  username: string;
+}
+
+interface GhRepoResult {
+  url: string;
+  name: string;
+}
+
+interface GhAuthLoginResult {
+  success: boolean;
+  authenticated: boolean;
+  error?: string;
+}
+
+const GH_AUTH_POLL_INTERVAL_MS = 1500;
+const GH_AUTH_POLL_TIMEOUT_MS = 120_000;
+
 // Split state into logical slices to reduce unnecessary re-renders
 interface ProjectState {
   projectPath: string | null;
@@ -50,6 +70,9 @@ interface GitState {
   gitInitResult: GitInitResult | null;
   isPushing: boolean;
   isPulling: boolean;
+  ghStatus: GhStatus | null;
+  isCreatingRepo: boolean;
+  isAuthenticatingGh: boolean;
 }
 
 interface OperationState {
@@ -155,6 +178,9 @@ export function useTauriDaemon() {
     gitInitResult: null,
     isPushing: false,
     isPulling: false,
+    ghStatus: null,
+    isCreatingRepo: false,
+    isAuthenticatingGh: false,
   });
 
   const [operationState, setOperationState] = useState<OperationState>({
@@ -577,6 +603,88 @@ export function useTauriDaemon() {
     [projectState.projectPath, refreshGitStatus, setError],
   );
 
+  const ghCheck = useCallback(async (): Promise<GhStatus> => {
+    try {
+      const status = await invoke<GhStatus>("gh_check");
+      setGitState((s) => ({ ...s, ghStatus: status }));
+      return status;
+    } catch (error) {
+      console.error("Failed to check gh status:", error);
+      const fallback: GhStatus = { installed: false, authenticated: false, username: "" };
+      setGitState((s) => ({ ...s, ghStatus: fallback }));
+      return fallback;
+    }
+  }, []);
+
+  const ghAuthLogin = useCallback(async (): Promise<GhAuthLoginResult> => {
+    setGitState((s) => ({ ...s, isAuthenticatingGh: true }));
+
+    try {
+      // Opens a visible terminal for interactive auth.
+      await invoke<string>("gh_auth_login");
+
+      const startedAt = Date.now();
+      while (Date.now() - startedAt < GH_AUTH_POLL_TIMEOUT_MS) {
+        await new Promise((resolve) => setTimeout(resolve, GH_AUTH_POLL_INTERVAL_MS));
+
+        try {
+          const status = await invoke<GhStatus>("gh_check");
+          setGitState((s) => ({ ...s, ghStatus: status }));
+
+          if (status.authenticated) {
+            setGitState((s) => ({
+              ...s,
+              ghStatus: status,
+              isAuthenticatingGh: false,
+            }));
+            return { success: true, authenticated: true };
+          }
+        } catch (checkError) {
+          console.warn("Failed to poll gh auth status:", checkError);
+        }
+      }
+
+      setGitState((s) => ({ ...s, isAuthenticatingGh: false }));
+      return {
+        success: false,
+        authenticated: false,
+        error: "GitHub authentication timed out. Please finish login in the terminal and try again.",
+      };
+    } catch (error) {
+      console.error("Failed to start gh auth:", error);
+      setGitState((s) => ({ ...s, isAuthenticatingGh: false }));
+      return { success: false, authenticated: false, error: String(error) };
+    }
+  }, []);
+
+  const ghCreateRepo = useCallback(
+    async (
+      name: string,
+      isPrivate: boolean,
+      description?: string,
+    ): Promise<{ success: boolean; url?: string; error?: string }> => {
+      if (!projectState.projectPath) return { success: false, error: "No project" };
+
+      setGitState((s) => ({ ...s, isCreatingRepo: true }));
+      try {
+        const result = await invoke<GhRepoResult>("gh_create_repo", {
+          dir: projectState.projectPath,
+          name,
+          private: isPrivate,
+          description: description || null,
+        });
+        await refreshGitStatus();
+        setGitState((s) => ({ ...s, isCreatingRepo: false }));
+        return { success: true, url: result.url };
+      } catch (error) {
+        console.error("Failed to create repo:", error);
+        setGitState((s) => ({ ...s, isCreatingRepo: false }));
+        return { success: false, error: String(error) };
+      }
+    },
+    [projectState.projectPath, refreshGitStatus],
+  );
+
   const gitDiff = useCallback(
     async (file: string, staged = false): Promise<string> => {
       if (!projectState.projectPath) return "";
@@ -741,6 +849,9 @@ export function useTauriDaemon() {
       gitInitResult: gitState.gitInitResult,
       isPushing: gitState.isPushing,
       isPulling: gitState.isPulling,
+      ghStatus: gitState.ghStatus,
+      isCreatingRepo: gitState.isCreatingRepo,
+      isAuthenticatingGh: gitState.isAuthenticatingGh,
 
       lastFileChange,
 
@@ -771,6 +882,9 @@ export function useTauriDaemon() {
       clearGitInitResult,
       refreshGitStatus,
       clearError,
+      ghCheck,
+      ghAuthLogin,
+      ghCreateRepo,
     }),
     [
       projectState,
@@ -798,6 +912,10 @@ export function useTauriDaemon() {
       clearGitInitResult,
       refreshGitStatus,
       clearError,
+      ghCheck,
+      ghAuthLogin,
+      ghCreateRepo,
     ],
   );
 }
+

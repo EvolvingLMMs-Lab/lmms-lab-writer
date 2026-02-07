@@ -1,9 +1,262 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { CaretLeftIcon, CaretRightIcon, XIcon } from "@phosphor-icons/react";
 import { ChevronIcon, ImageIcon, SendIcon, StopIcon } from "./icons";
 import type { AttachedFile } from "./types";
+
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+interface SelectOptionGroup {
+  label: string;
+  options: SelectOption[];
+}
+
+function useDropdownPosition(
+  open: boolean,
+  triggerRef: React.RefObject<HTMLButtonElement | null>,
+  menuRef: React.RefObject<HTMLDivElement | null>,
+) {
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+
+  const openMenu = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setMenuPos({ x: rect.left, y: rect.top });
+  }, [triggerRef]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target as Node) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node)
+      ) {
+        setMenuPos(null);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuPos(null);
+    };
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [open, menuRef, triggerRef]);
+
+  useEffect(() => {
+    if (!open || !menuRef.current || !menuPos) return;
+    const menu = menuRef.current;
+    const rect = menu.getBoundingClientRect();
+    let x = menuPos.x;
+    let y = menuPos.y - rect.height - 4;
+    if (x + rect.width > window.innerWidth) x = window.innerWidth - rect.width - 8;
+    if (y < 8) y = menuPos.y + 28;
+    x = Math.max(8, x);
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+  }, [open, menuPos, menuRef]);
+
+  return { menuPos, openMenu, close: () => setMenuPos(null) };
+}
+
+function CustomSelect({
+  value,
+  options,
+  onChange,
+  className,
+}: {
+  value: string;
+  options: SelectOption[];
+  onChange: (value: string) => void;
+  className?: string;
+}) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const { menuPos, openMenu, close } = useDropdownPosition(
+    !!true,
+    triggerRef,
+    menuRef,
+  );
+  const open = !!menuPos;
+
+  const selectedLabel = options.find((o) => o.value === value)?.label || value;
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={openMenu}
+        className={`flex items-center gap-1 text-xs font-medium text-neutral-600 hover:text-black transition-colors cursor-pointer ${className || ""}`}
+      >
+        <span className="truncate">{selectedLabel}</span>
+        <ChevronIcon className="size-3 text-neutral-400 flex-shrink-0" />
+      </button>
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="fixed z-[9999] min-w-[160px] max-h-[240px] overflow-y-auto border border-neutral-200 bg-white shadow-lg rounded-lg py-1"
+            style={{ left: menuPos.x, top: menuPos.y }}
+          >
+            {options.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  onChange(opt.value);
+                  close();
+                }}
+                className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                  opt.value === value
+                    ? "bg-neutral-100 text-black font-medium"
+                    : "text-neutral-600 hover:bg-neutral-50 hover:text-black"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+function GroupedSelect({
+  value,
+  groups,
+  displayLabel,
+  onChange,
+  className,
+}: {
+  value: string;
+  groups: SelectOptionGroup[];
+  displayLabel?: string;
+  onChange: (value: string) => void;
+  className?: string;
+}) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
+  const { menuPos, openMenu: rawOpen, close: rawClose } = useDropdownPosition(
+    !!true,
+    triggerRef,
+    menuRef,
+  );
+  const open = !!menuPos;
+
+  const openMenu = useCallback(() => {
+    setActiveGroup(null);
+    rawOpen();
+  }, [rawOpen]);
+
+  const close = useCallback(() => {
+    setActiveGroup(null);
+    rawClose();
+  }, [rawClose]);
+
+  // Find which group currently contains the selected value
+  const selectedGroup = useMemo(() => {
+    for (const group of groups) {
+      if (group.options.some((o) => o.value === value)) return group.label;
+    }
+    return null;
+  }, [value, groups]);
+
+  const selectedLabel = useMemo(() => {
+    if (displayLabel) return displayLabel;
+    for (const group of groups) {
+      const found = group.options.find((o) => o.value === value);
+      if (found) return found.label;
+    }
+    return value;
+  }, [value, groups, displayLabel]);
+
+  const currentGroup = activeGroup
+    ? groups.find((g) => g.label === activeGroup)
+    : null;
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={openMenu}
+        className={`flex items-center gap-1 text-xs font-medium text-neutral-600 hover:text-black transition-colors cursor-pointer ${className || ""}`}
+      >
+        <span className="truncate">{selectedLabel}</span>
+        <ChevronIcon className="size-3 text-neutral-400 flex-shrink-0" />
+      </button>
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="fixed z-[9999] min-w-[180px] max-h-[300px] overflow-y-auto border border-neutral-200 bg-white shadow-lg rounded-lg py-1"
+            style={{ left: menuPos.x, top: menuPos.y }}
+          >
+            {currentGroup ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setActiveGroup(null)}
+                  className="w-full flex items-center gap-1.5 px-3 py-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors border-b border-neutral-100 mb-1"
+                >
+                  <CaretLeftIcon className="size-3" />
+                  <span className="font-medium">{currentGroup.label}</span>
+                </button>
+                {currentGroup.options.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      onChange(opt.value);
+                      close();
+                    }}
+                    className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                      opt.value === value
+                        ? "bg-neutral-100 text-black font-medium"
+                        : "text-neutral-600 hover:bg-neutral-50 hover:text-black"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </>
+            ) : (
+              groups.map((group) => (
+                <button
+                  key={group.label}
+                  type="button"
+                  onClick={() => setActiveGroup(group.label)}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 text-xs transition-colors ${
+                    group.label === selectedGroup
+                      ? "bg-neutral-100 text-black font-medium"
+                      : "text-neutral-600 hover:bg-neutral-50 hover:text-black"
+                  }`}
+                >
+                  <span>{group.label}</span>
+                  <CaretRightIcon className="size-3 text-neutral-400" />
+                </button>
+              ))
+            )}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
 
 export function InputArea({
   input,
@@ -211,58 +464,47 @@ export function InputArea({
           rows={1}
         />
         <div className="flex items-center gap-2 px-3 py-2">
-          <div className="relative">
-            <select
-              value={selectedAgent || ""}
-              onChange={(e) => onSelectAgent(e.target.value || null)}
-              className="text-xs bg-transparent pr-5 py-1 focus:outline-none appearance-none cursor-pointer text-neutral-600 hover:text-black font-medium"
-            >
-              {agents
-                .filter((a) => a?.id)
-                .map((agent) => (
-                  <option key={agent.id} value={agent.id}>
-                    {agent.name}
-                  </option>
-                ))}
-            </select>
-            <ChevronIcon className="size-3 text-neutral-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
+          <CustomSelect
+            value={selectedAgent || ""}
+            options={agents
+              .filter((a) => a?.id)
+              .map((a) => ({ value: a.id, label: a.name }))}
+            onChange={(v) => onSelectAgent(v || null)}
+          />
 
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            <div className="relative min-w-0 flex-1 max-w-[200px]">
-              <select
-                value={
-                  selectedModel
-                    ? `${selectedModel.providerId}:${selectedModel.modelId}`
-                    : ""
+            <GroupedSelect
+              value={
+                selectedModel
+                  ? `${selectedModel.providerId}:${selectedModel.modelId}`
+                  : ""
+              }
+              displayLabel={
+                selectedModelInfo.name !== "Model"
+                  ? `${selectedModelInfo.name} (${selectedModelInfo.provider})`
+                  : undefined
+              }
+              groups={providers
+                .filter((p) => p?.id && (p.models || []).length > 0)
+                .map((provider) => ({
+                  label: provider.name,
+                  options: (provider.models || [])
+                    .filter((m) => m?.id)
+                    .map((model) => ({
+                      value: `${provider.id}:${model.id}`,
+                      label: model.name,
+                    })),
+                }))}
+              onChange={(v) => {
+                const [providerId, modelId] = v.split(":");
+                if (providerId && modelId) {
+                  onSelectModel({ providerId, modelId });
+                } else {
+                  onSelectModel(null);
                 }
-                onChange={(e) => {
-                  const [providerId, modelId] = e.target.value.split(":");
-                  if (providerId && modelId) {
-                    onSelectModel({ providerId, modelId });
-                  } else {
-                    onSelectModel(null);
-                  }
-                }}
-                className="text-xs bg-transparent w-full pr-5 py-1 focus:outline-none appearance-none cursor-pointer text-neutral-600 hover:text-black font-medium truncate"
-              >
-                {providers
-                  .filter((p) => p?.id)
-                  .flatMap((provider) =>
-                    (provider.models || [])
-                      .filter((m) => m?.id)
-                      .map((model) => (
-                        <option
-                          key={`${provider.id}:${model.id}`}
-                          value={`${provider.id}:${model.id}`}
-                        >
-                          {model.name} ({provider.name})
-                        </option>
-                      )),
-                  )}
-              </select>
-              <ChevronIcon className="size-3 text-neutral-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
+              }}
+              className="min-w-0 max-w-[200px]"
+            />
             {selectedModelInfo.isMax && (
               <span className="text-xs text-neutral-500 font-medium flex-shrink-0">
                 Max

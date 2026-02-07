@@ -24,6 +24,7 @@ import {
   FileIcon,
   GitCommitIcon,
   CopyIcon,
+  GithubLogoIcon,
 } from "@phosphor-icons/react";
 
 type SelectedChange = {
@@ -163,9 +164,11 @@ type GitSidebarPanelProps = {
   onPreviewDiff: (path: string, staged: boolean) => void | Promise<void>;
   onGenerateCommitMessageAI: () => void | Promise<void>;
   onOpenFile?: (path: string) => void | Promise<void>;
+  onPublishToGitHub?: () => void;
   isGeneratingCommitMessageAI: boolean;
   isPushing: boolean;
   isPulling: boolean;
+  isAuthenticatingGh?: boolean;
 };
 
 export function GitSidebarPanel({
@@ -198,9 +201,11 @@ export function GitSidebarPanel({
   onPreviewDiff,
   onGenerateCommitMessageAI,
   onOpenFile,
+  onPublishToGitHub,
   isGeneratingCommitMessageAI,
   isPushing,
   isPulling,
+  isAuthenticatingGh = false,
 }: GitSidebarPanelProps) {
   const [selectedChange, setSelectedChange] = useState<SelectedChange | null>(
     null,
@@ -215,41 +220,6 @@ export function GitSidebarPanel({
   }, [gitLogEntries, showAllCommits]);
 
   const hasMoreCommits = gitLogEntries.length > 5;
-
-  if (!projectPath) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-muted">
-        <div className="w-12 h-12 border-2 border-neutral-200 flex items-center justify-center mb-3">
-          <GitBranchIcon className="w-6 h-6 opacity-30" />
-        </div>
-        <p className="text-xs font-mono uppercase tracking-wider">
-          No folder open
-        </p>
-      </div>
-    );
-  }
-
-  if (!gitStatus?.isRepo) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-muted">
-        <div className="w-12 h-12 border-2 border-neutral-200 flex items-center justify-center mb-3">
-          <GitBranchIcon className="w-6 h-6 opacity-30" />
-        </div>
-        <p className="text-xs font-mono uppercase tracking-wider mb-4">
-          Not a git repository
-        </p>
-        <button
-          onClick={onInitGit}
-          disabled={isInitializingGit}
-          className="btn btn-sm btn-primary"
-        >
-          {isInitializingGit ? "Initializing..." : "Init Git"}
-        </button>
-      </div>
-    );
-  }
-
-  const changeCount = gitStatus.changes.length;
 
   const handleSelectChange = useCallback(
     (path: string, staged: boolean) => {
@@ -341,6 +311,41 @@ export function GitSidebarPanel({
     [handleSelectChange, onStageFile, onDiscardFile, selectedChange],
   );
 
+  if (!projectPath) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-muted">
+        <div className="w-12 h-12 border-2 border-neutral-200 flex items-center justify-center mb-3">
+          <GitBranchIcon className="w-6 h-6 opacity-30" />
+        </div>
+        <p className="text-xs font-mono uppercase tracking-wider">
+          No folder open
+        </p>
+      </div>
+    );
+  }
+
+  if (!gitStatus?.isRepo) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-muted">
+        <div className="w-12 h-12 border-2 border-neutral-200 flex items-center justify-center mb-3">
+          <GitBranchIcon className="w-6 h-6 opacity-30" />
+        </div>
+        <p className="text-xs font-mono uppercase tracking-wider mb-4">
+          Not a git repository
+        </p>
+        <button
+          onClick={onInitGit}
+          disabled={isInitializingGit}
+          className="btn btn-sm btn-primary"
+        >
+          {isInitializingGit ? "Initializing..." : "Init Git"}
+        </button>
+      </div>
+    );
+  }
+
+  const changeCount = gitStatus.changes.length;
+
   return (
     <>
       {/* Discard all confirm dialog */}
@@ -377,7 +382,7 @@ export function GitSidebarPanel({
         </div>
 
         {!gitStatus.remote && (
-          <div className="mt-2">
+          <div className="mt-2 space-y-1.5">
             {showRemoteInput ? (
               <input
                 type="text"
@@ -396,13 +401,25 @@ export function GitSidebarPanel({
                 autoFocus
               />
             ) : (
-              <button
-                onClick={onShowRemoteInput}
-                className="flex items-center gap-1.5 text-[11px] font-mono text-muted hover:text-black transition-colors"
-              >
-                <GlobeIcon className="w-3 h-3" />
-                <span>Connect remote</span>
-              </button>
+              <>
+                {onPublishToGitHub && (
+                  <button
+                    onClick={onPublishToGitHub}
+                    disabled={isAuthenticatingGh}
+                    className="flex items-center gap-1.5 w-full px-2.5 py-1.5 text-[11px] font-mono bg-black text-white hover:bg-neutral-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <GithubLogoIcon className="w-3.5 h-3.5" />
+                    <span>{isAuthenticatingGh ? "Authenticating..." : "Publish to GitHub"}</span>
+                  </button>
+                )}
+                <button
+                  onClick={onShowRemoteInput}
+                  className="flex items-center gap-1.5 text-[11px] font-mono text-muted hover:text-black transition-colors"
+                >
+                  <GlobeIcon className="w-3 h-3" />
+                  <span>or add remote URL manually</span>
+                </button>
+              </>
             )}
           </div>
         )}

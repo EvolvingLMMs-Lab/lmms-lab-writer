@@ -11,6 +11,7 @@ import { EditorSkeleton } from "@/components/editor/editor-skeleton";
 import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
 import { FileSidebarPanel } from "@/components/editor/sidebar-file-panel";
 import { GitSidebarPanel } from "@/components/editor/sidebar-git-panel";
+import { GitHubPublishDialog } from "@/components/editor/github-publish-dialog";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { motion, AnimatePresence, useReducedMotion, type PanInfo } from "framer-motion";
 import { UserDropdown, LoginCodeModal } from "@/components/auth";
@@ -382,6 +383,8 @@ export default function EditorPage() {
 
   const [showMainFileDialog, setShowMainFileDialog] = useState(false);
   const [mainFileDetectionResult, setMainFileDetectionResult] = useState<MainFileDetectionResult | null>(null);
+  const [showGitHubPublishDialog, setShowGitHubPublishDialog] = useState(false);
+  const [ghPublishError, setGhPublishError] = useState<string | null>(null);
 
   const contentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const opencodeStartedForPathRef = useRef<string | null>(null);
@@ -1263,6 +1266,56 @@ The AI assistant will read and update this file during compilation.
     }
   }, [daemon, toast]);
 
+  const handlePublishToGitHub = useCallback(async () => {
+    setGhPublishError(null);
+
+    const status = await daemon.ghCheck();
+    if (!status.installed) {
+      toast(
+        "GitHub CLI (gh) is not installed. Install it from https://cli.github.com",
+        "error",
+      );
+      return;
+    }
+
+    if (!status.authenticated) {
+      if (daemon.isAuthenticatingGh) {
+        toast(
+          "GitHub authentication is already in progress in the terminal window.",
+          "info",
+        );
+        return;
+      }
+
+      toast(
+        "Terminal opened for GitHub login. Complete prompts there (type Y when asked), then continue in browser.",
+        "info",
+      );
+      const loginResult = await daemon.ghAuthLogin();
+      if (!loginResult.success || !loginResult.authenticated) {
+        toast(loginResult.error || "GitHub authentication failed", "error");
+        return;
+      }
+      toast("Authenticated with GitHub", "success");
+    }
+
+    setShowGitHubPublishDialog(true);
+  }, [daemon, toast]);
+
+  const handleGitHubPublish = useCallback(
+    async (name: string, isPrivate: boolean, description: string) => {
+      setGhPublishError(null);
+      const result = await daemon.ghCreateRepo(name, isPrivate, description || undefined);
+      if (result.success) {
+        setShowGitHubPublishDialog(false);
+        toast(`Repository published: ${result.url}`, "success");
+      } else {
+        setGhPublishError(result.error || "Failed to create repository");
+      }
+    },
+    [daemon, toast],
+  );
+
   const runOpenCodePrompt = useCallback(
     async (prompt: string): Promise<string> => {
       if (!daemon.projectPath) {
@@ -1765,9 +1818,11 @@ The AI assistant will read and update this file during compilation.
                       onOpenFile={(path) => {
                         void handleFileSelect(path);
                       }}
+                      onPublishToGitHub={handlePublishToGitHub}
                       isGeneratingCommitMessageAI={isGeneratingCommitMessageAI}
                       isPushing={daemon.isPushing}
                       isPulling={daemon.isPulling}
+                      isAuthenticatingGh={daemon.isAuthenticatingGh}
                     />
                   </div>
                 )}
@@ -2094,6 +2149,23 @@ The AI assistant will read and update this file during compilation.
           detectionResult={mainFileDetectionResult}
           onSelect={handleMainFileSelect}
           onCancel={handleMainFileDialogCancel}
+        />
+      )}
+
+      {showGitHubPublishDialog && (
+        <GitHubPublishDialog
+          defaultRepoName={
+            daemon.projectPath
+              ? pathSync.basename(daemon.projectPath)
+              : "my-project"
+          }
+          onPublish={handleGitHubPublish}
+          onCancel={() => {
+            setShowGitHubPublishDialog(false);
+            setGhPublishError(null);
+          }}
+          isCreating={daemon.isCreatingRepo}
+          error={ghPublishError}
         />
       )}
 

@@ -2,6 +2,19 @@ use serde::{Deserialize, Serialize};
 use super::util::command;
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct GhStatus {
+    pub installed: bool,
+    pub authenticated: bool,
+    pub username: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GhRepoResult {
+    pub url: String,
+    pub name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GitFileChange {
     pub path: String,
     pub status: String,
@@ -547,4 +560,154 @@ pub async fn git_clone(url: String, directory: String) -> Result<String, String>
 pub async fn git_add_remote(dir: String, name: String, url: String) -> Result<(), String> {
     run_git(&dir, &["remote", "add", &name, &url]).await?;
     Ok(())
+}
+
+// ── GitHub CLI helpers ──────────────────────────────────────────────
+
+async fn run_gh(args: &[&str]) -> Result<String, String> {
+    let output = command("gh")
+        .args(args)
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+async fn run_gh_in(cwd: &str, args: &[&str]) -> Result<String, String> {
+    let output = command("gh")
+        .args(args)
+        .current_dir(cwd)
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn gh_check() -> Result<GhStatus, String> {
+    // Check if gh is installed
+    let installed = run_gh(&["--version"]).await.is_ok();
+    if !installed {
+        return Ok(GhStatus {
+            installed: false,
+            authenticated: false,
+            username: String::new(),
+        });
+    }
+
+    // Only check the active account on github.com.
+    // `gh auth status` without `--active` returns exit code 1 if *any* saved account is stale,
+    // which can incorrectly look unauthenticated in apps.
+    let output = command("gh")
+        .args(["auth", "status", "--hostname", "github.com", "--active"])
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let authenticated = output.status.success();
+    let combined_output = format!(
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let username = combined_output
+        .lines()
+        .find_map(|line| {
+            if let Some(pos) = line.find("account ") {
+                let rest = &line[pos + 8..];
+                Some(rest.split_whitespace().next().unwrap_or("").to_string())
+            } else {
+                None
+            }
+        })
+        .unwrap_or_default();
+
+    Ok(GhStatus {
+        installed: true,
+        authenticated,
+        username,
+    })
+}
+
+#[tauri::command]
+pub async fn gh_auth_login() -> Result<String, String> {
+    // Spawn gh auth login in a visible terminal so the user can see the device code
+    // and complete the interactive browser-based auth flow.
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW_FLAG: u32 = 0x08000000;
+        // The outer cmd is hidden; `start` creates a new visible console window.
+        std::process::Command::new("cmd")
+            .args([
+                "/c",
+                "start",
+                "",
+                "cmd",
+                "/c",
+                "gh auth login --web --git-protocol https --hostname github.com",
+            ])
+            .creation_flags(CREATE_NO_WINDOW_FLAG)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        std::process::Command::new("gh")
+            .args(["auth", "login", "--web", "--git-protocol", "https", "--hostname", "github.com"])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok("Authentication started".to_string())
+}
+
+#[tauri::command]
+pub async fn gh_create_repo(
+    dir: String,
+    name: String,
+    private: bool,
+    description: Option<String>,
+) -> Result<GhRepoResult, String> {
+    let visibility = if private { "--private" } else { "--public" };
+    let has_commits = run_git(&dir, &["rev-parse", "--verify", "HEAD"]).await.is_ok();
+
+    let mut args = vec![
+        "repo",
+        "create",
+        &name,
+        visibility,
+        "--source=.",
+        "--remote=origin",
+    ];
+
+    if has_commits {
+        args.push("--push");
+    }
+
+    let desc_string;
+    if let Some(ref desc) = description {
+        if !desc.trim().is_empty() {
+            desc_string = format!("--description={}", desc);
+            args.push(&desc_string);
+        }
+    }
+
+    let output = run_gh_in(&dir, &args).await?;
+
+    // gh repo create prints the URL on stdout
+    let url = output.trim().to_string();
+
+    Ok(GhRepoResult { url, name })
 }
