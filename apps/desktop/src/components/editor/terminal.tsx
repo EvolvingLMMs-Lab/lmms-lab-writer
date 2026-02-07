@@ -33,29 +33,29 @@ const LIGHT_TERMINAL_THEME = {
   brightWhite: "#ffffff",
 };
 
-// GitHub Dark terminal colors
+// GitHub Dark terminal colors (softened)
 const DARK_TERMINAL_THEME = {
   background: "#24292e",
-  foreground: "#f6f8fa",
-  cursor: "#ffffff",
+  foreground: "#c9d1d9",
+  cursor: "#d1d5da",
   cursorAccent: "#24292e",
-  selectionBackground: "#4c2889",
+  selectionBackground: "#3b4048",
   black: "#24292e",
-  red: "#ea4a5a",
-  green: "#7bcc72",
-  yellow: "#fb8532",
-  blue: "#79b8ff",
-  magenta: "#b392f0",
-  cyan: "#c8e1ff",
-  white: "#f6f8fa",
-  brightBlack: "#959da5",
-  brightRed: "#f97583",
-  brightGreen: "#85e89d",
-  brightYellow: "#ffab70",
-  brightBlue: "#79b8ff",
-  brightMagenta: "#b392f0",
-  brightCyan: "#c8e1ff",
-  brightWhite: "#ffffff",
+  red: "#f85149",
+  green: "#56d364",
+  yellow: "#d29922",
+  blue: "#58a6ff",
+  magenta: "#a371f7",
+  cyan: "#76d9e6",
+  white: "#c9d1d9",
+  brightBlack: "#8b949e",
+  brightRed: "#ffa198",
+  brightGreen: "#7ee787",
+  brightYellow: "#e3b341",
+  brightBlue: "#79c0ff",
+  brightMagenta: "#bc8cff",
+  brightCyan: "#a5d6ff",
+  brightWhite: "#e6edf3",
 };
 
 type Props = {
