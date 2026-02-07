@@ -37,6 +37,7 @@ import {
 } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import { stex } from "@codemirror/legacy-modes/mode/stex";
+import { EDITOR_MONO_FONT_FAMILY } from "@/lib/editor/font-stacks";
 
 const latexLanguage = StreamLanguage.define(stex);
 
@@ -57,7 +58,7 @@ const latexHighlightStyle = HighlightStyle.define([
 const monochromTheme = EditorView.theme({
   "&": {
     fontSize: "14px",
-    fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace',
+    fontFamily: EDITOR_MONO_FONT_FAMILY,
     backgroundColor: "#fff",
     color: "#000",
     height: "100%",

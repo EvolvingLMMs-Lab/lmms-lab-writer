@@ -5,6 +5,7 @@ import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { EDITOR_MONO_FONT_FAMILY } from "@/lib/editor/font-stacks";
 
 type Props = {
   projectPath?: string;
@@ -36,7 +37,7 @@ export const Terminal = memo(function Terminal({
     let unlistenExit: UnlistenFn | null = null;
 
     const term = new XTerm({
-      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace',
+      fontFamily: EDITOR_MONO_FONT_FAMILY,
       fontSize: 13,
       lineHeight: 1.4,
       theme: {

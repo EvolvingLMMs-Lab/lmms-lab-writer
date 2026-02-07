@@ -14,8 +14,42 @@
   --color-surface: #171717;
   --color-surface-text: #fafafa;
 
-  --font-family-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
-  --font-family-mono: var(--font-geist-mono), monospace;
+  --font-family-sans:
+    var(--font-geist-sans),
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei UI",
+    "Microsoft YaHei",
+    "Noto Sans CJK SC",
+    sans-serif;
+  --font-family-mono:
+    var(--font-geist-mono),
+    ui-monospace,
+    SFMono-Regular,
+    "SF Mono",
+    Menlo,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    "Maple Mono NF CN",
+    "Maple Mono SC NF",
+    "Sarasa Mono SC",
+    "LXGW WenKai Mono",
+    "Noto Sans Mono CJK SC",
+    "Source Han Mono SC",
+    "WenQuanYi Zen Hei Mono",
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei UI",
+    "Microsoft YaHei",
+    "Noto Sans CJK SC",
+    monospace;
 }
 
 @import "overlayscrollbars/overlayscrollbars.css";
@@ -42,7 +76,7 @@ html,
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-family-mono);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
   overscroll-behavior: none;

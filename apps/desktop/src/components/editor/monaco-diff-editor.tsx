@@ -3,6 +3,7 @@
 import { useRef, memo, useCallback, useEffect } from "react";
 import { DiffEditor, Monaco, DiffOnMount } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
+import { EDITOR_MONO_FONT_FAMILY } from "@/lib/editor/font-stacks";
 
 // Define monochrome theme for diff editor
 const defineMonochromeTheme = (monaco: Monaco) => {
@@ -153,8 +154,7 @@ export const MonacoDiffEditor = memo(function MonacoDiffEditor({
           minimap: { enabled: false },
           scrollBeyondLastLine: false,
           fontSize: 13,
-          fontFamily:
-            'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+          fontFamily: EDITOR_MONO_FONT_FAMILY,
           lineNumbers: "on",
           lineHeight: 1.5,
           padding: { top: 12, bottom: 12 },

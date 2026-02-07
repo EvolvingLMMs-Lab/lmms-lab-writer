@@ -6,6 +6,7 @@ import { useRef, memo, useCallback, useEffect } from "react";
 import Editor, { Monaco, OnMount, OnChange } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import type { EditorSettings } from "@/lib/editor/types";
+import { EDITOR_MONO_FONT_FAMILY } from "@/lib/editor/font-stacks";
 import { defineEditorThemes } from "@/lib/monaco/themes";
 import { registerLaTeXLanguage } from "@/lib/monaco/latex";
 
@@ -158,8 +159,7 @@ export const MonacoEditor = memo(function MonacoEditor({
         options={{
           readOnly,
           fontSize: editorSettings?.fontSize ?? 14,
-          fontFamily:
-            'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace',
+          fontFamily: EDITOR_MONO_FONT_FAMILY,
           fontLigatures: false,
           lineNumbers: editorSettings?.lineNumbers ?? "on",
           lineHeight: editorSettings?.lineHeight ?? 1.6,
