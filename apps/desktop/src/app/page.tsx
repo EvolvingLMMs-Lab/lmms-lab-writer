@@ -1700,6 +1700,7 @@ The AI assistant will read and update this file during compilation.
                       projectPath={daemon.projectPath}
                       gitStatus={gitStatus}
                       gitGraph={daemon.gitGraph}
+                      gitLogEntries={daemon.gitLogEntries}
                       stagedChanges={stagedChanges}
                       unstagedChanges={unstagedChanges}
                       showRemoteInput={showRemoteInput}

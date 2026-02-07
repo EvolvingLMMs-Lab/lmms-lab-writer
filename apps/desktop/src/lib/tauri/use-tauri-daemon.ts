@@ -45,6 +45,7 @@ interface GitState {
   gitInfo: GitInfo | null;
   gitStatus: GitStatus | null;
   gitGraph: string[];
+  gitLogEntries: GitLogEntry[];
   isInitializingGit: boolean;
   gitInitResult: GitInitResult | null;
   isPushing: boolean;
@@ -149,6 +150,7 @@ export function useTauriDaemon() {
     gitInfo: null,
     gitStatus: null,
     gitGraph: [],
+    gitLogEntries: [],
     isInitializingGit: false,
     gitInitResult: null,
     isPushing: false,
@@ -174,9 +176,10 @@ export function useTauriDaemon() {
       const gitStatus = await invoke<GitStatus>("git_status", { dir });
 
       if (gitStatus.isRepo) {
-        const [log, gitGraph] = await Promise.all([
+        const [log, gitGraph, gitLogEntries] = await Promise.all([
           invoke<GitLogEntry[]>("git_log", { dir, limit: 1 }),
           invoke<string[]>("git_graph", { dir, limit: 40 }).catch(() => []),
+          invoke<GitLogEntry[]>("git_log", { dir, limit: 20 }).catch(() => []),
         ]);
         const lastCommit = log.length > 0 ? log[0] : undefined;
         const gitInfo: GitInfo = {
@@ -192,9 +195,9 @@ export function useTauriDaemon() {
           ahead: gitStatus.ahead,
           behind: gitStatus.behind,
         };
-        setGitState((s) => ({ ...s, gitStatus, gitInfo, gitGraph }));
+        setGitState((s) => ({ ...s, gitStatus, gitInfo, gitGraph, gitLogEntries }));
       } else {
-        setGitState((s) => ({ ...s, gitStatus, gitInfo: null, gitGraph: [] }));
+        setGitState((s) => ({ ...s, gitStatus, gitInfo: null, gitGraph: [], gitLogEntries: [] }));
       }
     } catch (error) {
       console.error("Failed to get git status:", error);
@@ -209,6 +212,7 @@ export function useTauriDaemon() {
         },
         gitInfo: null,
         gitGraph: [],
+        gitLogEntries: [],
       }));
     }
   }, []);
@@ -683,6 +687,7 @@ export function useTauriDaemon() {
       gitInfo: gitState.gitInfo,
       gitStatus: gitState.gitStatus,
       gitGraph: gitState.gitGraph,
+      gitLogEntries: gitState.gitLogEntries,
       isInitializingGit: gitState.isInitializingGit,
       gitInitResult: gitState.gitInitResult,
       isPushing: gitState.isPushing,
