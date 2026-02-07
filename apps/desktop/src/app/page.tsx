@@ -57,6 +57,14 @@ type OpenCodeStatus = {
 };
 
 type OpenCodeDaemonStatus = "stopped" | "starting" | "running" | "unavailable";
+type EditorViewMode = "file" | "git-diff";
+type GitDiffPreviewState = {
+  path: string;
+  staged: boolean;
+  content: string;
+  isLoading: boolean;
+  error: string | null;
+};
 
 const MonacoEditor = dynamic(
   () =>
@@ -123,6 +131,8 @@ export default function EditorPage() {
 
   const [selectedFile, setSelectedFile] = useState<string>();
   const [fileContent, setFileContent] = useState<string>("");
+  const [editorViewMode, setEditorViewMode] = useState<EditorViewMode>("file");
+  const [gitDiffPreview, setGitDiffPreview] = useState<GitDiffPreviewState | null>(null);
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [binaryPreviewUrl, setBinaryPreviewUrl] = useState<string | null>(null);
   const [pdfRefreshKey, setPdfRefreshKey] = useState(0);
@@ -173,6 +183,7 @@ export default function EditorPage() {
   const savingVisualTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSaveTimeRef = useRef<{ path: string; time: number } | null>(null);
   const [isLoadingFile, setIsLoadingFile] = useState(false);
+  const gitDiffRequestIdRef = useRef(0);
 
   // RAF-based resize refs for 60fps performance
   const sidebarWidthRef = useRef(sidebarWidth);
@@ -627,6 +638,8 @@ The AI assistant will read and update this file during compilation.
 
   const handleFileSelect = useCallback(
     async (path: string) => {
+      setEditorViewMode("file");
+      setGitDiffPreview(null);
       const fileType = getFileType(path);
 
       setOpenTabs((prev) => {
@@ -688,6 +701,57 @@ The AI assistant will read and update this file during compilation.
       }
     },
     [daemon, getFileType, toast],
+  );
+
+  const loadGitDiffPreview = useCallback(
+    async (path: string, staged: boolean) => {
+      const requestId = gitDiffRequestIdRef.current + 1;
+      gitDiffRequestIdRef.current = requestId;
+
+      setGitDiffPreview({
+        path,
+        staged,
+        content: "",
+        isLoading: true,
+        error: null,
+      });
+
+      try {
+        const content = await daemon.gitDiff(path, staged);
+        if (gitDiffRequestIdRef.current !== requestId) return;
+        setGitDiffPreview({
+          path,
+          staged,
+          content,
+          isLoading: false,
+          error: null,
+        });
+      } catch (error) {
+        if (gitDiffRequestIdRef.current !== requestId) return;
+        setGitDiffPreview({
+          path,
+          staged,
+          content: "",
+          isLoading: false,
+          error: String(error),
+        });
+      }
+    },
+    [daemon],
+  );
+
+  const handlePreviewGitDiff = useCallback(
+    async (path: string, staged: boolean) => {
+      setOpenTabs((prev) => {
+        if (prev.includes(path)) return prev;
+        return [...prev, path];
+      });
+      setSelectedFile(path);
+      setBinaryPreviewUrl(null);
+      setEditorViewMode("git-diff");
+      await loadGitDiffPreview(path, staged);
+    },
+    [loadGitDiffPreview],
   );
 
   useEffect(() => {
@@ -757,6 +821,8 @@ The AI assistant will read and update this file during compilation.
           } else {
             setSelectedFile(undefined);
             setFileContent("");
+            setGitDiffPreview(null);
+            setEditorViewMode("file");
           }
         }
         return newTabs;
@@ -809,6 +875,8 @@ The AI assistant will read and update this file during compilation.
     setOpenTabs([]);
     setSelectedFile(undefined);
     setFileContent("");
+    setGitDiffPreview(null);
+    setEditorViewMode("file");
   }, []);
 
   // Convert openTabs to TabItem format for TabBar
@@ -1032,6 +1100,11 @@ The AI assistant will read and update this file during compilation.
       window.removeEventListener("keydown", handleKeyDown, { capture: true });
   }, [daemon, handleOpenFolder, selectedFile, handleCloseTab, handleCompileWithDetection]);
 
+  const isShowingGitDiff =
+    editorViewMode === "git-diff" &&
+    !!gitDiffPreview &&
+    selectedFile === gitDiffPreview.path;
+
   return (
     <div className="h-dvh flex flex-col">
       <header className="border-b border-border flex-shrink-0 h-[72px] flex items-center">
@@ -1214,6 +1287,10 @@ The AI assistant will read and update this file during compilation.
                       onCommit={handleCommit}
                       onPush={handleGitPush}
                       onPull={handleGitPull}
+                      onPreviewDiff={handlePreviewGitDiff}
+                      onOpenFile={(path) => {
+                        void handleFileSelect(path);
+                      }}
                       isPushing={daemon.isPushing}
                       isPulling={daemon.isPulling}
                     />
@@ -1257,7 +1334,61 @@ The AI assistant will read and update this file during compilation.
             />
           )}
           {daemon.projectPath && selectedFile ? (
-            binaryPreviewUrl ? (
+            isShowingGitDiff ? (
+              <div className="flex-1 min-h-0 flex flex-col">
+                <div className="border-b border-border bg-neutral-50 px-3 py-2 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate">
+                      {gitDiffPreview.path}
+                    </div>
+                    <div className="text-xs text-muted">
+                      {gitDiffPreview.staged
+                        ? "Staged changes"
+                        : "Working tree changes"}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => void loadGitDiffPreview(gitDiffPreview.path, gitDiffPreview.staged)}
+                      className="btn btn-sm btn-secondary"
+                    >
+                      Refresh Diff
+                    </button>
+                    <button
+                      onClick={() => {
+                        void handleFileSelect(gitDiffPreview.path);
+                      }}
+                      className="btn btn-sm btn-secondary"
+                    >
+                      Open File
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-1 min-h-0">
+                  {gitDiffPreview.isLoading ? (
+                    <EditorSkeleton className="h-full" />
+                  ) : gitDiffPreview.error ? (
+                    <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
+                      Failed to load diff: {gitDiffPreview.error}
+                    </div>
+                  ) : !gitDiffPreview.content.trim() ? (
+                    <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
+                      No textual diff available for this file.
+                    </div>
+                  ) : (
+                    <MonacoEditor
+                      content={gitDiffPreview.content}
+                      readOnly
+                      onContentChange={() => {}}
+                      language="diff"
+                      editorSettings={editorSettings.settings}
+                      className="h-full"
+                    />
+                  )}
+                </div>
+              </div>
+            ) : binaryPreviewUrl ? (
               <div className="flex-1 flex flex-col bg-neutral-50 overflow-hidden">
                 {getFileType(selectedFile) === "pdf" && (
                   <div className="flex items-center justify-end px-2 py-1 border-b border-neutral-200 bg-neutral-100">

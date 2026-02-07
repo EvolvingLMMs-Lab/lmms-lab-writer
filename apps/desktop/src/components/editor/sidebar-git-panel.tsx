@@ -1,9 +1,31 @@
 "use client";
 
+import { useCallback, useMemo, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
 import type { GitFileChange, GitStatus } from "@lmms-lab/writer-shared";
 import { ArrowClockwiseIcon, GitBranchIcon } from "@phosphor-icons/react";
+
+type SelectedChange = {
+  path: string;
+  staged: boolean;
+};
+
+const STATUS_SHORT: Record<GitFileChange["status"], string> = {
+  modified: "M",
+  added: "A",
+  deleted: "D",
+  renamed: "R",
+  untracked: "?",
+};
+
+const STATUS_LABEL: Record<GitFileChange["status"], string> = {
+  modified: "Modified",
+  added: "Added",
+  deleted: "Deleted",
+  renamed: "Renamed",
+  untracked: "Untracked",
+};
 
 type GitSidebarPanelProps = {
   projectPath: string | null;
@@ -29,6 +51,8 @@ type GitSidebarPanelProps = {
   onCommit: () => void;
   onPush: () => void | Promise<void>;
   onPull: () => void | Promise<void>;
+  onPreviewDiff: (path: string, staged: boolean) => void | Promise<void>;
+  onOpenFile?: (path: string) => void | Promise<void>;
   isPushing: boolean;
   isPulling: boolean;
 };
@@ -57,9 +81,15 @@ export function GitSidebarPanel({
   onCommit,
   onPush,
   onPull,
+  onPreviewDiff,
+  onOpenFile,
   isPushing,
   isPulling,
 }: GitSidebarPanelProps) {
+  const [selectedChange, setSelectedChange] = useState<SelectedChange | null>(
+    null,
+  );
+
   if (!projectPath) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-muted">
@@ -86,6 +116,78 @@ export function GitSidebarPanel({
   }
 
   const changeCount = gitStatus.changes.length;
+  const changeSummary = useMemo(() => {
+    const summary: Record<GitFileChange["status"], number> = {
+      modified: 0,
+      added: 0,
+      deleted: 0,
+      renamed: 0,
+      untracked: 0,
+    };
+
+    for (const change of gitStatus.changes) {
+      summary[change.status] += 1;
+    }
+    return summary;
+  }, [gitStatus.changes]);
+
+  const selectedChangeData = useMemo(() => {
+    if (!selectedChange) return null;
+    const source = selectedChange.staged ? stagedChanges : unstagedChanges;
+    return source.find((change) => change.path === selectedChange.path) ?? null;
+  }, [selectedChange, stagedChanges, unstagedChanges]);
+
+  const handleSelectChange = useCallback((path: string, staged: boolean) => {
+    setSelectedChange({ path, staged });
+    void onPreviewDiff(path, staged);
+  }, [onPreviewDiff]);
+
+  const handleOpenSelectedFile = useCallback(() => {
+    if (!selectedChange || !onOpenFile) return;
+    void onOpenFile(selectedChange.path);
+  }, [onOpenFile, selectedChange]);
+
+  const renderChangeRow = useCallback(
+    (change: GitFileChange, staged: boolean) => {
+      const isSelected =
+        selectedChange?.path === change.path && selectedChange.staged === staged;
+      return (
+        <div
+          key={`${staged ? "staged" : "unstaged"}:${change.path}`}
+          className={`flex items-stretch border-b border-border ${
+            isSelected ? "bg-neutral-100" : "bg-white"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => handleSelectChange(change.path, staged)}
+            className="flex-1 min-w-0 px-3 py-2 text-left"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-5 h-5 border border-border text-[11px] font-mono flex items-center justify-center">
+                {STATUS_SHORT[change.status]}
+              </span>
+              <span className="truncate text-sm">{change.path}</span>
+            </div>
+            <div className="text-[11px] text-muted mt-1">
+              {STATUS_LABEL[change.status]}
+            </div>
+          </button>
+          {!staged && (
+            <button
+              type="button"
+              onClick={() => onStageFile(change.path)}
+              className="w-8 border-l border-border text-sm hover:bg-neutral-100"
+              aria-label={`Stage ${change.path}`}
+            >
+              +
+            </button>
+          )}
+        </div>
+      );
+    },
+    [handleSelectChange, onStageFile, selectedChange],
+  );
 
   return (
     <>
@@ -99,6 +201,15 @@ export function GitSidebarPanel({
           >
             <ArrowClockwiseIcon className="w-4 h-4" />
           </button>
+        </div>
+        <div className="mt-1 text-xs text-muted">
+          {changeCount} changed / {unstagedChanges.length} unstaged /{" "}
+          {stagedChanges.length} staged
+        </div>
+        <div className="mt-1 text-[11px] text-muted">
+          M {changeSummary.modified} / A {changeSummary.added} / D{" "}
+          {changeSummary.deleted} / R {changeSummary.renamed} / ?{" "}
+          {changeSummary.untracked}
         </div>
         {!gitStatus.remote && (
           <div className="mt-2">
@@ -133,62 +244,64 @@ export function GitSidebarPanel({
         )}
       </div>
 
-      <ScrollArea className="flex-1">
-        {stagedChanges.length > 0 && (
-          <div className="border-b border-border">
-            <div className="px-3 py-1 bg-neutral-50 text-xs font-medium uppercase tracking-wider text-muted">
-              Staged ({stagedChanges.length})
-            </div>
-            {stagedChanges.map((c) => (
-              <div
-                key={c.path}
-                className="px-3 py-1 text-sm flex items-center gap-2"
-              >
-                <span className="font-mono text-xs text-green-700">
-                  {c.status[0]?.toUpperCase()}
-                </span>
-                <span className="truncate">{c.path}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        {unstagedChanges.length > 0 && (
-          <div className="border-b border-border">
-            <div className="px-3 py-1 bg-neutral-50 text-xs font-medium uppercase tracking-wider text-muted flex justify-between">
-              <span>Changes ({unstagedChanges.length})</span>
-              <button
-                onClick={onStageAll}
-                className="text-black hover:underline normal-case tracking-normal font-normal"
-              >
-                Stage all
-              </button>
-            </div>
-            {unstagedChanges.map((c) => (
-              <div
-                key={c.path}
-                className="px-3 py-1 text-sm flex items-center gap-2 group"
-              >
-                <span className="font-mono text-xs text-muted">
-                  {c.status[0]?.toUpperCase()}
-                </span>
-                <span className="truncate flex-1">{c.path}</span>
+      <div className="flex-1 min-h-0 flex flex-col">
+        <ScrollArea className="flex-1 min-h-0">
+          {unstagedChanges.length > 0 && (
+            <div className="border-b border-border">
+              <div className="px-3 py-1 bg-neutral-50 text-xs font-medium uppercase tracking-wider text-muted flex items-center justify-between">
+                <span>Changes ({unstagedChanges.length})</span>
                 <button
-                  onClick={() => onStageFile(c.path)}
-                  className="opacity-0 group-hover:opacity-100 text-xs"
-                  aria-label="Stage file"
+                  type="button"
+                  onClick={onStageAll}
+                  className="normal-case tracking-normal font-normal text-black hover:underline"
                 >
-                  +
+                  Stage all
                 </button>
               </div>
-            ))}
+              {unstagedChanges.map((change) => renderChangeRow(change, false))}
+            </div>
+          )}
+
+          {stagedChanges.length > 0 && (
+            <div className="border-b border-border">
+              <div className="px-3 py-1 bg-neutral-50 text-xs font-medium uppercase tracking-wider text-muted">
+                Staged ({stagedChanges.length})
+              </div>
+              {stagedChanges.map((change) => renderChangeRow(change, true))}
+            </div>
+          )}
+
+          {changeCount === 0 && (
+            <div className="px-3 py-8 text-center text-muted text-sm">
+              No changes
+            </div>
+          )}
+        </ScrollArea>
+
+        {selectedChange && (
+          <div className="border-t border-border px-3 py-2 bg-neutral-50 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-xs font-medium truncate">
+                Inspecting: {selectedChange.path}
+              </div>
+              <div className="text-[11px] text-muted">
+                Diff is shown in the editor panel
+              </div>
+            </div>
+            {selectedChangeData &&
+              selectedChangeData.status !== "deleted" &&
+              onOpenFile && (
+                <button
+                  type="button"
+                  onClick={handleOpenSelectedFile}
+                  className="btn btn-sm btn-secondary"
+                >
+                  Open File
+                </button>
+              )}
           </div>
         )}
-        {changeCount === 0 && (
-          <div className="px-3 py-8 text-center text-muted text-sm">
-            No changes
-          </div>
-        )}
-      </ScrollArea>
+      </div>
 
       {showCommitInput && stagedChanges.length > 0 && (
         <div className="border-t border-border p-3 space-y-2">

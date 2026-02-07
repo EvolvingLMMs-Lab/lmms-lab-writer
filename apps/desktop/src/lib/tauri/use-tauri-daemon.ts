@@ -518,6 +518,24 @@ export function useTauriDaemon() {
     [projectState.projectPath, refreshGitStatus, setError],
   );
 
+  const gitDiff = useCallback(
+    async (file: string, staged = false): Promise<string> => {
+      if (!projectState.projectPath) return "";
+
+      try {
+        return await invoke<string>("git_diff", {
+          dir: projectState.projectPath,
+          file,
+          staged,
+        });
+      } catch (error) {
+        console.error("Failed to get git diff:", error);
+        throw error;
+      }
+    },
+    [projectState.projectPath],
+  );
+
   const clearGitInitResult = useCallback(() => {
     setGitState((s) => ({ ...s, gitInitResult: null }));
   }, []);
@@ -685,6 +703,7 @@ export function useTauriDaemon() {
       gitPull,
       gitInit,
       gitAddRemote,
+      gitDiff,
       clearGitInitResult,
       refreshGitStatus,
       clearError,
@@ -708,6 +727,7 @@ export function useTauriDaemon() {
       gitPull,
       gitInit,
       gitAddRemote,
+      gitDiff,
       clearGitInitResult,
       refreshGitStatus,
       clearError,
