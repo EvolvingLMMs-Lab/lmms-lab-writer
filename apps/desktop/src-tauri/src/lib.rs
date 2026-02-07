@@ -76,6 +76,7 @@ pub fn run() {
             commands::git::git_unstage,
             commands::git::git_add,
             commands::git::git_commit,
+            commands::git::git_fetch,
             commands::git::git_push,
             commands::git::git_pull,
             commands::git::git_init,

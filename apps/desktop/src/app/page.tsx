@@ -1248,6 +1248,10 @@ The AI assistant will read and update this file during compilation.
     }
   }, [daemon, toast]);
 
+  const handleRefreshGitStatus = useCallback(() => {
+    void daemon.refreshGitStatus(true);
+  }, [daemon]);
+
   const handleDiscardAll = useCallback(async () => {
     const result = await daemon.gitDiscardAll();
     if (result.success) {
@@ -1798,7 +1802,7 @@ The AI assistant will read and update this file during compilation.
                       onSubmitRemote={handleRemoteSubmit}
                       onInitGit={daemon.gitInit}
                       isInitializingGit={daemon.isInitializingGit}
-                      onRefreshStatus={daemon.refreshGitStatus}
+                      onRefreshStatus={handleRefreshGitStatus}
                       onStageAll={handleStageAll}
                       onDiscardAll={handleDiscardAll}
                       onDiscardFile={handleDiscardFile}

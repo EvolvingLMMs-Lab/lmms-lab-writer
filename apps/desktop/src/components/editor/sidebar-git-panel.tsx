@@ -346,15 +346,23 @@ export function GitSidebarPanel({
 
   const changeCount = gitStatus.changes.length;
   const showPushButton = Boolean(gitStatus.remote);
+  const showPullButton = Boolean(gitStatus.remote);
   const canPush = gitStatus.hasUpstream
     ? gitStatus.ahead > 0
     : gitStatus.hasCommits;
+  const canPull = gitStatus.hasUpstream ? gitStatus.behind > 0 : true;
   const pushTitle =
     !canPush
       ? "Nothing to push"
       : gitStatus.hasUpstream
       ? `Push ${gitStatus.ahead} commit${gitStatus.ahead > 1 ? "s" : ""}`
       : "Push current branch to origin";
+  const pullTitle =
+    !canPull
+      ? "Nothing to pull"
+      : gitStatus.hasUpstream
+      ? `Pull ${gitStatus.behind} commit${gitStatus.behind > 1 ? "s" : ""}`
+      : "Pull and set upstream from origin";
 
   return (
     <>
@@ -493,21 +501,21 @@ export function GitSidebarPanel({
               )}
             </button>
           )}
-          {gitStatus.behind > 0 && (
+          {showPullButton && (
             <button
               onClick={() => {
                 void onPull();
               }}
-              disabled={isPulling}
+              disabled={isPulling || !canPull}
               className="text-[11px] font-mono px-2.5 py-1.5 border border-border hover:border-black hover:bg-neutral-50 disabled:opacity-30 transition-colors flex items-center gap-1"
-              title={`Pull ${gitStatus.behind} commit${gitStatus.behind > 1 ? "s" : ""}`}
+              title={pullTitle}
             >
               {isPulling ? (
                 <Spinner className="size-3" />
               ) : (
                 <>
                   <ArrowDownIcon className="w-3 h-3" />
-                  {gitStatus.behind}
+                  {gitStatus.hasUpstream ? gitStatus.behind : "Pull"}
                 </>
               )}
             </button>

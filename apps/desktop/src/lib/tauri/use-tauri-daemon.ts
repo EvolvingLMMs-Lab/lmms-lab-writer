@@ -430,10 +430,17 @@ export function useTauriDaemon() {
     [projectState.projectPath, refreshFiles, setError],
   );
 
-  const refreshGitStatus = useCallback(async () => {
+  const refreshGitStatus = useCallback(async (syncRemote = false) => {
     if (!projectState.projectPath) return;
+    if (syncRemote && gitState.gitStatus?.remote) {
+      try {
+        await invoke("git_fetch", { dir: projectState.projectPath });
+      } catch (error) {
+        console.error("Failed to fetch remote before refresh:", error);
+      }
+    }
     await refreshGitStatusInternal(projectState.projectPath);
-  }, [projectState.projectPath, refreshGitStatusInternal]);
+  }, [projectState.projectPath, gitState.gitStatus?.remote, refreshGitStatusInternal]);
 
   const gitDiscardAll = useCallback(async (): Promise<{
     success: boolean;

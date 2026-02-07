@@ -359,8 +359,52 @@ pub async fn git_push(dir: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub async fn git_fetch(dir: String) -> Result<(), String> {
+    let remotes = run_git(&dir, &["remote"]).await?;
+    if remotes.lines().all(|line| line.trim().is_empty()) {
+        return Ok(());
+    }
+
+    run_git(&dir, &["fetch", "--all", "--prune"]).await?;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn git_pull(dir: String) -> Result<(), String> {
-    run_git(&dir, &["pull"]).await?;
+    if run_git(&dir, &["remote", "get-url", "origin"]).await.is_err() {
+        return Err("No remote named 'origin'. Add or publish a remote first.".to_string());
+    }
+
+    let branch = if run_git(&dir, &["rev-parse", "--verify", "HEAD"]).await.is_ok() {
+        run_git(&dir, &["rev-parse", "--abbrev-ref", "HEAD"])
+            .await?
+            .trim()
+            .to_string()
+    } else {
+        run_git(&dir, &["symbolic-ref", "--short", "HEAD"])
+            .await
+            .unwrap_or_else(|_| "main".to_string())
+            .trim()
+            .to_string()
+    };
+
+    if branch == "HEAD" {
+        return Err("Cannot pull from detached HEAD".to_string());
+    }
+
+    let has_upstream = run_git(
+        &dir,
+        &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+    )
+    .await
+    .is_ok();
+
+    if has_upstream {
+        run_git(&dir, &["pull"]).await?;
+    } else {
+        run_git(&dir, &["pull", "-u", "origin", &branch]).await?;
+    }
+
     Ok(())
 }
 
