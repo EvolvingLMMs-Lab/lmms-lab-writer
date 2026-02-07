@@ -2,7 +2,7 @@
 
 import "@/lib/monaco/config";
 
-import { useRef, memo, useCallback, useEffect } from "react";
+import { useRef, memo, useCallback, useEffect, useState } from "react";
 import Editor, { Monaco, OnMount, OnChange } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import type { EditorSettings } from "@/lib/editor/types";
@@ -19,6 +19,31 @@ type Props = {
   onContentChange?: (content: string) => void;
 };
 
+type VimModeController = {
+  dispose: () => void;
+};
+
+function detectLanguage(lang: string): string {
+  const languageMap: Record<string, string> = {
+    tex: "latex",
+    latex: "latex",
+    bib: "bibtex",
+    js: "javascript",
+    ts: "typescript",
+    jsx: "javascript",
+    tsx: "typescript",
+    py: "python",
+    md: "markdown",
+    json: "json",
+    css: "css",
+    html: "html",
+    xml: "xml",
+    yaml: "yaml",
+    yml: "yaml",
+  };
+  return languageMap[lang.toLowerCase()] || lang;
+}
+
 export const MonacoEditor = memo(function MonacoEditor({
   content = "",
   readOnly = false,
@@ -31,22 +56,20 @@ export const MonacoEditor = memo(function MonacoEditor({
   const monacoRef = useRef<Monaco | null>(null);
   const isExternalUpdateRef = useRef(false);
   const contentRef = useRef(content);
+  const vimModeRef = useRef<VimModeController | null>(null);
+  const vimStatusRef = useRef<HTMLDivElement | null>(null);
+  const [editorReady, setEditorReady] = useState(false);
 
   const handleEditorDidMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    setEditorReady(true);
 
-    // Define all themes
     defineEditorThemes(monaco);
-
-    // Register LaTeX language support
     registerLaTeXLanguage(monaco);
 
-    // Focus the editor
     editor.focus();
 
-    // Custom keybindings
-    // Toggle comment with Cmd/Ctrl + /
     editor.addAction({
       id: "toggle-latex-comment",
       label: "Toggle LaTeX Comment",
@@ -70,7 +93,6 @@ export const MonacoEditor = memo(function MonacoEditor({
           const leadingSpaces = lineContent.length - trimmedLine.length;
 
           if (trimmedLine.startsWith("%")) {
-            // Remove comment
             const commentLength = trimmedLine.startsWith("% ") ? 2 : 1;
             edits.push({
               range: {
@@ -82,7 +104,6 @@ export const MonacoEditor = memo(function MonacoEditor({
               text: "",
             });
           } else {
-            // Add comment
             edits.push({
               range: {
                 startLineNumber: lineNumber,
@@ -111,43 +132,66 @@ export const MonacoEditor = memo(function MonacoEditor({
     [onContentChange],
   );
 
-  // Handle external content updates
   const handleBeforeMount = useCallback((monaco: Monaco) => {
     defineEditorThemes(monaco);
     registerLaTeXLanguage(monaco);
   }, []);
 
-  // Update theme when settings change
   useEffect(() => {
     if (monacoRef.current && editorSettings?.theme) {
       monacoRef.current.editor.setTheme(editorSettings.theme);
     }
   }, [editorSettings?.theme]);
 
-  // Detect language from content or file extension
-  const detectLanguage = (lang: string): string => {
-    const languageMap: Record<string, string> = {
-      tex: "latex",
-      latex: "latex",
-      bib: "bibtex",
-      js: "javascript",
-      ts: "typescript",
-      jsx: "javascript",
-      tsx: "typescript",
-      py: "python",
-      md: "markdown",
-      json: "json",
-      css: "css",
-      html: "html",
-      xml: "xml",
-      yaml: "yaml",
-      yml: "yaml",
+  useEffect(() => {
+    const statusNode = vimStatusRef.current;
+    if (!editorReady || !editorRef.current || !statusNode) return;
+
+    vimModeRef.current?.dispose();
+    vimModeRef.current = null;
+    statusNode.textContent = "";
+
+    const shouldEnableVim = !!editorSettings?.vimMode && !readOnly;
+    if (!shouldEnableVim) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const monacoVim = await import("monaco-vim");
+        if (cancelled || !editorRef.current) return;
+
+        vimModeRef.current?.dispose();
+        vimModeRef.current = monacoVim.initVimMode(editorRef.current, statusNode);
+        editorRef.current.focus();
+      } catch (error) {
+        console.error("Failed to enable Vim mode:", error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      vimModeRef.current?.dispose();
+      vimModeRef.current = null;
+      statusNode.textContent = "";
     };
-    return languageMap[lang.toLowerCase()] || lang;
-  };
+  }, [editorReady, editorSettings?.vimMode, readOnly]);
+
+  useEffect(() => {
+    return () => {
+      vimModeRef.current?.dispose();
+      vimModeRef.current = null;
+    };
+  }, []);
 
   return (
-    <div className={`flex flex-col ${className}`}>
+    <div className={`relative flex flex-col ${className}`}>
+      {editorSettings?.vimMode && !readOnly && (
+        <div
+          ref={vimStatusRef}
+          className="pointer-events-none absolute right-3 top-3 z-10 border border-black bg-white px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider"
+        />
+      )}
       <Editor
         height="100%"
         language={detectLanguage(language)}
@@ -201,7 +245,7 @@ export const MonacoEditor = memo(function MonacoEditor({
           showFoldingControls: "mouseover",
           matchBrackets: "always",
           bracketPairColorization: {
-            enabled: false, // Keep monochrome
+            enabled: false,
           },
           guides: {
             bracketPairs: true,

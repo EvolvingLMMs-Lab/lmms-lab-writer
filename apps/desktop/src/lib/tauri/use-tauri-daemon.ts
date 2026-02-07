@@ -53,6 +53,13 @@ interface GhAuthLoginResult {
 
 const GH_AUTH_POLL_INTERVAL_MS = 1500;
 const GH_AUTH_POLL_TIMEOUT_MS = 120_000;
+const DEFAULT_GIT_AUTO_FETCH_INTERVAL_MS = 120_000;
+const MIN_GIT_AUTO_FETCH_INTERVAL_MS = 15_000;
+
+type TauriDaemonOptions = {
+  gitAutoFetchEnabled?: boolean;
+  gitAutoFetchIntervalMs?: number;
+};
 
 // Split state into logical slices to reduce unnecessary re-renders
 interface ProjectState {
@@ -161,7 +168,13 @@ function convertFileNode(node: {
   };
 }
 
-export function useTauriDaemon() {
+export function useTauriDaemon(options?: TauriDaemonOptions) {
+  const gitAutoFetchEnabled = options?.gitAutoFetchEnabled ?? true;
+  const gitAutoFetchIntervalMs = Math.max(
+    MIN_GIT_AUTO_FETCH_INTERVAL_MS,
+    options?.gitAutoFetchIntervalMs ?? DEFAULT_GIT_AUTO_FETCH_INTERVAL_MS,
+  );
+
   // Split state into independent slices
   const [projectState, setProjectState] = useState<ProjectState>({
     projectPath: null,
@@ -722,6 +735,7 @@ export function useTauriDaemon() {
 
   const projectPathRef = useRef(projectState.projectPath);
   projectPathRef.current = projectState.projectPath;
+  const isAutoFetchingRemoteRef = useRef(false);
 
   useEffect(() => {
     if (!projectState.projectPath) return;
@@ -836,6 +850,52 @@ export function useTauriDaemon() {
       }
     };
   }, [projectState.projectPath, refreshGitStatusInternal]);
+
+  useEffect(() => {
+    if (!gitAutoFetchEnabled) return;
+    if (!projectState.projectPath) return;
+    if (!gitState.gitStatus?.isRepo || !gitState.gitStatus.remote) return;
+    const projectPath = projectState.projectPath;
+
+    let isDisposed = false;
+
+    const runAutoFetch = async () => {
+      if (isDisposed || isAutoFetchingRemoteRef.current) return;
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        return;
+      }
+
+      isAutoFetchingRemoteRef.current = true;
+      try {
+        await invoke("git_fetch", { dir: projectPath });
+        if (!isDisposed) {
+          await refreshGitStatusInternal(projectPath);
+        }
+      } catch (error) {
+        if (!isDisposed) {
+          console.error("Failed periodic git fetch:", error);
+        }
+      } finally {
+        isAutoFetchingRemoteRef.current = false;
+      }
+    };
+
+    const intervalId = setInterval(() => {
+      void runAutoFetch();
+    }, gitAutoFetchIntervalMs);
+
+    return () => {
+      isDisposed = true;
+      clearInterval(intervalId);
+    };
+  }, [
+    gitAutoFetchEnabled,
+    gitAutoFetchIntervalMs,
+    projectState.projectPath,
+    gitState.gitStatus?.isRepo,
+    gitState.gitStatus?.remote,
+    refreshGitStatusInternal,
+  ]);
 
   // Memoize the return object to prevent unnecessary re-renders
   return useMemo(

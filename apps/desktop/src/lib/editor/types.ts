@@ -50,6 +50,9 @@ export interface EditorSettings {
   // Theme
   theme: EditorTheme;
 
+  // Keybindings
+  vimMode: boolean;
+
   // Display
   fontSize: number;
   lineHeight: number;
@@ -87,6 +90,10 @@ export interface EditorSettings {
   // Formatting
   formatOnSave: boolean;
   formatOnPaste: boolean;
+
+  // Git
+  gitAutoFetchEnabled: boolean;
+  gitAutoFetchIntervalSeconds: number;
 }
 
 export const DEFAULT_MINIMAP_SETTINGS: MinimapSettings = {
@@ -100,6 +107,7 @@ export const DEFAULT_MINIMAP_SETTINGS: MinimapSettings = {
 
 export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
   theme: "github-light",
+  vimMode: false,
 
   // Display
   fontSize: 14,
@@ -124,4 +132,8 @@ export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
   // Formatting
   formatOnSave: false,
   formatOnPaste: false,
+
+  // Git
+  gitAutoFetchEnabled: true,
+  gitAutoFetchIntervalSeconds: 120,
 };

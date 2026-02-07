@@ -327,7 +327,12 @@ const MIN_PANEL_WIDTH = 200;
 const MAX_SIDEBAR_WIDTH = 480;
 
 export default function EditorPage() {
-  const daemon = useTauriDaemon();
+  const editorSettings = useEditorSettings();
+  const daemon = useTauriDaemon({
+    gitAutoFetchEnabled: editorSettings.settings.gitAutoFetchEnabled,
+    gitAutoFetchIntervalMs:
+      editorSettings.settings.gitAutoFetchIntervalSeconds * 1000,
+  });
   const prefersReducedMotion = useReducedMotion();
   const auth = useAuth();
   const { toast } = useToast();
@@ -411,7 +416,6 @@ export default function EditorPage() {
 
   // LaTeX settings and editor settings
   const latexSettings = useLatexSettings();
-  const editorSettings = useEditorSettings();
   const texFiles = useMemo(() => findTexFiles(daemon.files), [daemon.files]);
 
   // Auto-detect main file when project opens

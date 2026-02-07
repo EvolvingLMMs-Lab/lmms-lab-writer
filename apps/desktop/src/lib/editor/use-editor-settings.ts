@@ -17,6 +17,13 @@ function migrateSettings(parsed: Record<string, unknown>): EditorSettings {
     settings.minimap = { ...DEFAULT_MINIMAP_SETTINGS, ...parsed.minimap };
   }
 
+  if (typeof parsed.gitAutoFetchIntervalSeconds === "number") {
+    settings.gitAutoFetchIntervalSeconds = Math.min(
+      3600,
+      Math.max(15, Math.round(parsed.gitAutoFetchIntervalSeconds)),
+    );
+  }
+
   return settings as EditorSettings;
 }
 

@@ -284,6 +284,19 @@ export function LaTeXSettingsDialog({
                       </div>
                     </div>
 
+                    <SectionHeader>Keybindings</SectionHeader>
+
+                    <div className="space-y-3">
+                      <CheckboxItem
+                        checked={editorSettings.vimMode}
+                        onChange={(v) =>
+                          onUpdateEditorSettings({ vimMode: v })
+                        }
+                        label="Vim Mode"
+                        description="Use modal Vim-style keybindings in editor"
+                      />
+                    </div>
+
                     <SectionHeader>Display</SectionHeader>
 
                     <div className="flex items-center justify-between py-2">
@@ -790,6 +803,42 @@ export function LaTeXSettingsDialog({
                       <p className="text-xs text-neutral-400 mt-1.5">
                         The prompt sent to AI when compiling. Use {"{mainFile}"} as placeholder for the main file path.
                       </p>
+                    </div>
+
+                    <SectionHeader>Git</SectionHeader>
+
+                    <div className="space-y-2">
+                      <CheckboxItem
+                        checked={editorSettings.gitAutoFetchEnabled}
+                        onChange={(v) =>
+                          onUpdateEditorSettings({ gitAutoFetchEnabled: v })
+                        }
+                        label="Auto Fetch Remote"
+                        description="Periodically sync remote refs in background"
+                      />
+
+                      {editorSettings.gitAutoFetchEnabled && (
+                        <SelectField
+                          label="Fetch Interval"
+                          value={editorSettings.gitAutoFetchIntervalSeconds}
+                          onChange={(v) =>
+                            onUpdateEditorSettings({
+                              gitAutoFetchIntervalSeconds: Math.min(
+                                3600,
+                                Math.max(15, parseInt(v, 10) || 120),
+                              ),
+                            })
+                          }
+                          options={[
+                            { value: 15, label: "15 sec" },
+                            { value: 30, label: "30 sec" },
+                            { value: 60, label: "1 min" },
+                            { value: 120, label: "2 min" },
+                            { value: 300, label: "5 min" },
+                            { value: 600, label: "10 min" },
+                          ]}
+                        />
+                      )}
                     </div>
                   </>
                 )}
