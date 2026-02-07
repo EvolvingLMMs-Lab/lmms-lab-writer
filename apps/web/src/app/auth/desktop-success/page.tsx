@@ -21,7 +21,6 @@ function DesktopSuccessContent() {
 
     if (port) {
       setCallbackPort(port);
-      console.log("[desktop-success] callback_port:", port, portFromUrl ? "(from URL)" : "(from sessionStorage)");
       // Clean up sessionStorage after reading
       if (portFromStorage) {
         sessionStorage.removeItem("auth_callback_port");
@@ -31,13 +30,9 @@ function DesktopSuccessContent() {
 
   useEffect(() => {
     const loadTokens = async () => {
-      console.log("=== [desktop-success] Page Loaded ===");
-      console.log("[desktop-success] Full URL:", window.location.href);
-      console.log("[desktop-success] Hash:", window.location.hash);
 
       // Check for error in query params
       const errorParam = searchParams.get("error");
-      console.log("[desktop-success] Error param:", errorParam);
 
       if (errorParam) {
         setError(decodeURIComponent(errorParam));
@@ -47,35 +42,27 @@ function DesktopSuccessContent() {
       // Check for PKCE code in query params (PKCE flow)
       const authCode = searchParams.get("code");
       if (authCode) {
-        console.log("[desktop-success] PKCE code found, exchanging for session...");
 
         // Find the code_verifier in localStorage
         const allKeys = Object.keys(localStorage);
-        console.log("[desktop-success] All localStorage keys:", allKeys);
 
         const codeVerifierKey = allKeys.find(k => k.includes('code-verifier'));
         if (!codeVerifierKey) {
-          console.log("[desktop-success] ERROR: code_verifier key not found!");
           setError("Authentication data missing. Please try logging in again.");
           return;
         }
 
         const codeVerifierRaw = localStorage.getItem(codeVerifierKey);
-        console.log("[desktop-success] code_verifier key:", codeVerifierKey);
-        console.log("[desktop-success] code_verifier raw:", codeVerifierRaw?.substring(0, 50));
 
         // Parse the code_verifier (it's stored as JSON string)
         let codeVerifier: string;
         try {
           codeVerifier = JSON.parse(codeVerifierRaw || '""');
-          console.log("[desktop-success] code_verifier parsed, length:", codeVerifier.length);
         } catch {
           codeVerifier = codeVerifierRaw || '';
-          console.log("[desktop-success] code_verifier used as-is, length:", codeVerifier.length);
         }
 
         if (!codeVerifier) {
-          console.log("[desktop-success] ERROR: code_verifier is empty!");
           setError("Authentication data invalid. Please try logging in again.");
           return;
         }
@@ -83,7 +70,6 @@ function DesktopSuccessContent() {
         try {
           // Call Supabase token endpoint directly with PKCE
           const tokenUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=pkce`;
-          console.log("[desktop-success] Calling token endpoint:", tokenUrl);
 
           const response = await fetch(tokenUrl, {
             method: 'POST',
@@ -98,25 +84,17 @@ function DesktopSuccessContent() {
           });
 
           const data = await response.json();
-          console.log("[desktop-success] Token response status:", response.status);
-          console.log("[desktop-success] Token response has access_token:", !!data.access_token);
-          console.log("[desktop-success] Token response has refresh_token:", !!data.refresh_token);
 
           if (!response.ok || !data.access_token) {
-            console.log("[desktop-success] Token error:", data.error || data.msg || data.error_description);
             setError(data.error_description || data.msg || data.error || "Failed to get tokens");
             return;
           }
-
-          console.log("[desktop-success] access_token length:", data.access_token?.length);
-          console.log("[desktop-success] refresh_token length:", data.refresh_token?.length);
 
           // Create login code from tokens
           const code = btoa(JSON.stringify({
             accessToken: data.access_token,
             refreshToken: data.refresh_token
           }));
-          console.log("[desktop-success] Login code created, length:", code.length);
 
           // Clear the code_verifier from storage
           localStorage.removeItem(codeVerifierKey);
@@ -146,17 +124,9 @@ function DesktopSuccessContent() {
       let accessToken = hashParams.get("access_token");
       let refreshToken = hashParams.get("refresh_token");
 
-      console.log("[desktop-success] Hash access_token exists:", !!accessToken);
-      console.log("[desktop-success] Hash access_token length:", accessToken?.length);
-      console.log("[desktop-success] Hash refresh_token exists:", !!refreshToken);
-      console.log("[desktop-success] Hash refresh_token length:", refreshToken?.length);
-
       // If tokens found in hash, use them (note: refresh_token may be short/placeholder)
       if (accessToken && refreshToken) {
-        console.log("[desktop-success] Tokens found in hash, creating login code...");
-        console.log("[desktop-success] WARNING: Implicit flow - refresh_token may not work for long sessions");
         const code = btoa(JSON.stringify({ accessToken, refreshToken }));
-        console.log("[desktop-success] Login code created, length:", code.length);
         setLoginCode(code);
         // Clear hash from URL for security
         window.history.replaceState(null, "", window.location.pathname);
@@ -167,19 +137,11 @@ function DesktopSuccessContent() {
       accessToken = searchParams.get("access_token");
       refreshToken = searchParams.get("refresh_token");
 
-      console.log("[desktop-success] Query access_token exists:", !!accessToken);
-      console.log("[desktop-success] Query refresh_token exists:", !!refreshToken);
-
       if (accessToken && refreshToken) {
-        console.log("[desktop-success] Tokens found in query, creating login code...");
         const code = btoa(JSON.stringify({ accessToken, refreshToken }));
-        console.log("[desktop-success] Login code created, length:", code.length);
         setLoginCode(code);
         return;
       }
-
-      // No tokens found
-      console.log("[desktop-success] ERROR: Missing tokens");
       setError("Missing authentication tokens. Please try logging in again.");
     };
 
@@ -202,14 +164,11 @@ function DesktopSuccessContent() {
         });
 
         if (response.ok) {
-          console.log("[desktop-success] Code sent to desktop app successfully");
           setCallbackStatus("sent");
         } else {
-          console.log("[desktop-success] Failed to send code to desktop app:", response.status);
           setCallbackStatus("failed");
         }
       } catch (err) {
-        console.log("[desktop-success] Error sending code to desktop app:", err);
         setCallbackStatus("failed");
       }
     };

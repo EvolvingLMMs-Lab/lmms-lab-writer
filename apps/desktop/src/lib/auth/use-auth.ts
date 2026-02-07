@@ -268,7 +268,6 @@ export function useAuth() {
 
       // First try getSession which checks stored session
       const { data: { session } } = await supabase.auth.getSession();
-      console.log("[useAuth] refreshAuth - getSession result:", { hasSession: !!session });
 
       if (session) {
         const profile = await fetchProfile(session);
@@ -282,12 +281,7 @@ export function useAuth() {
         });
         return;
       }
-
-      // If no stored session, try to get user from any cached access token
-      // This handles the case where setSession failed but the access token is valid
-      console.log("[useAuth] No stored session, trying getUser...");
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-      console.log("[useAuth] getUser result:", { hasUser: !!user, error: userError?.message });
 
       if (user && !userError) {
         // We have a valid user but no proper session
@@ -331,12 +325,10 @@ export function useAuth() {
   // Set auth state using an access token directly (used when setSession fails)
   const setAuthWithToken = useCallback(async (accessToken: string) => {
     try {
-      console.log("[useAuth] setAuthWithToken called");
       const supabase = getSupabaseClient();
 
       // Validate the access token and get user data
       const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
-      console.log("[useAuth] getUser with token result:", { hasUser: !!user, error: userError?.message });
 
       if (userError || !user) {
         console.error("[useAuth] Token validation failed:", userError?.message);
@@ -362,8 +354,6 @@ export function useAuth() {
         error: null,
         isConfigured: true,
       });
-
-      console.log("[useAuth] Auth state set successfully with token");
       return true;
     } catch (err) {
       console.error("[useAuth] setAuthWithToken error:", err);

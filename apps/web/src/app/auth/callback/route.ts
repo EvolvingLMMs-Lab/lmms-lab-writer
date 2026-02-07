@@ -3,33 +3,22 @@ import { NextResponse } from "next/server";
 import { getGitHubUser, storeGitHubToken } from "@/lib/github/stars";
 
 export async function GET(request: Request) {
-  console.log("=== [auth/callback] Callback Route Hit ===");
 
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const error_param = searchParams.get("error");
   const error_description = searchParams.get("error_description");
 
-  console.log("[auth/callback] Full URL:", request.url);
-  console.log("[auth/callback] Origin:", origin);
-  console.log("[auth/callback] Code exists:", !!code);
-  console.log("[auth/callback] Error param:", error_param);
-
   // Check source from URL first, then from cookie as backup
   let source: string | null = searchParams.get("source");
-  console.log("[auth/callback] Source from URL:", source);
 
   if (!source) {
     const cookieHeader = request.headers.get("cookie") || "";
-    console.log("[auth/callback] Cookies:", cookieHeader);
     const authSourceMatch = cookieHeader.match(/auth_source=([^;]+)/);
     if (authSourceMatch) {
       source = authSourceMatch[1] ?? null;
-      console.log("[auth/callback] Source from cookie:", source);
     }
   }
-
-  console.log("[auth/callback] Final source:", source);
 
   if (error_param) {
     const errorMsg = encodeURIComponent(error_description || error_param);
@@ -51,9 +40,6 @@ export async function GET(request: Request) {
     }
 
     const session = data.session;
-    console.log("[auth/callback] session exists:", !!session);
-    console.log("[auth/callback] access_token length:", session?.access_token?.length);
-    console.log("[auth/callback] refresh_token length:", session?.refresh_token?.length);
 
     // Store GitHub token if available
     if (session?.provider_token && session.user) {
@@ -70,8 +56,6 @@ export async function GET(request: Request) {
         // Silently fail - not critical
       }
     }
-
-    console.log("[auth/callback] Web flow - redirecting to post-login");
     return NextResponse.redirect(`${origin}/auth/post-login`);
   }
 
