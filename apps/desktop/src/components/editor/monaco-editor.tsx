@@ -5,7 +5,7 @@ import "@/lib/monaco/config";
 import { useRef, memo, useCallback, useEffect, useState } from "react";
 import Editor, { Monaco, OnMount, OnChange } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
-import type { EditorSettings } from "@/lib/editor/types";
+import type { EditorSettings, EditorTheme } from "@/lib/editor/types";
 import { EDITOR_MONO_FONT_FAMILY } from "@/lib/editor/font-stacks";
 import { defineEditorThemes } from "@/lib/monaco/themes";
 import { registerLaTeXLanguage } from "@/lib/monaco/latex";
@@ -16,6 +16,7 @@ type Props = {
   className?: string;
   language?: string;
   editorSettings?: Partial<EditorSettings>;
+  editorTheme?: EditorTheme;
   onContentChange?: (content: string) => void;
 };
 
@@ -50,6 +51,7 @@ export const MonacoEditor = memo(function MonacoEditor({
   className = "",
   language = "latex",
   editorSettings,
+  editorTheme = "one-light",
   onContentChange,
 }: Props) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -138,10 +140,10 @@ export const MonacoEditor = memo(function MonacoEditor({
   }, []);
 
   useEffect(() => {
-    if (monacoRef.current && editorSettings?.theme) {
-      monacoRef.current.editor.setTheme(editorSettings.theme);
+    if (monacoRef.current && editorTheme) {
+      monacoRef.current.editor.setTheme(editorTheme);
     }
-  }, [editorSettings?.theme]);
+  }, [editorTheme]);
 
   useEffect(() => {
     const statusNode = vimStatusRef.current;
@@ -189,14 +191,14 @@ export const MonacoEditor = memo(function MonacoEditor({
       {editorSettings?.vimMode && !readOnly && (
         <div
           ref={vimStatusRef}
-          className="pointer-events-none absolute right-3 top-3 z-10 border border-black bg-white px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider"
+          className="pointer-events-none absolute right-3 top-3 z-10 border border-foreground bg-background px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider"
         />
       )}
       <Editor
         height="100%"
         language={detectLanguage(language)}
         value={content}
-        theme={editorSettings?.theme ?? "monochrome"}
+        theme={editorTheme}
         beforeMount={handleBeforeMount}
         onMount={handleEditorDidMount}
         onChange={handleChange}
@@ -301,13 +303,13 @@ export const MonacoEditor = memo(function MonacoEditor({
           accessibilitySupport: "auto",
         }}
         loading={
-          <div className="flex flex-col h-full bg-white">
+          <div className="flex flex-col h-full bg-background">
             <div className="flex-1 p-4 space-y-2">
               {[70, 45, 60, 80, 35, 55, 40, 65].map((width, i) => (
                 <div key={i} className="flex gap-4">
-                  <div className="w-8 h-4 bg-neutral-100 animate-pulse" />
+                  <div className="w-8 h-4 bg-surface-secondary animate-pulse" />
                   <div
-                    className="flex-1 h-4 bg-neutral-100 animate-pulse"
+                    className="flex-1 h-4 bg-surface-secondary animate-pulse"
                     style={{ width: `${width}%` }}
                   />
                 </div>

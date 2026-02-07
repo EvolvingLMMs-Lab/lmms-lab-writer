@@ -19,8 +19,8 @@ const MonacoDiffEditor = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex items-center justify-center h-full bg-white">
-        <div className="text-sm text-neutral-400">Loading diff editor...</div>
+      <div className="flex items-center justify-center h-full bg-background">
+        <div className="text-sm text-muted-foreground">Loading diff editor...</div>
       </div>
     ),
   }
@@ -176,7 +176,7 @@ export const ChangesReviewPanel = memo(function ChangesReviewPanel({
   if (!currentEdit) {
     return (
       <div className={`flex items-center justify-center h-full ${className}`}>
-        <div className="text-sm text-neutral-500">No changes to review</div>
+        <div className="text-sm text-muted">No changes to review</div>
       </div>
     );
   }
@@ -184,7 +184,7 @@ export const ChangesReviewPanel = memo(function ChangesReviewPanel({
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* Header bar */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-neutral-200 bg-amber-50">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-amber-50">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <CheckCircleIcon className="w-4 h-4 text-amber-600" />
@@ -210,12 +210,12 @@ export const ChangesReviewPanel = memo(function ChangesReviewPanel({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-neutral-500 font-mono hidden sm:block">
-            <kbd className="px-1 py-0.5 bg-white border border-neutral-300 rounded text-[9px]">
+          <span className="text-[10px] text-muted font-mono hidden sm:block">
+            <kbd className="px-1 py-0.5 bg-background border border-border rounded text-[9px]">
               Esc
             </kbd>{" "}
             close ·{" "}
-            <kbd className="px-1 py-0.5 bg-white border border-neutral-300 rounded text-[9px]">
+            <kbd className="px-1 py-0.5 bg-background border border-border rounded text-[9px]">
               ←→
             </kbd>{" "}
             navigate
@@ -223,7 +223,7 @@ export const ChangesReviewPanel = memo(function ChangesReviewPanel({
           <button
             onClick={onDismiss}
             disabled={isProcessing}
-            className="px-3 py-1 text-xs font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded transition-colors disabled:opacity-50"
+            className="px-3 py-1 text-xs font-medium text-muted hover:text-foreground hover:bg-surface-secondary rounded transition-colors disabled:opacity-50"
           >
             Close
           </button>
@@ -233,8 +233,8 @@ export const ChangesReviewPanel = memo(function ChangesReviewPanel({
       {/* Main content area */}
       <div className="flex flex-1 min-h-0">
         {/* File list sidebar */}
-        <div className="w-48 border-r border-neutral-200 flex flex-col bg-neutral-50">
-          <div className="px-3 py-2 text-[10px] uppercase tracking-wider text-neutral-500 font-medium border-b border-neutral-200">
+        <div className="w-48 border-r border-border flex flex-col bg-accent-hover">
+          <div className="px-3 py-2 text-[10px] uppercase tracking-wider text-muted font-medium border-b border-border">
             Changed Files
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -242,16 +242,16 @@ export const ChangesReviewPanel = memo(function ChangesReviewPanel({
               <button
                 key={edit.id}
                 onClick={() => setCurrentIndex(index)}
-                className={`w-full text-left px-3 py-2 text-xs font-mono border-b border-neutral-100 transition-colors ${
+                className={`w-full text-left px-3 py-2 text-xs font-mono border-b border-surface-secondary transition-colors ${
                   index === currentIndex
-                    ? "bg-white border-l-2 border-l-amber-500"
-                    : "hover:bg-white"
+                    ? "bg-background border-l-2 border-l-amber-500"
+                    : "hover:bg-background"
                 } ${
                   edit.status === "accepted"
                     ? "text-green-700"
                     : edit.status === "rejected"
                       ? "text-red-600 line-through"
-                      : "text-neutral-700"
+                      : "text-foreground-secondary"
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -279,7 +279,7 @@ export const ChangesReviewPanel = memo(function ChangesReviewPanel({
           </div>
 
           {/* Batch actions */}
-          <div className="p-2 border-t border-neutral-200 space-y-1.5">
+          <div className="p-2 border-t border-border space-y-1.5">
             <button
               onClick={handleAcceptAll}
               disabled={isProcessing || pendingCount === 0}
@@ -300,28 +300,28 @@ export const ChangesReviewPanel = memo(function ChangesReviewPanel({
         {/* Diff editor area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Current file header */}
-          <div className="flex items-center justify-between px-3 py-2 border-b border-neutral-200 bg-white">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-background">
             <div className="flex items-center gap-3 min-w-0">
               <div className="flex items-center gap-2">
                 <button
                   onClick={goToPrevious}
                   disabled={currentIndex === 0 || isProcessing}
-                  className="p-1 text-neutral-500 hover:text-neutral-900 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-1 text-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <CaretLeftIcon className="w-4 h-4" />
                 </button>
-                <span className="text-xs text-neutral-500 font-mono tabular-nums">
+                <span className="text-xs text-muted font-mono tabular-nums">
                   {currentIndex + 1} / {totalCount}
                 </span>
                 <button
                   onClick={goToNext}
                   disabled={currentIndex === edits.length - 1 || isProcessing}
-                  className="p-1 text-neutral-500 hover:text-neutral-900 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-1 text-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <CaretRightIcon className="w-4 h-4" />
                 </button>
               </div>
-              <span className="text-sm font-mono text-neutral-700 truncate">
+              <span className="text-sm font-mono text-foreground-secondary truncate">
                 {currentEdit.filePath}
               </span>
               <div className="flex items-center gap-1.5 text-xs font-mono flex-shrink-0">

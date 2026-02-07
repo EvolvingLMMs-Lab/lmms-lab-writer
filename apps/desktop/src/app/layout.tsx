@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Roboto, Roboto_Mono } from "next/font/google";
+import { ThemeProvider } from "next-themes";
 import { ExternalLinkHandler } from "@/components/external-link-handler";
 import { DeepLinkHandler } from "@/components/auth/deep-link-handler";
 import { ToastProvider } from "@/components/ui/toast";
@@ -30,15 +31,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${modernSans.variable} ${modernMono.variable} antialiased`}
       >
-        <ToastProvider>
-          <ExternalLinkHandler />
-          <DeepLinkHandler />
-          {children}
-        </ToastProvider>
+        <ThemeProvider attribute="class" defaultTheme="light" disableTransitionOnChange>
+          <ToastProvider>
+            <ExternalLinkHandler />
+            <DeepLinkHandler />
+            {children}
+          </ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

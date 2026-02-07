@@ -110,7 +110,7 @@ export function OnboardingState({
           {steps.map((step, index) => (
             <div key={step.id} className="flex items-center gap-3">
               <div
-                className={`size-5 flex items-center justify-center text-xs border ${step.status === "complete" ? "border-black bg-white" : step.status === "current" || step.status === "loading" ? "border-black" : "border-border text-muted"}`}
+                className={`size-5 flex items-center justify-center text-xs border ${step.status === "complete" ? "border-foreground bg-background" : step.status === "current" || step.status === "loading" ? "border-foreground" : "border-border text-muted"}`}
               >
                 {step.status === "complete" ? (
                   <CheckIcon className="size-3" />
@@ -121,7 +121,7 @@ export function OnboardingState({
                 )}
               </div>
               <span
-                className={`text-xs ${step.status === "complete" ? "text-muted line-through" : step.status === "current" || step.status === "loading" ? "text-black" : "text-muted"}`}
+                className={`text-xs ${step.status === "complete" ? "text-muted line-through" : step.status === "current" || step.status === "loading" ? "text-foreground" : "text-muted"}`}
               >
                 {step.label}
               </span>
@@ -146,7 +146,7 @@ export function OnboardingState({
                     onClick={() =>
                       copyToClipboard("npm i -g opencode-ai@latest", "npm")
                     }
-                    className="text-xs text-muted hover:text-black"
+                    className="text-xs text-muted hover:text-foreground"
                   >
                     {copiedNpm ? "Copied!" : "Copy"}
                   </button>
@@ -162,7 +162,7 @@ export function OnboardingState({
                     onClick={() =>
                       copyToClipboard("brew install sst/tap/opencode", "brew")
                     }
-                    className="text-xs text-muted hover:text-black"
+                    className="text-xs text-muted hover:text-foreground"
                   >
                     {copiedBrew ? "Copied!" : "Copy"}
                   </button>

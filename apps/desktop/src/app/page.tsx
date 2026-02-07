@@ -1672,10 +1672,10 @@ The AI assistant will read and update this file during compilation.
           <div className="flex items-center gap-3 h-8">
             <button
               onClick={handleToggleRightPanel}
-              className={`h-8 px-3 text-sm border border-border transition-colors flex items-center gap-2 font-medium bg-white text-black ${
+              className={`h-8 px-3 text-sm border border-border transition-colors flex items-center gap-2 font-medium bg-background text-foreground ${
                 showRightPanel
-                  ? "border-black"
-                  : "hover:bg-neutral-50 hover:border-neutral-400"
+                  ? "border-foreground"
+                  : "hover:bg-accent-hover hover:border-border-dark"
               }`}
             >
               Agent Mode
@@ -1683,15 +1683,15 @@ The AI assistant will read and update this file during compilation.
 
             {daemon.projectPath && (
               <>
-                <span className="text-neutral-300 text-lg select-none">/</span>
+                <span className="text-border text-lg select-none">/</span>
                 <div className="flex items-center gap-2 h-8">
                   <button
                     onClick={handleCompileWithDetection}
                     disabled={latexSettings.isDetecting}
-                    className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-white text-black ${
+                    className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-background text-foreground ${
                       latexSettings.isDetecting
                         ? "opacity-50 cursor-not-allowed"
-                        : "hover:bg-neutral-50 hover:border-neutral-400"
+                        : "hover:bg-accent-hover hover:border-border-dark"
                     }`}
                     title="Compile (Ctrl+Shift+B)"
                   >
@@ -1700,7 +1700,7 @@ The AI assistant will read and update this file during compilation.
 
                   <button
                     onClick={() => setShowLatexSettings(true)}
-                    className="h-8 w-8 border border-border bg-white text-black hover:bg-neutral-50 hover:border-neutral-400 transition-colors flex items-center justify-center"
+                    className="h-8 w-8 border border-border bg-background text-foreground hover:bg-accent-hover hover:border-border-dark transition-colors flex items-center justify-center"
                     title="LaTeX Settings"
                     aria-label="LaTeX Settings"
                   >
@@ -1712,7 +1712,7 @@ The AI assistant will read and update this file during compilation.
 
             {!auth.loading && (
               <>
-                <span className="text-neutral-300 text-lg select-none">/</span>
+                <span className="text-border text-lg select-none">/</span>
                 {auth.profile ? (
                   <UserDropdown profile={auth.profile} />
                 ) : (
@@ -1720,7 +1720,7 @@ The AI assistant will read and update this file during compilation.
                     onClick={() => {
                       setShowLoginCodeModal(true);
                     }}
-                    className="h-8 px-3 text-sm border-2 border-black bg-white text-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center"
+                    className="h-8 px-3 text-sm border-2 border-foreground bg-background text-foreground shadow-[3px_3px_0_0_var(--foreground)] hover:shadow-[1px_1px_0_0_var(--foreground)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center"
                   >
                     Login
                   </button>
@@ -1850,7 +1850,7 @@ The AI assistant will read and update this file during compilation.
                   style={{ x: 0 }}
                 />
                 <div
-                  className={`w-full h-full transition-colors ${resizing === "sidebar" ? "bg-black/20" : "group-hover:bg-black/20"}`}
+                  className={`w-full h-full transition-colors ${resizing === "sidebar" ? "bg-foreground/20" : "group-hover:bg-foreground/20"}`}
                 />
               </div>
             </motion.div>
@@ -1874,7 +1874,7 @@ The AI assistant will read and update this file during compilation.
           {daemon.projectPath && selectedFile ? (
             isShowingGitDiff ? (
               <div className="flex-1 min-h-0 flex flex-col">
-                <div className="border-b border-border bg-neutral-50 px-3 py-2 flex items-center justify-between gap-2">
+                <div className="border-b border-border bg-accent-hover px-3 py-2 flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate">
                       {gitDiffPreview.path}
@@ -1939,18 +1939,19 @@ The AI assistant will read and update this file during compilation.
                       onContentChange={() => {}}
                       language="diff"
                       editorSettings={editorSettings.settings}
+                      editorTheme={editorSettings.editorTheme}
                       className="h-full"
                     />
                   )}
                 </div>
               </div>
             ) : binaryPreviewUrl ? (
-              <div className="flex-1 flex flex-col bg-neutral-50 overflow-hidden">
+              <div className="flex-1 flex flex-col bg-accent-hover overflow-hidden">
                 {getFileType(selectedFile) === "pdf" && (
-                  <div className="flex items-center justify-end px-2 py-1 border-b border-neutral-200 bg-neutral-100">
+                  <div className="flex items-center justify-end px-2 py-1 border-b border-border bg-surface-secondary">
                     <button
                       onClick={() => setPdfRefreshKey((k) => k + 1)}
-                      className="flex items-center gap-1.5 px-2 py-1 text-xs text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200 rounded transition-colors"
+                      className="flex items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-foreground hover:bg-surface-tertiary rounded transition-colors"
                       title="Refresh PDF"
                     >
                       <ArrowClockwiseIcon className="w-3.5 h-3.5" />
@@ -1992,6 +1993,7 @@ The AI assistant will read and update this file during compilation.
                     onContentChange={handleContentChange}
                     language={getFileLanguage(selectedFile)}
                     editorSettings={editorSettings.settings}
+                    editorTheme={editorSettings.editorTheme}
                     className="h-full"
                   />
                 </EditorErrorBoundary>
@@ -2003,7 +2005,7 @@ The AI assistant will read and update this file during compilation.
                 <div />
               ) : (
                 <div className="flex flex-col items-center justify-center text-center px-6">
-                  <h2 className="text-2xl font-bold tracking-tight mb-3 text-black">
+                  <h2 className="text-2xl font-bold tracking-tight mb-3 text-foreground">
                     Open a LaTeX Project
                   </h2>
                   <p className="text-muted text-sm mb-8 leading-relaxed max-w-sm">
@@ -2064,7 +2066,7 @@ The AI assistant will read and update this file during compilation.
               transition={
                 prefersReducedMotion ? INSTANT_TRANSITION : PANEL_SPRING
               }
-              className="flex flex-shrink-0 bg-white overflow-hidden"
+              className="flex flex-shrink-0 bg-background overflow-hidden"
               style={{
                 willChange: prefersReducedMotion ? undefined : "width, opacity",
               }}
@@ -2082,7 +2084,7 @@ The AI assistant will read and update this file during compilation.
                   style={{ x: 0 }}
                 />
                 <div
-                  className={`w-full h-full transition-colors ${resizing === "right" ? "bg-black/20" : "group-hover:bg-black/20"}`}
+                  className={`w-full h-full transition-colors ${resizing === "right" ? "bg-foreground/20" : "group-hover:bg-foreground/20"}`}
                 />
               </div>
               <aside
@@ -2196,30 +2198,30 @@ The AI assistant will read and update this file during compilation.
 
 function OpenCodePanelSkeleton() {
   return (
-    <div className="flex flex-col bg-white h-full">
+    <div className="flex flex-col bg-background h-full">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <div className="flex items-center gap-2">
-          <div className="size-2 bg-neutral-200 animate-pulse" />
-          <div className="h-4 w-24 bg-neutral-200 animate-pulse" />
+          <div className="size-2 bg-surface-tertiary animate-pulse" />
+          <div className="h-4 w-24 bg-surface-tertiary animate-pulse" />
         </div>
-        <div className="h-6 w-12 bg-neutral-200 animate-pulse" />
+        <div className="h-6 w-12 bg-surface-tertiary animate-pulse" />
       </div>
       <div className="flex-1 p-3 space-y-4">
         {[1, 2, 3].map((i) => (
           <div key={i} className="space-y-2">
             <div
-              className="h-4 bg-neutral-100 animate-pulse"
+              className="h-4 bg-surface-secondary animate-pulse"
               style={{ width: `${60 + i * 10}%` }}
             />
             <div
-              className="h-4 bg-neutral-100 animate-pulse"
+              className="h-4 bg-surface-secondary animate-pulse"
               style={{ width: `${40 + i * 10}%` }}
             />
           </div>
         ))}
       </div>
       <div className="border-t border-border p-3">
-        <div className="h-16 bg-neutral-50 border border-border animate-pulse" />
+        <div className="h-16 bg-accent-hover border border-border animate-pulse" />
       </div>
     </div>
   );

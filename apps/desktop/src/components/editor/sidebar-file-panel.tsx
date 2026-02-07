@@ -55,7 +55,7 @@ export function FileSidebarPanel({
         <div className="flex items-center gap-1 flex-shrink-0">
           <button
             onClick={onCreateFile}
-            className="p-1 text-muted hover:text-black hover:bg-black/5 transition-colors"
+            className="p-1 text-muted hover:text-foreground hover:bg-foreground/5 transition-colors"
             title="New File"
             aria-label="New File"
           >
@@ -63,7 +63,7 @@ export function FileSidebarPanel({
           </button>
           <button
             onClick={onCreateDirectory}
-            className="p-1 text-muted hover:text-black hover:bg-black/5 transition-colors"
+            className="p-1 text-muted hover:text-foreground hover:bg-foreground/5 transition-colors"
             title="New Folder"
             aria-label="New Folder"
           >
@@ -71,7 +71,7 @@ export function FileSidebarPanel({
           </button>
           <button
             onClick={onRefreshFiles}
-            className="p-1 text-muted hover:text-black hover:bg-black/5 transition-colors"
+            className="p-1 text-muted hover:text-foreground hover:bg-foreground/5 transition-colors"
             title="Refresh Files"
             aria-label="Refresh Files"
           >

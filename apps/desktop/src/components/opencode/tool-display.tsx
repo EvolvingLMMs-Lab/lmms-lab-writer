@@ -62,7 +62,7 @@ export function ToolDisplay({
 
   return (
     <div
-      className={`text-[13px] bg-neutral-50 hover:bg-neutral-100 transition-colors ${isError ? "bg-red-50" : ""}`}
+      className={`text-[13px] bg-accent-hover hover:bg-surface-secondary transition-colors ${isError ? "bg-red-50" : ""}`}
     >
       <div
         role="button"
@@ -87,12 +87,12 @@ export function ToolDisplay({
               e.stopPropagation();
               onFileClick!(info.subtitle!);
             }}
-            className="text-neutral-800 hover:text-black hover:underline truncate cursor-pointer flex-1"
+            className="text-foreground-secondary hover:text-foreground hover:underline truncate cursor-pointer flex-1"
           >
             {info.subtitle || info.title}
           </span>
         ) : (
-          <span className="text-neutral-800 truncate flex-1">
+          <span className="text-foreground-secondary truncate flex-1">
             {info.subtitle || info.title}
           </span>
         )}
@@ -108,13 +108,13 @@ export function ToolDisplay({
         )}
         {hasDetails && (
           <ChevronIcon
-            className={`size-4 text-neutral-400 flex-shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
+            className={`size-4 text-muted-foreground flex-shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
           />
         )}
       </div>
 
       {expanded && (
-        <div className="border-t border-neutral-200 bg-white">
+        <div className="border-t border-border bg-background">
           {/* Special Task Display */}
           {tasksToDisplay && (
             <div className="px-3 py-2">
@@ -125,14 +125,14 @@ export function ToolDisplay({
           {/* Standard Input/Output fallback if no special display or if debugging */}
           {(!tasksToDisplay && Object.keys(part.state.input).length > 0) && (
             <div className="px-3 py-2 space-y-1">
-              <div className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                 Input
               </div>
               {Object.entries(part.state.input).map(([key, value]) => (
                 <div key={key} className="font-mono text-xs">
                   <span className="text-accent font-medium">{key}</span>
-                  <span className="text-neutral-400">: </span>
-                  <span className="text-neutral-700 whitespace-pre-wrap break-all">
+                  <span className="text-muted-foreground">: </span>
+                  <span className="text-foreground-secondary whitespace-pre-wrap break-all">
                     {formatValue(value)}
                   </span>
                 </div>
@@ -141,11 +141,11 @@ export function ToolDisplay({
           )}
 
           {(!tasksToDisplay && output) && (
-            <div className="px-3 py-2 border-t border-neutral-200">
-              <div className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium mb-1">
+            <div className="px-3 py-2 border-t border-border">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
                 Output
               </div>
-              <pre className="text-xs text-neutral-600 whitespace-pre-wrap break-all font-mono max-h-48 overflow-auto">
+              <pre className="text-xs text-muted whitespace-pre-wrap break-all font-mono max-h-48 overflow-auto">
                 {output.length > 2000 ? output.slice(0, 2000) + "..." : output}
               </pre>
             </div>

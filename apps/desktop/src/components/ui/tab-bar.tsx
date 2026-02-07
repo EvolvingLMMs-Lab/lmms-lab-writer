@@ -134,13 +134,13 @@ export function TabBar<T extends TabItem>({
               onClick={() => onTabSelect(tab.id)}
               className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
                 isActive
-                  ? "text-black border-b-2 border-black -mb-px"
-                  : "text-muted hover:text-black"
+                  ? "text-foreground border-b-2 border-foreground -mb-px"
+                  : "text-muted hover:text-foreground"
               }`}
             >
               {tab.label}
               {tab.badge !== undefined && (
-                <span className="ml-1 text-xs bg-neutral-200 px-1 tabular-nums">
+                <span className="ml-1 text-xs bg-surface-tertiary px-1 tabular-nums">
                   {tab.badge}
                 </span>
               )}
@@ -155,7 +155,7 @@ export function TabBar<T extends TabItem>({
   return (
     <>
       <div
-        className={`flex items-center border-b border-border bg-neutral-50 overflow-x-auto min-h-[34px] ${className}`}
+        className={`flex items-center border-b border-border bg-accent-hover overflow-x-auto min-h-[34px] ${className}`}
       >
         {tabs.map((tab) => {
           const isActive = tab.id === activeTab;
@@ -164,8 +164,8 @@ export function TabBar<T extends TabItem>({
               key={tab.id}
               className={`group flex items-center border-r border-border transition-colors ${
                 isActive
-                  ? "bg-white text-black"
-                  : "text-muted hover:text-black hover:bg-white/50"
+                  ? "bg-background text-foreground"
+                  : "text-muted hover:text-foreground hover:bg-background/50"
               }`}
               title={tab.title ?? tab.label}
               onMouseDown={(e) => handleMouseDown(e, tab.id)}
@@ -183,7 +183,7 @@ export function TabBar<T extends TabItem>({
                     e.stopPropagation();
                     onTabClose(tab.id);
                   }}
-                  className={`w-6 h-full flex items-center justify-center hover:bg-neutral-200 ${
+                  className={`w-6 h-full flex items-center justify-center hover:bg-surface-tertiary ${
                     isActive
                       ? "opacity-100"
                       : "opacity-0 group-hover:opacity-100"

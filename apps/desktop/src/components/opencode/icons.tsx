@@ -31,7 +31,7 @@ import {
 export function ProviderIcon({ providerId }: { providerId?: string }) {
   if (!providerId) return null;
 
-  const iconClass = "size-4 text-neutral-500";
+  const iconClass = "size-4 text-muted";
   const lowerProvider = providerId.toLowerCase();
 
   if (lowerProvider.includes("anthropic") || lowerProvider.includes("claude")) {
@@ -119,7 +119,7 @@ export function ToolIcon({ tool }: { tool: string }) {
       return <PhosphorFolderIcon className={`${baseClassName} text-yellow-600`} />;
 
     default:
-      return <StarFourIcon className={`${baseClassName} text-neutral-400`} />;
+      return <StarFourIcon className={`${baseClassName} text-muted-foreground`} />;
   }
 }
 
@@ -197,7 +197,7 @@ export function FileTypeIcon({ filename }: { filename: string }) {
 
   // Log and auxiliary files - gray
   if (ext === "log" || ext === "aux" || ext === "fdb_latexmk") {
-    return <FileTextIcon className={`${className} text-neutral-400`} />;
+    return <FileTextIcon className={`${className} text-muted-foreground`} />;
   }
 
   // LaTeX files - teal
@@ -261,5 +261,5 @@ export function FileTypeIcon({ filename }: { filename: string }) {
     return <PhosphorImageIcon className={`${className} text-rose-500`} />;
   }
 
-  return <FileIcon className={`${className} text-neutral-500`} />;
+  return <FileIcon className={`${className} text-muted`} />;
 }

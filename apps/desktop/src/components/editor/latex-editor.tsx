@@ -278,15 +278,15 @@ export const LaTeXEditor = memo(function LaTeXEditor({
     return (
       <div className={`flex flex-col ${className}`}>
         <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background">
-          <div className="h-4 w-24 bg-neutral-200 animate-pulse" />
-          <div className="h-4 w-32 bg-neutral-200 animate-pulse" />
+          <div className="h-4 w-24 bg-surface-tertiary animate-pulse" />
+          <div className="h-4 w-32 bg-surface-tertiary animate-pulse" />
         </div>
-        <div className="flex-1 bg-white p-4 space-y-2">
+        <div className="flex-1 bg-background p-4 space-y-2">
           {[70, 45, 60, 80, 35].map((width, i) => (
             <div key={i} className="flex gap-4">
-              <div className="w-8 h-4 bg-neutral-100 animate-pulse" />
+              <div className="w-8 h-4 bg-surface-secondary animate-pulse" />
               <div
-                className="flex-1 h-4 bg-neutral-100 animate-pulse"
+                className="flex-1 h-4 bg-surface-secondary animate-pulse"
                 style={{ width: `${width}%` }}
               />
             </div>

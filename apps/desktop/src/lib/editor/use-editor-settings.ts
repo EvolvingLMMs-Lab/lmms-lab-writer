@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { DEFAULT_EDITOR_SETTINGS, DEFAULT_MINIMAP_SETTINGS, EditorSettings } from "./types";
+import { useTheme } from "next-themes";
+import { DEFAULT_EDITOR_SETTINGS, DEFAULT_MINIMAP_SETTINGS, EditorSettings, EditorTheme } from "./types";
 
 const STORAGE_KEY = "editor-settings";
 
 // Migration helper for backward compatibility
 function migrateSettings(parsed: Record<string, unknown>): EditorSettings {
   const settings = { ...DEFAULT_EDITOR_SETTINGS, ...parsed };
+
+  // Remove legacy theme field (now auto-follows app mode)
+  if ("theme" in settings) {
+    delete (settings as Record<string, unknown>).theme;
+  }
 
   // Migrate old boolean minimap format to new object format
   if (typeof parsed.minimap === "boolean") {
@@ -28,6 +34,8 @@ function migrateSettings(parsed: Record<string, unknown>): EditorSettings {
 }
 
 export function useEditorSettings() {
+  const { resolvedTheme } = useTheme();
+
   const [settings, setSettings] = useState<EditorSettings>(() => {
     if (typeof window === "undefined") {
       return DEFAULT_EDITOR_SETTINGS;
@@ -43,6 +51,9 @@ export function useEditorSettings() {
     }
     return DEFAULT_EDITOR_SETTINGS;
   });
+
+  // Derive editor theme from app theme
+  const editorTheme: EditorTheme = resolvedTheme === "dark" ? "one-dark" : "one-light";
 
   // Persist settings to localStorage
   useEffect(() => {
@@ -64,6 +75,7 @@ export function useEditorSettings() {
 
   return {
     settings,
+    editorTheme,
     updateSettings,
     resetSettings,
   };

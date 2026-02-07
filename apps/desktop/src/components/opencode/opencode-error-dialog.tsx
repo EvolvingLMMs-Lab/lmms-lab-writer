@@ -109,14 +109,14 @@ export function OpenCodeErrorDialog({
       aria-labelledby="error-dialog-title"
     >
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-foreground/50"
         onClick={onClose}
         aria-hidden="true"
       />
 
       <div
         ref={dialogRef}
-        className="relative bg-white border border-black w-full max-w-md mx-4 shadow-[3px_3px_0_#000]"
+        className="relative bg-background border border-foreground w-full max-w-md mx-4 shadow-[3px_3px_0_var(--foreground)]"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h2 id="error-dialog-title" className="text-sm font-medium">
@@ -124,7 +124,7 @@ export function OpenCodeErrorDialog({
           </h2>
           <button
             onClick={onClose}
-            className="p-1 text-muted hover:text-black transition-colors"
+            className="p-1 text-muted hover:text-foreground transition-colors"
             aria-label="Close dialog"
           >
             <XIcon className="size-4" />
@@ -156,19 +156,19 @@ export function OpenCodeErrorDialog({
           </div>
 
           <div className="mt-3 relative">
-            <div className="bg-neutral-100 border border-border p-3 text-xs font-mono break-all max-h-32 overflow-y-auto">
+            <div className="bg-surface-secondary border border-border p-3 text-xs font-mono break-all max-h-32 overflow-y-auto">
               {error}
             </div>
             <button
               onClick={handleCopy}
-              className="absolute top-2 right-2 px-2 py-1 text-xs bg-white border border-border hover:border-black transition-colors"
+              className="absolute top-2 right-2 px-2 py-1 text-xs bg-background border border-border hover:border-foreground transition-colors"
             >
               {copied ? "Copied!" : "Copy"}
             </button>
           </div>
 
           {errorType === "port_in_use" && onKillPort && (
-            <div className="mt-4 p-3 border border-border bg-neutral-50">
+            <div className="mt-4 p-3 border border-border bg-accent-hover">
               <p className="text-xs text-muted mb-2">
                 Would you like to automatically kill the process using port{" "}
                 {port} and restart OpenCode?
@@ -176,7 +176,7 @@ export function OpenCodeErrorDialog({
               <button
                 onClick={handleKillPort}
                 disabled={killing}
-                className="w-full px-3 py-2 text-xs bg-white text-black border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all disabled:opacity-50 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
+                className="w-full px-3 py-2 text-xs bg-background text-foreground border border-foreground shadow-[2px_2px_0px_0px_var(--foreground)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all disabled:opacity-50 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
               >
                 {killing ? (
                   <span className="flex items-center justify-center gap-2">
@@ -191,13 +191,13 @@ export function OpenCodeErrorDialog({
           )}
 
           {errorType === "not_installed" && (
-            <div className="mt-4 p-3 border border-border bg-neutral-50">
+            <div className="mt-4 p-3 border border-border bg-accent-hover">
               <p className="text-xs text-muted mb-2">Install OpenCode:</p>
               <div className="space-y-2">
-                <code className="block text-xs font-mono bg-white p-2 border border-border">
+                <code className="block text-xs font-mono bg-background p-2 border border-border">
                   npm i -g opencode-ai@latest
                 </code>
-                <code className="block text-xs font-mono bg-white p-2 border border-border">
+                <code className="block text-xs font-mono bg-background p-2 border border-border">
                   brew install sst/tap/opencode
                 </code>
               </div>
@@ -210,17 +210,17 @@ export function OpenCodeErrorDialog({
           </p>
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-neutral-50">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-accent-hover">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-xs border border-border hover:border-black transition-colors"
+            className="px-3 py-1.5 text-xs border border-border hover:border-foreground transition-colors"
           >
             Dismiss
           </button>
           {errorType !== "port_in_use" && (
             <button
               onClick={onRetry}
-              className="px-3 py-1.5 text-xs bg-white text-black border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+              className="px-3 py-1.5 text-xs bg-background text-foreground border border-foreground shadow-[2px_2px_0px_0px_var(--foreground)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
             >
               Retry
             </button>

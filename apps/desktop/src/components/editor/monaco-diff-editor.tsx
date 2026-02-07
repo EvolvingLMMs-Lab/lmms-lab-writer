@@ -3,11 +3,12 @@
 import { useRef, memo, useCallback, useEffect } from "react";
 import { DiffEditor, Monaco, DiffOnMount } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
+import { useTheme } from "next-themes";
 import { EDITOR_MONO_FONT_FAMILY } from "@/lib/editor/font-stacks";
 
-// Define monochrome theme for diff editor
-const defineMonochromeTheme = (monaco: Monaco) => {
-  monaco.editor.defineTheme("monochrome", {
+// Define diff themes for both light and dark
+const defineDiffThemes = (monaco: Monaco) => {
+  monaco.editor.defineTheme("diff-light", {
     base: "vs",
     inherit: true,
     rules: [
@@ -40,6 +41,42 @@ const defineMonochromeTheme = (monaco: Monaco) => {
       "scrollbar.shadow": "#00000000",
       "scrollbarSlider.background": "#d4d4d4",
       "scrollbarSlider.hoverBackground": "#a3a3a3",
+    },
+  });
+
+  monaco.editor.defineTheme("diff-dark", {
+    base: "vs-dark",
+    inherit: true,
+    rules: [
+      { token: "", foreground: "abb2bf", background: "282c34" },
+      { token: "comment", foreground: "5c6370", fontStyle: "italic" },
+      { token: "keyword", foreground: "c678dd" },
+      { token: "string", foreground: "98c379" },
+      { token: "number", foreground: "d19a66" },
+      { token: "variable", foreground: "e06c75" },
+      { token: "operator", foreground: "56b6c2" },
+      { token: "delimiter", foreground: "abb2bf" },
+    ],
+    colors: {
+      "editor.background": "#282c34",
+      "editor.foreground": "#abb2bf",
+      "editorLineNumber.foreground": "#4b5263",
+      "editorLineNumber.activeForeground": "#abb2bf",
+      "editor.selectionBackground": "#3e4451",
+      "editor.lineHighlightBackground": "#2c313c",
+      "editorGutter.background": "#282c34",
+      "editorOverviewRuler.border": "#3e4451",
+      "diffEditor.insertedTextBackground": "#98c37933",
+      "diffEditor.removedTextBackground": "#e06c7533",
+      "diffEditor.insertedLineBackground": "#98c37918",
+      "diffEditor.removedLineBackground": "#e06c7518",
+      "diffEditorGutter.insertedLineBackground": "#98c37925",
+      "diffEditorGutter.removedLineBackground": "#e06c7525",
+      "diffEditor.border": "#3e4451",
+      "diffEditor.diagonalFill": "#2c313c",
+      "scrollbar.shadow": "#00000000",
+      "scrollbarSlider.background": "#4b526333",
+      "scrollbarSlider.hoverBackground": "#4b526355",
     },
   });
 };
@@ -89,18 +126,29 @@ export const MonacoDiffEditor = memo(function MonacoDiffEditor({
   className = "",
 }: Props) {
   const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
+  const monacoRef = useRef<Monaco | null>(null);
   const isDisposingRef = useRef(false);
+  const { resolvedTheme } = useTheme();
 
+  const diffTheme = resolvedTheme === "dark" ? "diff-dark" : "diff-light";
   const detectedLanguage = language || (filePath ? getLanguageFromPath(filePath) : "plaintext");
 
   const handleBeforeMount = useCallback((monaco: Monaco) => {
-    defineMonochromeTheme(monaco);
+    defineDiffThemes(monaco);
   }, []);
 
-  const handleEditorDidMount: DiffOnMount = useCallback((editor) => {
+  const handleEditorDidMount: DiffOnMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
+    monacoRef.current = monaco;
     isDisposingRef.current = false;
   }, []);
+
+  // Reactively switch theme when app mode changes
+  useEffect(() => {
+    if (monacoRef.current) {
+      monacoRef.current.editor.setTheme(diffTheme);
+    }
+  }, [diffTheme]);
 
   // Cleanup effect to properly dispose the editor before unmount
   useEffect(() => {
@@ -145,7 +193,7 @@ export const MonacoDiffEditor = memo(function MonacoDiffEditor({
         language={detectedLanguage}
         original={original}
         modified={modified}
-        theme="monochrome"
+        theme={diffTheme}
         beforeMount={handleBeforeMount}
         onMount={handleEditorDidMount}
         options={{
@@ -178,8 +226,8 @@ export const MonacoDiffEditor = memo(function MonacoDiffEditor({
           contextmenu: false,
         }}
         loading={
-          <div className="flex items-center justify-center h-full bg-white">
-            <div className="text-sm text-neutral-400">Loading diff...</div>
+          <div className="flex items-center justify-center h-full bg-background">
+            <div className="text-sm text-muted-foreground">Loading diff...</div>
           </div>
         }
       />

@@ -70,16 +70,16 @@ function ToastItem({
       className="pointer-events-auto"
     >
       <div
-        className="bg-white border-2 border-black max-w-[320px] p-3 flex items-start gap-3"
-        style={{ boxShadow: "4px 4px 0 0 rgba(0,0,0,1)" }}
+        className="bg-background border-2 border-foreground max-w-[320px] p-3 flex items-start gap-3"
+        style={{ boxShadow: "4px 4px 0 0 var(--foreground)" }}
       >
         <div className="flex-shrink-0 mt-0.5">{Icon}</div>
-        <p className="text-sm text-black flex-1 leading-tight">
+        <p className="text-sm text-foreground flex-1 leading-tight">
           {toast.message}
         </p>
         <button
           onClick={() => onDismiss(toast.id)}
-          className="flex-shrink-0 text-black hover:opacity-60 transition-opacity"
+          className="flex-shrink-0 text-foreground hover:opacity-60 transition-opacity"
           aria-label="Dismiss"
         >
           <XIcon className="w-3.5 h-3.5" />
@@ -92,11 +92,11 @@ function ToastItem({
 function getIcon(type: ToastType) {
   switch (type) {
     case "success":
-      return <CheckIcon size={18} className="text-black" />;
+      return <CheckIcon size={18} className="text-foreground" />;
     case "error":
-      return <XIcon size={18} className="text-black" />;
+      return <XIcon size={18} className="text-foreground" />;
     case "info":
-      return <InfoIcon size={18} className="text-black" />;
+      return <InfoIcon size={18} className="text-foreground" />;
   }
 }
 

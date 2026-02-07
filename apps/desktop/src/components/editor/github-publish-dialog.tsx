@@ -49,7 +49,7 @@ export function GitHubPublishDialog({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/30"
+          className="absolute inset-0 bg-foreground/30"
           onClick={isCreating ? undefined : onCancel}
         />
 
@@ -59,7 +59,7 @@ export function GitHubPublishDialog({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.98, y: 6 }}
           transition={{ duration: 0.12 }}
-          className="relative z-10 w-full max-w-sm border border-black bg-white text-black shadow-[3px_3px_0_#000]"
+          className="relative z-10 w-full max-w-sm border border-foreground bg-background text-foreground shadow-[3px_3px_0_var(--foreground)]"
         >
           {/* Header */}
           <div className="px-5 py-4 border-b border-border">
@@ -82,7 +82,7 @@ export function GitHubPublishDialog({
                 onChange={(e) => setRepoName(e.target.value)}
                 placeholder="my-project"
                 disabled={isCreating}
-                className="w-full px-3 py-2 text-sm border border-border outline-none focus:border-black transition-colors disabled:opacity-50"
+                className="w-full px-3 py-2 text-sm border border-border outline-none focus:border-foreground transition-colors disabled:opacity-50"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -108,8 +108,8 @@ export function GitHubPublishDialog({
                   disabled={isCreating}
                   className={`flex-1 text-xs font-mono py-2 transition-colors ${
                     !isPrivate
-                      ? "bg-black text-white"
-                      : "bg-white text-black hover:bg-neutral-50"
+                      ? "bg-foreground text-background"
+                      : "bg-background text-foreground hover:bg-accent-hover"
                   } disabled:opacity-50`}
                 >
                   Public
@@ -120,8 +120,8 @@ export function GitHubPublishDialog({
                   disabled={isCreating}
                   className={`flex-1 text-xs font-mono py-2 border-l border-border transition-colors ${
                     isPrivate
-                      ? "bg-black text-white"
-                      : "bg-white text-black hover:bg-neutral-50"
+                      ? "bg-foreground text-background"
+                      : "bg-background text-foreground hover:bg-accent-hover"
                   } disabled:opacity-50`}
                 >
                   Private
@@ -140,7 +140,7 @@ export function GitHubPublishDialog({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="A short description..."
                 disabled={isCreating}
-                className="w-full px-3 py-2 text-sm border border-border outline-none focus:border-black transition-colors disabled:opacity-50"
+                className="w-full px-3 py-2 text-sm border border-border outline-none focus:border-foreground transition-colors disabled:opacity-50"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();

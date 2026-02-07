@@ -184,7 +184,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   // Not connected - show onboarding
   if (!opencode.connected) {
     return (
-      <div className={`flex flex-col bg-white min-h-0 ${className}`}>
+      <div className={`flex flex-col bg-background min-h-0 ${className}`}>
         <OnboardingState
           connecting={opencode.connecting}
           error={opencode.error}
@@ -233,9 +233,9 @@ export const OpenCodePanel = memo(function OpenCodePanel({
   const currentSession = opencode.sessions.find(s => s.id === opencode.currentSessionId);
 
   return (
-    <div ref={panelParent} className={`flex h-full flex-col bg-neutral-50/50 ${className}`}>
+    <div ref={panelParent} className={`flex h-full flex-col bg-accent-hover/50 ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border bg-white px-3 py-2">
+      <div className="flex items-center justify-between border-b border-border bg-background px-3 py-2">
         <div className="flex items-center gap-2 overflow-hidden">
           <button onClick={() => setShowSessionList(true)} className="flex-shrink-0 text-muted hover:text-foreground transition-colors">
             <ChevronIcon className="size-4 rotate-90" />
@@ -245,7 +245,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
               {currentSession?.title || "New Chat"}
             </h2>
             <div className="flex items-center gap-1.5 text-[10px] text-muted font-mono">
-              <span className={`inline-block size-1.5 rounded-full transition-colors ${isWorking ? 'bg-accent animate-pulse' : 'bg-neutral-300'}`} />
+              <span className={`inline-block size-1.5 rounded-full transition-colors ${isWorking ? 'bg-accent animate-pulse' : 'bg-border'}`} />
               <span className={isWorking ? 'text-accent' : ''}>
                 {opencode.status.type === 'running' ? 'writing' : opencode.status.type === 'busy' ? 'busy' : 'ready'}
               </span>
@@ -256,7 +256,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
         <div className="flex items-center gap-2">
           <button
             onClick={handleNewSession}
-            className="flex-shrink-0 text-neutral-400 hover:text-neutral-600 transition-colors"
+            className="flex-shrink-0 text-muted-foreground hover:text-muted transition-colors"
             title="New Chat"
           >
             <PlusIcon className="size-5" />
@@ -284,7 +284,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="border-t border-border bg-white p-3">
+          <div className="border-t border-border bg-background p-3">
             <InputArea
               input={input}
               setInput={setInput}
