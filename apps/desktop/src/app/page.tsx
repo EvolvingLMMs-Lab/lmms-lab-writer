@@ -1203,6 +1203,13 @@ The AI assistant will read and update this file during compilation.
     [daemon],
   );
 
+  const handleUnstageFile = useCallback(
+    (path: string) => {
+      daemon.gitUnstage([path]);
+    },
+    [daemon],
+  );
+
   const handleRemoteSubmit = useCallback(() => {
     const trimmed = remoteUrl.trim();
     if (!trimmed) return;
@@ -1226,6 +1233,24 @@ The AI assistant will read and update this file during compilation.
       toast("Changes pulled successfully", "success");
     } else {
       toast(result.error || "Failed to pull changes", "error");
+    }
+  }, [daemon, toast]);
+
+  const handleDiscardAll = useCallback(async () => {
+    const result = await daemon.gitDiscardAll();
+    if (result.success) {
+      toast("All changes discarded", "success");
+    } else {
+      toast(result.error || "Failed to discard changes", "error");
+    }
+  }, [daemon, toast]);
+
+  const handleDiscardFile = useCallback(async (path: string) => {
+    const result = await daemon.gitDiscardFile(path);
+    if (result.success) {
+      toast(`Discarded changes: ${path}`, "success");
+    } else {
+      toast(result.error || "Failed to discard file", "error");
     }
   }, [daemon, toast]);
 
@@ -1713,7 +1738,10 @@ The AI assistant will read and update this file during compilation.
                       isInitializingGit={daemon.isInitializingGit}
                       onRefreshStatus={daemon.refreshGitStatus}
                       onStageAll={handleStageAll}
+                      onDiscardAll={handleDiscardAll}
+                      onDiscardFile={handleDiscardFile}
                       onStageFile={handleStageFile}
+                      onUnstageFile={handleUnstageFile}
                       showCommitInput={showCommitInput}
                       commitMessage={commitMessage}
                       onCommitMessageChange={(value) => setCommitMessage(value)}

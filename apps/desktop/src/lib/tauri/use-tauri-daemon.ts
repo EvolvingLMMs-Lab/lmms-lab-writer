@@ -407,6 +407,40 @@ export function useTauriDaemon() {
     await refreshGitStatusInternal(projectState.projectPath);
   }, [projectState.projectPath, refreshGitStatusInternal]);
 
+  const gitDiscardAll = useCallback(async (): Promise<{
+    success: boolean;
+    error?: string;
+  }> => {
+    if (!projectState.projectPath)
+      return { success: false, error: "No project" };
+
+    try {
+      await invoke("git_discard_all", { dir: projectState.projectPath });
+      await refreshGitStatus();
+      return { success: true };
+    } catch (error) {
+      console.error("Failed to discard changes:", error);
+      return { success: false, error: String(error) };
+    }
+  }, [projectState.projectPath, refreshGitStatus]);
+
+  const gitDiscardFile = useCallback(async (file: string): Promise<{
+    success: boolean;
+    error?: string;
+  }> => {
+    if (!projectState.projectPath)
+      return { success: false, error: "No project" };
+
+    try {
+      await invoke("git_discard_file", { dir: projectState.projectPath, file });
+      await refreshGitStatus();
+      return { success: true };
+    } catch (error) {
+      console.error("Failed to discard file:", error);
+      return { success: false, error: String(error) };
+    }
+  }, [projectState.projectPath, refreshGitStatus]);
+
   const gitAdd = useCallback(
     async (files: string[]) => {
       if (!projectState.projectPath) return;
@@ -420,6 +454,21 @@ export function useTauriDaemon() {
         setError(String(error), "stage files");
       } finally {
         setOperationState((s) => ({ ...s, isStaging: false }));
+      }
+    },
+    [projectState.projectPath, refreshGitStatus, setError],
+  );
+
+  const gitUnstage = useCallback(
+    async (files: string[]) => {
+      if (!projectState.projectPath) return;
+
+      try {
+        await invoke("git_unstage", { dir: projectState.projectPath, files });
+        await refreshGitStatus();
+      } catch (error) {
+        console.error("Failed to unstage:", error);
+        setError(String(error), "unstage files");
       }
     },
     [projectState.projectPath, refreshGitStatus, setError],
@@ -710,11 +759,14 @@ export function useTauriDaemon() {
       renamePath,
       deletePath,
       gitAdd,
+      gitUnstage,
       gitCommit,
       gitPush,
       gitPull,
       gitInit,
       gitAddRemote,
+      gitDiscardAll,
+      gitDiscardFile,
       gitDiff,
       clearGitInitResult,
       refreshGitStatus,
@@ -734,11 +786,14 @@ export function useTauriDaemon() {
       renamePath,
       deletePath,
       gitAdd,
+      gitUnstage,
       gitCommit,
       gitPush,
       gitPull,
       gitInit,
       gitAddRemote,
+      gitDiscardAll,
+      gitDiscardFile,
       gitDiff,
       clearGitInitResult,
       refreshGitStatus,

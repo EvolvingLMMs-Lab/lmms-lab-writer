@@ -234,6 +234,45 @@ pub async fn git_diff(dir: String, file: Option<String>, staged: Option<bool>) -
 }
 
 #[tauri::command]
+pub async fn git_discard_all(dir: String) -> Result<(), String> {
+    // Restore all tracked modified/deleted files
+    run_git(&dir, &["checkout", "--", "."]).await?;
+    // Remove all untracked files and directories
+    run_git(&dir, &["clean", "-fd"]).await?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn git_discard_file(dir: String, file: String) -> Result<(), String> {
+    // Check if it's an untracked file by looking at git status
+    let status = run_git(&dir, &["status", "--porcelain", "--", &file]).await?;
+    if status.starts_with("??") {
+        // Untracked file: delete it
+        let path = std::path::Path::new(&dir).join(&file);
+        if path.is_dir() {
+            std::fs::remove_dir_all(&path)
+                .map_err(|e| format!("Failed to remove {}: {}", file, e))?;
+        } else {
+            std::fs::remove_file(&path)
+                .map_err(|e| format!("Failed to remove {}: {}", file, e))?;
+        }
+    } else {
+        // Tracked file: restore it
+        run_git(&dir, &["checkout", "--", &file]).await?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn git_unstage(dir: String, files: Vec<String>) -> Result<(), String> {
+    let mut args = vec!["reset", "HEAD", "--"];
+    let file_refs: Vec<&str> = files.iter().map(|s| s.as_str()).collect();
+    args.extend(file_refs);
+    run_git(&dir, &args).await?;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn git_add(dir: String, files: Vec<String>) -> Result<(), String> {
     let mut args = vec!["add"];
     let file_refs: Vec<&str> = files.iter().map(|s| s.as_str()).collect();

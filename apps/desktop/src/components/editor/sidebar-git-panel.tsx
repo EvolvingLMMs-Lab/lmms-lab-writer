@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Spinner } from "@/components/ui/spinner";
 import type {
   GitFileChange,
@@ -10,8 +11,10 @@ import type {
 } from "@lmms-lab/writer-shared";
 import {
   ArrowClockwiseIcon,
+  ArrowCounterClockwiseIcon,
   GitBranchIcon,
   ClockCounterClockwiseIcon,
+  MinusIcon,
   PlusIcon,
   CheckIcon,
   ArrowUpIcon,
@@ -61,19 +64,21 @@ function formatRelativeDate(dateStr: string): string {
   if (diffDay < 7) return `${diffDay}d ago`;
   if (diffWeek < 5) return `${diffWeek}w ago`;
   if (diffMonth < 12) return `${diffMonth}mo ago`;
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" });
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "2-digit",
+  });
 }
 
 function CommitEntry({
   entry,
   isFirst,
   isLast,
-  currentBranch,
 }: {
   entry: GitLogEntry;
   isFirst: boolean;
   isLast: boolean;
-  currentBranch: string;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -94,11 +99,9 @@ function CommitEntry({
 
       {/* Content */}
       <div className="flex-1 min-w-0 py-2">
-        <div className="flex items-start justify-between gap-2 min-w-0">
-          <p className="text-xs font-mono leading-relaxed truncate flex-1 min-w-0 text-foreground">
-            {entry.message}
-          </p>
-        </div>
+        <p className="text-xs font-mono leading-relaxed truncate text-foreground">
+          {entry.message}
+        </p>
         <div className="flex items-center gap-2 mt-1">
           <button
             type="button"
@@ -144,7 +147,10 @@ type GitSidebarPanelProps = {
   isInitializingGit: boolean;
   onRefreshStatus: () => void;
   onStageAll: () => void;
+  onDiscardAll: () => void | Promise<void>;
+  onDiscardFile: (path: string) => void | Promise<void>;
   onStageFile: (path: string) => void;
+  onUnstageFile: (path: string) => void;
   showCommitInput: boolean;
   commitMessage: string;
   onCommitMessageChange: (value: string) => void;
@@ -178,12 +184,12 @@ export function GitSidebarPanel({
   isInitializingGit,
   onRefreshStatus,
   onStageAll,
+  onDiscardAll,
+  onDiscardFile,
   onStageFile,
-  showCommitInput,
+  onUnstageFile,
   commitMessage,
   onCommitMessageChange,
-  onShowCommitInput,
-  onHideCommitInput,
   onCommit,
   onPush,
   onPull,
@@ -199,6 +205,7 @@ export function GitSidebarPanel({
   );
   const [historyCollapsed, setHistoryCollapsed] = useState(false);
   const [showAllCommits, setShowAllCommits] = useState(false);
+  const [showDiscardAllConfirm, setShowDiscardAllConfirm] = useState(false);
 
   const visibleCommits = useMemo(() => {
     if (showAllCommits) return gitLogEntries;
@@ -290,25 +297,66 @@ export function GitSidebarPanel({
               </span>
             </div>
           </button>
-          {!staged && (
-            <button
-              type="button"
-              onClick={() => onStageFile(change.path)}
-              className="w-7 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-100 hover:bg-neutral-200"
-              aria-label={`Stage ${change.path}`}
-            >
-              <PlusIcon className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <div className="flex items-stretch opacity-0 group-hover:opacity-100 transition-opacity duration-100">
+            {!staged && (
+              <button
+                type="button"
+                onClick={() => {
+                  void onDiscardFile(change.path);
+                }}
+                className="w-7 flex items-center justify-center hover:bg-neutral-200"
+                aria-label={`Discard ${change.path}`}
+                title="Discard changes"
+              >
+                <ArrowCounterClockwiseIcon className="w-3 h-3" />
+              </button>
+            )}
+            {staged ? (
+              <button
+                type="button"
+                onClick={() => onUnstageFile(change.path)}
+                className="w-7 flex items-center justify-center hover:bg-neutral-200"
+                aria-label={`Unstage ${change.path}`}
+                title="Unstage file"
+              >
+                <MinusIcon className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onStageFile(change.path)}
+                className="w-7 flex items-center justify-center hover:bg-neutral-200"
+                aria-label={`Stage ${change.path}`}
+                title="Stage file"
+              >
+                <PlusIcon className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       );
     },
-    [handleSelectChange, onStageFile, selectedChange],
+    [handleSelectChange, onStageFile, onDiscardFile, selectedChange],
   );
 
   return (
     <>
-      {/* Header */}
+      {/* Discard all confirm dialog */}
+      {showDiscardAllConfirm && (
+        <ConfirmDialog
+          title="Discard all changes"
+          message={`This will discard all ${unstagedChanges.length} unstaged change${unstagedChanges.length > 1 ? "s" : ""}. This action cannot be undone.`}
+          confirmLabel="Discard All"
+          cancelLabel="Cancel"
+          onConfirm={() => {
+            void onDiscardAll();
+            setShowDiscardAllConfirm(false);
+          }}
+          onCancel={() => setShowDiscardAllConfirm(false)}
+        />
+      )}
+
+      {/* Header: branch + status */}
       <div className="px-3 py-2.5 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
@@ -326,49 +374,29 @@ export function GitSidebarPanel({
           </button>
         </div>
 
-        <div className="mt-1.5 flex items-center gap-3 text-[11px] font-mono text-muted">
-          <span>
-            {changeCount === 0 ? "clean" : `${changeCount} changed`}
-          </span>
-          {gitStatus.ahead > 0 && (
-            <span className="flex items-center gap-0.5">
-              <ArrowUpIcon className="w-3 h-3" />
-              {gitStatus.ahead}
-            </span>
-          )}
-          {gitStatus.behind > 0 && (
-            <span className="flex items-center gap-0.5">
-              <ArrowDownIcon className="w-3 h-3" />
-              {gitStatus.behind}
-            </span>
-          )}
-        </div>
-
         {!gitStatus.remote && (
           <div className="mt-2">
             {showRemoteInput ? (
-              <div className="space-y-1.5">
-                <input
-                  type="text"
-                  value={remoteUrl}
-                  onChange={(e) => onRemoteUrlChange(e.target.value)}
-                  placeholder="https://github.com/user/repo.git"
-                  className="w-full px-2 py-1.5 text-xs font-mono border-2 border-black focus:outline-none bg-white"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && remoteUrl.trim()) {
-                      onSubmitRemote();
-                    }
-                    if (e.key === "Escape") {
-                      onHideRemoteInput();
-                    }
-                  }}
-                  autoFocus
-                />
-              </div>
+              <input
+                type="text"
+                value={remoteUrl}
+                onChange={(e) => onRemoteUrlChange(e.target.value)}
+                placeholder="https://github.com/user/repo.git"
+                className="w-full px-2 py-1.5 text-xs font-mono border-2 border-black focus:outline-none bg-white"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && remoteUrl.trim()) {
+                    onSubmitRemote();
+                  }
+                  if (e.key === "Escape") {
+                    onHideRemoteInput();
+                  }
+                }}
+                autoFocus
+              />
             ) : (
               <button
                 onClick={onShowRemoteInput}
-                className="flex items-center gap-1.5 text-[11px] font-mono text-muted hover:text-black transition-colors mt-1"
+                className="flex items-center gap-1.5 text-[11px] font-mono text-muted hover:text-black transition-colors"
               >
                 <GlobeIcon className="w-3 h-3" />
                 <span>Connect remote</span>
@@ -378,11 +406,154 @@ export function GitSidebarPanel({
         )}
       </div>
 
-      {/* Scrollable content */}
+      {/* Commit input area (always visible, like VS Code) */}
+      <div className="px-3 py-2.5 border-b border-border space-y-2">
+        <div className="relative">
+          <textarea
+            value={commitMessage}
+            onChange={(e) => onCommitMessageChange(e.target.value)}
+            placeholder="Message (Ctrl+Enter to commit)"
+            className="w-full px-2.5 py-2 text-xs font-mono border border-border resize-none focus:outline-none focus:border-black bg-white placeholder:text-neutral-300 transition-colors"
+            rows={2}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                onCommit();
+              }
+            }}
+          />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={onCommit}
+            disabled={!commitMessage.trim() || stagedChanges.length === 0}
+            className="flex-1 text-[11px] font-mono py-1.5 bg-black text-white border border-black hover:bg-neutral-800 disabled:opacity-30 disabled:hover:bg-black transition-colors flex items-center justify-center gap-1.5"
+          >
+            <CheckIcon className="w-3 h-3" />
+            Commit
+            {stagedChanges.length > 0 && (
+              <span className="opacity-60">({stagedChanges.length})</span>
+            )}
+          </button>
+          <button
+            onClick={() => {
+              void onGenerateCommitMessageAI();
+            }}
+            disabled={isGeneratingCommitMessageAI || stagedChanges.length === 0}
+            className="text-[11px] font-mono px-2.5 py-1.5 border border-border hover:border-black hover:bg-neutral-50 disabled:opacity-30 disabled:hover:border-border disabled:hover:bg-white transition-colors flex items-center gap-1"
+            title="AI Draft"
+          >
+            <SparkleIcon className="w-3 h-3" />
+            {isGeneratingCommitMessageAI ? "..." : "AI"}
+          </button>
+          {gitStatus.ahead > 0 && (
+            <button
+              onClick={() => {
+                void onPush();
+              }}
+              disabled={isPushing}
+              className="text-[11px] font-mono px-2.5 py-1.5 border border-border hover:border-black hover:bg-neutral-50 disabled:opacity-30 transition-colors flex items-center gap-1"
+              title={`Push ${gitStatus.ahead} commit${gitStatus.ahead > 1 ? "s" : ""}`}
+            >
+              {isPushing ? (
+                <Spinner className="size-3" />
+              ) : (
+                <>
+                  <ArrowUpIcon className="w-3 h-3" />
+                  {gitStatus.ahead}
+                </>
+              )}
+            </button>
+          )}
+          {gitStatus.behind > 0 && (
+            <button
+              onClick={() => {
+                void onPull();
+              }}
+              disabled={isPulling}
+              className="text-[11px] font-mono px-2.5 py-1.5 border border-border hover:border-black hover:bg-neutral-50 disabled:opacity-30 transition-colors flex items-center gap-1"
+              title={`Pull ${gitStatus.behind} commit${gitStatus.behind > 1 ? "s" : ""}`}
+            >
+              {isPulling ? (
+                <Spinner className="size-3" />
+              ) : (
+                <>
+                  <ArrowDownIcon className="w-3 h-3" />
+                  {gitStatus.behind}
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Scrollable content: Staged → Changes → History */}
       <div className="flex-1 min-h-0 flex flex-col">
         <ScrollArea className="flex-1 min-h-0">
+          {/* Staged Changes */}
+          {stagedChanges.length > 0 && (
+            <div className="border-b border-border">
+              <div className="px-3 py-1.5 flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider text-muted">
+                <CheckIcon className="w-3 h-3" />
+                Staged
+                <span className="inline-flex items-center justify-center w-4 h-4 bg-black text-white text-[9px] font-bold">
+                  {stagedChanges.length}
+                </span>
+              </div>
+              <div className="border-t border-neutral-100">
+                {stagedChanges.map((change) => renderChangeRow(change, true))}
+              </div>
+            </div>
+          )}
+
+          {/* Unstaged Changes */}
+          {unstagedChanges.length > 0 && (
+            <div className="border-b border-border">
+              <div className="px-3 py-1.5 flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-muted">
+                <span className="flex items-center gap-1.5">
+                  Changes
+                  <span className="inline-flex items-center justify-center w-4 h-4 bg-neutral-900 text-white text-[9px] font-bold">
+                    {unstagedChanges.length}
+                  </span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowDiscardAllConfirm(true)}
+                    className="normal-case tracking-normal text-muted hover:text-black transition-colors p-0.5"
+                    title="Discard all changes"
+                  >
+                    <ArrowCounterClockwiseIcon className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onStageAll}
+                    className="normal-case tracking-normal text-muted hover:text-black transition-colors p-0.5"
+                    title="Stage all changes"
+                  >
+                    <PlusIcon className="w-3.5 h-3.5" />
+                  </button>
+                </span>
+              </div>
+              <div className="border-t border-neutral-100">
+                {unstagedChanges.map((change) =>
+                  renderChangeRow(change, false),
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Clean state */}
+          {changeCount === 0 && (
+            <div className="px-3 py-8 text-center border-b border-border">
+              <CheckIcon className="w-5 h-5 mx-auto mb-2 text-neutral-300" />
+              <p className="text-[11px] font-mono text-muted uppercase tracking-wider">
+                Working tree clean
+              </p>
+            </div>
+          )}
+
           {/* History section */}
-          <div className="border-b border-border">
+          <div>
             <button
               type="button"
               onClick={() => setHistoryCollapsed(!historyCollapsed)}
@@ -398,7 +569,7 @@ export function GitSidebarPanel({
                 )}
               </span>
               <span className="text-[10px]">
-                {historyCollapsed ? "+" : "-"}
+                {historyCollapsed ? "+" : "\u2212"}
               </span>
             </button>
             {!historyCollapsed && (
@@ -410,8 +581,9 @@ export function GitSidebarPanel({
                         key={entry.hash}
                         entry={entry}
                         isFirst={i === 0}
-                        isLast={i === visibleCommits.length - 1 && !hasMoreCommits}
-                        currentBranch={gitStatus.branch}
+                        isLast={
+                          i === visibleCommits.length - 1 && !hasMoreCommits
+                        }
                       />
                     ))}
                     {hasMoreCommits && (
@@ -448,57 +620,6 @@ export function GitSidebarPanel({
               </>
             )}
           </div>
-
-          {/* Changes (unstaged) */}
-          {unstagedChanges.length > 0 && (
-            <div className="border-b border-border">
-              <div className="px-3 py-1.5 flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-muted">
-                <span className="flex items-center gap-1.5">
-                  Changes
-                  <span className="inline-flex items-center justify-center w-4 h-4 bg-neutral-900 text-white text-[9px] font-bold">
-                    {unstagedChanges.length}
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  onClick={onStageAll}
-                  className="normal-case tracking-normal text-[11px] font-mono text-muted hover:text-black transition-colors flex items-center gap-1"
-                >
-                  <PlusIcon className="w-3 h-3" />
-                  Stage all
-                </button>
-              </div>
-              <div className="border-t border-neutral-100">
-                {unstagedChanges.map((change) => renderChangeRow(change, false))}
-              </div>
-            </div>
-          )}
-
-          {/* Staged */}
-          {stagedChanges.length > 0 && (
-            <div className="border-b border-border">
-              <div className="px-3 py-1.5 flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider text-muted">
-                <CheckIcon className="w-3 h-3" />
-                Staged
-                <span className="inline-flex items-center justify-center w-4 h-4 bg-black text-white text-[9px] font-bold">
-                  {stagedChanges.length}
-                </span>
-              </div>
-              <div className="border-t border-neutral-100">
-                {stagedChanges.map((change) => renderChangeRow(change, true))}
-              </div>
-            </div>
-          )}
-
-          {/* Clean state */}
-          {changeCount === 0 && (
-            <div className="px-3 py-10 text-center">
-              <CheckIcon className="w-5 h-5 mx-auto mb-2 text-neutral-300" />
-              <p className="text-[11px] font-mono text-muted uppercase tracking-wider">
-                Working tree clean
-              </p>
-            </div>
-          )}
         </ScrollArea>
 
         {/* Selected file info */}
@@ -523,108 +644,6 @@ export function GitSidebarPanel({
               </button>
             )}
           </div>
-        )}
-      </div>
-
-      {/* Commit input area */}
-      {showCommitInput && stagedChanges.length > 0 && (
-        <div className="border-t-2 border-black p-3 space-y-2 bg-neutral-50">
-          <textarea
-            value={commitMessage}
-            onChange={(e) => onCommitMessageChange(e.target.value)}
-            placeholder="Describe your changes..."
-            className="w-full px-2.5 py-2 text-xs font-mono border-2 border-black resize-none focus:outline-none bg-white placeholder:text-neutral-300"
-            rows={3}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                onCommit();
-              }
-            }}
-          />
-          <div className="flex items-center justify-between gap-2">
-            <button
-              onClick={onHideCommitInput}
-              className="text-[11px] font-mono text-muted hover:text-black transition-colors"
-            >
-              Cancel
-            </button>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => {
-                  void onGenerateCommitMessageAI();
-                }}
-                disabled={isGeneratingCommitMessageAI}
-                className="text-[11px] font-mono px-2 py-1 border border-black hover:bg-black hover:text-white disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-black transition-colors flex items-center gap-1"
-              >
-                <SparkleIcon className="w-3 h-3" />
-                {isGeneratingCommitMessageAI ? "Drafting..." : "AI Draft"}
-              </button>
-              <button
-                onClick={onCommit}
-                disabled={!commitMessage.trim()}
-                className="text-[11px] font-mono px-3 py-1 bg-black text-white border border-black hover:bg-neutral-800 disabled:opacity-40 transition-colors"
-              >
-                Commit
-              </button>
-            </div>
-          </div>
-          <div className="text-[10px] font-mono text-neutral-300 text-right">
-            Ctrl+Enter to commit
-          </div>
-        </div>
-      )}
-
-      {/* Action footer */}
-      <div className="border-t border-border p-2.5 flex items-center gap-2">
-        {stagedChanges.length > 0 && !showCommitInput && (
-          <button
-            onClick={onShowCommitInput}
-            className="btn btn-sm btn-primary flex-1 text-[11px]"
-          >
-            Commit ({stagedChanges.length})
-          </button>
-        )}
-        {gitStatus.ahead > 0 && (
-          <button
-            onClick={() => {
-              void onPush();
-            }}
-            disabled={isPushing}
-            className="btn btn-sm btn-secondary flex-1 flex items-center justify-center gap-1.5 text-[11px]"
-          >
-            {isPushing ? (
-              <>
-                <Spinner className="size-3" />
-                <span>Pushing...</span>
-              </>
-            ) : (
-              <>
-                <ArrowUpIcon className="w-3 h-3" />
-                Push ({gitStatus.ahead})
-              </>
-            )}
-          </button>
-        )}
-        {gitStatus.behind > 0 && (
-          <button
-            onClick={() => {
-              void onPull();
-            }}
-            disabled={isPulling}
-            className="btn btn-sm btn-secondary flex-1 flex items-center justify-center gap-1.5 text-[11px]"
-          >
-            {isPulling ? (
-              <>
-                <Spinner className="size-3" />
-                <span>Pulling...</span>
-              </>
-            ) : (
-              <>
-                <ArrowDownIcon className="w-3 h-3" />
-                Pull ({gitStatus.behind})
-              </>
-            )}
-          </button>
         )}
       </div>
     </>
