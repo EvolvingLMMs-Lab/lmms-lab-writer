@@ -169,7 +169,7 @@ function MessageTurn({
                 <img
                   src={img.url}
                   alt="Attached"
-                  className="max-h-32 max-w-[200px] object-contain rounded border border-neutral-200 hover:border-neutral-400 transition-colors cursor-zoom-in"
+                  className="max-h-32 max-w-[200px] object-contain rounded border border-border hover:border-border-dark transition-colors cursor-zoom-in"
                 />
               </a>
             ))}
@@ -184,12 +184,12 @@ function MessageTurn({
 
       {/* Elapsed time badge */}
       {elapsedTime && (
-        <div className="text-[10px] text-neutral-400 font-mono">{elapsedTime}</div>
+        <div className="text-[10px] text-muted-foreground font-mono">{elapsedTime}</div>
       )}
 
       {/* All steps rendered chronologically */}
       {steps.length > 0 && (
-        <div ref={stepsParent} className="space-y-1.5 pl-2 border-l border-neutral-100 ml-1">
+        <div ref={stepsParent} className="space-y-1.5 pl-2 border-l border-surface-secondary ml-1">
           {steps.map((step, idx) => {
             // Reasoning Group
             if ("type" in step && step.type === "reasoning-group") {
@@ -213,7 +213,7 @@ function MessageTurn({
               return (
                 <div
                   key={p.id}
-                  className="text-[13px] leading-relaxed text-neutral-700"
+                  className="text-[13px] leading-relaxed text-foreground-secondary"
                 >
                   <MarkdownText text={(p as TextPart).text} onFileClick={onFileClick} />
                 </div>
@@ -235,22 +235,22 @@ function ReasoningDisplay({ parts }: { parts: ReasoningPart[] }) {
   const needsExpand = combinedText.length > 100;
 
   return (
-    <div className="text-xs border border-neutral-200 bg-neutral-50 p-2">
+    <div className="text-xs border border-border bg-accent-hover p-2">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1.5 text-neutral-500 hover:text-neutral-700 w-full text-left"
+        className="flex items-center gap-1.5 text-muted hover:text-foreground-secondary w-full text-left"
       >
         <ChevronRightIcon
           className={`size-3 transition-transform ${expanded ? "rotate-90" : ""}`}
         />
         <span className="font-medium">Thinking</span>
         {!expanded && needsExpand && (
-          <span className="text-neutral-400 truncate flex-1">{preview}...</span>
+          <span className="text-muted-foreground truncate flex-1">{preview}...</span>
         )}
       </button>
       {expanded && (
-        <div className="mt-2 text-neutral-600 whitespace-pre-wrap">
+        <div className="mt-2 text-muted whitespace-pre-wrap">
           {combinedText}
         </div>
       )}

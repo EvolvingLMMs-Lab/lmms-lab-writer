@@ -57,7 +57,7 @@ export function MainFileSelectionDialog({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/30"
+          className="absolute inset-0 bg-foreground/30"
           onClick={onCancel}
         />
 
@@ -67,7 +67,7 @@ export function MainFileSelectionDialog({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.98, y: 6 }}
           transition={{ duration: 0.12 }}
-          className="relative z-10 w-full max-w-md border border-black bg-white text-black shadow-[3px_3px_0_#000]"
+          className="relative z-10 w-full max-w-md border border-foreground bg-background text-foreground shadow-[3px_3px_0_var(--foreground)]"
         >
           {/* Header */}
           <div className="px-5 py-4 border-b border-border">
@@ -96,20 +96,20 @@ export function MainFileSelectionDialog({
                       onClick={() => setSelected(file)}
                       className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between group ${
                         isSelected
-                          ? "bg-black text-white"
-                          : "hover:bg-neutral-100"
+                          ? "bg-foreground text-background"
+                          : "hover:bg-surface-secondary"
                       }`}
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <FileTextIcon
-                          className={`size-4 flex-shrink-0 ${isSelected ? "text-white" : "text-neutral-400"}`}
+                          className={`size-4 flex-shrink-0 ${isSelected ? "text-background" : "text-muted-foreground"}`}
                         />
                         <span className="truncate font-medium">{fileName}</span>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {isRecommended && (
                           <span className={`text-xs px-1.5 py-0.5 ${
-                            isSelected ? "bg-white/20 text-white" : "bg-green-100 text-green-700"
+                            isSelected ? "bg-background/20 text-background" : "bg-green-100 text-green-700"
                           }`}>
                             Recommended
                           </span>

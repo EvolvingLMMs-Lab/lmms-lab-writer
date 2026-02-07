@@ -133,13 +133,13 @@ export function AskUserQuestionDisplay({
   // Completed state: compact summary
   if (isCompleted) {
     return (
-      <div className="border border-accent bg-white p-3 space-y-1 rounded-sm">
+      <div className="border border-accent bg-background p-3 space-y-1 rounded-sm">
         <div className="text-[10px] font-medium text-muted uppercase tracking-wider">Answered</div>
         {questions.map((q, qIndex) => {
           const answer = getAnswerText(qIndex);
           return answer ? (
             <div key={qIndex} className="text-xs">
-              <span className="text-neutral-500 font-medium">{q.header}:</span> {answer}
+              <span className="text-muted font-medium">{q.header}:</span> {answer}
             </div>
           ) : null;
         })}
@@ -148,7 +148,7 @@ export function AskUserQuestionDisplay({
   }
 
   return (
-    <div className="border border-accent bg-white p-3 flex flex-col max-h-[50vh] rounded-sm shadow-sm">
+    <div className="border border-accent bg-background p-3 flex flex-col max-h-[50vh] rounded-sm shadow-sm">
       {/* Step indicator */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1">
@@ -158,10 +158,10 @@ export function AskUserQuestionDisplay({
               type="button"
               onClick={() => { if (i <= currentStep) setCurrentStep(i); }}
               className={`size-4 flex items-center justify-center text-[9px] font-mono border transition-all duration-150 rounded-full ${i === currentStep
-                ? "border-accent bg-accent text-white"
+                ? "border-accent bg-accent text-background"
                 : i < currentStep
-                  ? "border-accent bg-white text-accent cursor-pointer hover:bg-accent/5"
-                  : "border-neutral-200 text-neutral-300 cursor-default"
+                  ? "border-accent bg-background text-accent cursor-pointer hover:bg-accent/5"
+                  : "border-border text-border cursor-default"
                 }`}
             >
               {i < currentStep ? (
@@ -191,14 +191,14 @@ export function AskUserQuestionDisplay({
           return (
             <div key={`step-${currentStep}`} className="wizard-step-enter space-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-accent text-white rounded-sm uppercase tracking-wide">
+                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-accent text-background rounded-sm uppercase tracking-wide">
                   {q.header}
                 </span>
                 {q.multiSelect && (
                   <span className="text-[10px] text-muted">(Multi-select)</span>
                 )}
               </div>
-              <p className="text-xs font-medium text-neutral-800 leading-relaxed">{q.question}</p>
+              <p className="text-xs font-medium text-foreground-secondary leading-relaxed">{q.question}</p>
 
               <div className="space-y-1.5">
                 {q.options.map((opt, optIndex) => {
@@ -210,15 +210,15 @@ export function AskUserQuestionDisplay({
                       onClick={() => handleOptionClick(qIndex, opt.label, q.multiSelect || false)}
                       className={`w-full text-left p-2 border rounded transition-colors ${isSelected
                         ? "border-accent bg-accent/5"
-                        : "border-border hover:border-neutral-400"
+                        : "border-border hover:border-border-dark"
                         }`}
                     >
                       <div className="flex items-start gap-2">
-                        <div className={`size-3.5 flex-shrink-0 mt-0.5 border ${isSelected ? "border-accent bg-accent" : "border-neutral-300"} flex items-center justify-center ${isRadio ? 'rounded-full' : 'rounded-sm'}`}>
-                          {isSelected && <CheckIcon className="size-2.5 text-white" />}
+                        <div className={`size-3.5 flex-shrink-0 mt-0.5 border ${isSelected ? "border-accent bg-accent" : "border-border"} flex items-center justify-center ${isRadio ? 'rounded-full' : 'rounded-sm'}`}>
+                          {isSelected && <CheckIcon className="size-2.5 text-background" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-xs font-medium text-neutral-700">{opt.label}</div>
+                          <div className="text-xs font-medium text-foreground-secondary">{opt.label}</div>
                           {opt.description && (
                             <div className="text-[10px] text-muted mt-0.5 leading-tight">{opt.description}</div>
                           )}
@@ -236,14 +236,14 @@ export function AskUserQuestionDisplay({
                       onClick={() => toggleCustomInput(qIndex, q.multiSelect || false)}
                       className={`w-full text-left p-2 border rounded transition-colors ${showCustom[qIndex]
                         ? "border-accent bg-accent/5"
-                        : "border-border hover:border-neutral-400"
+                        : "border-border hover:border-border-dark"
                         }`}
                     >
                       <div className="flex items-start gap-2">
-                        <div className={`size-3.5 flex-shrink-0 mt-0.5 border ${showCustom[qIndex] ? "border-accent bg-accent" : "border-neutral-300"} flex items-center justify-center ${isRadio ? 'rounded-full' : 'rounded-sm'}`}>
-                          {showCustom[qIndex] && <CheckIcon className="size-2.5 text-white" />}
+                        <div className={`size-3.5 flex-shrink-0 mt-0.5 border ${showCustom[qIndex] ? "border-accent bg-accent" : "border-border"} flex items-center justify-center ${isRadio ? 'rounded-full' : 'rounded-sm'}`}>
+                          {showCustom[qIndex] && <CheckIcon className="size-2.5 text-background" />}
                         </div>
-                        <div className="text-xs font-medium text-neutral-700">Other</div>
+                        <div className="text-xs font-medium text-foreground-secondary">Other</div>
                       </div>
                     </button>
 
@@ -288,7 +288,7 @@ export function AskUserQuestionDisplay({
                       <div className="text-[9px] font-mono uppercase tracking-wider text-muted">
                         {q.header}
                       </div>
-                      <div className="text-xs mt-0.5 truncate text-neutral-700">
+                      <div className="text-xs mt-0.5 truncate text-foreground-secondary">
                         {hasAnswer ? answer : "Not answered"}
                       </div>
                     </div>
@@ -309,7 +309,7 @@ export function AskUserQuestionDisplay({
           <button
             type="button"
             onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
-            className={`text-[10px] font-mono px-2 py-1 border border-border rounded transition-colors hover:bg-neutral-100 ${currentStep === 0 ? "opacity-0 pointer-events-none" : ""
+            className={`text-[10px] font-mono px-2 py-1 border border-border rounded transition-colors hover:bg-surface-secondary ${currentStep === 0 ? "opacity-0 pointer-events-none" : ""
               }`}
           >
             Back
@@ -320,7 +320,7 @@ export function AskUserQuestionDisplay({
               type="button"
               onClick={handleSubmit}
               disabled={!hasAnySelection || submitting}
-              className="px-3 py-1 bg-neutral-900 text-white text-[10px] font-medium uppercase tracking-wider hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1 bg-foreground text-background text-[10px] font-medium uppercase tracking-wider hover:bg-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {submitting ? "Submitting..." : "Submit"}
             </button>
@@ -329,7 +329,7 @@ export function AskUserQuestionDisplay({
               type="button"
               onClick={() => setCurrentStep(currentStep + 1)}
               disabled={!currentStepHasSelection}
-              className="px-3 py-1 bg-neutral-900 text-white text-[10px] font-medium uppercase tracking-wider hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1 bg-foreground text-background text-[10px] font-medium uppercase tracking-wider hover:bg-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {currentStep === questions.length - 1 ? "Review" : "Next"}
             </button>

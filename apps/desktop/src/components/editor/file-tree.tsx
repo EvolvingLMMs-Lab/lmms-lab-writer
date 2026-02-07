@@ -461,10 +461,10 @@ function NodeRenderer({
         isDragOver
           ? "bg-blue-100 ring-2 ring-blue-400 ring-inset"
           : isSelected
-            ? "bg-black text-white"
+            ? "bg-foreground text-background"
             : isFocused
-              ? "bg-black/10"
-              : "hover:bg-black/5"
+              ? "bg-foreground/10"
+              : "hover:bg-foreground/5"
       } ${isHighlighted && !isSelected ? "animate-highlight" : ""}`}
     >
       <div
@@ -1289,7 +1289,7 @@ function FileTreeInner({
       {/* Drag preview - rendered via portal to avoid stacking context issues */}
       {dragState.isDragging && dragState.draggedName && createPortal(
         <div
-          className="fixed pointer-events-none z-[9999] flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-md shadow-lg text-sm"
+          className="fixed pointer-events-none z-[9999] flex items-center gap-2 px-3 py-1.5 bg-background border border-border rounded-md shadow-lg text-sm"
           style={{
             left: dragState.mouseX + 16,
             top: dragState.mouseY + 16,

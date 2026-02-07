@@ -80,11 +80,11 @@ export function UserDropdown({ profile }: Props) {
           <img
             src={avatarUrl}
             alt={displayName}
-            className="size-8 border border-neutral-300"
+            className="size-8 border border-border"
           />
         ) : (
-          <div className="size-8 border border-neutral-300 flex items-center justify-center">
-            <span className="text-sm font-medium text-neutral-600">
+          <div className="size-8 border border-border flex items-center justify-center">
+            <span className="text-sm font-medium text-muted">
               {initial}
             </span>
           </div>
@@ -96,23 +96,23 @@ export function UserDropdown({ profile }: Props) {
 
       {isOpen && (
         <div
-          className="absolute right-0 top-full mt-2 w-80 bg-white border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] z-50"
+          className="absolute right-0 top-full mt-2 w-80 bg-background border-2 border-foreground shadow-[4px_4px_0_0_var(--foreground)] z-50"
           role="menu"
         >
           <button
             onClick={handleOpenProfile}
-            className="w-full p-5 border-b border-border flex items-center gap-4 hover:bg-neutral-50 transition-colors group text-left"
+            className="w-full p-5 border-b border-border flex items-center gap-4 hover:bg-accent-hover transition-colors group text-left"
             role="menuitem"
           >
             {avatarUrl ? (
               <img
                 src={avatarUrl}
                 alt={displayName}
-                className="size-12 border border-neutral-300"
+                className="size-12 border border-border"
               />
             ) : (
-              <div className="size-12 border border-neutral-300 flex items-center justify-center">
-                <span className="text-lg font-medium text-neutral-600">
+              <div className="size-12 border border-border flex items-center justify-center">
+                <span className="text-lg font-medium text-muted">
                   {initial}
                 </span>
               </div>
@@ -121,10 +121,10 @@ export function UserDropdown({ profile }: Props) {
               {name && <p className="font-medium truncate">{name}</p>}
               <p className="text-sm text-muted truncate">{email}</p>
             </div>
-            <CaretRightIcon className="size-4 text-muted group-hover:text-black transition-colors flex-shrink-0" />
+            <CaretRightIcon className="size-4 text-muted group-hover:text-foreground transition-colors flex-shrink-0" />
           </button>
 
-          <div className="px-5 py-4 border-b border-border bg-neutral-50">
+          <div className="px-5 py-4 border-b border-border bg-accent-hover">
             {tier === "supporter" && expiresAt ? (
               <div className="flex items-center justify-between">
                 <div>
@@ -137,7 +137,7 @@ export function UserDropdown({ profile }: Props) {
                 </div>
                 <button
                   onClick={handleOpenProfile}
-                  className="text-xs text-muted hover:text-black transition-colors"
+                  className="text-xs text-muted hover:text-foreground transition-colors"
                   role="menuitem"
                 >
                   Manage
@@ -152,7 +152,7 @@ export function UserDropdown({ profile }: Props) {
                 <span className="text-sm font-medium">
                   Star repos to unlock
                 </span>
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-muted group-hover:text-black transition-colors">
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-muted group-hover:text-foreground transition-colors">
                   Unlock
                   <ArrowRightIcon className="size-3" weight="bold" />
                 </span>
@@ -164,7 +164,7 @@ export function UserDropdown({ profile }: Props) {
             <button
               onClick={handleSignOut}
               disabled={isSigningOut}
-              className="text-sm text-muted hover:text-black transition-colors disabled:opacity-50"
+              className="text-sm text-muted hover:text-foreground transition-colors disabled:opacity-50"
               role="menuitem"
             >
               {isSigningOut ? "Signing out..." : "Sign out"}

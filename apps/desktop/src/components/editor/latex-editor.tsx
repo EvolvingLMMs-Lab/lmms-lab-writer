@@ -42,17 +42,17 @@ import { EDITOR_MONO_FONT_FAMILY } from "@/lib/editor/font-stacks";
 const latexLanguage = StreamLanguage.define(stex);
 
 const latexHighlightStyle = HighlightStyle.define([
-  { tag: tags.keyword, color: "#000", fontWeight: "bold" },
-  { tag: tags.comment, color: "#888", fontStyle: "italic" },
-  { tag: tags.string, color: "#333" },
-  { tag: tags.number, color: "#333" },
-  { tag: tags.operator, color: "#000" },
-  { tag: tags.bracket, color: "#555" },
-  { tag: tags.meta, color: "#000", fontWeight: "bold" },
-  { tag: tags.tagName, color: "#000", fontWeight: "bold" },
-  { tag: tags.attributeName, color: "#333" },
-  { tag: tags.atom, color: "#000", fontWeight: "bold" },
-  { tag: tags.special(tags.string), color: "#444" },
+  { tag: tags.keyword, color: "#d73a49" },
+  { tag: tags.comment, color: "#6a737d", fontStyle: "italic" },
+  { tag: tags.string, color: "#032f62" },
+  { tag: tags.number, color: "#005cc5" },
+  { tag: tags.operator, color: "#d73a49" },
+  { tag: tags.bracket, color: "#586069" },
+  { tag: tags.meta, color: "#6f42c1" },
+  { tag: tags.tagName, color: "#22863a" },
+  { tag: tags.attributeName, color: "#6f42c1" },
+  { tag: tags.atom, color: "#005cc5" },
+  { tag: tags.special(tags.string), color: "#032f62" },
 ]);
 
 const monochromTheme = EditorView.theme({
@@ -60,28 +60,28 @@ const monochromTheme = EditorView.theme({
     fontSize: "14px",
     fontFamily: EDITOR_MONO_FONT_FAMILY,
     backgroundColor: "#fff",
-    color: "#000",
+    color: "#24292e",
     height: "100%",
   },
   ".cm-content": {
-    caretColor: "#000",
+    caretColor: "#24292e",
     padding: "16px 0",
   },
   ".cm-cursor": {
-    borderLeftColor: "#000",
+    borderLeftColor: "#24292e",
     borderLeftWidth: "2px",
   },
   ".cm-activeLine": {
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#fafbfc",
   },
   ".cm-activeLineGutter": {
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#fafbfc",
   },
   ".cm-gutters": {
     backgroundColor: "#fff",
-    color: "#999",
+    color: "#959da5",
     border: "none",
-    borderRight: "1px solid #e5e5e5",
+    borderRight: "1px solid #e1e4e8",
   },
   ".cm-lineNumbers .cm-gutterElement": {
     padding: "0 16px 0 8px",
@@ -90,14 +90,14 @@ const monochromTheme = EditorView.theme({
     padding: "0 4px",
   },
   ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
-    backgroundColor: "#e5e5e5",
+    backgroundColor: "#c8c8fa",
   },
   ".cm-selectionMatch": {
-    backgroundColor: "#e5e5e5",
+    backgroundColor: "#c8c8fa88",
   },
   ".cm-matchingBracket": {
-    backgroundColor: "#e5e5e5",
-    outline: "1px solid #999",
+    backgroundColor: "#c8c8fa66",
+    outline: "1px solid #586069",
   },
   "&.cm-focused": {
     outline: "none",
@@ -109,11 +109,11 @@ const monochromTheme = EditorView.theme({
   ".cm-scroller::-webkit-scrollbar": {
     width: "12px",
     height: "12px",
-    backgroundColor: "#fafafa",
+    backgroundColor: "#fafbfc",
   },
   ".cm-scroller::-webkit-scrollbar-track": {
-    backgroundColor: "#fafafa",
-    borderLeft: "1px solid #e5e5e5",
+    backgroundColor: "#fafbfc",
+    borderLeft: "1px solid #e1e4e8",
   },
   ".cm-scroller::-webkit-scrollbar-thumb": {
     backgroundColor: "#888",
@@ -125,7 +125,7 @@ const monochromTheme = EditorView.theme({
     borderColor: "#444",
   },
   ".cm-scroller::-webkit-scrollbar-corner": {
-    backgroundColor: "#fafafa",
+    backgroundColor: "#fafbfc",
   },
 });
 
@@ -278,15 +278,15 @@ export const LaTeXEditor = memo(function LaTeXEditor({
     return (
       <div className={`flex flex-col ${className}`}>
         <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background">
-          <div className="h-4 w-24 bg-neutral-200 animate-pulse" />
-          <div className="h-4 w-32 bg-neutral-200 animate-pulse" />
+          <div className="h-4 w-24 bg-surface-tertiary animate-pulse" />
+          <div className="h-4 w-32 bg-surface-tertiary animate-pulse" />
         </div>
-        <div className="flex-1 bg-white p-4 space-y-2">
+        <div className="flex-1 bg-background p-4 space-y-2">
           {[70, 45, 60, 80, 35].map((width, i) => (
             <div key={i} className="flex gap-4">
-              <div className="w-8 h-4 bg-neutral-100 animate-pulse" />
+              <div className="w-8 h-4 bg-surface-secondary animate-pulse" />
               <div
-                className="flex-1 h-4 bg-neutral-100 animate-pulse"
+                className="flex-1 h-4 bg-surface-secondary animate-pulse"
                 style={{ width: `${width}%` }}
               />
             </div>

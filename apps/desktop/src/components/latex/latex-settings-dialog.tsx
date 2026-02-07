@@ -10,11 +10,12 @@ import {
   PlusIcon,
   XIcon,
 } from "@phosphor-icons/react";
+import { useTheme } from "next-themes";
 import {
   LaTeXSettings,
   DEFAULT_LATEX_SETTINGS,
 } from "@/lib/latex/types";
-import { EditorSettings, MinimapSettings, DEFAULT_EDITOR_SETTINGS, EDITOR_THEMES } from "@/lib/editor/types";
+import { EditorSettings, MinimapSettings, DEFAULT_EDITOR_SETTINGS } from "@/lib/editor/types";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -38,8 +39,8 @@ interface LaTeXSettingsDialogProps {
 // Section header component for visual grouping - editorial style
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
-    <div className="pt-6 pb-2 border-t border-neutral-200 mt-4 first:mt-0 first:border-t-0 first:pt-2">
-      <h3 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+    <div className="pt-6 pb-2 border-t border-border mt-4 first:mt-0 first:border-t-0 first:pt-2">
+      <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
         {children}
       </h3>
     </div>
@@ -65,10 +66,10 @@ function CheckboxItem({
         className="mt-0.5"
       />
       <div className="flex-1">
-        <span className="text-sm font-medium text-neutral-700 group-hover:text-black transition-colors">
+        <span className="text-sm font-medium text-foreground-secondary group-hover:text-foreground transition-colors">
           {label}
         </span>
-        <p className="text-xs text-neutral-500 mt-0.5">{description}</p>
+        <p className="text-xs text-muted mt-0.5">{description}</p>
       </div>
     </label>
   );
@@ -90,11 +91,11 @@ function SelectField({
   return (
     <div className="flex items-center justify-between py-2 gap-8">
       <div className="shrink-0">
-        <label className="text-sm font-medium text-neutral-700 block">
+        <label className="text-sm font-medium text-foreground-secondary block">
           {label}
         </label>
         {description && (
-          <p className="text-xs text-neutral-400 mt-0.5">{description}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
         )}
       </div>
       <Select value={String(value)} onValueChange={onChange}>
@@ -109,6 +110,39 @@ function SelectField({
           ))}
         </SelectContent>
       </Select>
+    </div>
+  );
+}
+
+function AppearanceToggle() {
+  const { theme, setTheme } = useTheme();
+
+  return (
+    <div className="py-2">
+      <label className="text-sm font-medium block mb-2 text-foreground-secondary">
+        Color Mode
+      </label>
+      <div className="flex">
+        {([
+          { value: "light", label: "Light" },
+          { value: "dark", label: "Dark" },
+        ] as const).map((mode, index) => (
+          <button
+            key={mode.value}
+            onClick={() => setTheme(mode.value)}
+            className={`flex-1 px-4 py-2.5 text-sm font-medium border transition-all ${
+              theme === mode.value
+                ? "bg-foreground text-background border-foreground"
+                : "bg-background text-muted border-border hover:border-border-dark"
+            } ${index === 0 ? "" : "-ml-px"}`}
+          >
+            {mode.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-muted mt-1.5">
+        Controls the app and editor theme
+      </p>
     </div>
   );
 }
@@ -135,109 +169,51 @@ export function LaTeXSettingsDialog({
   return (
     <Dialog.Root open={open} onOpenChange={(v) => !v && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-[9999]" />
+        <Dialog.Overlay className="fixed inset-0 bg-foreground/50 z-[9999]" />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-white border-2 border-black shadow-[4px_4px_0_0_#000] w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
+          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-background border-2 border-foreground shadow-[4px_4px_0_0_var(--foreground)] w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
           onPointerDownOutside={(e) => e.preventDefault()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <div className="flex items-center gap-3">
               <Dialog.Title className="text-lg font-bold tracking-tight">
                 Settings
               </Dialog.Title>
-              <span className="text-[10px] text-neutral-400 uppercase tracking-wider">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
                 Auto-saved
               </span>
             </div>
-            <Dialog.Close className="p-1.5 hover:bg-neutral-100 transition-colors border border-transparent hover:border-neutral-200" aria-label="Close">
+            <Dialog.Close className="p-1.5 hover:bg-accent-hover transition-colors border border-transparent hover:border-border" aria-label="Close">
               <XIcon className="size-4" />
             </Dialog.Close>
           </div>
 
           <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
             {/* Tabs */}
-            <Tabs.List className="flex border-b border-neutral-200 shrink-0">
+            <Tabs.List className="flex border-b border-border shrink-0">
               <Tabs.Trigger
                 value="build"
-                className="flex-1 px-4 py-3 text-sm font-medium transition-colors relative text-neutral-400 hover:text-black data-[state=active]:text-black"
+                className="flex-1 px-4 py-3 text-sm font-medium transition-colors relative text-muted-foreground hover:text-foreground data-[state=active]:text-foreground"
               >
                 Build
-                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-black transition-opacity opacity-0 data-[state=active]:opacity-100" />
+                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground transition-opacity opacity-0 data-[state=active]:opacity-100" />
               </Tabs.Trigger>
               <Tabs.Trigger
                 value="editor"
-                className="flex-1 px-4 py-3 text-sm font-medium transition-colors relative text-neutral-400 hover:text-black data-[state=active]:text-black"
+                className="flex-1 px-4 py-3 text-sm font-medium transition-colors relative text-muted-foreground hover:text-foreground data-[state=active]:text-foreground"
               >
                 Editor
-                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-black transition-opacity opacity-0 data-[state=active]:opacity-100" />
+                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground transition-opacity opacity-0 data-[state=active]:opacity-100" />
               </Tabs.Trigger>
             </Tabs.List>
 
             {/* ===== EDITOR TAB ===== */}
             <Tabs.Content value="editor" className="flex-1 overflow-y-auto px-5 py-4 space-y-1">
-              <SectionHeader>Theme</SectionHeader>
+              <SectionHeader>Appearance</SectionHeader>
 
-              {/* Theme Selection */}
-              <div>
-                <label className="text-sm font-medium block mb-2">
-                  Color Theme
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {EDITOR_THEMES.map((theme) => {
-                    const isSelected = editorSettings.theme === theme.value;
-                    const isDark = ["one-dark", "dracula", "nord"].includes(theme.value);
-
-                    return (
-                      <button
-                        key={theme.value}
-                        onClick={() =>
-                          onUpdateEditorSettings({ theme: theme.value })
-                        }
-                        className={`flex items-center gap-2 p-2.5 border text-left transition-all ${
-                          isSelected
-                            ? "border-black bg-neutral-50"
-                            : "border-border hover:border-neutral-400"
-                        }`}
-                      >
-                        {/* Theme preview swatch */}
-                        <div
-                          className={`w-6 h-6 rounded border flex-shrink-0 ${
-                            isDark ? "border-neutral-600" : "border-neutral-300"
-                          }`}
-                          style={{
-                            background: isDark ? "#282c34" : "#ffffff",
-                          }}
-                        >
-                          <div
-                            className="w-full h-1/3"
-                            style={{
-                              background:
-                                theme.value === "monochrome" ? "#0a0a0a" :
-                                theme.value === "github-light" ? "#cf222e" :
-                                theme.value === "solarized-light" ? "#859900" :
-                                theme.value === "one-dark" ? "#c678dd" :
-                                theme.value === "dracula" ? "#ff79c6" :
-                                theme.value === "nord" ? "#81a1c1" : "#0a0a0a",
-                            }}
-                          />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <span className="text-sm font-medium block truncate">
-                            {theme.label}
-                          </span>
-                          <span className="text-xs text-muted truncate block">
-                            {theme.description}
-                          </span>
-                        </div>
-                        {isSelected && (
-                          <CheckIcon className="size-4 flex-shrink-0 text-black" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              {/* Light/Dark Mode Toggle */}
+              <AppearanceToggle />
 
               <SectionHeader>Keybindings</SectionHeader>
 
@@ -245,23 +221,23 @@ export function LaTeXSettingsDialog({
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 border flex items-center justify-center font-mono text-xs font-bold tracking-tight transition-colors ${
                     editorSettings.vimMode
-                      ? "bg-black border-black text-white"
-                      : "bg-neutral-50 border-neutral-200 text-neutral-400"
+                      ? "bg-foreground border-foreground text-background"
+                      : "bg-accent-hover border-border text-muted-foreground"
                   }`}>
                     Vi
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-neutral-700">
+                      <span className="text-sm font-medium text-foreground-secondary">
                         Vim Mode
                       </span>
                       {editorSettings.vimMode && (
-                        <span className="text-[10px] px-1.5 py-0.5 bg-black text-white font-mono font-bold tracking-wider">
+                        <span className="text-[10px] px-1.5 py-0.5 bg-foreground text-background font-mono font-bold tracking-wider">
                           NORMAL
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-neutral-500 mt-0.5">
+                    <p className="text-xs text-muted mt-0.5">
                       Modal Vim-style keybindings in editor
                     </p>
                   </div>
@@ -277,10 +253,10 @@ export function LaTeXSettingsDialog({
               <SectionHeader>Display</SectionHeader>
 
               <div className="flex items-center justify-between py-2">
-                <label className="text-sm font-medium text-neutral-700">
+                <label className="text-sm font-medium text-foreground-secondary">
                   Font Size
                 </label>
-                <div className="flex items-center border border-neutral-200 hover:border-neutral-400 transition-colors">
+                <div className="flex items-center border border-border hover:border-border-dark transition-colors">
                   <button
                     onClick={() =>
                       onUpdateEditorSettings({
@@ -290,7 +266,7 @@ export function LaTeXSettingsDialog({
                         ),
                       })
                     }
-                    className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-r border-neutral-200"
+                    className="w-8 h-8 flex items-center justify-center text-muted hover:text-foreground hover:bg-accent-hover transition-colors border-r border-border"
                     aria-label="Decrease font size"
                   >
                     <MinusIcon className="size-3" />
@@ -319,22 +295,22 @@ export function LaTeXSettingsDialog({
                         ),
                       })
                     }
-                    className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-l border-neutral-200"
+                    className="w-8 h-8 flex items-center justify-center text-muted hover:text-foreground hover:bg-accent-hover transition-colors border-l border-border"
                     aria-label="Increase font size"
                   >
                     <PlusIcon className="size-3" />
                   </button>
-                  <span className="text-xs text-neutral-400 px-2 border-l border-neutral-200">
+                  <span className="text-xs text-muted-foreground px-2 border-l border-border">
                     px
                   </span>
                 </div>
               </div>
 
               <div className="flex items-center justify-between py-2">
-                <label className="text-sm font-medium text-neutral-700">
+                <label className="text-sm font-medium text-foreground-secondary">
                   Line Height
                 </label>
-                <div className="flex items-center border border-neutral-200 hover:border-neutral-400 transition-colors">
+                <div className="flex items-center border border-border hover:border-border-dark transition-colors">
                   <button
                     onClick={() =>
                       onUpdateEditorSettings({
@@ -346,7 +322,7 @@ export function LaTeXSettingsDialog({
                         ),
                       })
                     }
-                    className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-r border-neutral-200"
+                    className="w-8 h-8 flex items-center justify-center text-muted hover:text-foreground hover:bg-accent-hover transition-colors border-r border-border"
                     aria-label="Decrease line height"
                   >
                     <MinusIcon className="size-3" />
@@ -381,7 +357,7 @@ export function LaTeXSettingsDialog({
                         ),
                       })
                     }
-                    className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors border-l border-neutral-200"
+                    className="w-8 h-8 flex items-center justify-center text-muted hover:text-foreground hover:bg-accent-hover transition-colors border-l border-border"
                     aria-label="Increase line height"
                   >
                     <PlusIcon className="size-3" />
@@ -439,14 +415,14 @@ export function LaTeXSettingsDialog({
               <div className="flex items-center justify-between py-2">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-neutral-700">
+                    <span className="text-sm font-medium text-foreground-secondary">
                       Enable Minimap
                     </span>
-                    <span className="text-[10px] px-1.5 py-0.5 border border-neutral-300 text-neutral-500 font-medium uppercase tracking-wider">
+                    <span className="text-[10px] px-1.5 py-0.5 border border-border text-muted font-medium uppercase tracking-wider">
                       Preview
                     </span>
                   </div>
-                  <p className="text-xs text-neutral-500 mt-0.5">
+                  <p className="text-xs text-muted mt-0.5">
                     Code overview panel
                   </p>
                 </div>
@@ -464,9 +440,9 @@ export function LaTeXSettingsDialog({
               </div>
 
               {editorSettings.minimap.enabled && (
-                <div className="space-y-1 pl-4 border-l-2 border-neutral-200 ml-1">
+                <div className="space-y-1 pl-4 border-l-2 border-border ml-1">
                   <div className="flex items-center justify-between py-2">
-                    <label className="text-sm font-medium text-neutral-700">
+                    <label className="text-sm font-medium text-foreground-secondary">
                       Position
                     </label>
                     <div className="flex">
@@ -483,8 +459,8 @@ export function LaTeXSettingsDialog({
                           }
                           className={`px-4 py-1.5 text-sm border transition-all ${
                             editorSettings.minimap.side === side
-                              ? "bg-black text-white border-black"
-                              : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
+                              ? "bg-foreground text-background border-foreground"
+                              : "bg-background text-muted border-border hover:border-border-dark"
                           } ${index === 0 ? "" : "-ml-px"}`}
                         >
                           {side === "left" ? "Left" : "Right"}
@@ -620,9 +596,9 @@ export function LaTeXSettingsDialog({
               />
 
               {editorSettings.wordWrap === "wordWrapColumn" && (
-                <div className="pl-4 border-l-2 border-neutral-200 ml-1 py-2">
+                <div className="pl-4 border-l-2 border-border ml-1 py-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-neutral-700">
+                    <label className="text-sm font-medium text-foreground-secondary">
                       Wrap Column
                     </label>
                     <input
@@ -635,7 +611,7 @@ export function LaTeXSettingsDialog({
                           wordWrapColumn: parseInt(e.target.value) || 80,
                         })
                       }
-                      className="w-20 px-3 py-2 text-sm text-center border border-neutral-200 hover:border-neutral-400 focus:outline-none focus:border-black font-mono"
+                      className="w-20 px-3 py-2 text-sm text-center border border-border hover:border-border-dark focus:outline-none focus:border-foreground font-mono"
                     />
                   </div>
                 </div>
@@ -720,12 +696,12 @@ export function LaTeXSettingsDialog({
 
               <div className="py-2">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-neutral-700">
+                  <label className="text-sm font-medium text-foreground-secondary">
                     Main .tex File
                   </label>
                 </div>
                 {texFiles.length === 0 ? (
-                  <p className="text-sm text-neutral-400 py-2">
+                  <p className="text-sm text-muted-foreground py-2">
                     No .tex files found in project
                   </p>
                 ) : (
@@ -747,7 +723,7 @@ export function LaTeXSettingsDialog({
                     </SelectContent>
                   </Select>
                 )}
-                <p className="text-xs text-neutral-400 mt-1.5">
+                <p className="text-xs text-muted-foreground mt-1.5">
                   The entry point for LaTeX compilation
                 </p>
               </div>
@@ -762,9 +738,9 @@ export function LaTeXSettingsDialog({
                   }
                   placeholder="Please compile the LaTeX document..."
                   rows={3}
-                  className="w-full px-3 py-2.5 text-sm border border-neutral-200 hover:border-neutral-400 focus:outline-none focus:border-black resize-none font-mono"
+                  className="w-full px-3 py-2.5 text-sm border border-border hover:border-border-dark focus:outline-none focus:border-foreground resize-none font-mono"
                 />
-                <p className="text-xs text-neutral-400 mt-1.5">
+                <p className="text-xs text-muted-foreground mt-1.5">
                   The prompt sent to AI when compiling. Use {"{mainFile}"} as placeholder for the main file path.
                 </p>
               </div>
@@ -775,17 +751,17 @@ export function LaTeXSettingsDialog({
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 border flex items-center justify-center transition-colors ${
                     editorSettings.gitAutoFetchEnabled
-                      ? "bg-black border-black"
-                      : "bg-neutral-50 border-neutral-200"
+                      ? "bg-foreground border-foreground"
+                      : "bg-accent-hover border-border"
                   }`}>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className={editorSettings.gitAutoFetchEnabled ? "text-white" : "text-neutral-400"}>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className={editorSettings.gitAutoFetchEnabled ? "text-background" : "text-muted-foreground"}>
                       <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 2.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5ZM4.5 8a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5Zm7 0a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5Z" fill="currentColor" fillRule="evenodd"/>
                       <path d="M8 5.75v2.5M6 9l-1-.5M10 9l1-.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                     </svg>
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-neutral-700">
+                      <span className="text-sm font-medium text-foreground-secondary">
                         Auto Fetch
                       </span>
                       {editorSettings.gitAutoFetchEnabled && (
@@ -794,7 +770,7 @@ export function LaTeXSettingsDialog({
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-neutral-500 mt-0.5">
+                    <p className="text-xs text-muted mt-0.5">
                       Periodically sync remote refs in background
                     </p>
                   </div>
@@ -808,7 +784,7 @@ export function LaTeXSettingsDialog({
               </div>
 
               {editorSettings.gitAutoFetchEnabled && (
-                <div className="pl-4 border-l-2 border-neutral-200 ml-1">
+                <div className="pl-4 border-l-2 border-border ml-1">
                   <SelectField
                     label="Interval"
                     value={editorSettings.gitAutoFetchIntervalSeconds}
@@ -834,19 +810,19 @@ export function LaTeXSettingsDialog({
           </Tabs.Root>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-5 py-4 border-t border-neutral-200">
+          <div className="flex items-center justify-between px-5 py-4 border-t border-border">
             <button
               onClick={
                 activeTab === "editor"
                   ? handleResetEditorSettings
                   : handleResetLatexSettings
               }
-              className="text-xs text-neutral-500 hover:text-black transition-colors flex items-center gap-1.5 group"
+              className="text-xs text-muted hover:text-foreground transition-colors flex items-center gap-1.5 group"
             >
               <ArrowCounterClockwiseIcon className="size-3.5 group-hover:rotate-[-45deg] transition-transform" />
               Reset to Defaults
             </button>
-            <Dialog.Close className="px-6 py-2 text-sm font-medium bg-white text-black border-2 border-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all">
+            <Dialog.Close className="px-6 py-2 text-sm font-medium bg-background text-foreground border-2 border-foreground shadow-[3px_3px_0_0_var(--foreground)] hover:shadow-[1px_1px_0_0_var(--foreground)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all">
               Done
             </Dialog.Close>
           </div>

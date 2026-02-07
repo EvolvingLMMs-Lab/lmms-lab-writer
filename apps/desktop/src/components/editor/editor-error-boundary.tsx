@@ -36,19 +36,19 @@ export class EditorErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="h-full flex flex-col items-center justify-center p-6 text-center">
-          <div className="size-12 border border-neutral-300 flex items-center justify-center mb-4">
-            <WarningIcon className="size-6 text-neutral-400" />
+          <div className="size-12 border border-border flex items-center justify-center mb-4">
+            <WarningIcon className="size-6 text-muted-foreground" />
           </div>
-          <h3 className="text-sm font-medium text-neutral-900 mb-1">
+          <h3 className="text-sm font-medium text-foreground mb-1">
             Editor Component Error
           </h3>
-          <p className="text-xs text-neutral-500 mb-4 max-w-[200px]">
+          <p className="text-xs text-muted mb-4 max-w-[200px]">
             {this.state.error?.message || "An unexpected error occurred"}
           </p>
           <button
             onClick={this.handleReset}
-            className="px-3 py-1.5 text-xs border border-black bg-white hover:bg-neutral-50 transition-colors"
-            style={{ boxShadow: "2px 2px 0 0 black" }}
+            className="px-3 py-1.5 text-xs border border-foreground bg-background hover:bg-accent-hover transition-colors"
+            style={{ boxShadow: "2px 2px 0 0 var(--foreground)" }}
           >
             Try Again
           </button>

@@ -3,32 +3,37 @@
 import { useRef, memo, useCallback, useEffect } from "react";
 import { DiffEditor, Monaco, DiffOnMount } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
+import { useTheme } from "next-themes";
 import { EDITOR_MONO_FONT_FAMILY } from "@/lib/editor/font-stacks";
 
-// Define monochrome theme for diff editor
-const defineMonochromeTheme = (monaco: Monaco) => {
-  monaco.editor.defineTheme("monochrome", {
+// Define diff themes for both light and dark
+const defineDiffThemes = (monaco: Monaco) => {
+  monaco.editor.defineTheme("diff-light", {
     base: "vs",
     inherit: true,
     rules: [
-      { token: "", foreground: "0a0a0a", background: "ffffff" },
-      { token: "comment", foreground: "737373", fontStyle: "italic" },
-      { token: "keyword", foreground: "0a0a0a", fontStyle: "bold" },
-      { token: "string", foreground: "404040" },
-      { token: "number", foreground: "404040" },
-      { token: "variable", foreground: "0a0a0a" },
-      { token: "operator", foreground: "0a0a0a" },
-      { token: "delimiter", foreground: "404040" },
+      { token: "", foreground: "24292e", background: "ffffff" },
+      { token: "comment", foreground: "6a737d", fontStyle: "italic" },
+      { token: "keyword", foreground: "d73a49" },
+      { token: "string", foreground: "032f62" },
+      { token: "number", foreground: "005cc5" },
+      { token: "variable", foreground: "e36209" },
+      { token: "operator", foreground: "d73a49" },
+      { token: "delimiter", foreground: "586069" },
+      { token: "entity.name.function", foreground: "6f42c1" },
+      { token: "entity.name.tag", foreground: "22863a" },
+      { token: "constant", foreground: "005cc5" },
+      { token: "support", foreground: "005cc5" },
     ],
     colors: {
       "editor.background": "#ffffff",
-      "editor.foreground": "#0a0a0a",
-      "editorLineNumber.foreground": "#a3a3a3",
-      "editorLineNumber.activeForeground": "#0a0a0a",
-      "editor.selectionBackground": "#e5e5e5",
-      "editor.lineHighlightBackground": "#f5f5f5",
+      "editor.foreground": "#24292e",
+      "editorLineNumber.foreground": "#959da5",
+      "editorLineNumber.activeForeground": "#24292e",
+      "editor.selectionBackground": "#c8c8fa",
+      "editor.lineHighlightBackground": "#fafbfc",
       "editorGutter.background": "#ffffff",
-      "editorOverviewRuler.border": "#e5e5e5",
+      "editorOverviewRuler.border": "#e1e4e8",
       "diffEditor.insertedTextBackground": "#bbf7d0",
       "diffEditor.removedTextBackground": "#fecaca",
       "diffEditor.insertedLineBackground": "#f0fdf4",
@@ -40,6 +45,46 @@ const defineMonochromeTheme = (monaco: Monaco) => {
       "scrollbar.shadow": "#00000000",
       "scrollbarSlider.background": "#d4d4d4",
       "scrollbarSlider.hoverBackground": "#a3a3a3",
+    },
+  });
+
+  monaco.editor.defineTheme("diff-dark", {
+    base: "vs-dark",
+    inherit: true,
+    rules: [
+      { token: "", foreground: "f6f8fa", background: "24292e" },
+      { token: "comment", foreground: "959da5", fontStyle: "italic" },
+      { token: "keyword", foreground: "ea4a5a" },
+      { token: "string", foreground: "79b8ff" },
+      { token: "number", foreground: "c8e1ff" },
+      { token: "variable", foreground: "fb8532" },
+      { token: "operator", foreground: "ea4a5a" },
+      { token: "delimiter", foreground: "f6f8fa" },
+      { token: "entity.name.function", foreground: "b392f0" },
+      { token: "entity.name.tag", foreground: "7bcc72" },
+      { token: "constant", foreground: "c8e1ff" },
+      { token: "support", foreground: "c8e1ff" },
+    ],
+    colors: {
+      "editor.background": "#24292e",
+      "editor.foreground": "#f6f8fa",
+      "editorLineNumber.foreground": "#6a737d",
+      "editorLineNumber.activeForeground": "#f6f8fa",
+      "editor.selectionBackground": "#4c2889",
+      "editor.lineHighlightBackground": "#444d56",
+      "editorGutter.background": "#24292e",
+      "editorOverviewRuler.border": "#444d56",
+      "diffEditor.insertedTextBackground": "#7bcc7233",
+      "diffEditor.removedTextBackground": "#ea4a5a33",
+      "diffEditor.insertedLineBackground": "#7bcc7218",
+      "diffEditor.removedLineBackground": "#ea4a5a18",
+      "diffEditorGutter.insertedLineBackground": "#7bcc7225",
+      "diffEditorGutter.removedLineBackground": "#ea4a5a25",
+      "diffEditor.border": "#444d56",
+      "diffEditor.diagonalFill": "#444d56",
+      "scrollbar.shadow": "#00000000",
+      "scrollbarSlider.background": "#6a737d33",
+      "scrollbarSlider.hoverBackground": "#6a737d55",
     },
   });
 };
@@ -89,18 +134,29 @@ export const MonacoDiffEditor = memo(function MonacoDiffEditor({
   className = "",
 }: Props) {
   const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
+  const monacoRef = useRef<Monaco | null>(null);
   const isDisposingRef = useRef(false);
+  const { resolvedTheme } = useTheme();
 
+  const diffTheme = resolvedTheme === "dark" ? "diff-dark" : "diff-light";
   const detectedLanguage = language || (filePath ? getLanguageFromPath(filePath) : "plaintext");
 
   const handleBeforeMount = useCallback((monaco: Monaco) => {
-    defineMonochromeTheme(monaco);
+    defineDiffThemes(monaco);
   }, []);
 
-  const handleEditorDidMount: DiffOnMount = useCallback((editor) => {
+  const handleEditorDidMount: DiffOnMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
+    monacoRef.current = monaco;
     isDisposingRef.current = false;
   }, []);
+
+  // Reactively switch theme when app mode changes
+  useEffect(() => {
+    if (monacoRef.current) {
+      monacoRef.current.editor.setTheme(diffTheme);
+    }
+  }, [diffTheme]);
 
   // Cleanup effect to properly dispose the editor before unmount
   useEffect(() => {
@@ -145,7 +201,7 @@ export const MonacoDiffEditor = memo(function MonacoDiffEditor({
         language={detectedLanguage}
         original={original}
         modified={modified}
-        theme="monochrome"
+        theme={diffTheme}
         beforeMount={handleBeforeMount}
         onMount={handleEditorDidMount}
         options={{
@@ -178,8 +234,8 @@ export const MonacoDiffEditor = memo(function MonacoDiffEditor({
           contextmenu: false,
         }}
         loading={
-          <div className="flex items-center justify-center h-full bg-white">
-            <div className="text-sm text-neutral-400">Loading diff...</div>
+          <div className="flex items-center justify-center h-full bg-background">
+            <div className="text-sm text-muted-foreground">Loading diff...</div>
           </div>
         }
       />

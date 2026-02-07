@@ -5,7 +5,58 @@ import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { useTheme } from "next-themes";
 import { EDITOR_MONO_FONT_FAMILY } from "@/lib/editor/font-stacks";
+
+// GitHub Light terminal colors
+const LIGHT_TERMINAL_THEME = {
+  background: "#ffffff",
+  foreground: "#24292e",
+  cursor: "#24292e",
+  cursorAccent: "#ffffff",
+  selectionBackground: "#c8c8fa",
+  black: "#24292e",
+  red: "#d73a49",
+  green: "#22863a",
+  yellow: "#e36209",
+  blue: "#005cc5",
+  magenta: "#6f42c1",
+  cyan: "#032f62",
+  white: "#fafbfc",
+  brightBlack: "#959da5",
+  brightRed: "#cb2431",
+  brightGreen: "#28a745",
+  brightYellow: "#f9826c",
+  brightBlue: "#79b8ff",
+  brightMagenta: "#b392f0",
+  brightCyan: "#0366d6",
+  brightWhite: "#ffffff",
+};
+
+// GitHub Dark terminal colors
+const DARK_TERMINAL_THEME = {
+  background: "#24292e",
+  foreground: "#f6f8fa",
+  cursor: "#ffffff",
+  cursorAccent: "#24292e",
+  selectionBackground: "#4c2889",
+  black: "#24292e",
+  red: "#ea4a5a",
+  green: "#7bcc72",
+  yellow: "#fb8532",
+  blue: "#79b8ff",
+  magenta: "#b392f0",
+  cyan: "#c8e1ff",
+  white: "#f6f8fa",
+  brightBlack: "#959da5",
+  brightRed: "#f97583",
+  brightGreen: "#85e89d",
+  brightYellow: "#ffab70",
+  brightBlue: "#79b8ff",
+  brightMagenta: "#b392f0",
+  brightCyan: "#c8e1ff",
+  brightWhite: "#ffffff",
+};
 
 type Props = {
   projectPath?: string;
@@ -21,11 +72,20 @@ export const Terminal = memo(function Terminal({
   const fitAddonRef = useRef<FitAddon | null>(null);
   // Client-side mount check - intentionally set in effect for hydration safety
   const [mounted, setMounted] = useState(false);
+  const { resolvedTheme } = useTheme();
 
-   
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Reactively update terminal theme when app mode changes
+  useEffect(() => {
+    if (termRef.current) {
+      termRef.current.options.theme =
+        resolvedTheme === "dark" ? DARK_TERMINAL_THEME : LIGHT_TERMINAL_THEME;
+    }
+  }, [resolvedTheme]);
 
   useEffect(() => {
     if (!mounted || !containerRef.current || !projectPath) return;
@@ -40,29 +100,7 @@ export const Terminal = memo(function Terminal({
       fontFamily: EDITOR_MONO_FONT_FAMILY,
       fontSize: 13,
       lineHeight: 1.4,
-      theme: {
-        background: "#ffffff",
-        foreground: "#000000",
-        cursor: "#000000",
-        cursorAccent: "#ffffff",
-        selectionBackground: "#e5e5e5",
-        black: "#000000",
-        red: "#000000",
-        green: "#000000",
-        yellow: "#000000",
-        blue: "#000000",
-        magenta: "#000000",
-        cyan: "#000000",
-        white: "#ffffff",
-        brightBlack: "#666666",
-        brightRed: "#333333",
-        brightGreen: "#333333",
-        brightYellow: "#333333",
-        brightBlue: "#333333",
-        brightMagenta: "#333333",
-        brightCyan: "#333333",
-        brightWhite: "#ffffff",
-      },
+      theme: resolvedTheme === "dark" ? DARK_TERMINAL_THEME : LIGHT_TERMINAL_THEME,
       cursorBlink: true,
       cursorStyle: "block",
       scrollback: 10000,
@@ -194,7 +232,7 @@ export const Terminal = memo(function Terminal({
 
   if (!mounted) {
     return (
-      <div className={`bg-white ${className}`}>
+      <div className={`bg-background ${className}`}>
         <div className="p-4 text-sm text-muted">Loading terminal...</div>
       </div>
     );
@@ -202,7 +240,7 @@ export const Terminal = memo(function Terminal({
 
   if (!projectPath) {
     return (
-      <div className={`bg-white flex items-center justify-center ${className}`}>
+      <div className={`bg-background flex items-center justify-center ${className}`}>
         <span className="text-sm text-muted">
           Open a project to use terminal
         </span>
@@ -211,7 +249,7 @@ export const Terminal = memo(function Terminal({
   }
 
   return (
-    <div className={`bg-white ${className}`}>
+    <div className={`bg-background ${className}`}>
       <div ref={containerRef} className="w-full h-full p-2" />
     </div>
   );

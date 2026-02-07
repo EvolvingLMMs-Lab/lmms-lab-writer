@@ -267,21 +267,21 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50"
       onClick={(e) => {
         if (e.target === e.currentTarget && !isLoading) {
           onClose();
         }
       }}
     >
-      <div className="bg-background border border-black w-full max-w-md mx-4 p-6 shadow-[3px_3px_0_#000]">
+      <div className="bg-background border border-foreground w-full max-w-md mx-4 p-6 shadow-[3px_3px_0_var(--foreground)]">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium">Login with Code</h2>
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="p-1 hover:bg-neutral-100 transition-colors disabled:opacity-50"
+            className="p-1 hover:bg-surface-secondary transition-colors disabled:opacity-50"
           >
             <XIcon className="w-5 h-5" />
           </button>
@@ -294,13 +294,13 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
           </p>
 
           {/* Login URL - copyable fallback */}
-          <div className="bg-neutral-50 border border-border p-3 space-y-2">
+          <div className="bg-accent-hover border border-border p-3 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted">Login URL</span>
               <div className="flex items-center gap-1">
                 <button
                   onClick={handleCopyLink}
-                  className="p-1 text-muted hover:text-black hover:bg-neutral-200 transition-colors"
+                  className="p-1 text-muted hover:text-foreground hover:bg-surface-tertiary transition-colors"
                   title="Copy link"
                 >
                   {linkCopied ? (
@@ -311,7 +311,7 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
                 </button>
                 <button
                   onClick={handleOpenLink}
-                  className="p-1 text-muted hover:text-black hover:bg-neutral-200 transition-colors"
+                  className="p-1 text-muted hover:text-foreground hover:bg-surface-tertiary transition-colors"
                   title="Open in browser"
                 >
                   <ArrowSquareOutIcon className="w-3.5 h-3.5" />
@@ -335,7 +335,7 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
               }
             }}
             placeholder="Paste login code here..."
-            className="w-full px-3 py-2 text-sm font-mono border border-border focus:outline-none focus:border-black"
+            className="w-full px-3 py-2 text-sm font-mono border border-border focus:outline-none focus:border-foreground"
             disabled={isLoading || isSuccess}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -350,7 +350,7 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
             <button
               onClick={onClose}
               disabled={isLoading}
-              className="flex-1 px-4 py-2 text-sm border border-border hover:bg-neutral-50 transition-colors disabled:opacity-50"
+              className="flex-1 px-4 py-2 text-sm border border-border hover:bg-accent-hover transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
@@ -360,7 +360,7 @@ export function LoginCodeModal({ isOpen, onClose, onSuccess, loginUrl: baseLogin
               className={`flex-1 px-4 py-2 text-sm border transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
                 isSuccess
                   ? "border-green-600 bg-green-600 text-white"
-                  : "border-black bg-black text-white hover:bg-neutral-800 disabled:opacity-50"
+                  : "border-foreground bg-foreground text-background hover:opacity-90 disabled:opacity-50"
               }`}
             >
               {isSuccess ? (

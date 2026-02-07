@@ -8,20 +8,6 @@ export default {
   ],
   theme: {
     extend: {
-      colors: {
-        background: '#fafafa',
-        foreground: '#0a0a0a',
-        border: '#e5e5e5',
-        'border-dark': '#404040',
-        muted: '#737373',
-        'muted-foreground': '#a3a3a3',
-        accent: '#0a0a0a',
-        'accent-hover': '#f5f5f5',
-        'accent-muted': '#404040',
-        'accent-dark': '#000000',
-        surface: '#171717',
-        'surface-text': '#fafafa',
-      },
       fontFamily: {
         sans: [
           '-apple-system',

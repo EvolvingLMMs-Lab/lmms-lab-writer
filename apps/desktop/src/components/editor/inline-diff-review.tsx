@@ -13,8 +13,8 @@ const MonacoDiffEditor = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex items-center justify-center h-full bg-white">
-        <div className="text-sm text-neutral-400">Loading diff editor...</div>
+      <div className="flex items-center justify-center h-full bg-background">
+        <div className="text-sm text-muted-foreground">Loading diff editor...</div>
       </div>
     ),
   }
@@ -78,7 +78,7 @@ export const InlineDiffReview = memo(function InlineDiffReview({
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* Header bar with file info and actions */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-neutral-200 bg-amber-50">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-amber-50">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <PencilSimpleIcon className="w-4 h-4 text-amber-600" />
@@ -86,7 +86,7 @@ export const InlineDiffReview = memo(function InlineDiffReview({
               Review AI Changes
             </span>
           </div>
-          <span className="text-xs font-mono px-2 py-0.5 bg-white border border-amber-200 text-amber-700 rounded">
+          <span className="text-xs font-mono px-2 py-0.5 bg-background border border-amber-200 text-amber-700 rounded">
             {fileName}
           </span>
           <div className="flex items-center gap-1.5 text-xs font-mono">
@@ -104,12 +104,12 @@ export const InlineDiffReview = memo(function InlineDiffReview({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-neutral-500 font-mono hidden sm:block">
-            <kbd className="px-1 py-0.5 bg-white border border-neutral-300 rounded text-[9px]">
+          <span className="text-[10px] text-muted font-mono hidden sm:block">
+            <kbd className="px-1 py-0.5 bg-background border border-border rounded text-[9px]">
               Esc
             </kbd>{" "}
             dismiss ·{" "}
-            <kbd className="px-1 py-0.5 bg-white border border-neutral-300 rounded text-[9px]">
+            <kbd className="px-1 py-0.5 bg-background border border-border rounded text-[9px]">
               ⌘↵
             </kbd>{" "}
             accept
@@ -117,7 +117,7 @@ export const InlineDiffReview = memo(function InlineDiffReview({
           <button
             onClick={onDismiss}
             disabled={isProcessing}
-            className="px-3 py-1 text-xs font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded transition-colors disabled:opacity-50"
+            className="px-3 py-1 text-xs font-medium text-muted hover:text-foreground hover:bg-surface-secondary rounded transition-colors disabled:opacity-50"
           >
             Dismiss
           </button>

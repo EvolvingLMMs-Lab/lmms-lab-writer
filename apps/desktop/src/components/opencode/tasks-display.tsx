@@ -44,11 +44,11 @@ export function CollapsibleTasksBar({ tasks }: { tasks: TaskItem[] }) {
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
-    <div className="border-b border-border bg-white">
+    <div className="border-b border-border bg-background">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-neutral-50 transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-accent-hover transition-colors"
       >
         <DisclosureTriangle open={expanded} />
         <span className="text-[10px] font-mono font-medium text-muted uppercase tracking-wider">
@@ -58,7 +58,7 @@ export function CollapsibleTasksBar({ tasks }: { tasks: TaskItem[] }) {
           {completed}/{total}
         </span>
         {/* Progress bar */}
-        <div className="flex-1 h-1 bg-neutral-100 rounded-full overflow-hidden mx-1">
+        <div className="flex-1 h-1 bg-surface-secondary rounded-full overflow-hidden mx-1">
           <div
             className="h-full bg-accent transition-all duration-300"
             style={{ width: `${percent}%` }}
@@ -72,19 +72,19 @@ export function CollapsibleTasksBar({ tasks }: { tasks: TaskItem[] }) {
       {expanded && (
         <div ref={tasksParent} className="border-t border-border divide-y divide-border max-h-48 overflow-y-auto">
           {tasks.map((task) => (
-            <div key={task.id} className="px-3 py-1.5 flex items-start gap-2 hover:bg-neutral-50 transition-colors">
+            <div key={task.id} className="px-3 py-1.5 flex items-start gap-2 hover:bg-accent-hover transition-colors">
               <div className={`size-3.5 flex-shrink-0 mt-0.5 border flex items-center justify-center ${
                 task.status === 'completed'
                   ? 'border-accent bg-accent'
                   : task.status === 'in_progress'
                     ? 'border-accent'
                     : task.status === 'cancelled'
-                      ? 'border-neutral-300 bg-neutral-100'
-                      : 'border-neutral-300'
+                      ? 'border-border bg-surface-secondary'
+                      : 'border-border'
               }`}>
-                {task.status === 'completed' && <CheckIcon className="size-2.5 text-white" />}
+                {task.status === 'completed' && <CheckIcon className="size-2.5 text-background" />}
                 {task.status === 'in_progress' && <Spinner className="size-2" />}
-                {task.status === 'cancelled' && <span className="text-[9px] text-neutral-400">&times;</span>}
+                {task.status === 'cancelled' && <span className="text-[9px] text-muted-foreground">&times;</span>}
               </div>
               <span className={`text-[11px] leading-tight ${
                 task.status === 'completed' || task.status === 'cancelled'
@@ -105,26 +105,26 @@ export function TasksDisplay({ tasks }: { tasks: TaskItem[] }) {
   const [tasksListParent] = useAutoAnimate({ duration: 150 });
 
   return (
-    <div className="border-2 border-border bg-white my-2 overflow-hidden">
-      <div className="bg-neutral-50 px-3 py-1.5 border-b border-border flex justify-between items-center">
+    <div className="border-2 border-border bg-background my-2 overflow-hidden">
+      <div className="bg-accent-hover px-3 py-1.5 border-b border-border flex justify-between items-center">
         <span className="text-[10px] font-mono font-medium text-muted uppercase tracking-wider">Tasks</span>
         <span className="text-[10px] font-mono text-muted">{tasks.length}</span>
       </div>
       <div ref={tasksListParent} className="divide-y divide-border">
         {tasks.map((task) => (
-          <div key={task.id} className="px-3 py-2 flex items-start gap-2 hover:bg-neutral-50 transition-colors">
+          <div key={task.id} className="px-3 py-2 flex items-start gap-2 hover:bg-accent-hover transition-colors">
             <div className={`size-4 flex-shrink-0 mt-0.5 border flex items-center justify-center ${
               task.status === 'completed'
                 ? 'border-accent bg-accent'
                 : task.status === 'in_progress'
                   ? 'border-accent'
                   : task.status === 'cancelled'
-                    ? 'border-neutral-300 bg-neutral-100'
-                    : 'border-neutral-300'
+                    ? 'border-border bg-surface-secondary'
+                    : 'border-border'
             }`}>
-              {task.status === 'completed' && <CheckIcon className="size-3 text-white" />}
+              {task.status === 'completed' && <CheckIcon className="size-3 text-background" />}
               {task.status === 'in_progress' && <Spinner className="size-2.5" />}
-              {task.status === 'cancelled' && <span className="text-[10px] text-neutral-400">&times;</span>}
+              {task.status === 'cancelled' && <span className="text-[10px] text-muted-foreground">&times;</span>}
             </div>
 
             <div className="flex-1 min-w-0">

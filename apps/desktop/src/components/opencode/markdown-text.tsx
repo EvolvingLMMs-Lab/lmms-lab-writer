@@ -23,7 +23,7 @@ export function MarkdownText({
     return {
       pre({ children }) {
         return (
-          <pre className="bg-neutral-50 border border-neutral-200 p-3 overflow-x-auto text-[11px] my-3 font-mono leading-relaxed">
+          <pre className="bg-accent-hover border border-border p-3 overflow-x-auto text-[11px] my-3 font-mono leading-relaxed">
             {children}
           </pre>
         );
@@ -37,14 +37,14 @@ export function MarkdownText({
             return (
               <button
                 onClick={() => onFileClick(content)}
-                className="text-black font-medium font-mono text-[12px] hover:underline cursor-pointer bg-neutral-100 px-1"
+                className="text-foreground font-medium font-mono text-[12px] hover:underline cursor-pointer bg-surface-secondary px-1"
               >
                 {content}
               </button>
             );
           }
           return (
-            <code className="text-black font-medium font-mono text-[12px] bg-neutral-100 px-1">
+            <code className="text-foreground font-medium font-mono text-[12px] bg-surface-secondary px-1">
               {content}
             </code>
           );
@@ -90,7 +90,7 @@ export function MarkdownText({
       },
       blockquote({ children }) {
         return (
-          <blockquote className="border-l-2 border-neutral-300 pl-3 my-2 text-neutral-500 italic">
+          <blockquote className="border-l-2 border-border pl-3 my-2 text-muted italic">
             {children}
           </blockquote>
         );
@@ -105,18 +105,18 @@ export function MarkdownText({
         );
       },
       thead({ children }) {
-        return <thead className="bg-neutral-50">{children}</thead>;
+        return <thead className="bg-accent-hover">{children}</thead>;
       },
       th({ children }) {
         return (
-          <th className="border border-neutral-200 px-2 py-1 text-left font-medium text-neutral-700">
+          <th className="border border-border px-2 py-1 text-left font-medium text-foreground-secondary">
             {children}
           </th>
         );
       },
       td({ children }) {
         return (
-          <td className="border border-neutral-200 px-2 py-1 text-neutral-600">
+          <td className="border border-border px-2 py-1 text-muted">
             {children}
           </td>
         );

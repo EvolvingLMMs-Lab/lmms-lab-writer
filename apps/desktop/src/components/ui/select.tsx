@@ -20,10 +20,10 @@ export const SelectTrigger = React.forwardRef<
     className={`
       inline-flex items-center justify-between gap-2
       px-3 py-2 text-sm min-w-[140px] cursor-pointer
-      border border-neutral-200 bg-white
-      hover:border-neutral-400 transition-colors
-      focus:outline-none focus:border-black
-      data-[placeholder]:text-neutral-400
+      border border-border bg-background
+      hover:border-border-dark transition-colors
+      focus:outline-none focus:border-foreground
+      data-[placeholder]:text-muted-foreground
       disabled:cursor-not-allowed disabled:opacity-50
       ${className ?? ""}
     `.trim()}
@@ -31,7 +31,7 @@ export const SelectTrigger = React.forwardRef<
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <CaretDownIcon className="size-3.5 text-neutral-500 shrink-0" />
+      <CaretDownIcon className="size-3.5 text-muted shrink-0" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
@@ -51,7 +51,7 @@ export const SelectContent = React.forwardRef<
       sideOffset={4}
       className={`
         z-[10000] overflow-hidden
-        bg-white border border-neutral-200 shadow-md
+        bg-background border border-border shadow-md
         ${position === "popper" ? "w-[var(--radix-select-trigger-width)] max-h-[min(var(--radix-select-content-available-height),240px)]" : ""}
         ${className ?? ""}
       `.trim()}
@@ -79,8 +79,8 @@ export const SelectItem = React.forwardRef<
     className={`
       relative flex items-center gap-2
       px-2 py-1.5 text-sm cursor-pointer select-none outline-none
-      text-neutral-700
-      data-[highlighted]:bg-neutral-100 data-[highlighted]:text-black
+      text-foreground-secondary
+      data-[highlighted]:bg-surface-secondary data-[highlighted]:text-foreground
       data-[state=checked]:font-medium
       data-[disabled]:pointer-events-none data-[disabled]:opacity-50
       ${className ?? ""}

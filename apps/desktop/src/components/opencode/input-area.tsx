@@ -114,17 +114,17 @@ function CustomSelect({
         ref={triggerRef}
         type="button"
         onClick={openMenu}
-        className={`flex items-center gap-1 text-xs font-medium text-neutral-600 hover:text-black transition-colors cursor-pointer ${className || ""}`}
+        className={`flex items-center gap-1 text-xs font-medium text-muted hover:text-foreground transition-colors cursor-pointer ${className || ""}`}
       >
         <span className="truncate">{selectedLabel}</span>
-        <ChevronIcon className="size-3 text-neutral-400 flex-shrink-0" />
+        <ChevronIcon className="size-3 text-muted-foreground flex-shrink-0" />
       </button>
       {open &&
         typeof document !== "undefined" &&
         createPortal(
           <div
             ref={menuRef}
-            className="fixed z-[9999] min-w-[160px] max-h-[240px] overflow-y-auto border border-neutral-200 bg-white shadow-lg rounded-lg py-1"
+            className="fixed z-[9999] min-w-[160px] max-h-[240px] overflow-y-auto border border-border bg-background shadow-lg rounded-lg py-1"
             style={{ left: pos.x, top: pos.y, visibility: positioned ? "visible" : "hidden" }}
           >
             {options.map((opt) => (
@@ -137,8 +137,8 @@ function CustomSelect({
                 }}
                 className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
                   opt.value === value
-                    ? "bg-neutral-100 text-black font-medium"
-                    : "text-neutral-600 hover:bg-neutral-50 hover:text-black"
+                    ? "bg-surface-secondary text-foreground font-medium"
+                    : "text-muted hover:bg-accent-hover hover:text-foreground"
                 }`}
               >
                 {opt.label}
@@ -209,17 +209,17 @@ function GroupedSelect({
         ref={triggerRef}
         type="button"
         onClick={openMenu}
-        className={`flex items-center gap-1 text-xs font-medium text-neutral-600 hover:text-black transition-colors cursor-pointer ${className || ""}`}
+        className={`flex items-center gap-1 text-xs font-medium text-muted hover:text-foreground transition-colors cursor-pointer ${className || ""}`}
       >
         <span className="truncate">{selectedLabel}</span>
-        <ChevronIcon className="size-3 text-neutral-400 flex-shrink-0" />
+        <ChevronIcon className="size-3 text-muted-foreground flex-shrink-0" />
       </button>
       {open &&
         typeof document !== "undefined" &&
         createPortal(
           <div
             ref={menuRef}
-            className="fixed z-[9999] min-w-[180px] max-h-[300px] overflow-y-auto border border-neutral-200 bg-white shadow-lg rounded-lg py-1"
+            className="fixed z-[9999] min-w-[180px] max-h-[300px] overflow-y-auto border border-border bg-background shadow-lg rounded-lg py-1"
             style={{ left: pos.x, top: pos.y, visibility: positioned ? "visible" : "hidden" }}
           >
             {currentGroup ? (
@@ -227,7 +227,7 @@ function GroupedSelect({
                 <button
                   type="button"
                   onClick={() => setActiveGroup(null)}
-                  className="w-full flex items-center gap-1.5 px-3 py-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors border-b border-neutral-100 mb-1"
+                  className="w-full flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-muted transition-colors border-b border-surface-secondary mb-1"
                 >
                   <CaretLeftIcon className="size-3" />
                   <span className="font-medium">{currentGroup.label}</span>
@@ -242,8 +242,8 @@ function GroupedSelect({
                     }}
                     className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
                       opt.value === value
-                        ? "bg-neutral-100 text-black font-medium"
-                        : "text-neutral-600 hover:bg-neutral-50 hover:text-black"
+                        ? "bg-surface-secondary text-foreground font-medium"
+                        : "text-muted hover:bg-accent-hover hover:text-foreground"
                     }`}
                   >
                     {opt.label}
@@ -258,12 +258,12 @@ function GroupedSelect({
                   onClick={() => setActiveGroup(group.label)}
                   className={`w-full flex items-center justify-between px-3 py-1.5 text-xs transition-colors ${
                     group.label === selectedGroup
-                      ? "bg-neutral-100 text-black font-medium"
-                      : "text-neutral-600 hover:bg-neutral-50 hover:text-black"
+                      ? "bg-surface-secondary text-foreground font-medium"
+                      : "text-muted hover:bg-accent-hover hover:text-foreground"
                   }`}
                 >
                   <span>{group.label}</span>
-                  <CaretRightIcon className="size-3 text-neutral-400" />
+                  <CaretRightIcon className="size-3 text-muted-foreground" />
                 </button>
               ))
             )}
@@ -439,7 +439,7 @@ export function InputArea({
   }, [selectedModel, providers]);
 
   return (
-    <div className="border border-neutral-200 rounded-xl bg-neutral-50 focus-within:border-neutral-400 focus-within:bg-white transition-all">
+    <div className="border border-border rounded-xl bg-accent-hover focus-within:border-border-dark focus-within:bg-background transition-all">
         {/* Attached images preview - above textarea */}
         {attachedFiles.length > 0 && (
           <div className="flex gap-2 px-3 pt-3 pb-1 overflow-x-auto">
@@ -453,12 +453,12 @@ export function InputArea({
                   <img
                     src={file.url}
                     alt={file.filename}
-                    className="h-16 w-16 object-cover rounded border border-neutral-200 cursor-zoom-in hover:border-neutral-400 transition-colors"
+                    className="h-16 w-16 object-cover rounded border border-border cursor-zoom-in hover:border-border-dark transition-colors"
                   />
                 </button>
                 <button
                   onClick={() => handleRemoveFile(index)}
-                  className="absolute -top-1.5 -right-1.5 size-5 bg-black text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute -top-1.5 -right-1.5 size-5 bg-foreground text-background rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Remove"
                 >
                   <XIcon className="size-3" />
@@ -476,7 +476,7 @@ export function InputArea({
           onPaste={handlePaste}
           placeholder='Ask anything... "Add unit tests for the user service"'
           disabled={isWorking}
-          className={`w-full min-h-[44px] max-h-[200px] px-4 py-3 resize-none focus:outline-none text-sm bg-transparent placeholder:text-neutral-400 ${attachedFiles.length > 0 ? 'pt-2' : ''}`}
+          className={`w-full min-h-[44px] max-h-[200px] px-4 py-3 resize-none focus:outline-none text-sm bg-transparent placeholder:text-muted-foreground ${attachedFiles.length > 0 ? 'pt-2' : ''}`}
           rows={1}
         />
         <div className="flex items-center gap-2 px-3 py-2">
@@ -522,7 +522,7 @@ export function InputArea({
               className="min-w-0 max-w-[200px]"
             />
             {selectedModelInfo.isMax && (
-              <span className="text-xs text-neutral-500 font-medium flex-shrink-0">
+              <span className="text-xs text-muted font-medium flex-shrink-0">
                 Max
               </span>
             )}
@@ -541,7 +541,7 @@ export function InputArea({
             disabled={isWorking}
             className={`p-1.5 transition-colors flex-shrink-0 ${attachedFiles.length > 0
               ? "text-accent"
-              : "text-neutral-400 hover:text-neutral-600"
+              : "text-muted-foreground hover:text-muted"
               } ${isWorking ? "opacity-50 cursor-not-allowed" : ""}`}
             title="Attach image"
           >
@@ -554,7 +554,7 @@ export function InputArea({
           {isWorking ? (
             <button
               onClick={onAbort}
-              className="p-1.5 text-neutral-500 hover:text-black transition-colors"
+              className="p-1.5 text-muted hover:text-foreground transition-colors"
               title="Stop"
             >
               <StopIcon className="size-5" />
@@ -563,10 +563,10 @@ export function InputArea({
             <button
               onClick={onSend}
               disabled={!input.trim() && attachedFiles.length === 0}
-              className="p-1.5 bg-neutral-200 hover:bg-neutral-300 rounded-full transition-colors disabled:opacity-30 disabled:hover:bg-neutral-200"
+              className="p-1.5 bg-surface-tertiary hover:bg-border rounded-full transition-colors disabled:opacity-30 disabled:hover:bg-surface-tertiary"
               title="Send"
             >
-              <SendIcon className="size-4 text-neutral-600" />
+              <SendIcon className="size-4 text-muted" />
             </button>
           )}
         </div>
@@ -574,7 +574,7 @@ export function InputArea({
         {/* Image preview modal */}
         {previewIndex !== null && attachedFiles[previewIndex] && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/80"
             onClick={() => setPreviewIndex(null)}
           >
             <div className="relative max-w-[90vw] max-h-[90vh]">
@@ -586,7 +586,7 @@ export function InputArea({
               />
               <button
                 onClick={() => setPreviewIndex(null)}
-                className="absolute top-2 right-2 size-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+                className="absolute top-2 right-2 size-8 bg-foreground/50 hover:bg-foreground/70 text-background rounded-full flex items-center justify-center transition-colors"
                 title="Close"
               >
                 <XIcon className="size-5" />
@@ -599,7 +599,7 @@ export function InputArea({
                       e.stopPropagation();
                       setPreviewIndex((previewIndex - 1 + attachedFiles.length) % attachedFiles.length);
                     }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 size-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 size-10 bg-foreground/50 hover:bg-foreground/70 text-background rounded-full flex items-center justify-center transition-colors"
                     title="Previous"
                   >
                     <CaretLeftIcon className="size-6" />
@@ -609,7 +609,7 @@ export function InputArea({
                       e.stopPropagation();
                       setPreviewIndex((previewIndex + 1) % attachedFiles.length);
                     }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 size-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 size-10 bg-foreground/50 hover:bg-foreground/70 text-background rounded-full flex items-center justify-center transition-colors"
                     title="Next"
                   >
                     <CaretRightIcon className="size-6" />

@@ -31,18 +31,18 @@ export function RecentProjects({
         <h3 className="text-sm font-medium text-muted">Recent Projects</h3>
         <button
           onClick={() => setShowClearConfirm(true)}
-          className="text-xs text-muted hover:text-black transition-colors"
+          className="text-xs text-muted hover:text-foreground transition-colors"
         >
           Clear All
         </button>
       </div>
-      <div className="border border-border bg-white">
+      <div className="border border-border bg-background">
         {projects.map((project) => {
           const timeStr = formatRelativeTime(new Date(project.lastOpened));
           return (
             <div
               key={project.path}
-              className="flex items-center border-b border-border last:border-b-0 hover:bg-neutral-50 transition-colors"
+              className="flex items-center border-b border-border last:border-b-0 hover:bg-accent-hover transition-colors"
             >
               <button
                 onClick={() => onSelect(project.path)}
@@ -107,13 +107,13 @@ function ConfirmDialog({
   onCancel: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white border border-border p-4 max-w-xs w-full mx-4 shadow-[4px_4px_0_0_#000]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50">
+      <div className="bg-background border border-border p-4 max-w-xs w-full mx-4 shadow-[4px_4px_0_0_var(--foreground)]">
         <p className="text-sm mb-4">{message}</p>
         <div className="flex justify-end gap-2">
           <button
             onClick={onCancel}
-            className="px-3 py-1.5 text-sm border border-border hover:bg-neutral-100 transition-colors"
+            className="px-3 py-1.5 text-sm border border-border hover:bg-surface-secondary transition-colors"
           >
             Cancel
           </button>

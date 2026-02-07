@@ -58,7 +58,7 @@ export function ConfirmDialog({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/30"
+          className="absolute inset-0 bg-foreground/30"
           onClick={onCancel}
         />
 
@@ -67,7 +67,7 @@ export function ConfirmDialog({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.98, y: 6 }}
           transition={{ duration: 0.12 }}
-          className="relative z-10 w-full max-w-sm border border-black bg-white text-black shadow-[3px_3px_0_#000]"
+          className="relative z-10 w-full max-w-sm border border-foreground bg-background text-foreground shadow-[3px_3px_0_var(--foreground)]"
         >
           <div className="px-5 py-4 border-b border-border">
             <h3 id={titleId} className="text-sm font-medium">

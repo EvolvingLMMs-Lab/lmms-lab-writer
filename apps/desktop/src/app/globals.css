@@ -1,18 +1,24 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #fafafa;
-  --color-foreground: #0a0a0a;
-  --color-border: #e5e5e5;
-  --color-border-dark: #404040;
-  --color-muted: #737373;
-  --color-muted-foreground: #a3a3a3;
-  --color-accent: #0a0a0a;
-  --color-accent-hover: #f5f5f5;
-  --color-accent-muted: #404040;
-  --color-accent-dark: #000000;
-  --color-surface: #171717;
-  --color-surface-text: #fafafa;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-border-dark: var(--border-dark);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-muted: var(--accent-muted);
+  --color-accent-dark: var(--accent-dark);
+  --color-surface: var(--surface);
+  --color-surface-text: var(--surface-text);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-tertiary: var(--surface-tertiary);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-success: var(--success);
+  --color-error: var(--error);
+  --color-shadow: var(--shadow);
 
   --font-family-sans:
     -apple-system,
@@ -76,8 +82,33 @@
   --accent-dark: #000000;
   --surface: #171717;
   --surface-text: #fafafa;
+  --surface-secondary: #f5f5f5;
+  --surface-tertiary: #e5e5e5;
+  --foreground-secondary: #404040;
   --success: #000000;
   --error: #000000;
+  --shadow: #000000;
+}
+
+.dark {
+  --background: #24292e;
+  --foreground: #f6f8fa;
+  --border: #444d56;
+  --border-dark: #586069;
+  --muted: #959da5;
+  --muted-foreground: #6a737d;
+  --accent: #f6f8fa;
+  --accent-hover: #2f363d;
+  --accent-muted: #586069;
+  --accent-dark: #fb8532;
+  --surface: #1f2428;
+  --surface-text: #f6f8fa;
+  --surface-secondary: #2f363d;
+  --surface-tertiary: #444d56;
+  --foreground-secondary: #e1e4e8;
+  --success: #7bcc72;
+  --error: #ea4a5a;
+  --shadow: #000000;
 }
 
 html,
@@ -101,7 +132,7 @@ body {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #d4d4d4 transparent;
+  scrollbar-color: var(--border) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -114,11 +145,11 @@ body {
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: #d4d4d4;
+  background-color: var(--border);
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: #a3a3a3;
+  background-color: var(--muted-foreground);
 }
 
 *::-webkit-scrollbar-corner {
@@ -150,11 +181,11 @@ body {
 }
 
 .scrollbar-sharp::-webkit-scrollbar-thumb {
-  background-color: #d4d4d4;
+  background-color: var(--border);
 }
 
 .scrollbar-sharp::-webkit-scrollbar-thumb:hover {
-  background-color: #a3a3a3;
+  background-color: var(--muted-foreground);
 }
 
 /* OverlayScrollbars custom theme - subtle shadow on hover */
@@ -165,8 +196,8 @@ body {
   --os-track-border-radius: 0;
   --os-handle-border-radius: 0;
   --os-handle-bg: transparent;
-  --os-handle-bg-hover: rgba(0, 0, 0, 0.15);
-  --os-handle-bg-active: rgba(0, 0, 0, 0.25);
+  --os-handle-bg-hover: color-mix(in srgb, var(--foreground) 15%, transparent);
+  --os-handle-bg-active: color-mix(in srgb, var(--foreground) 25%, transparent);
 }
 
 .os-theme-monochrome .os-scrollbar {
@@ -188,118 +219,118 @@ body {
 .os-theme-monochrome .os-scrollbar .os-scrollbar-handle {
   border-radius: 0 !important;
   border: none !important;
-  background: rgba(0, 0, 0, 0.08) !important;
+  background: color-mix(in srgb, var(--foreground) 8%, transparent) !important;
   transition: background-color 0.15s ease !important;
 }
 
 .os-theme-monochrome .os-scrollbar .os-scrollbar-handle:hover {
-  background: rgba(0, 0, 0, 0.2) !important;
+  background: color-mix(in srgb, var(--foreground) 20%, transparent) !important;
 }
 
 .os-theme-monochrome .os-scrollbar .os-scrollbar-handle:active,
 .os-theme-monochrome .os-scrollbar .os-scrollbar-handle.active {
-  background: rgba(0, 0, 0, 0.3) !important;
+  background: color-mix(in srgb, var(--foreground) 30%, transparent) !important;
 }
 
 kbd {
   @apply inline-flex items-center justify-center gap-1 px-2 py-1 text-xs font-mono;
-  @apply bg-white border border-neutral-300 text-neutral-700;
+  @apply bg-background border border-border text-foreground-secondary;
   box-shadow:
-    0 1px 0 1px rgba(0, 0, 0, 0.04),
-    0 2px 0 rgba(0, 0, 0, 0.06),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+    0 1px 0 1px color-mix(in srgb, var(--shadow) 4%, transparent),
+    0 2px 0 color-mix(in srgb, var(--shadow) 6%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--shadow) 4%, transparent);
 }
 
 .btn {
   @apply px-6 py-3 font-mono text-sm uppercase tracking-wider transition-all duration-150 flex items-center justify-center gap-2;
-  @apply border border-black rounded-none;
+  @apply border border-foreground rounded-none;
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
-  box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 1);
+  box-shadow: 3px 3px 0 0 var(--foreground);
 }
 
 .btn:hover {
-  box-shadow: 2px 2px 0 0 rgba(0, 0, 0, 1);
+  box-shadow: 2px 2px 0 0 var(--foreground);
   transform: translate(1px, 1px);
 }
 
 .btn:active {
-  box-shadow: 0 0 0 0 rgba(0, 0, 0, 1);
+  box-shadow: 0 0 0 0 var(--foreground);
   transform: translate(3px, 3px);
 }
 
 .btn:disabled {
   @apply opacity-50 cursor-not-allowed;
-  box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.3);
+  box-shadow: 3px 3px 0 0 color-mix(in srgb, var(--foreground) 30%, transparent);
 }
 
 .btn:disabled:hover {
   transform: none;
-  box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.3);
+  box-shadow: 3px 3px 0 0 color-mix(in srgb, var(--foreground) 30%, transparent);
 }
 
 .btn-primary {
-  @apply bg-white text-black;
+  @apply bg-background text-foreground;
 }
 
 .btn-primary:hover {
-  @apply bg-neutral-100;
+  @apply bg-surface-secondary;
 }
 
 .btn-secondary {
-  @apply bg-white text-black;
+  @apply bg-background text-foreground;
 }
 
 .btn-secondary:hover {
-  @apply bg-neutral-100;
+  @apply bg-surface-secondary;
 }
 
 /* Small button variant */
 .btn-sm {
   @apply px-3 py-1.5 text-xs;
-  box-shadow: 2px 2px 0 0 rgba(0, 0, 0, 1);
+  box-shadow: 2px 2px 0 0 var(--foreground);
 }
 
 .btn-sm:hover {
-  box-shadow: 1px 1px 0 0 rgba(0, 0, 0, 1);
+  box-shadow: 1px 1px 0 0 var(--foreground);
   transform: translate(1px, 1px);
 }
 
 .btn-sm:active {
-  box-shadow: 0 0 0 0 rgba(0, 0, 0, 1);
+  box-shadow: 0 0 0 0 var(--foreground);
   transform: translate(2px, 2px);
 }
 
 /* Icon-only button */
 .btn-icon {
   @apply p-2;
-  box-shadow: 2px 2px 0 0 rgba(0, 0, 0, 1);
+  box-shadow: 2px 2px 0 0 var(--foreground);
 }
 
 .btn-icon:hover {
-  box-shadow: 1px 1px 0 0 rgba(0, 0, 0, 1);
+  box-shadow: 1px 1px 0 0 var(--foreground);
   transform: translate(1px, 1px);
 }
 
 .btn-icon:active {
-  box-shadow: 0 0 0 0 rgba(0, 0, 0, 1);
+  box-shadow: 0 0 0 0 var(--foreground);
   transform: translate(2px, 2px);
 }
 
 /* Outline/ghost variant - no shadow, just border */
 .btn-outline {
-  @apply bg-transparent text-black border border-black;
+  @apply bg-transparent text-foreground border border-foreground;
   box-shadow: none;
 }
 
 .btn-outline:hover {
-  @apply bg-neutral-100;
+  @apply bg-surface-secondary;
   box-shadow: none;
   transform: none;
 }
 
 .btn-outline:active {
-  @apply bg-neutral-200;
+  @apply bg-surface-tertiary;
   box-shadow: none;
   transform: none;
 }
@@ -309,37 +340,37 @@ kbd {
   padding: 0.5rem 1rem;
   font-family: var(--font-family-mono), monospace;
   font-size: 0.875rem;
-  background-color: #ffffff;
-  color: #0a0a0a;
-  border: 2px solid #0a0a0a;
+  background-color: var(--background);
+  color: var(--foreground);
+  border: 2px solid var(--foreground);
   transition: all 100ms ease;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   cursor: pointer;
-  box-shadow: 3px 3px 0 0 #0a0a0a;
+  box-shadow: 3px 3px 0 0 var(--foreground);
 }
 
 .btn-brutalist:hover {
-  box-shadow: 1px 1px 0 0 #0a0a0a;
+  box-shadow: 1px 1px 0 0 var(--foreground);
   transform: translate(2px, 2px);
 }
 
 .btn-brutalist:active {
-  box-shadow: 0 0 0 0 #0a0a0a;
+  box-shadow: 0 0 0 0 var(--foreground);
   transform: translate(3px, 3px);
 }
 
 .btn-brutalist:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.3);
+  box-shadow: 3px 3px 0 0 color-mix(in srgb, var(--foreground) 30%, transparent);
 }
 
 .btn-brutalist:disabled:hover {
   transform: none;
-  box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.3);
+  box-shadow: 3px 3px 0 0 color-mix(in srgb, var(--foreground) 30%, transparent);
 }
 
 /* Ensure consistent number widths in UI */
@@ -348,7 +379,7 @@ kbd {
 }
 
 .badge {
-  @apply inline-flex items-center bg-black text-white px-2 py-0.5 text-xs font-mono uppercase tracking-widest;
+  @apply inline-flex items-center bg-foreground text-background px-2 py-0.5 text-xs font-mono uppercase tracking-widest;
 }
 
 .input {
@@ -356,7 +387,7 @@ kbd {
 }
 
 .input-underline {
-  @apply w-full p-0 border-0 border-b border-border bg-transparent placeholder-neutral-300 resize-none focus:ring-0 focus:border-black transition-colors;
+  @apply w-full p-0 border-0 border-b border-border bg-transparent placeholder-muted-foreground resize-none focus:ring-0 focus:border-foreground transition-colors;
 }
 
 @keyframes modal-overlay-in {
@@ -651,14 +682,14 @@ kbd {
 }
 
 [data-react-arborist-drop-target="true"] {
-  background-color: rgba(0, 0, 0, 0.08) !important;
-  outline: 2px dashed rgba(0, 0, 0, 0.3);
+  background-color: color-mix(in srgb, var(--foreground) 8%, transparent) !important;
+  outline: 2px dashed color-mix(in srgb, var(--foreground) 30%, transparent);
   outline-offset: -2px;
 }
 
 [data-react-arborist-drop-target="true"][data-react-arborist-drop-position="inside"] {
-  background-color: rgba(0, 0, 0, 0.12) !important;
-  outline: 2px solid rgba(0, 0, 0, 0.4);
+  background-color: color-mix(in srgb, var(--foreground) 12%, transparent) !important;
+  outline: 2px solid color-mix(in srgb, var(--foreground) 40%, transparent);
 }
 
 /* Drop indicator line for reordering */
@@ -669,7 +700,7 @@ kbd {
   left: 0;
   right: 0;
   height: 2px;
-  background-color: #000;
+  background-color: var(--foreground);
   pointer-events: none;
 }
 
@@ -737,7 +768,7 @@ kbd {
     background-color: transparent;
   }
   25%, 75% {
-    background-color: rgba(0, 0, 0, 0.15);
+    background-color: color-mix(in srgb, var(--foreground) 15%, transparent);
   }
 }
 
