@@ -686,6 +686,51 @@ kbd {
   cursor: default;
 }
 
+/* Radix UI animations */
+@keyframes radix-overlay-show {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes radix-overlay-hide {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes radix-content-show {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes radix-content-hide {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+}
+@keyframes radix-select-show {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes radix-select-hide {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-4px); }
+}
+
+[data-radix-dialog-overlay][data-state="open"] {
+  animation: radix-overlay-show 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+[data-radix-dialog-overlay][data-state="closed"] {
+  animation: radix-overlay-hide 100ms ease-in;
+}
+[data-radix-dialog-content][data-state="open"] {
+  animation: radix-content-show 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+[data-radix-dialog-content][data-state="closed"] {
+  animation: radix-content-hide 100ms ease-in;
+}
+[data-radix-select-content][data-state="open"] {
+  animation: radix-select-show 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+[data-radix-select-content][data-state="closed"] {
+  animation: radix-select-hide 80ms ease-in;
+}
+
 /* File tree highlight animation */
 @keyframes file-highlight {
   0%, 100% {
