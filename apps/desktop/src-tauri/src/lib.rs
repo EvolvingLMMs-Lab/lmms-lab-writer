@@ -69,6 +69,7 @@ pub fn run() {
             commands::fs::delete_path,
             commands::git::git_status,
             commands::git::git_log,
+            commands::git::git_graph,
             commands::git::git_diff,
             commands::git::git_add,
             commands::git::git_commit,

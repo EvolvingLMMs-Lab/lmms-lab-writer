@@ -22,6 +22,7 @@ const STATUS_SHORT: Record<GitFileChange["status"], string> = {
 type GitSidebarPanelProps = {
   projectPath: string | null;
   gitStatus: GitStatus | null;
+  gitGraph: string[];
   stagedChanges: GitFileChange[];
   unstagedChanges: GitFileChange[];
   showRemoteInput: boolean;
@@ -54,6 +55,7 @@ type GitSidebarPanelProps = {
 export function GitSidebarPanel({
   projectPath,
   gitStatus,
+  gitGraph,
   stagedChanges,
   unstagedChanges,
   showRemoteInput,
@@ -213,6 +215,21 @@ export function GitSidebarPanel({
 
       <div className="flex-1 min-h-0 flex flex-col">
         <ScrollArea className="flex-1 min-h-0">
+          <div className="border-b border-border">
+            <div className="px-3 py-1.5 bg-neutral-50 text-xs font-medium text-muted">
+              History
+            </div>
+            {gitGraph.length > 0 ? (
+              <div className="px-3 py-2 overflow-x-auto">
+                <pre className="text-[11px] leading-5 font-mono whitespace-pre">
+                  {gitGraph.join("\n")}
+                </pre>
+              </div>
+            ) : (
+              <div className="px-3 py-3 text-xs text-muted">No commits yet</div>
+            )}
+          </div>
+
           {unstagedChanges.length > 0 && (
             <div className="border-b border-border">
               <div className="px-3 py-1.5 bg-neutral-50 text-xs font-medium text-muted flex items-center justify-between">

@@ -1699,6 +1699,7 @@ The AI assistant will read and update this file during compilation.
                     <GitSidebarPanel
                       projectPath={daemon.projectPath}
                       gitStatus={gitStatus}
+                      gitGraph={daemon.gitGraph}
                       stagedChanges={stagedChanges}
                       unstagedChanges={unstagedChanges}
                       showRemoteInput={showRemoteInput}

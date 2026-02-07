@@ -185,6 +185,42 @@ pub async fn git_log(dir: String, limit: Option<i32>) -> Result<Vec<GitLogEntry>
 }
 
 #[tauri::command]
+pub async fn git_graph(dir: String, limit: Option<i32>) -> Result<Vec<String>, String> {
+    let limit = limit.unwrap_or(40).clamp(1, 200);
+    let limit_arg = format!("-{}", limit);
+
+    let output = match run_git(
+        &dir,
+        &[
+            "log",
+            limit_arg.as_str(),
+            "--graph",
+            "--decorate",
+            "--oneline",
+            "--all",
+            "--no-color",
+        ],
+    )
+    .await
+    {
+        Ok(out) => out,
+        Err(e)
+            if e.contains("does not have any commits")
+                || e.contains("bad default revision") =>
+        {
+            return Ok(Vec::new())
+        }
+        Err(e) => return Err(e),
+    };
+
+    Ok(output
+        .lines()
+        .map(|line| line.trim_end().to_string())
+        .filter(|line| !line.is_empty())
+        .collect())
+}
+
+#[tauri::command]
 pub async fn git_diff(dir: String, file: Option<String>, staged: Option<bool>) -> Result<String, String> {
     let mut args = vec!["diff"];
     if staged.unwrap_or(false) {
