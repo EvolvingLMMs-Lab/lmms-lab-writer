@@ -1,6 +1,10 @@
 <div align="center">
 
-# LMMs-Lab Writer
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="imgs/lmms-lab-writer-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="imgs/lmms-lab-writer.svg">
+  <img alt="LMMs-Lab Writer" src="imgs/lmms-lab-writer.svg">
+</picture>
 
 ### Think Deep, Write Easy.
 
