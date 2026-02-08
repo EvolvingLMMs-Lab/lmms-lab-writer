@@ -2092,19 +2092,13 @@ The AI assistant will read and update this file during compilation.
                   <img
                     src="/logo-light.svg"
                     alt="LMMs-Lab Writer"
-                    className="h-12 w-auto mb-8 dark:hidden"
+                    className="h-24 w-auto mb-10 dark:hidden"
                   />
                   <img
                     src="/logo-dark.svg"
                     alt="LMMs-Lab Writer"
-                    className="h-12 w-auto mb-8 hidden dark:block"
+                    className="h-24 w-auto mb-10 hidden dark:block"
                   />
-                  <h2 className="text-2xl font-bold tracking-tight mb-3 text-foreground">
-                    Open a LaTeX Project
-                  </h2>
-                  <p className="text-muted text-sm mb-8 leading-relaxed max-w-sm">
-                    Select a folder containing your .tex files to start editing.
-                  </p>
                   <button
                     onClick={handleOpenFolder}
                     className="btn btn-primary"

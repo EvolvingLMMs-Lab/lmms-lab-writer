@@ -56,8 +56,8 @@ export function HeroSection() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
       >
-        <motion.h1
-          className="text-3xl md:text-5xl font-semibold tracking-tight mb-6"
+        <motion.div
+          className="mb-6 flex justify-center"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{
@@ -66,8 +66,12 @@ export function HeroSection() {
             ease: [0.25, 0.46, 0.45, 0.94],
           }}
         >
-          Think Deep, Write Easy.
-        </motion.h1>
+          <img
+            src="/logo-light.svg"
+            alt="LMMs-Lab Writer — Think Deep, Write Easy."
+            className="h-16 md:h-24 w-auto"
+          />
+        </motion.div>
         <motion.p
           className="text-base md:text-lg text-muted mb-8 md:mb-10 leading-relaxed max-w-2xl mx-auto"
           initial={{ opacity: 0, y: 16 }}
