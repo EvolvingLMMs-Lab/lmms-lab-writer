@@ -3,7 +3,7 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="imgs/logo-dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="imgs/logo-light.svg">
-  <img alt="LMMs-Lab Writer" src="imgs/logo-light.svg">
+  <img alt="LMMs-Lab Writer" src="imgs/logo-light.svg" width="480">
 </picture>
 
 Stop manually writing LaTeX. Let agents handle the syntax while you focus on outlier science.
