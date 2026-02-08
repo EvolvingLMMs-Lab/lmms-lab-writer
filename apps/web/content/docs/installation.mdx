@@ -14,17 +14,24 @@ Visit the [download page](/download) to get the latest version for your platform
 ### macOS
 
 1. Download the `.dmg` file for your architecture:
-   - **Apple Silicon** (M1/M2/M3): `LMMs-Lab Writer_x.x.x_aarch64.dmg`
+   - **Apple Silicon** (M1/M2/M3/M4): `LMMs-Lab Writer_x.x.x_aarch64.dmg`
    - **Intel**: `LMMs-Lab Writer_x.x.x_x64.dmg`
 
 2. Open the `.dmg` file and drag the app to your Applications folder.
 
 3. On first launch, you may need to right-click and select "Open" due to Gatekeeper.
 
+You can also install via Homebrew:
+
+```bash
+brew tap EvolvingLMMs-Lab/tap && brew install --cask lmms-lab-writer
+```
+
 ### Windows
 
 1. Download `LMMs-Lab Writer_x.x.x_x64-setup.exe`
 2. Run the installer and follow the prompts
+3. Launch from the Start Menu or desktop shortcut
 
 ### Linux
 
@@ -36,25 +43,54 @@ Visit the [download page](/download) to get the latest version for your platform
 
 ### LaTeX Distribution
 
-You need a LaTeX distribution installed to compile documents:
+You need a LaTeX distribution installed to compile documents. The app will detect your installed distribution automatically and prompt you if none is found.
 
-- **macOS**: [MacTeX](https://www.tug.org/mactex/)
-- **Windows**: [MiKTeX](https://miktex.org/) or [TeX Live](https://www.tug.org/texlive/)
-- **Linux**: `sudo apt install texlive-full` or equivalent
+- **macOS**: [MacTeX](https://www.tug.org/mactex/) (recommended) or [TeX Live](https://www.tug.org/texlive/)
+- **Windows**: [MiKTeX](https://miktex.org/) (recommended) or [TeX Live](https://www.tug.org/texlive/)
+- **Linux**: `sudo apt install texlive-full` (Debian/Ubuntu) or equivalent for your distro
+
+Supported LaTeX engines:
+- **pdfLaTeX** - Standard engine, fastest compilation
+- **XeLaTeX** - Unicode support, system fonts
+- **LuaLaTeX** - Programmable, modern features
+
+All engines are managed through `latexmk` for automated compilation.
 
 ### Git (Optional)
 
-For version control features, install [Git](https://git-scm.com/downloads).
+For version control features (staging, committing, diffing, pushing), install [Git](https://git-scm.com/downloads).
+
+For GitHub integration (creating repos, publishing), install the [GitHub CLI](https://cli.github.com/).
+
+### Node.js (Build from Source Only)
+
+If building from source, you need:
+- Node.js >= 20.0.0
+- pnpm 10.x
+- Rust toolchain (for Tauri)
 
 ## Build from Source
 
 LMMs-Lab Writer is open source. To build from source:
 
 ```bash
+# Clone the repository
 git clone https://github.com/EvolvingLMMs-Lab/lmms-lab-writer.git
-cd latex-writer
+cd lmms-lab-writer
+
+# Install dependencies
 pnpm install
+
+# Build the desktop app
 pnpm tauri:build
 ```
 
-The built app will be in `apps/desktop/src-tauri/target/release/bundle/`.
+The built app will be in `apps/desktop/src-tauri/target/release/bundle/`:
+
+- **macOS**: `macos/LMMs-Lab Writer.app` and `dmg/LMMs-Lab Writer_*.dmg`
+- **Windows**: `nsis/LMMs-Lab Writer_*-setup.exe`
+- **Linux**: `appimage/LMMs-Lab Writer_*.AppImage` and `deb/lmms-lab-writer_*.deb`
+
+## Updating
+
+The app includes a built-in updater that will notify you when new versions are available. You can also check for updates manually from the [releases page](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases).

@@ -13,52 +13,108 @@ Launch LMMs-Lab Writer and click **Open Folder** to select a directory containin
 
 If you don't have an existing project, you can:
 
-- Clone an existing repository
+- Clone an existing repository using the built-in terminal
 - Create a new folder and add a `main.tex` file
+- Open a recent project from the home screen
 
 ## 2. Write LaTeX
 
 The editor supports standard LaTeX syntax with:
 
-- Syntax highlighting
-- Code completion
-- Error detection
+- **Syntax highlighting** - CodeMirror-based editor with LaTeX grammar
+- **Code completion** - Auto-complete for common LaTeX commands
+- **Error detection** - Real-time compilation error reporting with line numbers
+- **File tree** - Navigate your project files with drag-and-drop support
+
+Click any `.tex`, `.bib`, or other file in the file tree to open it in the editor.
 
 ## 3. Compile
 
-Press `Cmd+S` (macOS) or `Ctrl+S` (Windows/Linux) to save and compile your document.
+Click the **Compile** button or use the keyboard shortcut to compile your document.
 
-The PDF preview will update automatically.
+The app supports three LaTeX engines:
+
+- **pdfLaTeX** - Standard, fastest
+- **XeLaTeX** - Unicode & system fonts (default)
+- **LuaLaTeX** - Programmable, modern
+
+You can change the engine and configure compilation settings in the LaTeX settings dialog. The app auto-detects your main `.tex` file, or you can set it manually.
 
 ## 4. Use AI
 
-The real power of LMMs-Lab Writer comes from AI integration. You can use any AI tool that can edit files:
+The real power of LMMs-Lab Writer comes from AI integration. Your files are local, so any AI tool with file access can edit them directly.
 
 ### Claude Code
 
+Run Claude Code in a terminal alongside the app. It can edit your `.tex` files directly:
+
 ```bash
-claude "Add a conclusion section summarizing the key findings"
+claude "Add a related work section comparing our method to LoRA and QLoRA"
 ```
+
+Changes appear instantly in the editor as Claude writes them.
 
 ### Cursor
 
-Open your project folder in Cursor alongside LMMs-Lab Writer. Edits made in Cursor will appear instantly in the preview.
+Open your project folder in Cursor alongside LMMs-Lab Writer. Edits made in Cursor will appear in the editor in real-time thanks to file watching.
 
-### OpenCode
+### OpenCode (Built-in)
 
-Use the built-in OpenCode panel for AI assistance directly in the app.
+Use the built-in OpenCode panel for AI assistance directly in the app:
 
-## 5. Commit Changes
+1. Click the AI panel icon in the sidebar
+2. Type your prompt (e.g., "Write the conclusion section summarizing key findings")
+3. Watch the AI edit your files in real-time
+4. Review changes and compile
 
-Use the built-in terminal or Git panel to commit your changes:
+### Codex CLI
+
+Use OpenAI's Codex CLI for batch edits:
+
+```bash
+codex "Fix all citation formatting in main.tex and add missing references to refs.bib"
+```
+
+### Any AI Tool
+
+If an AI tool can edit files on your filesystem, it works with LMMs-Lab Writer. The app watches your project directory and reflects changes instantly.
+
+## 5. Review & Commit
+
+Use the built-in Git panel to review and commit your changes:
+
+1. Click the **Git** icon in the sidebar to see changed files
+2. Click on a file to see the diff
+3. Stage files by clicking the **+** button
+4. Write a commit message and click **Commit**
+5. Push to remote with the **Push** button
+
+You can also use the built-in terminal for advanced Git operations:
 
 ```bash
 git add .
-git commit -m "Add conclusion section"
+git commit -m "Add conclusion section via Claude"
 git push
 ```
 
+### Publishing to GitHub
+
+If your project isn't on GitHub yet, use the **Publish to GitHub** dialog to create a new repository and push your code in one step.
+
+## 6. Configure Settings
+
+### LaTeX Engine
+
+Open LaTeX Settings to:
+- Choose between pdfLaTeX, XeLaTeX, or LuaLaTeX
+- Set the main file for compilation
+- Clean auxiliary files
+
+### Terminal
+
+The built-in terminal gives you full shell access for any command-line operations - running scripts, installing packages, or using CLI tools.
+
 ## Next Steps
 
-- [Installation](/docs/installation) - Detailed installation instructions
+- [Installation](/docs/installation) - Detailed installation instructions for all platforms
 - [GitHub Repository](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer) - Report issues and contribute
