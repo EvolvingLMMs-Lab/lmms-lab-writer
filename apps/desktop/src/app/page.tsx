@@ -276,6 +276,18 @@ const GitMonacoDiffEditor = dynamic(
   },
 );
 
+const EditorTerminal = dynamic(
+  () => import("@/components/editor/terminal").then((mod) => mod.Terminal),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full flex items-center px-4 text-sm text-muted">
+        Loading terminal...
+      </div>
+    ),
+  },
+);
+
 const OpenCodePanel = dynamic(
   () =>
     import("@/components/opencode/opencode-panel").then(
@@ -347,6 +359,7 @@ export default function EditorPage() {
   const [pdfRefreshKey, setPdfRefreshKey] = useState(0);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(false);
+  const [showTerminal, setShowTerminal] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("sidebarWidth");
@@ -690,6 +703,10 @@ The AI assistant will read and update this file during compilation.
     if (!daemon.projectPath) {
       opencodeStartedForPathRef.current = null;
     }
+  }, [daemon.projectPath]);
+
+  useEffect(() => {
+    setShowTerminal(Boolean(daemon.projectPath));
   }, [daemon.projectPath]);
 
   // Listen for opencode logs from Tauri backend
@@ -1682,6 +1699,19 @@ The AI assistant will read and update this file during compilation.
             </button>
 
             {daemon.projectPath && (
+              <button
+                onClick={() => setShowTerminal((prev) => !prev)}
+                className={`h-8 px-3 text-sm border border-border transition-colors flex items-center gap-2 font-medium bg-background text-foreground ${
+                  showTerminal
+                    ? "border-foreground"
+                    : "hover:bg-accent-hover hover:border-border-dark"
+                }`}
+              >
+                Terminal
+              </button>
+            )}
+
+            {daemon.projectPath && (
               <>
                 <span className="text-border text-lg select-none">/</span>
                 <div className="flex items-center gap-2 h-8">
@@ -2039,6 +2069,15 @@ The AI assistant will read and update this file during compilation.
                 />
               </div>
             )}
+
+          {daemon.projectPath && showTerminal && (
+            <div className="h-56 flex-shrink-0 border-t border-border">
+              <EditorTerminal
+                projectPath={daemon.projectPath ?? undefined}
+                className="h-full"
+              />
+            </div>
+          )}
 
         </div>
 

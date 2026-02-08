@@ -60,7 +60,7 @@ pub struct PtyExitEvent {
 
 fn get_default_shell() -> String {
     if cfg!(target_os = "windows") {
-        std::env::var("COMSPEC").unwrap_or_else(|_| "powershell.exe".to_string())
+        "powershell.exe".to_string()
     } else if cfg!(target_os = "macos") {
         std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string())
     } else {
