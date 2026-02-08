@@ -1701,14 +1701,14 @@ The AI assistant will read and update this file during compilation.
               aria-label="Open LMMs-Lab website"
             >
               <img
-                src="/logo-light.svg"
+                src="/logo-small-light.svg"
                 alt="LMMs-Lab Writer"
-                className="h-6 w-auto dark:hidden"
+                className="h-7 w-auto dark:hidden"
               />
               <img
-                src="/logo-dark.svg"
+                src="/logo-small-dark.svg"
                 alt="LMMs-Lab Writer"
-                className="h-6 w-auto hidden dark:block"
+                className="h-7 w-auto hidden dark:block"
               />
             </button>
             <span className="text-border">/</span>

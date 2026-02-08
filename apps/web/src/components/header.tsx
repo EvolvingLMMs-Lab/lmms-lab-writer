@@ -32,10 +32,12 @@ export function Header() {
           className="text-base sm:text-lg font-bold tracking-tight flex items-center gap-2 sm:gap-3"
         >
           <img
-            src="/logo-light.svg"
+            src="/logo-small-light.svg"
             alt="LMMs-Lab Writer"
             className="h-7 sm:h-8 w-auto"
           />
+          <span className="hidden sm:inline">LMMs-Lab Writer</span>
+          <span className="sm:hidden">Writer</span>
         </Link>
         <div className="flex items-center gap-2 sm:gap-4">
           {user === undefined ? (
