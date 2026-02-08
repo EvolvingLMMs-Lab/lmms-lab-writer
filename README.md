@@ -1,9 +1,9 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="imgs/logo-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="imgs/logo-light.png">
-  <img alt="LMMs-Lab Writer" src="imgs/logo-light.png">
+  <source media="(prefers-color-scheme: dark)" srcset="imgs/logo-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="imgs/logo-light.svg">
+  <img alt="LMMs-Lab Writer" src="imgs/logo-light.svg">
 </picture>
 
 ### Think Deep, Write Easy.
