@@ -35,6 +35,9 @@ import {
   ArrowClockwiseIcon,
   GearIcon,
   PlayCircleIcon,
+  SidebarSimpleIcon,
+  TerminalIcon,
+  RobotIcon,
 } from "@phosphor-icons/react";
 
 function throttle<T extends (...args: Parameters<T>) => void>(
@@ -337,6 +340,8 @@ const WEB_URL =
 
 const MIN_PANEL_WIDTH = 200;
 const MAX_SIDEBAR_WIDTH = 480;
+const MIN_TERMINAL_HEIGHT = 120;
+const MAX_TERMINAL_HEIGHT_RATIO = 0.5;
 
 export default function EditorPage() {
   const editorSettings = useEditorSettings();
@@ -374,7 +379,14 @@ export default function EditorPage() {
     }
     return 280;
   });
-  const [resizing, setResizing] = useState<"sidebar" | "right" | null>(null);
+  const [terminalHeight, setTerminalHeight] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("terminalHeight");
+      return saved ? parseInt(saved, 10) : 224;
+    }
+    return 224;
+  });
+  const [resizing, setResizing] = useState<"sidebar" | "right" | "bottom" | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"files" | "git">("files");
   const [highlightedFile, _setHighlightedFile] = useState<string | null>(null);
 
@@ -414,6 +426,7 @@ export default function EditorPage() {
   // RAF-based resize refs for 60fps performance
   const sidebarWidthRef = useRef(sidebarWidth);
   const rightPanelWidthRef = useRef(rightPanelWidth);
+  const terminalHeightRef = useRef(terminalHeight);
   const rafIdRef = useRef<number | null>(null);
 
   const gitStatus = daemon.gitStatus;
@@ -696,6 +709,10 @@ The AI assistant will read and update this file during compilation.
   }, [rightPanelWidth]);
 
   useEffect(() => {
+    localStorage.setItem("terminalHeight", String(terminalHeight));
+  }, [terminalHeight]);
+
+  useEffect(() => {
     checkOpencodeStatus();
   }, [checkOpencodeStatus]);
 
@@ -731,10 +748,11 @@ The AI assistant will read and update this file during compilation.
   }, []);
 
   const startResize = useCallback(
-    (panel: "sidebar" | "right") => {
+    (panel: "sidebar" | "right" | "bottom") => {
       setResizing(panel);
       sidebarWidthRef.current = sidebarWidth;
       rightPanelWidthRef.current = rightPanelWidth;
+      terminalHeightRef.current = terminalHeight;
       document.documentElement.style.setProperty(
         "--sidebar-width",
         `${sidebarWidth}px`,
@@ -743,11 +761,15 @@ The AI assistant will read and update this file during compilation.
         "--right-panel-width",
         `${rightPanelWidth}px`,
       );
+      document.documentElement.style.setProperty(
+        "--terminal-height",
+        `${terminalHeight}px`,
+      );
     },
-    [sidebarWidth, rightPanelWidth],
+    [sidebarWidth, rightPanelWidth, terminalHeight],
   );
 
-  const handleResizeDrag = useCallback((panel: "sidebar" | "right", info: PanInfo) => {
+  const handleResizeDrag = useCallback((panel: "sidebar" | "right" | "bottom", info: PanInfo) => {
     if (rafIdRef.current !== null) return;
 
     rafIdRef.current = requestAnimationFrame(() => {
@@ -761,7 +783,7 @@ The AI assistant will read and update this file during compilation.
           "--sidebar-width",
           `${newWidth}px`,
         );
-      } else {
+      } else if (panel === "right") {
         const maxRightWidth = Math.floor(window.innerWidth / 2);
         const newWidth = Math.min(
           Math.max(window.innerWidth - info.point.x, MIN_PANEL_WIDTH),
@@ -771,6 +793,17 @@ The AI assistant will read and update this file during compilation.
         document.documentElement.style.setProperty(
           "--right-panel-width",
           `${newWidth}px`,
+        );
+      } else {
+        const maxHeight = Math.floor(window.innerHeight * MAX_TERMINAL_HEIGHT_RATIO);
+        const newHeight = Math.min(
+          Math.max(window.innerHeight - info.point.y, MIN_TERMINAL_HEIGHT),
+          maxHeight,
+        );
+        terminalHeightRef.current = newHeight;
+        document.documentElement.style.setProperty(
+          "--terminal-height",
+          `${newHeight}px`,
         );
       }
       rafIdRef.current = null;
@@ -784,8 +817,10 @@ The AI assistant will read and update this file during compilation.
     }
     setSidebarWidth(sidebarWidthRef.current);
     setRightPanelWidth(rightPanelWidthRef.current);
+    setTerminalHeight(terminalHeightRef.current);
     document.documentElement.style.removeProperty("--sidebar-width");
     document.documentElement.style.removeProperty("--right-panel-width");
+    document.documentElement.style.removeProperty("--terminal-height");
     setResizing(null);
   }, []);
 
@@ -1687,27 +1722,43 @@ The AI assistant will read and update this file during compilation.
           </div>
 
           <div className="flex items-center gap-3 h-8">
+            {daemon.projectPath && (
+              <button
+                onClick={() => setShowSidebar((prev) => !prev)}
+                className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-background text-foreground ${
+                  showSidebar
+                    ? "border-foreground"
+                    : "hover:bg-accent-hover hover:border-border-dark"
+                }`}
+                title="Toggle Sidebar"
+              >
+                <SidebarSimpleIcon className="size-4" weight="bold" />
+              </button>
+            )}
+
             <button
               onClick={handleToggleRightPanel}
-              className={`h-8 px-3 text-sm border border-border transition-colors flex items-center gap-2 font-medium bg-background text-foreground ${
+              className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-background text-foreground ${
                 showRightPanel
                   ? "border-foreground"
                   : "hover:bg-accent-hover hover:border-border-dark"
               }`}
+              title="Toggle Agent Mode"
             >
-              Agent Mode
+              <RobotIcon className="size-4" weight="bold" />
             </button>
 
             {daemon.projectPath && (
               <button
                 onClick={() => setShowTerminal((prev) => !prev)}
-                className={`h-8 px-3 text-sm border border-border transition-colors flex items-center gap-2 font-medium bg-background text-foreground ${
+                className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-background text-foreground ${
                   showTerminal
                     ? "border-foreground"
                     : "hover:bg-accent-hover hover:border-border-dark"
                 }`}
+                title="Toggle Terminal"
               >
-                Terminal
+                <TerminalIcon className="size-4" weight="bold" />
               </button>
             )}
 
@@ -2070,16 +2121,62 @@ The AI assistant will read and update this file during compilation.
               </div>
             )}
 
-          {daemon.projectPath && showTerminal && (
-            <div className="h-56 flex-shrink-0 border-t border-border">
-              <EditorTerminal
-                projectPath={daemon.projectPath ?? undefined}
-                shellMode={editorSettings.settings.terminalShellMode}
-                customShell={editorSettings.settings.terminalShellPath}
-                className="h-full"
-              />
-            </div>
-          )}
+          <AnimatePresence>
+            {daemon.projectPath && showTerminal && (
+              <motion.div
+                key="terminal-container"
+                initial={
+                  prefersReducedMotion
+                    ? { opacity: 1, height: 0 }
+                    : { opacity: 0, height: 0 }
+                }
+                animate={{
+                  opacity: 1,
+                  height:
+                    resizing === "bottom"
+                      ? "var(--terminal-height)"
+                      : terminalHeight,
+                }}
+                exit={
+                  prefersReducedMotion
+                    ? { opacity: 0, height: 0 }
+                    : { opacity: 0, height: 0 }
+                }
+                transition={
+                  prefersReducedMotion ? INSTANT_TRANSITION : PANEL_SPRING
+                }
+                className="flex-shrink-0 border-t border-border flex flex-col overflow-hidden"
+                style={{
+                  willChange: prefersReducedMotion ? undefined : "height, opacity",
+                }}
+              >
+                <div className="relative group h-1 flex-shrink-0">
+                  <motion.div
+                    drag="y"
+                    dragConstraints={{ top: 0, bottom: 0 }}
+                    dragElastic={0}
+                    dragMomentum={false}
+                    onDragStart={() => startResize("bottom")}
+                    onDrag={(event, info) =>
+                      handleResizeDrag("bottom", info)
+                    }
+                    onDragEnd={endResize}
+                    className="absolute inset-x-0 -top-1 -bottom-1 cursor-row-resize z-10"
+                    style={{ y: 0 }}
+                  />
+                  <div
+                    className={`w-full h-full transition-colors ${resizing === "bottom" ? "bg-foreground/20" : "group-hover:bg-foreground/20"}`}
+                  />
+                </div>
+                <EditorTerminal
+                  projectPath={daemon.projectPath ?? undefined}
+                  shellMode={editorSettings.settings.terminalShellMode}
+                  customShell={editorSettings.settings.terminalShellPath}
+                  className="flex-1 min-h-0"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
         </div>
 
