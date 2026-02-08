@@ -33,14 +33,14 @@ const LIGHT_TERMINAL_THEME = {
   brightWhite: "#ffffff",
 };
 
-// GitHub Dark terminal colors (softened)
+// GitHub Dark terminal colors (matched to app dark theme)
 const DARK_TERMINAL_THEME = {
-  background: "#24292e",
+  background: "#2c323a",
   foreground: "#c9d1d9",
   cursor: "#d1d5da",
-  cursorAccent: "#24292e",
+  cursorAccent: "#2c323a",
   selectionBackground: "#3b4048",
-  black: "#24292e",
+  black: "#2c323a",
   red: "#f85149",
   green: "#56d364",
   yellow: "#d29922",
