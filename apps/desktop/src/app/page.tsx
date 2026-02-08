@@ -1736,18 +1736,6 @@ The AI assistant will read and update this file during compilation.
               </button>
             )}
 
-            <button
-              onClick={handleToggleRightPanel}
-              className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-background text-foreground ${
-                showRightPanel
-                  ? "border-foreground"
-                  : "hover:bg-accent-hover hover:border-border-dark"
-              }`}
-              title="Toggle Agent Mode"
-            >
-              <RobotIcon className="size-4" weight="bold" />
-            </button>
-
             {daemon.projectPath && (
               <button
                 onClick={() => setShowTerminal((prev) => !prev)}
@@ -1761,6 +1749,18 @@ The AI assistant will read and update this file during compilation.
                 <TerminalIcon className="size-4" weight="bold" />
               </button>
             )}
+
+            <button
+              onClick={handleToggleRightPanel}
+              className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-background text-foreground ${
+                showRightPanel
+                  ? "border-foreground"
+                  : "hover:bg-accent-hover hover:border-border-dark"
+              }`}
+              title="Toggle Agent Mode"
+            >
+              <RobotIcon className="size-4" weight="bold" />
+            </button>
 
             {daemon.projectPath && (
               <>
