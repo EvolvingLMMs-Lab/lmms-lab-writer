@@ -1696,17 +1696,20 @@ The AI assistant will read and update this file during compilation.
                   open("https://writer.lmms-lab.com");
                 });
               }}
-              className="logo-bar text-foreground hover:opacity-70 transition-opacity"
+              className="hover:opacity-70 transition-opacity flex items-center"
               title="Visit writer.lmms-lab.com"
               aria-label="Open LMMs-Lab website"
             >
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
+              <img
+                src="/logo-light.svg"
+                alt="LMMs-Lab Writer"
+                className="h-6 w-auto dark:hidden"
+              />
+              <img
+                src="/logo-dark.svg"
+                alt="LMMs-Lab Writer"
+                className="h-6 w-auto hidden dark:block"
+              />
             </button>
             <span className="text-border">/</span>
             <div className="flex items-center gap-2 min-w-0">
@@ -2086,6 +2089,16 @@ The AI assistant will read and update this file during compilation.
                 <div />
               ) : (
                 <div className="flex flex-col items-center justify-center text-center px-6">
+                  <img
+                    src="/logo-light.svg"
+                    alt="LMMs-Lab Writer"
+                    className="h-12 w-auto mb-8 dark:hidden"
+                  />
+                  <img
+                    src="/logo-dark.svg"
+                    alt="LMMs-Lab Writer"
+                    className="h-12 w-auto mb-8 hidden dark:block"
+                  />
                   <h2 className="text-2xl font-bold tracking-tight mb-3 text-foreground">
                     Open a LaTeX Project
                   </h2>

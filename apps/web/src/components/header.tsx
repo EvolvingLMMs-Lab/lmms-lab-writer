@@ -31,17 +31,11 @@ export function Header() {
           prefetch={true}
           className="text-base sm:text-lg font-bold tracking-tight flex items-center gap-2 sm:gap-3"
         >
-          <div className="logo-bar text-foreground">
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <span className="hidden sm:inline">LMMs-Lab Writer</span>
-          <span className="sm:hidden">Writer</span>
+          <img
+            src="/logo-light.svg"
+            alt="LMMs-Lab Writer"
+            className="h-7 sm:h-8 w-auto"
+          />
         </Link>
         <div className="flex items-center gap-2 sm:gap-4">
           {user === undefined ? (
