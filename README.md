@@ -6,8 +6,6 @@
   <img alt="LMMs-Lab Writer" src="imgs/logo-light.svg">
 </picture>
 
-### Think Deep, Write Easy.
-
 Stop manually writing LaTeX. Let agents handle the syntax while you focus on outlier science.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](https://opensource.org/licenses/MIT)
