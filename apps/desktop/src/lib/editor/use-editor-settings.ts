@@ -30,6 +30,19 @@ function migrateSettings(parsed: Record<string, unknown>): EditorSettings {
     );
   }
 
+  if (
+    settings.terminalShellMode !== "auto" &&
+    settings.terminalShellMode !== "custom"
+  ) {
+    settings.terminalShellMode = DEFAULT_EDITOR_SETTINGS.terminalShellMode;
+  }
+
+  if (typeof settings.terminalShellPath !== "string") {
+    settings.terminalShellPath = DEFAULT_EDITOR_SETTINGS.terminalShellPath;
+  } else {
+    settings.terminalShellPath = settings.terminalShellPath.trim();
+  }
+
   return settings as EditorSettings;
 }
 

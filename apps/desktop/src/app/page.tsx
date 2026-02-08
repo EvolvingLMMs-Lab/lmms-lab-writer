@@ -2074,6 +2074,8 @@ The AI assistant will read and update this file during compilation.
             <div className="h-56 flex-shrink-0 border-t border-border">
               <EditorTerminal
                 projectPath={daemon.projectPath ?? undefined}
+                shellMode={editorSettings.settings.terminalShellMode}
+                customShell={editorSettings.settings.terminalShellPath}
                 className="h-full"
               />
             </div>

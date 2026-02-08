@@ -60,11 +60,15 @@ const DARK_TERMINAL_THEME = {
 
 type Props = {
   projectPath?: string;
+  shellMode?: "auto" | "custom";
+  customShell?: string;
   className?: string;
 };
 
 export const Terminal = memo(function Terminal({
   projectPath,
+  shellMode = "auto",
+  customShell = "",
   className = "",
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -89,6 +93,11 @@ export const Terminal = memo(function Terminal({
 
   useEffect(() => {
     if (!mounted || !containerRef.current || !projectPath) return;
+
+    const preferredShell =
+      shellMode === "custom" && customShell.trim().length > 0
+        ? customShell.trim()
+        : null;
 
     // Track cleanup state to prevent zombie processes
     let isCleanedUp = false;
@@ -122,10 +131,9 @@ export const Terminal = memo(function Terminal({
 
         const spawnedPtyId = await invoke<string>("spawn_pty", {
           cwd: projectPath,
-          shell: null,
-          args: [],
           cols: term.cols,
           rows: term.rows,
+          shell: preferredShell,
         });
 
         // Check again after async operation
@@ -228,7 +236,7 @@ export const Terminal = memo(function Terminal({
       termRef.current = null;
       fitAddonRef.current = null;
     };
-  }, [mounted, projectPath]);
+  }, [mounted, projectPath, shellMode, customShell]);
 
   if (!mounted) {
     return (

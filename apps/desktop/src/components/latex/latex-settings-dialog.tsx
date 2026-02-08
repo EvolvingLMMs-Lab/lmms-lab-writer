@@ -688,6 +688,47 @@ export function LaTeXSettingsDialog({
                   description="Automatically format pasted code"
                 />
               </div>
+
+              <SectionHeader>Terminal</SectionHeader>
+
+              <SelectField
+                label="Shell Selection"
+                value={editorSettings.terminalShellMode}
+                onChange={(v) =>
+                  onUpdateEditorSettings({
+                    terminalShellMode: v as EditorSettings["terminalShellMode"],
+                  })
+                }
+                options={[
+                  { value: "auto", label: "Auto Detect" },
+                  { value: "custom", label: "Custom" },
+                ]}
+                description="Auto mode chooses shell per OS fallback rules"
+              />
+
+              {editorSettings.terminalShellMode === "custom" && (
+                <div className="pl-4 border-l-2 border-border ml-1 py-2">
+                  <div className="flex items-center justify-between gap-4">
+                    <label className="text-sm font-medium text-foreground-secondary shrink-0">
+                      Shell Command
+                    </label>
+                    <input
+                      type="text"
+                      value={editorSettings.terminalShellPath}
+                      onChange={(e) =>
+                        onUpdateEditorSettings({
+                          terminalShellPath: e.target.value,
+                        })
+                      }
+                      placeholder="powershell.exe / pwsh / /bin/zsh"
+                      className="w-full px-3 py-2 text-sm border border-border hover:border-border-dark focus:outline-none focus:border-foreground font-mono bg-background"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Leave empty to fall back to auto detection.
+                  </p>
+                </div>
+              )}
             </Tabs.Content>
 
             {/* ===== BUILD TAB ===== */}

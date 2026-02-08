@@ -1,5 +1,6 @@
 // Editor theme options - auto-follows app light/dark mode
 export type EditorTheme = "one-light" | "one-dark";
+export type TerminalShellMode = "auto" | "custom";
 
 // Minimap configuration matching Monaco Editor API
 export interface MinimapSettings {
@@ -56,6 +57,10 @@ export interface EditorSettings {
   // Git
   gitAutoFetchEnabled: boolean;
   gitAutoFetchIntervalSeconds: number;
+
+  // Terminal
+  terminalShellMode: TerminalShellMode;
+  terminalShellPath: string;
 }
 
 export const DEFAULT_MINIMAP_SETTINGS: MinimapSettings = {
@@ -97,4 +102,8 @@ export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
   // Git
   gitAutoFetchEnabled: true,
   gitAutoFetchIntervalSeconds: 120,
+
+  // Terminal
+  terminalShellMode: "auto",
+  terminalShellPath: "",
 };
