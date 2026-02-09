@@ -803,11 +803,14 @@ export function useTauriDaemon(options?: TauriDaemonOptions) {
           const currentPath = projectPathRef.current;
           if (!currentPath) return;
 
-          if (kind === "create" || kind === "remove" || kind === "rename") {
+          // Different OS/file managers emit slightly different watcher kinds
+          // for equivalent operations (e.g. external delete/rename). Refresh
+          // tree for every meaningful change event to avoid stale explorer state.
+          if (kind !== "access") {
             debouncedRefreshFileTree(currentPath);
           }
 
-          if (kind === "create" || kind === "modify" || kind === "remove") {
+          if (kind !== "access") {
             debouncedRefreshGit(currentPath);
           }
         },
@@ -987,4 +990,3 @@ export function useTauriDaemon(options?: TauriDaemonOptions) {
     ],
   );
 }
-

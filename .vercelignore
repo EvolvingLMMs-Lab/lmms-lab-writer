@@ -1,0 +1,10 @@
+# Build outputs and caches
+**/.next
+**/node_modules
+**/target
+**/.turbo
+
+# Local release artifacts
+dist/releases
+apps/desktop/src-tauri/target
+apps/desktop/src-tauri/gen

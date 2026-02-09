@@ -215,6 +215,7 @@ export type ToolInfo = {
   icon: string
   title: string
   subtitle?: string
+  filePath?: string
 }
 
 export function getToolInfo(tool: string, input: Record<string, unknown> = {}): ToolInfo {
@@ -231,12 +232,17 @@ export function getToolInfo(tool: string, input: Record<string, unknown> = {}): 
   }
 
   switch (tool) {
-    case 'read':
+    case 'read': {
+      const filePath =
+        (input.filePath as string | undefined) ??
+        (input.file_path as string | undefined)
       return {
         icon: 'glasses',
         title: 'Reading',
-        subtitle: input.filePath ? getFilename(input.filePath as string) : (input.file_path ? getFilename(input.file_path as string) : undefined),
+        subtitle: filePath ? getFilename(filePath) : undefined,
+        filePath,
       }
+    }
     case 'list':
       return {
         icon: 'list',
@@ -279,18 +285,28 @@ export function getToolInfo(tool: string, input: Record<string, unknown> = {}): 
         subtitle: display,
       }
     }
-    case 'edit':
+    case 'edit': {
+      const filePath =
+        (input.filePath as string | undefined) ??
+        (input.file_path as string | undefined)
       return {
         icon: 'edit',
         title: 'Editing',
-        subtitle: input.filePath ? getFilename(input.filePath as string) : (input.file_path ? getFilename(input.file_path as string) : undefined),
+        subtitle: filePath ? getFilename(filePath) : undefined,
+        filePath,
       }
-    case 'write':
+    }
+    case 'write': {
+      const filePath =
+        (input.filePath as string | undefined) ??
+        (input.file_path as string | undefined)
       return {
         icon: 'file-plus',
         title: 'Writing',
-        subtitle: input.filePath ? getFilename(input.filePath as string) : (input.file_path ? getFilename(input.file_path as string) : undefined),
+        subtitle: filePath ? getFilename(filePath) : undefined,
+        filePath,
       }
+    }
     case 'todowrite':
     case 'todocreate':
       return {

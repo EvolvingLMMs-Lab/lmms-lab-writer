@@ -91,6 +91,11 @@ async function copyToClipboard(text: string): Promise<void> {
     document.body.removeChild(textarea);
   }
 }
+
+async function copyNormalizedAbsolutePath(path: string): Promise<void> {
+  const normalizedPath = await normalize(path);
+  await copyToClipboard(normalizedPath);
+}
 import type { FileNode } from "@lmms-lab/writer-shared";
 import { ContextMenu, type ContextMenuItem } from "../ui/context-menu";
 import { ConfirmDialog } from "../ui/confirm-dialog";
@@ -946,7 +951,8 @@ function FileTreeInner({
       if (projectPath) {
         items.push({
           label: "Copy Absolute Path",
-          onClick: () => copyToClipboard(pathSync.join(projectPath, node.path)),
+          onClick: () =>
+            copyNormalizedAbsolutePath(pathSync.join(projectPath, node.path)),
           icon: <CopyIcon size={16} />,
         });
       }
@@ -1089,7 +1095,7 @@ function FileTreeInner({
     if (projectPath) {
       items.push({
         label: "Copy Project Path",
-        onClick: () => copyToClipboard(projectPath),
+        onClick: () => copyNormalizedAbsolutePath(projectPath),
         icon: <ClipboardTextIcon size={16} />,
       });
 

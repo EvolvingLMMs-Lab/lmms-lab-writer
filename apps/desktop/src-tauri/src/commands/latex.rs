@@ -246,6 +246,20 @@ pub async fn latex_detect_compilers() -> Result<LaTeXCompilersStatus, String> {
     })
 }
 
+fn has_any_compiler(status: &LaTeXCompilersStatus) -> bool {
+    status.pdflatex.available
+        || status.xelatex.available
+        || status.lualatex.available
+        || status.latexmk.available
+}
+
+async fn is_compiler_detectable_after_install() -> bool {
+    match latex_detect_compilers().await {
+        Ok(status) => has_any_compiler(&status),
+        Err(_) => false,
+    }
+}
+
 #[tauri::command]
 pub async fn latex_compile(
     app: AppHandle,
@@ -723,19 +737,23 @@ async fn install_tinytex_windows(app: &AppHandle) -> Result<InstallResult, Strin
     let _ = std::fs::remove_file(&script_path);
 
     if status.success() {
-        let _ = app.emit(
-            "latex-install-progress",
-            InstallProgress {
-                stage: "complete".to_string(),
-                message: "TinyTeX installed successfully!".to_string(),
-                progress: Some(1.0),
-            },
-        );
+        let detected = is_compiler_detectable_after_install().await;
+        let _ = app.emit("latex-install-progress", InstallProgress {
+            stage: "complete".to_string(),
+            message: "TinyTeX installed successfully!".to_string(),
+            progress: Some(1.0),
+        });
 
         Ok(InstallResult {
             success: true,
-            message: "TinyTeX installed successfully. Please restart the application to detect the new installation.".to_string(),
-            needs_restart: true,
+            message: if detected {
+                "TinyTeX installed successfully and compiler detection is ready."
+                    .to_string()
+            } else {
+                "TinyTeX installed successfully. Please restart the application to detect the new installation."
+                    .to_string()
+            },
+            needs_restart: !detected,
         })
     } else {
         Ok(InstallResult {
@@ -815,19 +833,23 @@ async fn install_miktex_windows(app: &AppHandle) -> Result<InstallResult, String
         .map_err(|e| format!("Installation failed: {}", e))?;
 
     if status.success() {
-        let _ = app.emit(
-            "latex-install-progress",
-            InstallProgress {
-                stage: "complete".to_string(),
-                message: "MiKTeX installed successfully!".to_string(),
-                progress: Some(1.0),
-            },
-        );
+        let detected = is_compiler_detectable_after_install().await;
+        let _ = app.emit("latex-install-progress", InstallProgress {
+            stage: "complete".to_string(),
+            message: "MiKTeX installed successfully!".to_string(),
+            progress: Some(1.0),
+        });
 
         Ok(InstallResult {
             success: true,
-            message: "MiKTeX installed successfully. Please restart the application to detect the new installation.".to_string(),
-            needs_restart: true,
+            message: if detected {
+                "MiKTeX installed successfully and compiler detection is ready."
+                    .to_string()
+            } else {
+                "MiKTeX installed successfully. Please restart the application to detect the new installation."
+                    .to_string()
+            },
+            needs_restart: !detected,
         })
     } else {
         Ok(InstallResult {
@@ -917,19 +939,23 @@ async fn install_tinytex_unix(app: &AppHandle) -> Result<InstallResult, String> 
         .map_err(|e| format!("Installation failed: {}", e))?;
 
     if status.success() {
-        let _ = app.emit(
-            "latex-install-progress",
-            InstallProgress {
-                stage: "complete".to_string(),
-                message: "TinyTeX installed successfully!".to_string(),
-                progress: Some(1.0),
-            },
-        );
+        let detected = is_compiler_detectable_after_install().await;
+        let _ = app.emit("latex-install-progress", InstallProgress {
+            stage: "complete".to_string(),
+            message: "TinyTeX installed successfully!".to_string(),
+            progress: Some(1.0),
+        });
 
         Ok(InstallResult {
             success: true,
-            message: "TinyTeX installed successfully. Please restart the application to detect the new installation.".to_string(),
-            needs_restart: true,
+            message: if detected {
+                "TinyTeX installed successfully and compiler detection is ready."
+                    .to_string()
+            } else {
+                "TinyTeX installed successfully. Please restart the application to detect the new installation."
+                    .to_string()
+            },
+            needs_restart: !detected,
         })
     } else {
         Ok(InstallResult {
@@ -1018,19 +1044,27 @@ async fn install_brew_cask(
         .map_err(|e| format!("Installation failed: {}", e))?;
 
     if status.success() {
-        let _ = app.emit(
-            "latex-install-progress",
-            InstallProgress {
-                stage: "complete".to_string(),
-                message: format!("{} installed successfully!", cask),
-                progress: Some(1.0),
-            },
-        );
+        let detected = is_compiler_detectable_after_install().await;
+        let _ = app.emit("latex-install-progress", InstallProgress {
+            stage: "complete".to_string(),
+            message: format!("{} installed successfully!", cask),
+            progress: Some(1.0),
+        });
 
         Ok(InstallResult {
             success: true,
-            message: format!("{} installed successfully. Please restart the application to detect the new installation.", cask),
-            needs_restart: true,
+            message: if detected {
+                format!(
+                    "{} installed successfully and compiler detection is ready.",
+                    cask
+                )
+            } else {
+                format!(
+                    "{} installed successfully. Please restart the application to detect the new installation.",
+                    cask
+                )
+            },
+            needs_restart: !detected,
         })
     } else {
         Ok(InstallResult {

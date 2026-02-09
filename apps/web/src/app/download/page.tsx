@@ -6,6 +6,8 @@ import { GITHUB_CONFIG, canDownload } from "@/lib/github/config";
 import {
   DownloadSection,
   HomebrewSection,
+  RELEASE_VERSION,
+  NpmPackageSection,
   InstallationSection,
   RequirementsSection,
   BuildSection,
@@ -80,6 +82,7 @@ async function DownloadContent() {
       </div>
       <HomebrewSection />
       <DownloadSection />
+      <NpmPackageSection />
       <InstallationSection />
       <RequirementsSection />
       <BuildSection />
@@ -95,7 +98,7 @@ export default function DownloadPage() {
       <main className="flex-1 py-16 px-6">
         <div className="max-w-5xl mx-auto">
           <h1 className="text-2xl font-medium tracking-tight mb-2">Download</h1>
-          <p className="text-muted mb-10">Version 0.1.0</p>
+          <p className="text-muted mb-10">Version {RELEASE_VERSION}</p>
 
           <Suspense fallback={<DownloadSkeleton />}>
             <DownloadContent />

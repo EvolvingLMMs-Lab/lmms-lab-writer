@@ -1,8 +1,10 @@
-use notify::{event::ModifyKind, Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{
+    event::{ModifyKind, RenameMode},
+    Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
@@ -328,7 +330,12 @@ fn event_kind_to_string(kind: &EventKind) -> &'static str {
         EventKind::Modify(modify_kind) => {
             // Distinguish rename events from other modifications
             match modify_kind {
-                ModifyKind::Name(_) => "rename",
+                ModifyKind::Name(rename_mode) => match rename_mode {
+                    // Some platforms report rename-as-delete/create pairs.
+                    RenameMode::From => "remove",
+                    RenameMode::To => "create",
+                    RenameMode::Both | RenameMode::Any | RenameMode::Other => "rename",
+                },
                 _ => "modify",
             }
         }
@@ -448,34 +455,126 @@ pub fn stop_watch(state: tauri::State<'_, Mutex<WatcherState>>) -> Result<(), St
 #[cfg(test)]
 mod tests {
     use super::*;
+    use notify::event::{CreateKind, RemoveKind};
+    use notify::EventKind;
     use std::fs;
+    use std::path::PathBuf;
     use tempfile::TempDir;
 
-    #[tokio::test]
-    async fn test_read_file_returns_content() {
+    #[test]
+    fn test_validate_path_within_project_allows_file_within_project() {
         let temp_dir = TempDir::new().unwrap();
-        let file_path = temp_dir.path().join("test.txt");
-        fs::write(&file_path, "hello world").unwrap();
+        let project = temp_dir.path().join("project");
+        fs::create_dir_all(&project).unwrap();
+        let file_path = project.join("main.tex");
+        fs::write(&file_path, "hello").unwrap();
 
-        let content = tokio::fs::read_to_string(&file_path).await.unwrap();
-        assert_eq!(content, "hello world");
+        let result = validate_path_within_project(
+            &file_path.to_string_lossy(),
+            &project.to_string_lossy(),
+        );
+        assert!(result.is_ok());
     }
 
-    #[tokio::test]
-    async fn test_read_file_returns_error_for_missing_file() {
-        let result = tokio::fs::read_to_string("/nonexistent/path/file.txt").await;
+    #[test]
+    fn test_validate_path_within_project_rejects_outside_project() {
+        let temp_dir = TempDir::new().unwrap();
+        let project = temp_dir.path().join("project");
+        let outside = temp_dir.path().join("outside.txt");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(&outside, "nope").unwrap();
+
+        let result = validate_path_within_project(
+            &outside.to_string_lossy(),
+            &project.to_string_lossy(),
+        );
         assert!(result.is_err());
     }
 
     #[tokio::test]
-    async fn test_write_file_creates_file() {
+    async fn test_create_file_creates_utf8_file() {
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("new.txt");
 
-        tokio::fs::write(&file_path, "test content").await.unwrap();
+        create_file(
+            file_path.to_string_lossy().to_string(),
+            Some("utf-8".to_string()),
+        )
+        .await
+        .unwrap();
 
-        let content = fs::read_to_string(&file_path).unwrap();
-        assert_eq!(content, "test content");
+        assert!(file_path.exists());
+        let content = fs::read_to_string(file_path).unwrap();
+        assert_eq!(content, "");
+    }
+
+    #[tokio::test]
+    async fn test_create_file_rejects_non_utf8_encoding() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("new.txt");
+
+        let result = create_file(
+            file_path.to_string_lossy().to_string(),
+            Some("latin1".to_string()),
+        )
+        .await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_rename_and_delete_path_for_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let old_path = temp_dir.path().join("draft.tex");
+        let new_path = temp_dir.path().join("renamed.tex");
+        fs::write(&old_path, "content").unwrap();
+
+        rename_path(
+            old_path.to_string_lossy().to_string(),
+            new_path.to_string_lossy().to_string(),
+        )
+        .await
+        .unwrap();
+
+        assert!(!old_path.exists());
+        assert!(new_path.exists());
+
+        delete_path(new_path.to_string_lossy().to_string())
+            .await
+            .unwrap();
+        assert!(!new_path.exists());
+    }
+
+    #[test]
+    fn test_event_kind_to_string_handles_rename_modes() {
+        assert_eq!(
+            event_kind_to_string(&EventKind::Modify(ModifyKind::Name(RenameMode::From))),
+            "remove"
+        );
+        assert_eq!(
+            event_kind_to_string(&EventKind::Modify(ModifyKind::Name(RenameMode::To))),
+            "create"
+        );
+        assert_eq!(
+            event_kind_to_string(&EventKind::Modify(ModifyKind::Name(RenameMode::Both))),
+            "rename"
+        );
+        assert_eq!(
+            event_kind_to_string(&EventKind::Create(CreateKind::Any)),
+            "create"
+        );
+        assert_eq!(
+            event_kind_to_string(&EventKind::Remove(RemoveKind::Any)),
+            "remove"
+        );
+    }
+
+    #[test]
+    fn test_should_ignore_path_matches_ignored_directories() {
+        let ignored = PathBuf::from("/tmp/project/node_modules/pkg/index.js");
+        let normal = PathBuf::from("/tmp/project/src/main.tex");
+
+        assert!(should_ignore_path(&ignored));
+        assert!(!should_ignore_path(&normal));
     }
 
     #[tokio::test]

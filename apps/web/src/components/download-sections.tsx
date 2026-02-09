@@ -17,6 +17,17 @@ const GPU_SPRING = {
 } as const;
 
 const BLOB_URL = "https://uv96nthsmy3qxwco.public.blob.vercel-storage.com";
+export const RELEASE_VERSION = "0.1.0";
+
+const macPkgFile = `LMMs-Lab_Writer_${RELEASE_VERSION}_aarch64.pkg`;
+const macDmgFile = `LMMs-Lab Writer_${RELEASE_VERSION}_aarch64.dmg`;
+const windowsExeFile = `LMMs-Lab Writer_${RELEASE_VERSION}_x64-setup.exe`;
+const windowsMsiFile = `LMMs-Lab Writer_${RELEASE_VERSION}_x64_en-US.msi`;
+const npmTarballFile = `lmms-lab-writer-shared-${RELEASE_VERSION}.tgz`;
+
+function blobUrl(filename: string): string {
+  return `${BLOB_URL}/${encodeURIComponent(filename)}`;
+}
 
 type Platform = "macOS" | "Windows" | "Linux" | "unknown";
 
@@ -26,16 +37,16 @@ const platforms = {
     icon: Apple,
     variants: [
       {
-        label: "Apple Silicon (DMG)",
-        sublabel: "M1/M2/M3/M4 — drag to Applications",
-        file: "LMMs-Lab Writer_0.1.0_aarch64.dmg",
-        url: `${BLOB_URL}/LMMs-Lab%20Writer_0.1.0_aarch64.dmg`,
+        label: "DMG Bundle",
+        sublabel: "Apple Silicon (M1/M2/M3/M4)",
+        file: macDmgFile,
+        url: blobUrl(macDmgFile),
       },
       {
-        label: "Apple Silicon (PKG)",
-        sublabel: "M1/M2/M3/M4 — installer",
-        file: "LMMs-Lab_Writer_0.1.0_aarch64.pkg",
-        url: `${BLOB_URL}/LMMs-Lab_Writer_0.1.0_aarch64.pkg`,
+        label: "PKG Installer",
+        sublabel: "Apple Silicon (M1/M2/M3/M4)",
+        file: macPkgFile,
+        url: blobUrl(macPkgFile),
       },
     ],
   },
@@ -46,14 +57,14 @@ const platforms = {
       {
         label: "Windows Installer",
         sublabel: "64-bit (exe)",
-        file: "LMMs-Lab Writer_0.1.0_x64-setup.exe",
-        url: `${BLOB_URL}/LMMs-Lab%20Writer_0.1.0_x64-setup.exe`,
+        file: windowsExeFile,
+        url: blobUrl(windowsExeFile),
       },
       {
         label: "Windows MSI",
         sublabel: "64-bit (msi)",
-        file: "LMMs-Lab Writer_0.1.0_x64_en-US.msi",
-        url: `${BLOB_URL}/LMMs-Lab%20Writer_0.1.0_x64_en-US.msi`,
+        file: windowsMsiFile,
+        url: blobUrl(windowsMsiFile),
       },
     ],
   },
@@ -209,6 +220,29 @@ brew install --cask lmms-lab-writer`}
   );
 }
 
+export function NpmPackageSection() {
+  const packageUrl = blobUrl(npmTarballFile);
+
+  return (
+    <FadeIn className="mt-10 pt-8 border-t border-border max-w-2xl">
+      <h2 className="text-sm font-medium mb-3">NPM package</h2>
+      <div className="text-sm text-muted space-y-4">
+        <p>Latest tarball of <code className="bg-neutral-100 px-1">@lmms-lab/writer-shared</code>:</p>
+        <Link
+          href={packageUrl}
+          className="flex items-center justify-between gap-3 p-3 border border-border hover:border-black transition-colors"
+        >
+          <span className="text-sm font-medium text-foreground">{npmTarballFile}</span>
+          <Download className="w-4 h-4 text-muted" />
+        </Link>
+        <pre className="text-xs text-muted bg-neutral-50 p-3 overflow-x-auto border border-border">
+          {`npm install ${packageUrl}`}
+        </pre>
+      </div>
+    </FadeIn>
+  );
+}
+
 export function InstallationSection() {
   const [detectedPlatform, setDetectedPlatform] = useState<Platform>("unknown");
 
@@ -242,28 +276,33 @@ export function InstallationSection() {
       <h2 className="text-sm font-medium mb-3">Manual Installation</h2>
       <div className="text-sm text-muted space-y-4">
         <p>
-          macOS will show a security warning because the app is not yet signed.
-          Remove the quarantine attribute first:
+          This build is not notarized yet. If macOS blocks the installer, use
+          the terminal commands below.
         </p>
         <div className="bg-neutral-50 border border-border p-4 space-y-3">
-          <p className="font-medium text-foreground">For DMG:</p>
+          <p className="font-medium text-foreground">Install from DMG (recommended):</p>
           <ol className="list-decimal list-inside space-y-2">
+            <li>Download the .dmg file</li>
             <li>Run in Terminal:</li>
           </ol>
           <pre className="bg-white p-3 overflow-x-auto border border-border text-xs">
-            {`xattr -cr ~/Downloads/LMMs-Lab\\ Writer_*.dmg`}
+            {`xattr -cr ~/Downloads/LMMs-Lab\\ Writer_*.dmg
+hdiutil attach ~/Downloads/LMMs-Lab\\ Writer_*.dmg
+cp -R "/Volumes/LMMs-Lab Writer/LMMs-Lab Writer.app" /Applications/
+xattr -cr "/Applications/LMMs-Lab Writer.app"
+hdiutil detach "/Volumes/LMMs-Lab Writer"`}
           </pre>
-          <p className="text-xs">Then open the .dmg and drag the app to Applications.</p>
         </div>
         <div className="bg-neutral-50 border border-border p-4 space-y-3">
-          <p className="font-medium text-foreground">For PKG:</p>
-          <ol className="list-decimal list-inside space-y-2">
-            <li>Run in Terminal:</li>
-          </ol>
+          <p className="font-medium text-foreground">Install from PKG (CLI):</p>
           <pre className="bg-white p-3 overflow-x-auto border border-border text-xs">
-            xattr -cr ~/Downloads/LMMs-Lab_Writer_*.pkg
+            {`xattr -cr ~/Downloads/LMMs-Lab_Writer_*.pkg
+sudo installer -pkg ~/Downloads/LMMs-Lab_Writer_*.pkg -target / -allowUntrusted`}
           </pre>
-          <p className="text-xs">Then double-click the .pkg to install.</p>
+          <p className="text-xs">
+            <code className="bg-neutral-100 px-1">-allowUntrusted</code> is
+            required because PKG is not Developer ID signed yet.
+          </p>
         </div>
         <details className="cursor-pointer">
           <summary className="font-medium text-foreground hover:underline">
@@ -271,13 +310,13 @@ export function InstallationSection() {
           </summary>
           <ol className="mt-2 list-decimal list-inside space-y-2 text-sm">
             <li>
-              <span className="font-medium">Right-click</span> the downloaded file and
-              select <span className="font-medium">Open</span>
+              <span className="font-medium">Right-click</span> the downloaded
+              file and select <span className="font-medium">Open</span>
             </li>
             <li>
               Click <span className="font-medium">Open</span> in the dialog
             </li>
-            <li>Follow the installer (PKG) or drag to Applications (DMG)</li>
+            <li>Finish installation (or drag app to Applications for DMG)</li>
           </ol>
         </details>
       </div>

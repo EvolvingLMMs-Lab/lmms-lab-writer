@@ -19,12 +19,13 @@ export function ToolDisplay({
   const info = getToolInfo(part.tool, part.state.input);
   const isRunning = part.state.status === "running";
   const isError = part.state.status === "error";
+  const clickablePath = info.filePath ?? info.subtitle;
 
   const isClickableFile =
     onFileClick &&
-    info.subtitle &&
+    clickablePath &&
     /\.(tex|bib|cls|sty|txt|md|json|yaml|yml|py|js|ts|tsx|css|html|pdf|log|aux|gz|xdv|fdb_latexmk|synctex)$/i.test(
-      info.subtitle,
+      clickablePath,
     );
   const output = (part.state as { output?: string }).output;
   // Always expand if it's a task tool to show the UI
@@ -85,7 +86,9 @@ export function ToolDisplay({
           <span
             onClick={(e) => {
               e.stopPropagation();
-              onFileClick!(info.subtitle!);
+              if (clickablePath) {
+                onFileClick!(clickablePath);
+              }
             }}
             className="text-foreground-secondary hover:text-foreground hover:underline truncate cursor-pointer flex-1"
           >
