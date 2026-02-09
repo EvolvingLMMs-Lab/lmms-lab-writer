@@ -119,7 +119,7 @@ brew tap EvolvingLMMs-Lab/tap && brew install --cask lmms-lab-writer
 # Or download from the website
 ```
 
-[Download for macOS / Windows](https://writer.lmms-lab.com/download) | [All Releases](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
+[Download for macOS / Windows](https://writer.lmms-lab.com/download)
 
 ---
 
