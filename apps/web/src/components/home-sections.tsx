@@ -89,6 +89,9 @@ const features = [
     title: "One-Click LaTeX Setup",
     description:
       "Auto-detects and installs a minimal LaTeX distribution. Missing packages install automatically during compilation. Zero configuration.",
+    detail:
+      "No more hour-long TeX Live installations. LMMs-Lab Writer auto-detects and installs a minimal LaTeX distribution for you — TinyTeX, MiKTeX, or TeX Live. If a package is missing during compilation, it gets installed automatically. Zero manual configuration — just open the app and start writing.",
+    image: "/features/latex.png",
   },
   {
     icon: Globe,
@@ -141,18 +144,6 @@ export function HeroSection() {
             className="h-16 md:h-24 w-auto"
           />
         </motion.div>
-        <motion.p
-          className="text-base md:text-lg text-muted mb-3 leading-relaxed max-w-2xl mx-auto"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{
-            duration: 0.5,
-            delay: 0.2,
-            ease: [0.25, 0.46, 0.45, 0.94],
-          }}
-        >
-          Think Deep, Write Easy.
-        </motion.p>
         <motion.p
           className="text-sm text-muted mb-8 md:mb-10 max-w-xl mx-auto"
           initial={{ opacity: 0, y: 16 }}
@@ -208,6 +199,22 @@ export function HeroSection() {
               Documentation
             </Link>
           </motion.div>
+        </motion.div>
+        <motion.div
+          className="mt-10 md:mt-14 border border-border rounded-sm overflow-hidden shadow-lg"
+          initial={{ opacity: 0, y: 32 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{
+            duration: 0.7,
+            delay: 0.45,
+            ease: [0.25, 0.46, 0.45, 0.94],
+          }}
+        >
+          <img
+            src="/features/demo.webp"
+            alt="LMMs-Lab Writer — AI-native LaTeX editor"
+            className="w-full h-auto"
+          />
         </motion.div>
       </motion.div>
     </section>
