@@ -116,12 +116,18 @@ const features = [
     title: "Fully Open Source",
     description:
       "MIT licensed. Your files never leave your machine. No telemetry, no vendor lock-in. Fork it, modify it — it's yours.",
+    detail:
+      "Fully MIT licensed and hosted on GitHub. Your files never leave your machine — no telemetry, no vendor lock-in. Fork it, modify it, contribute back — it's yours.",
+    image: "/features/github.png",
   },
   {
     icon: Monitor,
     title: "Cross-Platform",
     description:
       "Runs natively on macOS and Windows. Built with Tauri for native performance — not an Electron wrapper.",
+    detail:
+      "Runs natively on macOS and Windows with Tauri — true native performance, not an Electron wrapper. Same seamless experience on every platform.",
+    image: "/features/cross-platform.png",
   },
 ];
 
