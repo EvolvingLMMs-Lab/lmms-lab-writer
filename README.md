@@ -13,9 +13,9 @@
 [![Windows](https://img.shields.io/badge/-Windows-blue?style=flat-square&logo=windows&logoColor=white)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
 [![GitHub Stars](https://img.shields.io/github/stars/EvolvingLMMs-Lab/lmms-lab-writer?style=flat-square&color=orange)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer)
 
-<a href="https://writer.lmms-lab.com/download"><strong>Download</strong></a> &nbsp;&middot;&nbsp;
-<a href="https://writer.lmms-lab.com/docs"><strong>Documentation</strong></a> &nbsp;&middot;&nbsp;
-<a href="https://writer.lmms-lab.com"><strong>Website</strong></a>
+[![Download](https://img.shields.io/badge/-Download-brightgreen?style=flat-square&logo=download&logoColor=white)](https://writer.lmms-lab.com/download)
+[![Documentation](https://img.shields.io/badge/-Docs-blue?style=flat-square&logo=readthedocs&logoColor=white)](https://writer.lmms-lab.com/docs)
+[![Website](https://img.shields.io/badge/-Website-purple?style=flat-square&logo=googlechrome&logoColor=white)](https://writer.lmms-lab.com)
 
 </div>
 
