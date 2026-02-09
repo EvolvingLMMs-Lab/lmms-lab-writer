@@ -2,9 +2,9 @@
 
 ## Design Philosophy
 
-**"Retro-Terminal Fintech"** - A blend of pixel-perfect terminal aesthetics with modern minimalism. Data-focused, technical, professional.
+**"Retro-Terminal Fintech"** — Blending pixel-perfect terminal aesthetics with modern minimalism. Data-centric, technical, and professional.
 
-Inspired by: RECORD by High Output - real-time data dashboards with monospace typography and orange accents.
+**Inspiration:** RECORD by High Output — real-time data dashboards featuring monospace typography and orange accents.
 
 ---
 
@@ -26,10 +26,10 @@ Inspired by: RECORD by High Output - real-time data dashboards with monospace ty
 
 ### Usage Rules
 
-1. **Orange is the ONLY color** - No blues, greens, reds for UI elements
-2. **Black and white for structure** - Backgrounds, text, borders
-3. **Orange for emphasis** - Highlights, active states, CTAs, headlines
-4. **Warm gray background** - Slightly warmer than pure gray (#f5f5f0)
+1. **Orange is the sole accent color** — No blues, greens, or reds for UI elements.
+2. **Black and white for structure** — Backgrounds, text, and borders.
+3. **Orange for emphasis** — Highlights, active states, CTAs, and headlines.
+4. **Warm gray background** — Slightly warmer than pure gray (#f5f5f0).
 
 ---
 
@@ -58,11 +58,11 @@ Inspired by: RECORD by High Output - real-time data dashboards with monospace ty
 
 ### Typography Rules
 
-1. **Monospace for data** - Numbers, stats, lists, code, timestamps
-2. **Sans-serif for headlines** - Marketing copy, section titles
-3. **Uppercase for labels** - Status indicators, categories, tags
-4. **Orange for important headlines** - Hero text, key stats
-5. **Tight tracking** - `tracking-tight` on headlines
+1. **Monospace for data** — Numbers, stats, lists, code, and timestamps.
+2. **Sans-serif for headlines** — Marketing copy and section titles.
+3. **Uppercase for labels** — Status indicators, categories, and tags.
+4. **Orange for important headlines** — Hero text and key stats.
+5. **Tight tracking** — `tracking-tight` on headlines.
 
 ---
 
@@ -211,9 +211,9 @@ Text Input:
 
 ### Principles
 
-1. **Minimal** - Prefer instant state changes
-2. **Functional** - Only animate to provide feedback
-3. **Fast** - 150ms max for micro-interactions
+1. **Minimal** — Prefer instant state changes.
+2. **Functional** — Only animate to provide feedback.
+3. **Fast** — 150ms max for micro-interactions.
 
 ### Allowed Animations
 
@@ -247,23 +247,23 @@ Use Tailwind's default scale with these common patterns:
 
 ### Do
 
-- Use monospace fonts for data, numbers, and body text
-- Use orange as the single accent color
-- Keep corners sharp (no rounded)
-- Use black pill badges for status/labels
-- Use uppercase for labels and status text
-- Highlight selected items with orange background
-- Use warm gray (#f5f5f0) for page backgrounds
+- Use monospace fonts for data, numbers, and body text.
+- Use orange as the single accent color.
+- Keep corners sharp (no rounded corners).
+- Use black pill badges for status/labels.
+- Use uppercase for labels and status text.
+- Highlight selected items with orange background.
+- Use warm gray (#f5f5f0) for page backgrounds.
 
 ### Don't
 
-- Use multiple accent colors
-- Add rounded corners (`rounded-*`)
-- Use shadows for elevation
-- Mix multiple font families in data
-- Use colored icons
-- Add decorative gradients
-- Use thin/light font weights for data
+- Use multiple accent colors.
+- Add rounded corners (`rounded-*`).
+- Use shadows for elevation.
+- Mix multiple font families in data.
+- Use colored icons.
+- Add decorative gradients.
+- Use thin/light font weights for data.
 
 ---
 
