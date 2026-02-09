@@ -14,12 +14,12 @@
 [![Docs](https://img.shields.io/badge/-Docs-0969da?style=flat-square&logo=gitbook&logoColor=white)](https://writer.lmms-lab.com/docs)
 [![Download](https://img.shields.io/badge/-Download-2ea44f?style=flat-square&logo=github&logoColor=white)](https://writer.lmms-lab.com/download)
 
-[![macOS](https://img.shields.io/badge/-macOS-111111?style=flat-square&logo=apple&logoColor=white)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
-[![Windows](https://img.shields.io/badge/-Windows-0078D4?style=flat-square&logo=windows11&logoColor=white)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
+[![Release](https://img.shields.io/github/v/release/EvolvingLMMs-Lab/lmms-lab-writer?style=flat-square&label=Release&color=6c47ff)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-f0c000?style=flat-square)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/EvolvingLMMs-Lab/lmms-lab-writer?style=flat-square&color=e8a317)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer)
 
-[![Release](https://img.shields.io/github/v/release/EvolvingLMMs-Lab/lmms-lab-writer?style=flat-square&label=Release&color=6c47ff)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
+[![macOS](https://img.shields.io/badge/-macOS-111111?style=flat-square&logo=apple&logoColor=white)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
+[![Windows](https://img.shields.io/badge/-Windows-0078D4?style=flat-square&logo=windows11&logoColor=white)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
 [![Tauri](https://img.shields.io/badge/Tauri-v2-24C8D8?style=flat-square&logo=tauri&logoColor=white)](https://tauri.app/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-5FA04E?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![Rust](https://img.shields.io/badge/Rust-2021-DEA584?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org/)
