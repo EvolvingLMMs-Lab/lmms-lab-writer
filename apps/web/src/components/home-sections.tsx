@@ -282,12 +282,15 @@ export function FeaturesSection() {
               transition={{ duration: 0.2 }}
             >
               {"image" in activeFeature && activeFeature.image && (
-                <div className="mb-4 border border-border overflow-hidden rounded-sm">
+                <div className="-mx-6 mb-4 bg-neutral-100 border-y border-border">
                   <LightboxImage
                     src={activeFeature.image}
                     alt={activeFeature.title}
                     className="w-full h-auto"
                   />
+                  <p className="text-xs text-muted text-center py-1.5">
+                    Tap to zoom
+                  </p>
                 </div>
               )}
               <p className="text-sm text-muted leading-relaxed">
