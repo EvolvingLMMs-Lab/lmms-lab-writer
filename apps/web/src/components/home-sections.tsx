@@ -287,65 +287,75 @@ export function FeaturesSection() {
         {/* Desktop: split layout */}
         <FadeIn>
           <div className="hidden md:flex border border-foreground">
-            {/* Left: feature list */}
-            <div className="w-2/5 border-r border-foreground shrink-0">
+            {/* Left: feature list + description */}
+            <div className="w-2/5 border-r border-foreground shrink-0 flex flex-col">
               {features.map((feature, i) => (
-                <button
+                <div
                   key={feature.title}
-                  onClick={() => setActiveIndex(i)}
-                  className={`w-full flex items-center gap-3 px-5 py-4 text-left text-sm transition-colors ${
+                  className={
                     i !== features.length - 1
                       ? "border-b border-foreground"
                       : ""
-                  } ${
-                    i === activeIndex
-                      ? "bg-neutral-50 font-medium"
-                      : "text-muted hover:bg-neutral-50/50"
-                  }`}
+                  }
                 >
-                  <div
-                    className={`w-8 h-8 border flex items-center justify-center shrink-0 ${
+                  <button
+                    onClick={() => setActiveIndex(i)}
+                    className={`w-full flex items-center gap-3 px-5 py-4 text-left text-sm transition-colors ${
                       i === activeIndex
-                        ? "border-foreground bg-white"
-                        : "border-border"
+                        ? "bg-neutral-50 font-medium"
+                        : "text-muted hover:bg-neutral-50/50"
                     }`}
                   >
-                    <feature.icon className="w-4 h-4" />
-                  </div>
-                  {feature.title}
-                </button>
+                    <div
+                      className={`w-8 h-8 border flex items-center justify-center shrink-0 ${
+                        i === activeIndex
+                          ? "border-foreground bg-white"
+                          : "border-border"
+                      }`}
+                    >
+                      <feature.icon className="w-4 h-4" />
+                    </div>
+                    {feature.title}
+                  </button>
+                  <AnimatePresence>
+                    {i === activeIndex && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <p className="px-5 pb-4 text-xs text-muted leading-relaxed">
+                          {feature.description}
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               ))}
             </div>
 
-            {/* Right: detail panel */}
-            <div className="w-3/5 flex flex-col justify-center min-h-[400px]">
+            {/* Right: image / visual panel */}
+            <div className="w-3/5 bg-neutral-50 flex items-center justify-center p-6 min-h-[400px]">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeIndex}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
                   transition={{ duration: 0.2 }}
-                  className="h-full flex flex-col"
+                  className="flex items-center justify-center"
                 >
                   {"image" in activeFeature && activeFeature.image ? (
-                    <>
-                      <div className="flex-1 bg-neutral-50 flex items-center justify-center overflow-hidden">
-                        <img
-                          src={activeFeature.image}
-                          alt={activeFeature.title}
-                          className="w-full h-auto"
-                        />
-                      </div>
-                      <p className="text-sm text-muted leading-relaxed p-5 border-t border-border">
-                        {activeFeature.description}
-                      </p>
-                    </>
+                    <img
+                      src={activeFeature.image}
+                      alt={activeFeature.title}
+                      className="max-h-[360px] w-auto max-w-full object-contain rounded-sm border border-border shadow-sm"
+                    />
                   ) : (
-                    <div className="flex-1 flex items-center p-6">
-                      <p className="text-sm text-muted leading-relaxed">
-                        {activeFeature.description}
-                      </p>
+                    <div className="text-center px-8">
+                      <activeFeature.icon className="w-10 h-10 mx-auto mb-4 text-muted" />
                     </div>
                   )}
                 </motion.div>
