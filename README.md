@@ -149,7 +149,7 @@ pnpm install
 pnpm tauri:dev
 ```
 
-See [AGENTS.md](AGENTS.md) for the full development guide.
+See the **[Developer Guide](docs/dev.md)** for full architecture, tech stack, Rust commands, debugging, and contribution conventions.
 
 ## License
 
