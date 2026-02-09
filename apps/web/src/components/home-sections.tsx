@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import {
   Download,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import {
   motion,
+  AnimatePresence,
   FadeIn,
   FadeInStagger,
   FadeInStaggerItem,
@@ -74,6 +76,15 @@ const comparisons = [
 
 const features = [
   {
+    icon: Sparkles,
+    title: "OpenCode AI Integration",
+    description:
+      "Built-in AI panel that reads your entire project. Chat, attach files, switch models. Also works with Claude Code, Cursor, and Codex.",
+    detail:
+      "Chat with AI to create LaTeX documents from scratch. The AI understands your entire project context — attach files, switch between models, and get intelligent suggestions tailored to your writing. From Beamer presentations to research papers, describe what you need and let the AI handle the LaTeX.",
+    image: "/features/interaction.png",
+  },
+  {
     icon: Zap,
     title: "One-Click LaTeX Setup",
     description:
@@ -92,12 +103,6 @@ const features = [
       "Stage, commit, diff, push, pull — all from the sidebar. AI-generated commit messages. One-click GitHub publishing.",
   },
   {
-    icon: Sparkles,
-    title: "OpenCode AI Integration",
-    description:
-      "Built-in AI panel that reads your entire project. Chat, attach files, switch models. Also works with Claude Code, Cursor, and Codex.",
-  },
-  {
     icon: Lock,
     title: "Fully Open Source",
     description:
@@ -109,7 +114,7 @@ const features = [
     description:
       "Runs natively on macOS and Windows. Built with Tauri for native performance — not an Electron wrapper.",
   },
-];
+] as const;
 
 export function HeroSection() {
   return (
@@ -210,6 +215,9 @@ export function HeroSection() {
 }
 
 export function FeaturesSection() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeFeature = features[activeIndex];
+
   return (
     <section className="py-12 md:py-20 px-6 border-t border-border">
       <div className="max-w-5xl mx-auto">
@@ -223,26 +231,116 @@ export function FeaturesSection() {
           </p>
         </FadeIn>
 
-        <FadeInStagger
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          staggerDelay={0.08}
-        >
-          {features.map((feature) => (
-            <FadeInStaggerItem key={feature.title}>
-              <MotionCard className="border border-foreground p-6 h-full">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 border border-foreground flex items-center justify-center bg-neutral-50">
+        {/* Mobile: horizontal scrollable tabs */}
+        <div className="md:hidden mb-4 -mx-6 px-6 overflow-x-auto">
+          <div className="flex gap-2 min-w-max pb-2">
+            {features.map((feature, i) => (
+              <button
+                key={feature.title}
+                onClick={() => setActiveIndex(i)}
+                className={`flex items-center gap-2 px-3 py-2 text-sm border whitespace-nowrap transition-colors ${
+                  i === activeIndex
+                    ? "border-foreground bg-neutral-50 font-medium"
+                    : "border-border text-muted hover:border-foreground"
+                }`}
+              >
+                <feature.icon className="w-3.5 h-3.5" />
+                {feature.title}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Mobile: detail content */}
+        <div className="md:hidden">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeIndex}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              {"image" in activeFeature && activeFeature.image && (
+                <div className="mb-4 border border-border overflow-hidden rounded-sm">
+                  <img
+                    src={activeFeature.image}
+                    alt={activeFeature.title}
+                    className="w-full h-auto"
+                  />
+                </div>
+              )}
+              <p className="text-sm text-muted leading-relaxed">
+                {"detail" in activeFeature && activeFeature.detail
+                  ? activeFeature.detail
+                  : activeFeature.description}
+              </p>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Desktop: split layout */}
+        <FadeIn>
+          <div className="hidden md:flex border border-foreground">
+            {/* Left: feature list */}
+            <div className="w-2/5 border-r border-foreground shrink-0">
+              {features.map((feature, i) => (
+                <button
+                  key={feature.title}
+                  onClick={() => setActiveIndex(i)}
+                  className={`w-full flex items-center gap-3 px-5 py-4 text-left text-sm transition-colors ${
+                    i !== features.length - 1
+                      ? "border-b border-foreground"
+                      : ""
+                  } ${
+                    i === activeIndex
+                      ? "bg-neutral-50 font-medium"
+                      : "text-muted hover:bg-neutral-50/50"
+                  }`}
+                >
+                  <div
+                    className={`w-8 h-8 border flex items-center justify-center shrink-0 ${
+                      i === activeIndex
+                        ? "border-foreground bg-white"
+                        : "border-border"
+                    }`}
+                  >
                     <feature.icon className="w-4 h-4" />
                   </div>
-                  <h3 className="text-sm font-medium">{feature.title}</h3>
-                </div>
-                <p className="text-sm text-muted leading-relaxed">
-                  {feature.description}
-                </p>
-              </MotionCard>
-            </FadeInStaggerItem>
-          ))}
-        </FadeInStagger>
+                  {feature.title}
+                </button>
+              ))}
+            </div>
+
+            {/* Right: detail panel */}
+            <div className="w-3/5 p-6 flex flex-col justify-center min-h-[400px]">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeIndex}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {"image" in activeFeature && activeFeature.image && (
+                    <div className="mb-5 border border-border overflow-hidden rounded-sm">
+                      <img
+                        src={activeFeature.image}
+                        alt={activeFeature.title}
+                        className="w-full h-auto"
+                      />
+                    </div>
+                  )}
+                  <p className="text-sm text-muted leading-relaxed">
+                    {"detail" in activeFeature && activeFeature.detail
+                      ? activeFeature.detail
+                      : activeFeature.description}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+        </FadeIn>
       </div>
     </section>
   );

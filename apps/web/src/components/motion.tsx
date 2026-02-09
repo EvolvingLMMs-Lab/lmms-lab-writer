@@ -2,6 +2,7 @@
 
 import {
   m,
+  AnimatePresence,
   useReducedMotion,
   type Variants,
   type HTMLMotionProps,
@@ -200,4 +201,4 @@ export const MotionCard = forwardRef<HTMLDivElement, MotionDivProps>(
 );
 MotionCard.displayName = "MotionCard";
 
-export { m as motion };
+export { m as motion, AnimatePresence } from "framer-motion";
