@@ -1,6 +1,7 @@
 import { Header } from "@/components/header";
 import {
   HeroSection,
+  FeaturesSection,
   DemoSection,
   ComparisonSection,
   FooterLink,
@@ -13,6 +14,7 @@ export default function HomePage() {
 
       <main className="flex-1">
         <HeroSection />
+        <FeaturesSection />
         <DemoSection />
         <ComparisonSection />
       </main>
