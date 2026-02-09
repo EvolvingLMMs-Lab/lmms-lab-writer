@@ -251,53 +251,68 @@ export function FeaturesSection() {
           </p>
         </FadeIn>
 
-        {/* Mobile: horizontal scrollable tabs */}
-        <div className="md:hidden mb-4 -mx-6 px-6 overflow-x-auto">
-          <div className="flex gap-2 min-w-max pb-2">
-            {features.map((feature, i) => (
+        {/* Mobile: accordion */}
+        <div className="md:hidden border border-foreground">
+          {features.map((feature, i) => (
+            <div
+              key={feature.title}
+              className={i !== features.length - 1 ? "border-b border-foreground" : ""}
+            >
               <button
-                key={feature.title}
-                onClick={() => setActiveIndex(i)}
-                className={`flex items-center gap-2 px-3 py-2 text-sm border whitespace-nowrap transition-colors ${
+                onClick={() => setActiveIndex(activeIndex === i ? -1 : i)}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 text-left text-sm transition-colors ${
                   i === activeIndex
-                    ? "border-foreground bg-neutral-50 font-medium"
-                    : "border-border text-muted hover:border-foreground"
+                    ? "bg-neutral-50 font-medium"
+                    : "text-muted"
                 }`}
               >
-                <feature.icon className="w-3.5 h-3.5" />
-                {feature.title}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Mobile: detail content */}
-        <div className="md:hidden">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeIndex}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-            >
-              {"image" in activeFeature && activeFeature.image && (
-                <div className="-mx-6 mb-4 bg-neutral-100 border-y border-border">
-                  <LightboxImage
-                    src={activeFeature.image}
-                    alt={activeFeature.title}
-                    className="w-full h-auto"
-                  />
-                  <p className="text-xs text-muted text-center py-1.5">
-                    Tap to zoom
-                  </p>
+                <div
+                  className={`w-7 h-7 border flex items-center justify-center shrink-0 ${
+                    i === activeIndex
+                      ? "border-foreground bg-white"
+                      : "border-border"
+                  }`}
+                >
+                  <feature.icon className="w-3.5 h-3.5" />
                 </div>
-              )}
-              <p className="text-sm text-muted leading-relaxed">
-                {activeFeature.description}
-              </p>
-            </motion.div>
-          </AnimatePresence>
+                <span className="flex-1">{feature.title}</span>
+                <motion.span
+                  animate={{ rotate: i === activeIndex ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-muted text-xs"
+                >
+                  &#9660;
+                </motion.span>
+              </button>
+              <AnimatePresence>
+                {i === activeIndex && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    className="overflow-hidden"
+                  >
+                    {"image" in feature && feature.image && (
+                      <div className="bg-neutral-100 border-y border-border">
+                        <LightboxImage
+                          src={feature.image}
+                          alt={feature.title}
+                          className="w-full h-auto"
+                        />
+                        <p className="text-xs text-muted text-center py-1.5">
+                          Tap to zoom
+                        </p>
+                      </div>
+                    )}
+                    <p className="px-4 py-3 text-xs text-muted leading-relaxed">
+                      {feature.description}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ))}
         </div>
 
         {/* Desktop: split layout */}
