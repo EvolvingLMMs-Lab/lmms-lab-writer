@@ -92,16 +92,18 @@ def main():
     # ---- Inputs ----
     light_path = "imgs/light.png"
     dark_path  = "imgs/dark.png"
-    out_path   = "imgs/demo.png"
+    out_path   = "imgs/demo.webp"
 
     # ---- Style knobs (tweak these mainly) ----
-    background = (18, 18, 18)  # Dark bg for a "showcase" look; change to (245,245,245) for light
+    # Gradient background: top-left color -> bottom-right color
+    bg_top    = (30, 30, 40)
+    bg_bottom = (18, 18, 24)
     target_height = 900        # Card height; adjust to your screenshot size
     card_scale = 1.0           # Card scale
     corner_radius = 24
-    shadow_blur = 0
-    shadow_offset = (0, 0)
-    shadow_opacity = 0
+    shadow_blur = 16
+    shadow_offset = (0, 8)
+    shadow_opacity = 80
     padding = 30               # Slight padding around the card
     split_skew = 0.12          # Tilt of the split line (0 = vertical, larger = more tilted)
 
@@ -138,7 +140,14 @@ def main():
     cw = shadowed.width  + padding * 2
     ch = shadowed.height + padding * 2
 
-    canvas = Image.new("RGBA", (cw, ch), (*background, 255))
+    # Create a vertical gradient background
+    canvas = Image.new("RGBA", (cw, ch), (*bg_top, 255))
+    for y_line in range(ch):
+        t = y_line / max(ch - 1, 1)
+        r = int(bg_top[0] + (bg_bottom[0] - bg_top[0]) * t)
+        g = int(bg_top[1] + (bg_bottom[1] - bg_top[1]) * t)
+        b = int(bg_top[2] + (bg_bottom[2] - bg_top[2]) * t)
+        ImageDraw.Draw(canvas).line([(0, y_line), (cw, y_line)], fill=(r, g, b, 255))
 
     # ---- Composite (centered) ----
     x = (cw - shadowed.width)  // 2
