@@ -6,13 +6,16 @@
   <img alt="LMMs-Lab Writer" src="imgs/logo-light.svg" width="512">
 </picture>
 
-The AI-native LaTeX editor for researchers who'd rather focus on ideas than syntax.
+**The AI-native LaTeX editor for researchers who'd rather focus on ideas than syntax.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](https://opensource.org/licenses/MIT)
-[![macOS](https://img.shields.io/badge/macOS-black.svg)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
-[![Windows](https://img.shields.io/badge/Windows-black.svg)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![macOS](https://img.shields.io/badge/-macOS-black?style=flat-square&logo=apple&logoColor=white)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
+[![Windows](https://img.shields.io/badge/-Windows-blue?style=flat-square&logo=windows&logoColor=white)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
+[![GitHub Stars](https://img.shields.io/github/stars/EvolvingLMMs-Lab/lmms-lab-writer?style=flat-square&color=orange)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer)
 
-[Download](https://writer.lmms-lab.com/download) | [Documentation](https://writer.lmms-lab.com/docs) | [Website](https://writer.lmms-lab.com)
+<a href="https://writer.lmms-lab.com/download"><strong>Download</strong></a> &nbsp;&middot;&nbsp;
+<a href="https://writer.lmms-lab.com/docs"><strong>Documentation</strong></a> &nbsp;&middot;&nbsp;
+<a href="https://writer.lmms-lab.com"><strong>Website</strong></a>
 
 </div>
 
