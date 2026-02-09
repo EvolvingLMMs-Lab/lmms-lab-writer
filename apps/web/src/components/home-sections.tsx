@@ -238,14 +238,14 @@ const AUTO_PLAY_MS = 5000; // cycle every 5s
 
 export function FeaturesSection() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const activeFeature = features[activeIndex]!;
+  const activeFeature = features[activeIndex] ?? features[0]!;
   const pausedUntil = useRef(0);
 
   // Auto-cycle through features when not paused
   useEffect(() => {
     const id = setInterval(() => {
       if (Date.now() < pausedUntil.current) return;
-      setActiveIndex((prev: number) => (prev + 1) % features.length);
+      setActiveIndex((prev: number) => prev < 0 ? prev : (prev + 1) % features.length);
     }, AUTO_PLAY_MS);
     return () => clearInterval(id);
   }, []);
