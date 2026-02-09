@@ -5,7 +5,6 @@ import * as Dialog from "@radix-ui/react-dialog";
 import * as Tabs from "@radix-ui/react-tabs";
 import {
   ArrowCounterClockwiseIcon,
-  CheckIcon,
   MinusIcon,
   PlusIcon,
   XIcon,

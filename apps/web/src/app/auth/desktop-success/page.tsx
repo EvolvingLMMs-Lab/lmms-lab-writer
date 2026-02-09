@@ -168,7 +168,7 @@ function DesktopSuccessContent() {
         } else {
           setCallbackStatus("failed");
         }
-      } catch (err) {
+      } catch {
         setCallbackStatus("failed");
       }
     };
