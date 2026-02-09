@@ -29,60 +29,60 @@
 
 ## 为什么选择 LMMs-Lab Writer？
 
-你是一名研究者。你的时间应该花在突破性研究上——而不是 LaTeX 模板、宏包冲突，或者在 Overleaf 和 ChatGPT 之间来回复制粘贴。
+作为研究人员，你的宝贵时间应倾注于那些突破性的发现——而不是浪费在繁琐的 LaTeX 模板、解决宏包冲突，或是在 Overleaf 和 ChatGPT 之间反复复制粘贴。
 
-LMMs-Lab Writer 是一款本地优先、AI 原生的 LaTeX 编辑器。你的文件始终留在本地。AI 代理直接编辑它们。你只需编译、审阅和发布——一切都在一个应用中完成。
+LMMs-Lab Writer 是一款**本地优先、AI 原生**的 LaTeX 编辑器。你的文件始终安全地存储在本地，而 AI 智能体则能直接协助编辑。编译、审阅、发布——所有环节都在一个应用内流畅完成。
 
-## 一键 LaTeX 环境配置
+## 一键搞定 LaTeX 环境
 
-不再需要耗时数小时安装 TeX Live。LMMs-Lab Writer **自动检测并安装最小化的 LaTeX 发行版**。如果编译时缺少某个宏包，它会自动安装。零手动配置——打开应用即可开始写作。
+告别动辄数小时的 TeX Live 安装过程。LMMs-Lab Writer **自动检测并配置最小化的 LaTeX 发行版**。如果编译过程中发现缺少宏包，它会自动为你安装。无需任何手动配置，打开应用，即刻开始创作。
 
-支持 **TinyTeX**、**MiKTeX**、**MacTeX** 和 **TeX Live**——均由应用一键管理安装。
+支持 **TinyTeX**、**MiKTeX**、**MacTeX** 和 **TeX Live**——所有环境配置均由应用一键接管。
 
 <div align="center">
 <img src="imgs/latex.png" alt="一键 LaTeX 环境配置，自动安装宏包" width="720">
 </div>
 
-## 为每种语言而生
+## 原生支持多语言写作
 
-支持 **中文、英文、日文、韩文、阿拉伯文以及任何语言** 的写作。XeLaTeX 和 LuaLaTeX 作为一等公民，提供完整的 Unicode 和系统字体支持。CJK 文档可通过 `ctex`、`xeCJK` 等多语言宏包开箱即用，无需额外配置。
+无论是**中文、英文、日文、韩文，还是阿拉伯文**，都能流畅写作。XeLaTeX 和 LuaLaTeX 作为一等公民，提供对 Unicode 和系统字体的完整支持。通过内置的 `ctex`、`xeCJK` 等多语言宏包，中日韩（CJK）文档**开箱即用**，无需任何额外折腾。
 
 <div align="center">
 <img src="imgs/compile-cn.png" alt="完整的 CJK 和 Unicode 支持（XeLaTeX）" width="720">
 </div>
 
-## OpenCode 驱动的 AI 工作流
+## OpenCode：深度集成的 AI 工作流
 
-内置的 **OpenCode** 面板将 AI 直接嵌入你的编辑器：
+内置的 **OpenCode** 面板将 AI 的能力直接注入编辑器核心：
 
 ```
-你："添加一个相关工作章节，比较我们的方法与 LoRA 和 QLoRA"
-AI 代理：*实时写入 main.tex*
-你：*点击编译* 完成。
+你："增加一个相关工作章节，对比我们的方法与 LoRA 和 QLoRA 的异同"
+AI 智能体：*实时在 main.tex 中撰写内容*
+你：*点击编译* 搞定。
 ```
 
-- 与 AI 对话、附加文件、管理会话
-- AI 读取你的整个项目以获取完整上下文
-- 修改即时显示在编辑器中
-- 支持 **任何模型**——Claude、GPT、Gemini、DeepSeek、本地模型
+- 与 AI 对话、发送文件、管理会话上下文
+- AI 能够读取整个项目，理解完整的上下文语境
+- 修改内容即时呈现在编辑器中，所见即所得
+- 支持 **任意模型**——无论是 Claude, GPT, Gemini, DeepSeek，还是本地运行的模型
 
-同时兼容 **Claude Code**、**Cursor**、**Codex CLI**、**Aider** 等任何可以编辑文件的工具。编辑器会监听你的项目目录，实时反映所有更改。
+它还完美兼容 **Claude Code**、**Cursor**、**Codex CLI**、**Aider** 等任何文件编辑工具。编辑器会实时监听项目目录，同步反映所有外部更改。
 
 <div align="center">
 <img src="imgs/interaction.png" alt="OpenCode AI 集成——与 AI 对话编写 LaTeX" width="720">
 </div>
 
-## 内置 Git 协作
+## 内置 Git，专为协作设计
 
-Git 不是附加功能——它 **直接内置在侧边栏** 中：
+Git 绝非事后补充的功能——它被**原生构建在侧边栏**中：
 
-- **暂存、提交、差异对比、推送、拉取**——全部通过界面操作
-- **AI 生成提交信息**——基于你的暂存更改
-- **并排差异查看器**——在提交前审阅 AI 的编辑
-- **一键 GitHub 发布**——无需打开终端即可创建仓库并推送
-- **GitHub CLI 集成**——无缝认证
+- **暂存、提交、对比差异、推送、拉取**——全图形化界面操作
+- **AI 自动生成提交信息**——基于你的修改内容智能总结
+- **并排差异查看器**——在提交前轻松审阅 AI 的修改
+- **一键发布到 GitHub**——无需接触终端即可创建仓库并推送代码
+- **GitHub CLI 集成**——无缝的身份验证体验
 
-不再需要每月支付 $21 来使用 Overleaf 的 Git 同步。版本控制免费且为一等公民。
+不再需要为 Overleaf 的 Git 同步功能每月支付 $21。在这里，版本控制是免费且核心的功能。
 
 <div align="center">
 <img src="imgs/git-support.png" alt="Git 集成——从侧边栏暂存、提交、差异对比、推送" width="720">
@@ -90,16 +90,16 @@ Git 不是附加功能——它 **直接内置在侧边栏** 中：
 
 ## 完全开源
 
-MIT 许可证。每一行代码都在 GitHub 上。没有供应商锁定、没有遥测、没有隐藏费用。
+采用 MIT 许可证。每一行代码都在 GitHub 上公开。没有供应商锁定，没有数据遥测，没有隐藏费用。
 
-- 你的文件 **始终留在你的设备上**
-- AI 工具使用 **你自己的 API 密钥**
-- 一切功能 **离线可用**（编辑、编译、Git）
-- 你可以自由 fork、修改、自托管——它完全属于你
+- 你的文件**永远不会离开你的设备**
+- AI 工具使用**你自己的 API 密钥**
+- 所有功能**完全离线可用**（编辑、编译、Git 操作）
+- 自由 Fork、修改、自托管——它是完全属于你的工具
 
-## 跨平台
+## 跨平台原生体验
 
-原生运行于 **macOS**（Apple Silicon 和 Intel）以及 **Windows**（64 位）。基于 [Tauri](https://tauri.app/) 构建，提供原生性能——不是 Electron 套壳。
+原生支持 **macOS**（Apple Silicon 和 Intel）以及 **Windows**（64 位）。基于 [Tauri](https://tauri.app/) 构建，带来极致的原生性能——绝非笨重的 Electron 套壳应用。
 
 <div align="center">
 <table>
@@ -119,7 +119,7 @@ MIT 许可证。每一行代码都在 GitHub 上。没有供应商锁定、没�
 brew tap EvolvingLMMs-Lab/tap && brew install --cask lmms-lab-writer
 ```
 
-或从官网[下载 macOS / Windows 版本](https://writer.lmms-lab.com/download)。
+或者直接从官网[下载 macOS / Windows 版本](https://writer.lmms-lab.com/download)。
 
 ---
 
@@ -127,56 +127,56 @@ brew tap EvolvingLMMs-Lab/tap && brew install --cask lmms-lab-writer
 
 | | Overleaf | LMMs-Lab Writer |
 |---|---|---|
-| **文件存储** | 仅限云端 | 本地（你的设备） |
-| **AI 编辑** | 基础语法检查 | OpenCode + 任意 AI 代理 |
-| **非英文支持** | 有限的 CJK 支持 | 完整 Unicode、XeLaTeX、系统字体 |
-| **LaTeX 配置** | 预配置 | 一键安装，代理管理 |
-| **Git** | 仅付费用户 | 免费，内置侧边栏 |
+| **文件存储** | 仅限云端 | 本地（完全掌控） |
+| **AI 编辑** | 仅基础语法检查 | OpenCode + 任意 AI 智能体 |
+| **多语言支持** | CJK 支持有限 | 完整 Unicode、XeLaTeX、系统字体支持 |
+| **LaTeX 环境** | 预设环境 | 一键安装，智能托管 |
+| **Git 集成** | 需付费 | 免费，原生内置 |
 | **离线使用** | 不支持 | 完整支持 |
-| **编译** | 云端队列 | 本地，即时 |
-| **开源** | 否 | MIT 许可证 |
+| **编译速度** | 云端排队 | 本地极速编译 |
+| **开源** | 否 | MIT 协议开源 |
 | **价格** | $21-42/月 | 免费 |
 
 ## 快速开始
 
 **1. 下载安装**
 
-从 [writer.lmms-lab.com/download](https://writer.lmms-lab.com/download) 下载，或在 macOS 上通过 Homebrew 安装。
+前往 [writer.lmms-lab.com/download](https://writer.lmms-lab.com/download) 下载，macOS 用户也可通过 Homebrew 安装。
 
 **2. 打开项目**
 
-启动应用，点击 **打开文件夹**，选择你的 LaTeX 项目。应用会自动检测主文件。
+启动应用，点击 **打开文件夹**，选择你的 LaTeX 项目目录。应用会自动识别主文件。
 
-**3. 用 AI 写作**
+**3. AI 辅助写作**
 
-使用内置的 OpenCode 面板，或在终端中运行任何 AI 工具：
+使用内置的 OpenCode 面板，或者在终端运行你喜欢的 AI 工具：
 
 ```bash
-claude "撰写摘要，总结我们的三个关键贡献"
+claude "写一段摘要，总结我们的三个核心贡献"
 ```
 
 **4. 编译与发布**
 
-点击编译，预览 PDF。暂存更改、提交、推送到 GitHub——全部通过侧边栏操作。
+点击编译，预览 PDF。在侧边栏暂存更改、提交代码、推送到 GitHub——一气呵成。
 
 ## 常见问题
 
-**需要单独安装 LaTeX 吗？**
-不一定。应用可以自动检测并安装最小化的 LaTeX 发行版。编译时缺少的宏包会自动安装。
+**我需要单独安装 LaTeX 吗？**
+通常不需要。应用会自动检测并安装一个最小化的 LaTeX 发行版。编译时如果缺少宏包，也会自动为你安装。
 
-**支持非英文文档吗？**
-支持。通过 XeLaTeX 和 LuaLaTeX 提供完整的 Unicode 支持。中日韩文、阿拉伯文、西里尔文——全部开箱即用。
+**支持中文等非英文文档吗？**
+完美支持。通过 XeLaTeX 和 LuaLaTeX 提供完整的 Unicode 支持。中文、日文、韩文、阿拉伯文等均可开箱即用。
 
-**我的数据会被发送到任何地方吗？**
-不会。所有文件留在你的设备上。AI 工具在本地运行或通过你自己的 API 密钥调用。
+**我的数据安全吗？**
+绝对安全。所有文件都存储在你的本地设备上。AI 工具也是在本地运行或通过你自己的 API 密钥调用，我们不会上传你的任何数据。
 
-**可以和 Overleaf 项目一起用吗？**
-可以。将你的 Overleaf Git 仓库克隆到本地，然后用 Writer 打开即可。
+**可以兼容 Overleaf 项目吗？**
+可以。只需将你的 Overleaf Git 仓库克隆到本地，然后用 Writer 打开即可无缝衔接。
 
-**支持离线使用吗？**
-支持。编辑、编译和 Git 操作均可在无网络环境下使用。
+**没有网络能用吗？**
+当然。编辑、编译和 Git 操作均支持完全离线使用。
 
-## 开发
+## 参与开发
 
 ```bash
 git clone https://github.com/EvolvingLMMs-Lab/lmms-lab-writer.git
@@ -185,7 +185,7 @@ pnpm install
 pnpm tauri:dev
 ```
 
-详见 **[开发者指南](docs/dev.md)**，了解完整架构、技术栈、Rust 命令、调试方法和贡献规范。
+请参阅 **[开发者指南](docs/dev.md)** 了解完整的架构、技术栈、Rust 命令、调试技巧以及贡献规范。
 
 ## 许可证
 
@@ -195,8 +195,8 @@ MIT
 
 <div align="center">
 
-**由 [LMMs-Lab](https://lmms-lab.com) 构建**
+**由 [LMMs-Lab](https://lmms-lab.com) 匠心打造**
 
-每一篇传世论文都有起点。你的，从这里开始。
+每一篇传世论文都有起点。你的杰作，从这里开始。
 
 </div>
