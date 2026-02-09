@@ -8,7 +8,7 @@
 </picture>
 </a>
 
-**形而上者谓之道，形而下者谓之器。**
+**言者所以在意，得意而忘言。**
 
 [![Website](https://img.shields.io/badge/-官网-8957e5?style=flat-square&logo=safari&logoColor=white)](https://writer.lmms-lab.com)
 [![Docs](https://img.shields.io/badge/-文档-0969da?style=flat-square&logo=gitbook&logoColor=white)](https://writer.lmms-lab.com/docs)
