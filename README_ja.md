@@ -48,7 +48,7 @@ TeX Live の長いインストール待ち時間はもう過去のものです�
 **日本語、英語、中国語、韓国語、アラビア語**など、あらゆる言語での執筆をネイティブサポートしています。XeLaTeX と LuaLaTeX を標準採用し、Unicode とシステムフォントを完全にサポート。`ctex` や `xeCJK` などの多言語パッケージも**設定不要ですぐに使えます**。
 
 <div align="center">
-<img src="imgs/compile-cn.png" alt="XeLaTeX による完全な CJK・Unicode サポート" width="720">
+<img src="imgs/compile-cn.png" alt="XeLaTeX による完全な CJK・Unicode サポート">
 </div>
 
 ## OpenCode：AI と共にあるワークフロー
@@ -69,7 +69,7 @@ AI エージェント：*main.tex にリアルタイムで執筆*
 また、**Claude Code**、**Cursor**、**Codex CLI**、**Aider** など、外部のファイル編集ツールとも完全に連携。エディタはプロジェクトディレクトリを監視し、外部からの変更をリアルタイムに反映します。
 
 <div align="center">
-<img src="imgs/interaction.png" alt="OpenCode AI 統合——AI と対話して LaTeX を執筆" width="720">
+<img src="imgs/interaction.png" alt="OpenCode AI 統合——AI と対話して LaTeX を執筆" width="512">
 </div>
 
 ## 共同作業のための Git 統合

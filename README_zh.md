@@ -48,7 +48,7 @@ LMMs-Lab Writer 是一款**本地优先、AI 原生**的 LaTeX 编辑器。你�
 无论是**中文、英文、日文、韩文，还是阿拉伯文**，都能流畅写作。XeLaTeX 和 LuaLaTeX 作为一等公民，提供对 Unicode 和系统字体的完整支持。通过内置的 `ctex`、`xeCJK` 等多语言宏包，中日韩（CJK）文档**开箱即用**，无需任何额外折腾。
 
 <div align="center">
-<img src="imgs/compile-cn.png" alt="完整的 CJK 和 Unicode 支持（XeLaTeX）" width="720">
+<img src="imgs/compile-cn.png" alt="完整的 CJK 和 Unicode 支持（XeLaTeX）">
 </div>
 
 ## OpenCode：深度集成的 AI 工作流
@@ -69,7 +69,7 @@ AI 智能体：*实时在 main.tex 中撰写内容*
 它还完美兼容 **Claude Code**、**Cursor**、**Codex CLI**、**Aider** 等任何文件编辑工具。编辑器会实时监听项目目录，同步反映所有外部更改。
 
 <div align="center">
-<img src="imgs/interaction.png" alt="OpenCode AI 集成——与 AI 对话编写 LaTeX" width="720">
+<img src="imgs/interaction.png" alt="OpenCode AI 集成——与 AI 对话编写 LaTeX" width="512">
 </div>
 
 ## 内置 Git，专为协作设计

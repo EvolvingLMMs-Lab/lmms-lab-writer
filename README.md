@@ -48,7 +48,7 @@ Supports **TinyTeX**, **MiKTeX**, **MacTeX**, and **TeX Live**—with streamline
 Write effortlessly in **English, Chinese, Japanese, Korean, Arabic, or any other language**. XeLaTeX and LuaLaTeX are supported out of the box with full Unicode and system font compatibility. CJK documents work instantly with `ctex`, `xeCJK`, and other multilingual packages—no extra setup needed.
 
 <div align="center">
-<img src="imgs/compile-cn.png" alt="Full CJK and Unicode support with XeLaTeX" width="720">
+<img src="imgs/compile-cn.png" alt="Full CJK and Unicode support with XeLaTeX">
 </div>
 
 ## AI-Powered Workflows with OpenCode
@@ -69,7 +69,7 @@ You: *hit compile* Done.
 It also pairs perfectly with **Claude Code**, **Cursor**, **Codex CLI**, **Aider**, and other tools. The editor monitors your project directory, syncing external changes instantly.
 
 <div align="center">
-<img src="imgs/interaction.png" alt="OpenCode AI integration — chat with AI to write LaTeX" width="720">
+<img src="imgs/interaction.png" alt="OpenCode AI integration — chat with AI to write LaTeX" width="512">
 </div>
 
 ## Git Integration for Modern Collaboration
