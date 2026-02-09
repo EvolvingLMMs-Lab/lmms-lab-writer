@@ -21,7 +21,8 @@ export default function HomePage() {
 
       <footer className="border-t border-border px-6">
         <div className="max-w-5xl mx-auto py-6 text-sm text-muted text-center">
-          Built by <FooterLink />
+          Built by <FooterLink /> · © {new Date().getFullYear()} LMMs-Lab.
+          All rights reserved.
         </div>
       </footer>
     </div>
