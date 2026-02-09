@@ -22,6 +22,7 @@ import {
   MotionCard,
 } from "@/components/motion";
 import { PaperDemo } from "@/components/paper-demo";
+import { LightboxImage } from "@/components/lightbox";
 
 const GPU_SPRING = {
   type: "spring",
@@ -222,7 +223,7 @@ export function HeroSection() {
             ease: [0.25, 0.46, 0.45, 0.94],
           }}
         >
-          <img
+          <LightboxImage
             src="/features/demo.webp"
             alt="LMMs-Lab Writer — AI-native LaTeX editor"
             className="w-full h-auto"
@@ -282,7 +283,7 @@ export function FeaturesSection() {
             >
               {"image" in activeFeature && activeFeature.image && (
                 <div className="mb-4 border border-border overflow-hidden rounded-sm">
-                  <img
+                  <LightboxImage
                     src={activeFeature.image}
                     alt={activeFeature.title}
                     className="w-full h-auto"
@@ -360,7 +361,7 @@ export function FeaturesSection() {
                   className="flex items-center justify-center"
                 >
                   {"image" in activeFeature && activeFeature.image ? (
-                    <img
+                    <LightboxImage
                       src={activeFeature.image}
                       alt={activeFeature.title}
                       className="max-h-[360px] w-auto max-w-full object-contain rounded-sm border border-border shadow-sm"
