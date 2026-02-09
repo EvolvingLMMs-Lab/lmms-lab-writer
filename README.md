@@ -6,8 +6,6 @@
   <img alt="LMMs-Lab Writer" src="imgs/logo-light.svg" width="480">
 </picture>
 
-**Think Deep, Write Easy.**
-
 The AI-native LaTeX editor for researchers who'd rather focus on ideas than syntax.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](https://opensource.org/licenses/MIT)
