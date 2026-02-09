@@ -18,6 +18,8 @@ The AI-native LaTeX editor for researchers who'd rather focus on ideas than synt
 
 ---
 
+![](imgs/demo-pdf.png)
+
 ## Why LMMs-Lab Writer?
 
 You're a researcher. Your time should go to breakthroughs — not LaTeX boilerplate, package conflicts, or copy-pasting between Overleaf and ChatGPT.
