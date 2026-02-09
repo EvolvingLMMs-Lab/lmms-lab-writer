@@ -108,8 +108,8 @@ Native performance on **macOS** (Apple Silicon & Intel) and **Windows** (64-bit)
 <td align="center"><strong>Dark Mode</strong></td>
 </tr>
 <tr>
-<td><img src="imgs/light.png" alt="Light mode" width="360"></td>
-<td><img src="imgs/dark.png" alt="Dark mode" width="360"></td>
+<td><img src="imgs/light.png" alt="Light mode"></td>
+<td><img src="imgs/dark.png" alt="Dark mode"></td>
 </tr>
 </table>
 </div>
