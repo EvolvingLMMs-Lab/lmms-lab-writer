@@ -269,11 +269,11 @@ export function FeaturesSection() {
               transition={{ duration: 0.2 }}
             >
               {"image" in activeFeature && activeFeature.image && (
-                <div className="mb-4 border border-border overflow-hidden rounded-sm">
+                <div className="mb-4 border border-border overflow-hidden rounded-sm bg-neutral-50 flex items-center justify-center p-2">
                   <img
                     src={activeFeature.image}
                     alt={activeFeature.title}
-                    className="w-full h-auto"
+                    className="max-h-[180px] w-auto max-w-full object-contain rounded-sm"
                   />
                 </div>
               )}
@@ -330,11 +330,11 @@ export function FeaturesSection() {
                   transition={{ duration: 0.2 }}
                 >
                   {"image" in activeFeature && activeFeature.image && (
-                    <div className="mb-5 border border-border overflow-hidden rounded-sm">
+                    <div className="mb-5 border border-border overflow-hidden rounded-sm bg-neutral-50 flex items-center justify-center p-3">
                       <img
                         src={activeFeature.image}
                         alt={activeFeature.title}
-                        className="w-full h-auto"
+                        className="max-h-[220px] w-auto max-w-full object-contain rounded-sm"
                       />
                     </div>
                   )}
