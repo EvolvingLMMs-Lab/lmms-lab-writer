@@ -108,8 +108,8 @@ Git 绝非事后补充的功能——它被**原生构建在侧边栏**中：
 <td align="center"><strong>深色模式</strong></td>
 </tr>
 <tr>
-<td><img src="imgs/light.png" alt="浅色模式" width="360"></td>
-<td><img src="imgs/dark.png" alt="深色模式" width="360"></td>
+<td><img src="imgs/light.png" alt="浅色模式"></td>
+<td><img src="imgs/dark.png" alt="深色模式"></td>
 </tr>
 </table>
 </div>

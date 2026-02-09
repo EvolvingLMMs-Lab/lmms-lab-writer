@@ -108,8 +108,8 @@ MIT ライセンスで提供。すべてのコードは GitHub 上で公開さ�
 <td align="center"><strong>ダークモード</strong></td>
 </tr>
 <tr>
-<td><img src="imgs/light.png" alt="ライトモード" width="360"></td>
-<td><img src="imgs/dark.png" alt="ダークモード" width="360"></td>
+<td><img src="imgs/light.png" alt="ライトモード"></td>
+<td><img src="imgs/dark.png" alt="ダークモード"></td>
 </tr>
 </table>
 </div>
