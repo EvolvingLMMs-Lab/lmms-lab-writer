@@ -98,12 +98,18 @@ const features = [
     title: "Built for Every Language",
     description:
       "Full Unicode support via XeLaTeX and LuaLaTeX. CJK, Arabic, Cyrillic — all work out of the box with system fonts.",
+    detail:
+      "Write in any language without extra configuration. XeLaTeX and LuaLaTeX provide full Unicode support out of the box — Chinese, Japanese, Korean, Arabic, Cyrillic, and more. Missing font packages are installed automatically during compilation.",
+    image: "/features/compile-cn.png",
   },
   {
     icon: GitBranch,
     title: "Git-Native Collaboration",
     description:
       "Stage, commit, diff, push, pull — all from the sidebar. AI-generated commit messages. One-click GitHub publishing.",
+    detail:
+      "AI writes your commit messages so you can focus on writing, not documenting changes. Publish your project to GitHub with a single click. A clear diff view lets you see exactly what changed — no terminal needed.",
+    image: "/features/git-support.png",
   },
   {
     icon: Lock,
