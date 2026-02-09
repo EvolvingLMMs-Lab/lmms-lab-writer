@@ -5,48 +5,69 @@ description: Get up and running with LMMs-Lab Writer in 5 minutes.
 
 # Quick Start
 
-This guide will help you get started with LMMs-Lab Writer in under 5 minutes.
+This guide gets you from zero to a compiled PDF with AI assistance in under 5 minutes.
 
 ## 1. Open a Project
 
-Launch LMMs-Lab Writer and click **Open Folder** to select a directory containing your LaTeX project.
+Launch LMMs-Lab Writer and click **Open Folder** to select a directory containing your LaTeX files.
 
-If you don't have an existing project, you can:
+If you're starting fresh:
 
-- Clone an existing repository using the built-in terminal
-- Create a new folder and add a `main.tex` file
-- Open a recent project from the home screen
+- Create a new folder anywhere on your machine
+- Add a `main.tex` file (the app will auto-detect it as the main file)
+- Or clone an existing repository using the built-in terminal
+
+The app watches your project directory for changes — any file created or modified (by you, by AI, or by any other tool) will appear in the file tree instantly.
 
 ## 2. Write LaTeX
 
-The editor supports standard LaTeX syntax with:
+Click any `.tex`, `.bib`, or other text file in the file tree to open it in the editor.
 
-- **Syntax highlighting** - CodeMirror-based editor with LaTeX grammar
-- **Code completion** - Auto-complete for common LaTeX commands
-- **Error detection** - Real-time compilation error reporting with line numbers
-- **File tree** - Navigate your project files with drag-and-drop support
+The editor provides:
 
-Click any `.tex`, `.bib`, or other file in the file tree to open it in the editor.
+- **Syntax highlighting** for LaTeX, BibTeX, and many other languages
+- **Bracket matching** and auto-closing
+- **Line numbers** with code folding
+- **Vim mode** (toggle in Settings)
+- **Customizable font size**, line height, tab size, and word wrap
+
+You can configure all editor settings from the Settings dialog.
 
 ## 3. Compile
 
-Click the **Compile** button or use the keyboard shortcut to compile your document.
+Click the **Compile** button in the toolbar to build your PDF.
 
-The app supports three LaTeX engines:
+The app supports four compilation modes:
 
-- **pdfLaTeX** - Standard, fastest
-- **XeLaTeX** - Unicode & system fonts (default)
-- **LuaLaTeX** - Programmable, modern
+| Engine | Best for |
+|---|---|
+| **pdfLaTeX** | Standard documents, fastest compilation |
+| **XeLaTeX** | Unicode text, system fonts, CJK languages |
+| **LuaLaTeX** | Modern features, Lua scripting |
+| **Latexmk** | Automated multi-pass builds (bibliography, cross-references) |
 
-You can change the engine and configure compilation settings in the LaTeX settings dialog. The app auto-detects your main `.tex` file, or you can set it manually.
+To change the engine or set the main file, open the **LaTeX Settings** dialog from the toolbar. The app auto-detects your main `.tex` file based on the presence of `\documentclass` and `\begin{document}`.
+
+Compilation errors and warnings appear in the output panel with line numbers so you can jump directly to the issue.
 
 ## 4. Use AI
 
-The real power of LMMs-Lab Writer comes from AI integration. Your files are local, so any AI tool with file access can edit them directly.
+The real power of LMMs-Lab Writer is AI integration. Because your files are local, any AI tool with filesystem access can edit them directly — and changes appear in the editor in real-time.
+
+### OpenCode (Built-in)
+
+The built-in AI panel powered by [OpenCode](https://github.com/opencode-ai/opencode):
+
+1. Click the **AI panel** icon in the sidebar
+2. Type your prompt (e.g., *"Write the abstract summarizing our key contributions"*)
+3. Watch the AI edit your files in real-time
+4. Review changes and compile
+
+You can attach files, switch models, and manage multiple chat sessions. See the [OpenCode docs](/docs/opencode) for details.
 
 ### Claude Code
 
-Run Claude Code in a terminal alongside the app. It can edit your `.tex` files directly:
+Run [Claude Code](https://docs.anthropic.com/en/docs/claude-code) in the built-in terminal:
 
 ```bash
 claude "Add a related work section comparing our method to LoRA and QLoRA"
@@ -56,65 +77,39 @@ Changes appear instantly in the editor as Claude writes them.
 
 ### Cursor
 
-Open your project folder in Cursor alongside LMMs-Lab Writer. Edits made in Cursor will appear in the editor in real-time thanks to file watching.
-
-### OpenCode (Built-in)
-
-Use the built-in OpenCode panel for AI assistance directly in the app:
-
-1. Click the AI panel icon in the sidebar
-2. Type your prompt (e.g., "Write the conclusion section summarizing key findings")
-3. Watch the AI edit your files in real-time
-4. Review changes and compile
-
-### Codex CLI
-
-Use OpenAI's Codex CLI for batch edits:
-
-```bash
-codex "Fix all citation formatting in main.tex and add missing references to refs.bib"
-```
+Open your project folder in [Cursor](https://cursor.com/) alongside LMMs-Lab Writer. Edits made in Cursor appear in the editor in real-time thanks to file watching.
 
 ### Any AI Tool
 
-If an AI tool can edit files on your filesystem, it works with LMMs-Lab Writer. The app watches your project directory and reflects changes instantly.
+If an AI tool can read and write files on your filesystem, it works with LMMs-Lab Writer. The app detects all file changes and reflects them instantly.
 
 ## 5. Review & Commit
 
-Use the built-in Git panel to review and commit your changes:
+Use the built-in **Git panel** in the sidebar:
 
-1. Click the **Git** icon in the sidebar to see changed files
-2. Click on a file to see the diff
-3. Stage files by clicking the **+** button
-4. Write a commit message and click **Commit**
-5. Push to remote with the **Push** button
+1. Click the **Git** icon to see changed files
+2. Click a file to view the diff
+3. Stage files with the **+** button
+4. Write a commit message (or click the **sparkle icon** to generate one with AI)
+5. Press **Ctrl+Enter** or click **Commit**
+6. Push to remote with the **Push** button
 
-You can also use the built-in terminal for advanced Git operations:
+You can also initialize new repositories, publish to GitHub, and manage remotes — all from the Git panel. See the [Git docs](/docs/git) for details.
 
-```bash
-git add .
-git commit -m "Add conclusion section via Claude"
-git push
-```
+## 6. Use the Terminal
 
-### Publishing to GitHub
+The built-in terminal gives you full shell access:
 
-If your project isn't on GitHub yet, use the **Publish to GitHub** dialog to create a new repository and push your code in one step.
+- **macOS**: Bash or Zsh (your default shell)
+- **Windows**: PowerShell
 
-## 6. Configure Settings
-
-### LaTeX Engine
-
-Open LaTeX Settings to:
-- Choose between pdfLaTeX, XeLaTeX, or LuaLaTeX
-- Set the main file for compilation
-- Clean auxiliary files
-
-### Terminal
-
-The built-in terminal gives you full shell access for any command-line operations - running scripts, installing packages, or using CLI tools.
+Run any command — install packages, use CLI tools, run scripts. The terminal respects your app's light/dark theme.
 
 ## Next Steps
 
-- [Installation](/docs/installation) - Detailed installation instructions for all platforms
-- [GitHub Repository](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer) - Report issues and contribute
+- [Installation](/docs/installation) — Detailed setup for all platforms and LaTeX distributions
+- [OpenCode](/docs/opencode) — Built-in AI assistant
+- [AI Agents](/docs/ai-agents) — Using Claude Code, Cursor, and other tools
+- [LaTeX Compilation](/docs/compilation) — Engines, settings, and error handling
+- [Git Integration](/docs/git) — Version control and GitHub publishing
+- [Terminal](/docs/terminal) — Built-in terminal features

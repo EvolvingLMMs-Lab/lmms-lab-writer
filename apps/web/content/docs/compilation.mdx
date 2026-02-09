@@ -1,0 +1,92 @@
+---
+title: LaTeX Compilation
+description: Compiling LaTeX documents with pdfLaTeX, XeLaTeX, LuaLaTeX, and Latexmk.
+---
+
+# LaTeX Compilation
+
+LMMs-Lab Writer compiles your LaTeX documents locally for fast feedback. Click the **Compile** button in the toolbar to build your PDF.
+
+## Engines
+
+The app supports four compilation engines:
+
+### pdfLaTeX
+
+The standard LaTeX engine. Fastest compilation, best compatibility with older packages.
+
+- Best for: English-language documents, standard templates
+- Limitation: Limited Unicode support, cannot use system fonts directly
+
+### XeLaTeX
+
+Full Unicode support with access to system fonts. Recommended for CJK (Chinese, Japanese, Korean) documents.
+
+- Best for: Multilingual documents, custom fonts, CJK text
+- Uses: `fontspec` package for system font access
+
+### LuaLaTeX
+
+Modern engine with embedded Lua scripting. The most flexible option, but slightly slower.
+
+- Best for: Advanced typographic control, Lua-based packages
+- Uses: `luaotfload` for OpenType font support
+
+### Latexmk
+
+An automated build tool that runs LaTeX, BibTeX, and other tools the correct number of times to resolve all cross-references, citations, and indices.
+
+- Best for: Documents with bibliography, cross-references, or indexes
+- Handles: Multiple compilation passes automatically
+
+## Settings
+
+Open the **LaTeX Settings** dialog from the toolbar to configure:
+
+### Main File
+
+The app auto-detects your main `.tex` file using these heuristics:
+
+1. If only one `.tex` file exists, it's used automatically
+2. If multiple files exist, the app scores them based on:
+   - Presence of `\documentclass` (+10)
+   - Presence of `\begin{document}` (+5)
+   - Filename `main.tex` (+8) or `paper.tex` (+5)
+   - Files named `chapter*` or `section*` are deprioritized
+   - Files named `preamble.tex` or `packages.tex` are deprioritized
+
+You can always override the auto-detected file by selecting it manually in settings.
+
+### Compiler Arguments
+
+Add custom arguments to the compilation command. The app always includes:
+
+- `-interaction=nonstopmode` — Prevents the compiler from stopping on errors
+- `-file-line-error` — Shows file and line number in error messages
+
+Your custom arguments are added before the main file.
+
+### Clean Auxiliary Files
+
+After compilation, you can clean up auxiliary files (.aux, .log, .out, .toc, .fls, .fdb_latexmk, .synctex, .bbl, .blg, etc.) to keep your project directory tidy.
+
+## Error Handling
+
+Compilation output is parsed for:
+
+- **Errors** (lines starting with `!`) — Compilation failures that prevent PDF generation
+- **Warnings** — Issues that don't prevent compilation but may affect output
+- **Overfull/Underfull boxes** — Layout warnings about text overflow or underflow
+
+Errors appear in the output panel with file paths and line numbers. Click on an error to navigate directly to the problematic line in the editor.
+
+## PDF Preview
+
+After successful compilation, the generated PDF is displayed in the built-in preview panel. The preview updates each time you recompile.
+
+## Tips
+
+- **Fast iteration**: Use pdfLaTeX for speed during drafting, switch to XeLaTeX/LuaLaTeX for final output
+- **CJK documents**: Use XeLaTeX with the `ctex` or `xeCJK` package
+- **Bibliography**: Use Latexmk to handle BibTeX compilation automatically
+- **Missing packages**: If compilation fails due to missing packages, TinyTeX and MiKTeX can auto-install them; for MacTeX/TeX Live, use `tlmgr install <package>`

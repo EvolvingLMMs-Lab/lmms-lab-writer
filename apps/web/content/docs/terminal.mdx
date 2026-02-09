@@ -1,0 +1,76 @@
+---
+title: Terminal
+description: Using the built-in terminal for shell access and CLI tools.
+---
+
+# Terminal
+
+LMMs-Lab Writer includes a full-featured terminal emulator, so you never need to leave the app for command-line tasks.
+
+## Overview
+
+The built-in terminal uses [xterm.js](https://xtermjs.org/) and connects to a real shell process via Tauri's PTY (pseudo-terminal) integration. It's not a simple command runner — it's a fully interactive terminal with support for colors, cursor movement, tab completion, and everything you'd expect from a native terminal.
+
+## Default Shell
+
+The terminal uses your system's default shell:
+
+- **macOS**: Bash or Zsh (whichever is your default)
+- **Windows**: PowerShell
+
+You can switch to a custom shell path in the terminal settings.
+
+## Features
+
+- **Full shell access** — Run any command, install packages, use CLI tools
+- **Color support** — ANSI colors rendered correctly
+- **Scrollback** — 10,000 lines of history
+- **Auto-resize** — Adapts to window size changes
+- **Theme-aware** — Matches the app's light/dark mode
+- **Monospace font** — SF Mono (macOS), Cascadia Code (Windows)
+
+## Common Use Cases
+
+### Running AI CLI Tools
+
+```bash
+# Claude Code
+claude "Rewrite the introduction to be more compelling"
+
+# Codex CLI
+codex "Add error bars to all figures in the results section"
+```
+
+### LaTeX Package Management
+
+```bash
+# TinyTeX
+tlmgr install <package-name>
+
+# MiKTeX (Windows)
+mpm --install <package-name>
+```
+
+### Git Operations
+
+While the Git panel handles most operations, the terminal is useful for advanced git workflows:
+
+```bash
+git rebase -i HEAD~3
+git stash
+git cherry-pick <commit-hash>
+```
+
+### Running Scripts
+
+```bash
+python scripts/generate_figures.py
+bash scripts/build_appendix.sh
+```
+
+## Settings
+
+Open **Settings** to configure the terminal:
+
+- **Shell mode**: Auto (system default) or Custom
+- **Custom shell path**: Specify a custom shell executable (e.g., `/bin/fish`, `C:\Program Files\Git\bin\bash.exe`)

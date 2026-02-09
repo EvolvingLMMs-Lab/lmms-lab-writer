@@ -13,16 +13,16 @@ const sections = [
   {
     title: "AI Integration",
     items: [
-      { title: "OpenCode", href: "/docs/ai-tools/opencode" },
-      { title: "Other AI Agents", href: "/docs/ai-tools/agents" },
+      { title: "OpenCode", href: "/docs/opencode" },
+      { title: "AI Agents", href: "/docs/ai-agents" },
     ],
   },
   {
     title: "Features",
     items: [
-      { title: "LaTeX Compilation", href: "/docs/features/compilation" },
-      { title: "Terminal", href: "/docs/features/terminal" },
-      { title: "Git Integration", href: "/docs/features/git" },
+      { title: "LaTeX Compilation", href: "/docs/compilation" },
+      { title: "Terminal", href: "/docs/terminal" },
+      { title: "Git Integration", href: "/docs/git" },
     ],
   },
 ];

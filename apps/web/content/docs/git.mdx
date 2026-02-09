@@ -1,0 +1,103 @@
+---
+title: Git Integration
+description: Version control, diffing, and GitHub publishing built into the editor.
+---
+
+# Git Integration
+
+LMMs-Lab Writer has first-class Git support built into the sidebar. Stage files, review diffs, commit changes, and push to GitHub — all without leaving the editor.
+
+## Getting Started
+
+If your project folder is already a Git repository, the Git panel activates automatically. If not, click **Initialize Repository** to create one. The app generates a LaTeX-specific `.gitignore` file for you, excluding auxiliary files like `.aux`, `.log`, `.synctex.gz`, etc.
+
+## The Git Panel
+
+Click the **Git** icon in the sidebar to open the panel.
+
+### Branch Info
+
+The panel header shows your current branch name. If you have a remote configured, it also shows how many commits you're ahead or behind.
+
+### Changed Files
+
+Files are organized into two sections:
+
+- **Staged** — Files ready to be committed
+- **Unstaged** — Modified, added, or deleted files not yet staged
+
+Each file shows a status badge:
+
+| Badge | Meaning |
+|---|---|
+| **M** | Modified |
+| **A** | Added (new file) |
+| **D** | Deleted |
+| **R** | Renamed |
+| **?** | Untracked |
+
+### File Actions
+
+Hover over a file to see action buttons:
+
+- **+** — Stage the file (or unstage if already staged)
+- **Discard** — Revert changes (with confirmation for destructive operations)
+
+Click a file to open a **side-by-side diff** view showing exactly what changed.
+
+### Bulk Actions
+
+- **Unstage All** — Remove all files from the staging area
+- **Discard All** — Revert all changes (confirmation dialog)
+
+## Committing
+
+1. Stage the files you want to include
+2. Write a commit message in the input box
+3. Press **Ctrl+Enter** (or **Cmd+Enter** on macOS) or click **Commit**
+
+### AI Commit Messages
+
+Click the **sparkle icon** next to the commit button to generate a commit message from your staged changes using AI. The generated message summarizes what changed across all staged files.
+
+## Push & Pull
+
+- **Push** — Push your local commits to the remote. Handles initial branch setup automatically.
+- **Pull** — Pull changes from the remote.
+
+The button labels show the number of commits ahead/behind when a remote is configured.
+
+## Remote Setup
+
+If your repository doesn't have a remote:
+
+1. **Manual** — Enter a remote URL (e.g., `git@github.com:user/repo.git`)
+2. **Publish to GitHub** — Create a new GitHub repository and push in one step (requires [GitHub CLI](https://cli.github.com/))
+
+### GitHub CLI Authentication
+
+For one-click GitHub publishing, install the GitHub CLI and authenticate:
+
+```bash
+gh auth login
+```
+
+The app uses browser-based device code authentication — no tokens to manage.
+
+## Commit History
+
+The bottom of the Git panel shows recent commits with:
+
+- Commit message
+- Author name
+- Relative timestamp (e.g., *"2 hours ago"*)
+- Abbreviated commit hash (click to copy)
+
+Click **Show more commits** to load additional history.
+
+## Tips
+
+- **Review AI edits before committing** — After AI tools modify your files, use the diff view to verify changes
+- **Commit frequently** — Small, focused commits make it easy to revert bad AI edits
+- **Use meaningful messages** — Or let AI generate them for you with the sparkle button
+- **`.gitignore` is auto-generated** — When you initialize a repo, the app creates a LaTeX-specific `.gitignore` so auxiliary files don't clutter your repository

@@ -1,0 +1,94 @@
+---
+title: AI Agents
+description: Using Claude Code, Cursor, Codex CLI, and other AI tools with LMMs-Lab Writer.
+---
+
+# AI Agents
+
+LMMs-Lab Writer is designed to work with **any AI tool that can edit files**. Because your project files are local, AI agents can read and write them directly — no copy-paste, no plugins, no workarounds.
+
+The editor watches your project directory and reflects all file changes in real-time, no matter which tool made the change.
+
+## Claude Code
+
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code) is Anthropic's CLI tool that gives Claude direct access to your filesystem.
+
+### Setup
+
+Install Claude Code:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+### Usage
+
+Open the built-in terminal in LMMs-Lab Writer and run Claude Code from your project directory:
+
+```bash
+# Write a new section
+claude "Add a related work section comparing our method to LoRA, QLoRA, and adapters"
+
+# Fix errors
+claude "Fix the compilation errors in main.tex"
+
+# Edit bibliography
+claude "Add missing BibTeX entries for all \cite commands that don't have corresponding entries in refs.bib"
+
+# Restructure
+claude "Split the methodology section into three subsections: Problem Setup, Our Approach, and Theoretical Analysis"
+```
+
+Changes appear in the editor as Claude writes them. You can watch the edits happen in real-time, then compile to see the result.
+
+### Tips
+
+- Claude Code has full context of your project — it can read all files, not just the one you mention
+- Use specific, detailed prompts for better results
+- After edits, use the Git panel to review changes before committing
+
+## Cursor
+
+[Cursor](https://cursor.com/) is an AI-powered code editor that works well alongside LMMs-Lab Writer.
+
+### Setup
+
+1. Install Cursor
+2. Open your LaTeX project folder in both Cursor and LMMs-Lab Writer
+
+### Usage
+
+Use Cursor's AI features (Cmd+K, inline edits, chat) to edit your `.tex` files. Every change Cursor makes is instantly reflected in LMMs-Lab Writer's editor. Compile in LMMs-Lab Writer to see the PDF output.
+
+This gives you the best of both worlds — Cursor's AI editing and LMMs-Lab Writer's LaTeX compilation and preview.
+
+## Codex CLI
+
+[Codex CLI](https://github.com/openai/codex) by OpenAI works similarly to Claude Code:
+
+```bash
+codex "Fix all citation formatting in main.tex and add missing references to refs.bib"
+```
+
+## Other Tools
+
+Any tool that can edit files on your filesystem works with LMMs-Lab Writer:
+
+- **Aider** — AI pair-programming in the terminal
+- **Continue** — Open-source AI coding assistant
+- **Windsurf** — AI-powered editor
+- **GitHub Copilot CLI** — GitHub's AI assistant
+
+The pattern is always the same: the AI tool edits your `.tex` files, and LMMs-Lab Writer detects the changes instantly.
+
+## Why Local-First Matters for AI
+
+Traditional cloud-based LaTeX editors (like Overleaf) lock your files on a remote server. AI tools can't access them directly, forcing you to copy-paste between browser tabs.
+
+With local files:
+
+- AI agents read your entire project for full context
+- Edits happen directly — no copy-paste, no formatting loss
+- Multiple AI tools can work on the same project
+- You maintain full version control with Git
+- Everything works offline

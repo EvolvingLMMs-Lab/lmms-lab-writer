@@ -1,0 +1,96 @@
+---
+title: OpenCode
+description: Using the built-in OpenCode AI panel for AI-assisted LaTeX writing.
+---
+
+# OpenCode
+
+LMMs-Lab Writer includes a built-in AI panel powered by [OpenCode](https://github.com/opencode-ai/opencode), giving you AI assistance directly inside the editor.
+
+## Getting Started
+
+1. Install OpenCode on your machine (via npm, Homebrew, or from source)
+2. Click the **AI panel** icon in the sidebar
+3. The app auto-detects your OpenCode installation and starts a local daemon
+4. Start chatting — the AI can read and edit your project files directly
+
+The daemon runs locally in your project directory, so the AI has full context of your LaTeX files.
+
+## Chat Interface
+
+### Sending Messages
+
+Type your prompt in the input box and press **Enter** or click **Send**. Examples:
+
+- *"Write an abstract for this paper summarizing our three key contributions"*
+- *"Add a table comparing our method's performance against baselines in Table 1"*
+- *"Fix the bibliography entries that are missing DOIs"*
+- *"Rewrite Section 3 to be more concise"*
+
+### Attaching Files
+
+Drag and drop files into the input area, or click the attachment button. This is useful for providing additional context — images, data files, or reference papers — that the AI should consider.
+
+### Sessions
+
+You can manage multiple chat sessions:
+
+- Create a new session for each task or section of your paper
+- Switch between sessions to maintain separate conversation threads
+- Each session keeps its own history
+
+### Model Selection
+
+Choose from available AI models and providers for each conversation. The model selector appears in the chat interface.
+
+## How It Works
+
+OpenCode runs as a daemon process on your local machine (default port: 4096). The app communicates with the daemon via a local API. When you send a message:
+
+1. Your prompt is sent to the OpenCode daemon
+2. The AI reads your project files for context
+3. The AI writes edits directly to your `.tex` files
+4. The editor detects the file changes and updates in real-time
+5. You see the result instantly
+
+## Status Indicators
+
+The AI panel shows its current state:
+
+- **Ready** — Waiting for your next prompt
+- **Writing** — Actively generating and editing files
+- **Busy** — Processing a request
+
+A pulsing indicator in the header also reflects the current AI status.
+
+## Task Tracking
+
+When the AI works on multi-step tasks, a task bar appears showing progress:
+
+- Pending tasks
+- In-progress tasks
+- Completed tasks
+
+This helps you track what the AI is doing, especially for larger edits that involve multiple files.
+
+## Troubleshooting
+
+### OpenCode not detected
+
+The app searches for OpenCode in your system PATH and common installation directories (npm global, Homebrew, etc.). If it's not found:
+
+1. Verify OpenCode is installed: `opencode --version`
+2. Ensure it's in your PATH
+3. Restart the app after installing
+
+### Connection issues
+
+If the daemon disconnects, the app automatically attempts to reconnect. If reconnection fails:
+
+1. Check if another process is using port 4096
+2. Try restarting the AI panel
+3. Check the terminal output for error messages
+
+### Port conflicts
+
+If port 4096 is occupied, the app automatically finds the next available port. You can also configure a custom port in the settings.

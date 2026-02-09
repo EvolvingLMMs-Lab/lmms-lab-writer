@@ -1,11 +1,11 @@
 ---
 title: Installation
-description: How to install LMMs-Lab Writer on your machine.
+description: How to install LMMs-Lab Writer on macOS and Windows.
 ---
 
 # Installation
 
-LMMs-Lab Writer is available for macOS, Windows, and Linux.
+LMMs-Lab Writer is available for macOS and Windows.
 
 ## Download
 
@@ -13,84 +13,116 @@ Visit the [download page](/download) to get the latest version for your platform
 
 ### macOS
 
-1. Download the `.dmg` file for your architecture:
-   - **Apple Silicon** (M1/M2/M3/M4): `LMMs-Lab Writer_x.x.x_aarch64.dmg`
-   - **Intel**: `LMMs-Lab Writer_x.x.x_x64.dmg`
+#### Homebrew (Recommended)
 
-2. Open the `.dmg` file and drag the app to your Applications folder.
-
-3. On first launch, you may need to right-click and select "Open" due to Gatekeeper.
-
-You can also install via Homebrew:
+The easiest way to install on macOS is via Homebrew — no security warnings, and auto-updates built in:
 
 ```bash
-brew tap EvolvingLMMs-Lab/tap && brew install --cask lmms-lab-writer
+brew tap EvolvingLMMs-Lab/tap
+brew install --cask lmms-lab-writer
 ```
+
+To update later:
+
+```bash
+brew upgrade lmms-lab-writer
+```
+
+#### Manual Installation
+
+1. Download `LMMs-Lab_Writer_x.x.x_aarch64.pkg` (Apple Silicon M1/M2/M3/M4) from the [download page](/download).
+
+2. Since the app is not yet signed with an Apple Developer certificate, macOS will block it. Remove the quarantine attribute first:
+
+```bash
+xattr -cr ~/Downloads/LMMs-Lab_Writer_*.pkg
+```
+
+3. Double-click the `.pkg` file and follow the installer.
+
+4. Launch **LMMs-Lab Writer** from your Applications folder.
+
+> **Alternative**: Right-click the `.pkg` file → select **Open** → click **Open** in the dialog → follow the installer.
 
 ### Windows
 
-1. Download `LMMs-Lab Writer_x.x.x_x64-setup.exe`
-2. Run the installer and follow the prompts
-3. Launch from the Start Menu or desktop shortcut
+1. Download `LMMs-Lab Writer_x.x.x_x64-setup.exe` (recommended) or the `.msi` installer from the [download page](/download).
 
-### Linux
+2. Run the installer and follow the prompts.
 
-1. Download the AppImage or `.deb` package
-2. For AppImage: Make it executable with `chmod +x` and run it
-3. For Debian-based distros: Install with `sudo dpkg -i lmms-lab-writer_x.x.x_amd64.deb`
+3. Launch from the **Start Menu** or desktop shortcut.
+
+> **Note**: Windows SmartScreen may show a warning because the app is not yet code-signed. Click **More info** → **Run anyway** to proceed.
 
 ## Requirements
 
 ### LaTeX Distribution
 
-You need a LaTeX distribution installed to compile documents. The app will detect your installed distribution automatically and prompt you if none is found.
+A LaTeX distribution is required to compile documents. The app auto-detects your installation and will prompt you if none is found.
 
-- **macOS**: [MacTeX](https://www.tug.org/mactex/) (recommended) or [TeX Live](https://www.tug.org/texlive/)
-- **Windows**: [MiKTeX](https://miktex.org/) (recommended) or [TeX Live](https://www.tug.org/texlive/)
-- **Linux**: `sudo apt install texlive-full` (Debian/Ubuntu) or equivalent for your distro
+**macOS**:
 
-Supported LaTeX engines:
-- **pdfLaTeX** - Standard engine, fastest compilation
-- **XeLaTeX** - Unicode support, system fonts
-- **LuaLaTeX** - Programmable, modern features
+| Distribution | Size | Notes |
+|---|---|---|
+| [TinyTeX](https://yihui.org/tinytex/) | ~150 MB | Lightweight, auto-installs missing packages. Recommended for most users. |
+| [MacTeX](https://www.tug.org/mactex/) | ~5 GB | Full TeX Live distribution. Includes everything out of the box. |
+| [BasicTeX](https://www.tug.org/mactex/morepackages.html) | ~100 MB | Minimal TeX Live. You may need to install extra packages manually. |
 
-All engines are managed through `latexmk` for automated compilation.
+**Windows**:
+
+| Distribution | Size | Notes |
+|---|---|---|
+| [TinyTeX](https://yihui.org/tinytex/) | ~150 MB | Lightweight, auto-installs missing packages. Recommended for most users. |
+| [MiKTeX](https://miktex.org/) | ~200 MB | Auto-installs missing packages on first use. Popular choice on Windows. |
+| [TeX Live](https://www.tug.org/texlive/) | ~5 GB | Full distribution. Includes everything out of the box. |
+
+### Supported LaTeX Engines
+
+The app supports these compilation engines:
+
+- **pdfLaTeX** — Standard engine, fastest compilation
+- **XeLaTeX** — Native Unicode support, can use system fonts (recommended for CJK)
+- **LuaLaTeX** — Modern, programmable engine with Lua scripting
+- **Latexmk** — Automated build tool that runs LaTeX the correct number of times
+
+All engines are auto-detected from your LaTeX distribution.
 
 ### Git (Optional)
 
-For version control features (staging, committing, diffing, pushing), install [Git](https://git-scm.com/downloads).
+For version control features (staging, committing, diffing, pushing):
 
-For GitHub integration (creating repos, publishing), install the [GitHub CLI](https://cli.github.com/).
+- Install [Git](https://git-scm.com/downloads)
 
-### Node.js (Build from Source Only)
+For GitHub integration (creating repos, publishing directly from the app):
 
-If building from source, you need:
-- Node.js >= 20.0.0
-- pnpm 10.x
-- Rust toolchain (for Tauri)
+- Install the [GitHub CLI](https://cli.github.com/)
 
 ## Build from Source
 
-LMMs-Lab Writer is open source. To build from source:
+LMMs-Lab Writer is open source. To build from source you need:
+
+- [Node.js](https://nodejs.org/) >= 20.0.0
+- [pnpm](https://pnpm.io/) 10.x
+- [Rust](https://rustup.rs/) toolchain (for Tauri)
 
 ```bash
-# Clone the repository
 git clone https://github.com/EvolvingLMMs-Lab/lmms-lab-writer.git
 cd lmms-lab-writer
-
-# Install dependencies
 pnpm install
-
-# Build the desktop app
 pnpm tauri:build
 ```
 
 The built app will be in `apps/desktop/src-tauri/target/release/bundle/`:
 
-- **macOS**: `macos/LMMs-Lab Writer.app` and `dmg/LMMs-Lab Writer_*.dmg`
+- **macOS**: `macos/LMMs-Lab Writer.app`
 - **Windows**: `nsis/LMMs-Lab Writer_*-setup.exe`
-- **Linux**: `appimage/LMMs-Lab Writer_*.AppImage` and `deb/lmms-lab-writer_*.deb`
 
 ## Updating
 
-The app includes a built-in updater that will notify you when new versions are available. You can also check for updates manually from the [releases page](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases).
+The app includes a built-in updater that notifies you when new versions are available. You can also check manually from the [releases page](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases).
+
+If you installed via Homebrew, run:
+
+```bash
+brew upgrade lmms-lab-writer
+```
