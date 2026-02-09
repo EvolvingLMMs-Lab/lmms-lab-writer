@@ -1,11 +1,18 @@
+import dynamic from "next/dynamic";
 import { Header } from "@/components/header";
-import {
-  HeroSection,
-  FeaturesSection,
-  DemoSection,
-  ComparisonSection,
-  FooterLink,
-} from "@/components/home-sections";
+import { HeroSection, FooterLink } from "@/components/home-sections";
+
+const FeaturesSection = dynamic(
+  () =>
+    import("@/components/home-sections").then((mod) => mod.FeaturesSection),
+);
+const DemoSection = dynamic(
+  () => import("@/components/home-sections").then((mod) => mod.DemoSection),
+);
+const ComparisonSection = dynamic(
+  () =>
+    import("@/components/home-sections").then((mod) => mod.ComparisonSection),
+);
 
 export default function HomePage() {
   return (
