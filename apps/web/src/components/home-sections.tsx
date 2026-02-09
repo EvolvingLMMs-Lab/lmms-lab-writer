@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import {
   Download,
@@ -341,12 +341,20 @@ export function FeaturesSection() {
               {features.map((feature, i) => (
                 <div
                   key={feature.title}
-                  className={
+                  className={`relative ${
                     i !== features.length - 1
                       ? "border-b border-foreground"
                       : ""
-                  }
+                  }`}
                 >
+                  {/* Progress bar on the left edge */}
+                  {i === activeIndex && (
+                    <div
+                      key={`progress-${activeIndex}`}
+                      className="feature-progress absolute left-0 top-0 w-[3px] h-full bg-foreground"
+                      style={{ "--progress-duration": `${AUTO_PLAY_MS}ms` } as React.CSSProperties}
+                    />
+                  )}
                   <button
                     onClick={() => handleSelect(i)}
                     className={`w-full flex items-center gap-3 px-5 py-4 text-left text-sm transition-colors ${

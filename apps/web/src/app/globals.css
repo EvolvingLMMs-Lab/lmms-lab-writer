@@ -241,13 +241,28 @@ body {
   animation: blink 1s step-end infinite;
 }
 
+@keyframes progress-fill {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.feature-progress {
+  transform-origin: top;
+  animation: progress-fill var(--progress-duration, 5s) linear forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-float,
   .animate-float-delayed,
   .animate-spin-slow,
   .logo-bar span,
   .logo-bar-sm span,
-  .paper-line {
+  .paper-line,
+  .feature-progress {
     animation: none !important;
     opacity: 1 !important;
   }
