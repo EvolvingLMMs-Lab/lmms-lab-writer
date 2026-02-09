@@ -40,6 +40,7 @@ export default function DocsPage() {
             href="https://github.com/EvolvingLMMs-Lab/lmms-lab-writer"
             className="hover:text-foreground transition-colors"
             target="_blank"
+            rel="noopener noreferrer"
           >
             Edit on GitHub
           </Link>

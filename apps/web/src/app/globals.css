@@ -141,22 +141,6 @@ body {
   }
 }
 
-.prose pre {
-  @apply border border-border bg-neutral-100;
-}
-
-.prose code:not(pre code) {
-  @apply bg-neutral-200 px-1.5 py-0.5 text-sm;
-}
-
-.prose a {
-  @apply text-foreground underline underline-offset-2;
-}
-
-.prose a:hover {
-  @apply text-muted;
-}
-
 .bg-cream {
   background-color: #fdf8f3;
 }

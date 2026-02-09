@@ -46,10 +46,17 @@ export default {
               padding: "0.25rem 0.375rem",
               borderRadius: "0",
               fontWeight: "400",
+              fontSize: "0.875em",
             },
             "code::before": { content: "none" },
             "code::after": { content: "none" },
+            pre: {
+              borderWidth: "1px",
+              borderColor: "#e5e5e5",
+              borderRadius: "0",
+            },
             a: {
+              color: "#0a0a0a",
               textDecoration: "underline",
               textUnderlineOffset: "2px",
               "&:hover": {
