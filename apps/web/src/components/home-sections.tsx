@@ -216,7 +216,7 @@ export function HeroSection() {
 
 export function FeaturesSection() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const activeFeature = features[activeIndex];
+  const activeFeature = features[activeIndex]!;
 
   return (
     <section className="py-12 md:py-20 px-6 border-t border-border">
