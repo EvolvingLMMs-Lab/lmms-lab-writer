@@ -1,10 +1,12 @@
 <div align="center">
 
+<a href="https://writer.lmms-lab.com">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="imgs/logo-dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="imgs/logo-light.svg">
   <img alt="LMMs-Lab Writer" src="imgs/logo-light.svg" width="512">
 </picture>
+</a>
 
 **The AI-native LaTeX editor for researchers who'd rather focus on ideas than syntax.**
 
