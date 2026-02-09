@@ -469,10 +469,8 @@ mod tests {
         let file_path = project.join("main.tex");
         fs::write(&file_path, "hello").unwrap();
 
-        let result = validate_path_within_project(
-            &file_path.to_string_lossy(),
-            &project.to_string_lossy(),
-        );
+        let result =
+            validate_path_within_project(&file_path.to_string_lossy(), &project.to_string_lossy());
         assert!(result.is_ok());
     }
 
@@ -484,10 +482,8 @@ mod tests {
         fs::create_dir_all(&project).unwrap();
         fs::write(&outside, "nope").unwrap();
 
-        let result = validate_path_within_project(
-            &outside.to_string_lossy(),
-            &project.to_string_lossy(),
-        );
+        let result =
+            validate_path_within_project(&outside.to_string_lossy(), &project.to_string_lossy());
         assert!(result.is_err());
     }
 
