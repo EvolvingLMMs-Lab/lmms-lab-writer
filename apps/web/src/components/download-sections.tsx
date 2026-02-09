@@ -26,8 +26,14 @@ const platforms = {
     icon: Apple,
     variants: [
       {
-        label: "Apple Silicon",
-        sublabel: "M1/M2/M3/M4",
+        label: "Apple Silicon (DMG)",
+        sublabel: "M1/M2/M3/M4 — drag to Applications",
+        file: "LMMs-Lab Writer_0.1.0_aarch64.dmg",
+        url: `${BLOB_URL}/LMMs-Lab%20Writer_0.1.0_aarch64.dmg`,
+      },
+      {
+        label: "Apple Silicon (PKG)",
+        sublabel: "M1/M2/M3/M4 — installer",
         file: "LMMs-Lab_Writer_0.1.0_aarch64.pkg",
         url: `${BLOB_URL}/LMMs-Lab_Writer_0.1.0_aarch64.pkg`,
       },
@@ -236,19 +242,28 @@ export function InstallationSection() {
       <h2 className="text-sm font-medium mb-3">Manual Installation</h2>
       <div className="text-sm text-muted space-y-4">
         <p>
-          If you downloaded the .pkg file directly, macOS will show a security
-          warning because the app is not signed.
+          macOS will show a security warning because the app is not yet signed.
+          Remove the quarantine attribute first:
         </p>
         <div className="bg-neutral-50 border border-border p-4 space-y-3">
-          <p className="font-medium text-foreground">To install:</p>
+          <p className="font-medium text-foreground">For DMG:</p>
           <ol className="list-decimal list-inside space-y-2">
-            <li>Download the .pkg file</li>
+            <li>Run in Terminal:</li>
+          </ol>
+          <pre className="bg-white p-3 overflow-x-auto border border-border text-xs">
+            {`xattr -cr ~/Downloads/LMMs-Lab\\ Writer_*.dmg`}
+          </pre>
+          <p className="text-xs">Then open the .dmg and drag the app to Applications.</p>
+        </div>
+        <div className="bg-neutral-50 border border-border p-4 space-y-3">
+          <p className="font-medium text-foreground">For PKG:</p>
+          <ol className="list-decimal list-inside space-y-2">
             <li>Run in Terminal:</li>
           </ol>
           <pre className="bg-white p-3 overflow-x-auto border border-border text-xs">
             xattr -cr ~/Downloads/LMMs-Lab_Writer_*.pkg
           </pre>
-          <p className="text-xs">Then double-click to install normally.</p>
+          <p className="text-xs">Then double-click the .pkg to install.</p>
         </div>
         <details className="cursor-pointer">
           <summary className="font-medium text-foreground hover:underline">
@@ -256,13 +271,13 @@ export function InstallationSection() {
           </summary>
           <ol className="mt-2 list-decimal list-inside space-y-2 text-sm">
             <li>
-              <span className="font-medium">Right-click</span> the .pkg file and
+              <span className="font-medium">Right-click</span> the downloaded file and
               select <span className="font-medium">Open</span>
             </li>
             <li>
               Click <span className="font-medium">Open</span> in the dialog
             </li>
-            <li>Follow the installer</li>
+            <li>Follow the installer (PKG) or drag to Applications (DMG)</li>
           </ol>
         </details>
       </div>

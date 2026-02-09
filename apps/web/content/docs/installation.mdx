@@ -30,19 +30,26 @@ brew upgrade lmms-lab-writer
 
 #### Manual Installation
 
-1. Download `LMMs-Lab_Writer_x.x.x_aarch64.pkg` (Apple Silicon M1/M2/M3/M4) from the [download page](/download).
+Two formats are available from the [download page](/download):
 
-2. Since the app is not yet signed with an Apple Developer certificate, macOS will block it. Remove the quarantine attribute first:
+- **DMG** (`.dmg`) — Drag-and-drop installation. Open the image and drag the app to your Applications folder.
+- **PKG** (`.pkg`) — Guided installer. Double-click and follow the wizard.
+
+Both are for **Apple Silicon** (M1/M2/M3/M4).
+
+Since the app is not yet signed with an Apple Developer certificate, macOS will block it. Remove the quarantine attribute first:
 
 ```bash
+# For DMG
+xattr -cr ~/Downloads/LMMs-Lab\ Writer_*.dmg
+
+# For PKG
 xattr -cr ~/Downloads/LMMs-Lab_Writer_*.pkg
 ```
 
-3. Double-click the `.pkg` file and follow the installer.
+Then open the file and install normally.
 
-4. Launch **LMMs-Lab Writer** from your Applications folder.
-
-> **Alternative**: Right-click the `.pkg` file → select **Open** → click **Open** in the dialog → follow the installer.
+> **Alternative**: Right-click the downloaded file → select **Open** → click **Open** in the dialog → proceed with installation.
 
 ### Windows
 
