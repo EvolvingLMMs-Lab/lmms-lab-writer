@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import {
   Download,
@@ -234,9 +234,27 @@ export function HeroSection() {
   );
 }
 
+const AUTO_PLAY_MS = 5000; // cycle every 5s
+
 export function FeaturesSection() {
   const [activeIndex, setActiveIndex] = useState(0);
   const activeFeature = features[activeIndex]!;
+  const pausedUntil = useRef(0);
+
+  // Auto-cycle through features when not paused
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (Date.now() < pausedUntil.current) return;
+      setActiveIndex((prev: number) => (prev + 1) % features.length);
+    }, AUTO_PLAY_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  const handleSelect = useCallback((i: number) => {
+    // Pause auto-play for 12s after user interaction
+    pausedUntil.current = Date.now() + 12000;
+    setActiveIndex(i);
+  }, []);
 
   return (
     <section className="py-12 md:py-20 px-6 border-t border-border">
@@ -259,7 +277,7 @@ export function FeaturesSection() {
               className={i !== features.length - 1 ? "border-b border-foreground" : ""}
             >
               <button
-                onClick={() => setActiveIndex(activeIndex === i ? -1 : i)}
+                onClick={() => handleSelect(activeIndex === i ? -1 : i)}
                 className={`w-full flex items-center gap-3 px-4 py-3.5 text-left text-sm transition-colors ${
                   i === activeIndex
                     ? "bg-neutral-50 font-medium"
@@ -330,7 +348,7 @@ export function FeaturesSection() {
                   }
                 >
                   <button
-                    onClick={() => setActiveIndex(i)}
+                    onClick={() => handleSelect(i)}
                     className={`w-full flex items-center gap-3 px-5 py-4 text-left text-sm transition-colors ${
                       i === activeIndex
                         ? "bg-neutral-50 font-medium"
