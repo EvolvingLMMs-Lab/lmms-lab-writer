@@ -8,14 +8,14 @@
 
 **The AI-native LaTeX editor for researchers who'd rather focus on ideas than syntax.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-[![macOS](https://img.shields.io/badge/-macOS-black?style=flat-square&logo=apple&logoColor=white)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
-[![Windows](https://img.shields.io/badge/-Windows-blue?style=flat-square&logo=windows&logoColor=white)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
-[![GitHub Stars](https://img.shields.io/github/stars/EvolvingLMMs-Lab/lmms-lab-writer?style=flat-square&color=orange)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer)
+[![Website](https://img.shields.io/badge/-Website-8957e5?style=flat-square&logo=safari&logoColor=white)](https://writer.lmms-lab.com)
+[![Docs](https://img.shields.io/badge/-Docs-0969da?style=flat-square&logo=gitbook&logoColor=white)](https://writer.lmms-lab.com/docs)
+[![Download](https://img.shields.io/badge/-Download-2ea44f?style=flat-square&logo=github&logoColor=white)](https://writer.lmms-lab.com/download)
 
-[![Download](https://img.shields.io/badge/-Download-brightgreen?style=flat-square&logo=download&logoColor=white)](https://writer.lmms-lab.com/download)
-[![Documentation](https://img.shields.io/badge/-Docs-blue?style=flat-square&logo=readthedocs&logoColor=white)](https://writer.lmms-lab.com/docs)
-[![Website](https://img.shields.io/badge/-Website-purple?style=flat-square&logo=googlechrome&logoColor=white)](https://writer.lmms-lab.com)
+[![macOS](https://img.shields.io/badge/-macOS-111111?style=flat-square&logo=apple&logoColor=white)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
+[![Windows](https://img.shields.io/badge/-Windows-0078D4?style=flat-square&logo=windows11&logoColor=white)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-f0c000?style=flat-square)](https://opensource.org/licenses/MIT)
+[![GitHub Stars](https://img.shields.io/github/stars/EvolvingLMMs-Lab/lmms-lab-writer?style=flat-square&color=e8a317)](https://github.com/EvolvingLMMs-Lab/lmms-lab-writer)
 
 </div>
 
