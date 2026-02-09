@@ -114,7 +114,7 @@ const features = [
     description:
       "Runs natively on macOS and Windows. Built with Tauri for native performance — not an Electron wrapper.",
   },
-] as const;
+];
 
 export function HeroSection() {
   return (

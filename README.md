@@ -20,7 +20,7 @@ The AI-native LaTeX editor for researchers who'd rather focus on ideas than synt
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="imgs/demo-pdf.png">
-  <source media="(prefers-color-scheme: light)" srcset="imgs/demo-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="imgs/demo-dark-mode.png">
   <img alt="Demo" src="imgs/demo-pdf.png">
 </picture>
 
