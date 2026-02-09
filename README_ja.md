@@ -8,7 +8,7 @@
 </picture>
 </a>
 
-**アイデアに集中したい研究者のための、AI ネイティブ LaTeX エディタ。**
+**形而上者謂之道、形而下者謂之器。**
 
 [![Website](https://img.shields.io/badge/-ウェブサイト-8957e5?style=flat-square&logo=safari&logoColor=white)](https://writer.lmms-lab.com)
 [![Docs](https://img.shields.io/badge/-ドキュメント-0969da?style=flat-square&logo=gitbook&logoColor=white)](https://writer.lmms-lab.com/docs)
@@ -117,11 +117,9 @@ MIT ライセンス。すべてのコードが GitHub 上にあります。ベ�
 ```bash
 # macOS (Homebrew)
 brew tap EvolvingLMMs-Lab/tap && brew install --cask lmms-lab-writer
-
-# またはウェブサイトからダウンロード
 ```
 
-[macOS / Windows 版をダウンロード](https://writer.lmms-lab.com/download)
+またはウェブサイトから [macOS / Windows 版をダウンロード](https://writer.lmms-lab.com/download)。
 
 ---
 

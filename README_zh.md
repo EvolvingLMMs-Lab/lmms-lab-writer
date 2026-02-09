@@ -8,7 +8,7 @@
 </picture>
 </a>
 
-**AI 原生的 LaTeX 编辑器，让研究者专注于想法而非语法。**
+**形而上者谓之道，形而下者谓之器。**
 
 [![Website](https://img.shields.io/badge/-官网-8957e5?style=flat-square&logo=safari&logoColor=white)](https://writer.lmms-lab.com)
 [![Docs](https://img.shields.io/badge/-文档-0969da?style=flat-square&logo=gitbook&logoColor=white)](https://writer.lmms-lab.com/docs)
@@ -117,11 +117,9 @@ MIT 许可证。每一行代码都在 GitHub 上。没有供应商锁定、没�
 ```bash
 # macOS (Homebrew)
 brew tap EvolvingLMMs-Lab/tap && brew install --cask lmms-lab-writer
-
-# 或从官网下载
 ```
 
-[下载 macOS / Windows 版本](https://writer.lmms-lab.com/download)
+或从官网[下载 macOS / Windows 版本](https://writer.lmms-lab.com/download)。
 
 ---
 

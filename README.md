@@ -117,11 +117,9 @@ Runs natively on **macOS** (Apple Silicon & Intel) and **Windows** (64-bit). Bui
 ```bash
 # macOS (Homebrew)
 brew tap EvolvingLMMs-Lab/tap && brew install --cask lmms-lab-writer
-
-# Or download from the website
 ```
 
-[Download for macOS / Windows](https://writer.lmms-lab.com/download)
+Or [download for macOS / Windows](https://writer.lmms-lab.com/download) from the website.
 
 ---
 
