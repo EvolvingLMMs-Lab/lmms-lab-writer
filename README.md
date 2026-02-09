@@ -37,9 +37,17 @@ No more hour-long TeX Live installations. LMMs-Lab Writer **auto-detects and ins
 
 Supports **TinyTeX**, **MiKTeX**, **MacTeX**, and **TeX Live** — with one-click installation managed by the app.
 
+<div align="center">
+<img src="imgs/latex.png" alt="One-click LaTeX setup with auto package installation" width="720">
+</div>
+
 ## Built for Every Language
 
 Write in **English, Chinese, Japanese, Korean, Arabic, or any language**. XeLaTeX and LuaLaTeX are first-class citizens with full Unicode and system font support. CJK documents work out of the box with `ctex`, `xeCJK`, and other multilingual packages. No extra configuration needed.
+
+<div align="center">
+<img src="imgs/compile-cn.png" alt="Full CJK and Unicode support with XeLaTeX" width="720">
+</div>
 
 ## AI-Powered Workflows with OpenCode
 
@@ -58,6 +66,10 @@ You: *hit compile* Done.
 
 Also works with **Claude Code**, **Cursor**, **Codex CLI**, **Aider**, and any tool that can edit files. The editor watches your project directory and reflects all changes in real-time.
 
+<div align="center">
+<img src="imgs/interaction.png" alt="OpenCode AI integration — chat with AI to write LaTeX" width="720">
+</div>
+
 ## Git Integration for Modern Collaboration
 
 Git is not an afterthought — it's **built into the sidebar**:
@@ -69,6 +81,10 @@ Git is not an afterthought — it's **built into the sidebar**:
 - **GitHub CLI integration** for seamless authentication
 
 No more paying $21/month for Overleaf's Git sync. Version control is free and first-class.
+
+<div align="center">
+<img src="imgs/git-support.png" alt="Git integration — stage, commit, diff, push from the sidebar" width="720">
+</div>
 
 ## Fully Open Source
 
@@ -82,6 +98,19 @@ MIT licensed. Every line of code is on GitHub. No vendor lock-in, no telemetry, 
 ## Cross-Platform
 
 Runs natively on **macOS** (Apple Silicon & Intel) and **Windows** (64-bit). Built with [Tauri](https://tauri.app/) for native performance — not an Electron wrapper.
+
+<div align="center">
+<table>
+<tr>
+<td align="center"><strong>Light Mode</strong></td>
+<td align="center"><strong>Dark Mode</strong></td>
+</tr>
+<tr>
+<td><img src="imgs/light.png" alt="Light mode" width="360"></td>
+<td><img src="imgs/dark.png" alt="Dark mode" width="360"></td>
+</tr>
+</table>
+</div>
 
 ```bash
 # macOS (Homebrew)
