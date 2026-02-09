@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { Header } from "@/components/header";
 import {
@@ -139,9 +140,11 @@ async function ProfileUserCard() {
     <ProfileCard delay={0.05} className="border border-border p-6 mb-8">
       <div className="flex items-center gap-6">
         {avatarUrl ? (
-          <img
+          <Image
             src={avatarUrl}
             alt={displayName}
+            width={64}
+            height={64}
             className="size-16 border border-border flex-shrink-0"
           />
         ) : (

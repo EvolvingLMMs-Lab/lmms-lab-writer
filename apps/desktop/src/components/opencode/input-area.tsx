@@ -58,7 +58,7 @@ function useDropdownPosition(
     };
   }, [open, menuRef, triggerRef, close]);
 
-  // Calculate position before paint, re-runs when content changes
+  // Calculate position before paint, re-runs when open state changes
   useLayoutEffect(() => {
     if (!open || !triggerRef.current || !menuRef.current) return;
     const triggerRect = triggerRef.current.getBoundingClientRect();
@@ -83,7 +83,7 @@ function useDropdownPosition(
       return { x, y };
     });
     setPositioned(true);
-  });
+  }, [open, triggerRef, menuRef]);
 
   return { open, pos, positioned, openMenu, close };
 }
@@ -417,26 +417,26 @@ export function InputArea({
     }
   }, [input]);
 
-  const selectedAgentName = useMemo(() => {
+  const _selectedAgentName = useMemo(() => {
     return agents.find((a) => a.id === selectedAgent)?.name || "Agent";
   }, [selectedAgent, agents]);
 
-  const selectedModelInfo = useMemo(() => {
-    if (!selectedModel) return { name: "Model", provider: "", isMax: false };
+  let selectedModelInfo = { name: "Model", provider: "", isMax: false };
+  if (selectedModel) {
     for (const provider of providers) {
       const model = provider.models?.find(
         (m) => m.id === selectedModel.modelId,
       );
       if (model) {
-        return {
+        selectedModelInfo = {
           name: model.name,
           provider: provider.name,
           isMax: model.options?.max ?? false,
         };
+        break;
       }
     }
-    return { name: "Model", provider: "", isMax: false };
-  }, [selectedModel, providers]);
+  }
 
   return (
     <div className="border border-border rounded-xl bg-accent-hover focus-within:border-border-dark focus-within:bg-background transition-all">

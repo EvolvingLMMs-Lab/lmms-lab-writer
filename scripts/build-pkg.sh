@@ -2,17 +2,17 @@
 # Build PKG installer for LMMs-Lab Writer
 # Creates a PKG with post-install script that removes quarantine attribute
 
-set -e
+set -euo pipefail
 
 # Configuration
 APP_NAME="LMMs-Lab Writer"
 BUNDLE_ID="com.lmms-lab.writer"
-VERSION="0.1.0"
 
 # Paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 TAURI_DIR="$PROJECT_ROOT/apps/desktop/src-tauri"
+VERSION="$(node -p "require('$TAURI_DIR/tauri.conf.json').version")"
 BUNDLE_DIR="$TAURI_DIR/target/release/bundle"
 APP_PATH="$BUNDLE_DIR/macos/$APP_NAME.app"
 PKG_SCRIPTS="$SCRIPT_DIR/pkg"
@@ -41,6 +41,12 @@ if [ ! -d "$APP_PATH" ]; then
 fi
 
 echo "✓ Found app bundle: $APP_PATH"
+
+# Step 1.5: Re-sign app ad-hoc to prevent broken signature errors
+echo "Signing app bundle (ad-hoc)..."
+codesign --force --deep --sign - "$APP_PATH"
+codesign --verify --deep --strict --verbose=2 "$APP_PATH" >/dev/null
+echo "✓ App signature verified"
 
 # Step 2: Create output directory
 mkdir -p "$OUTPUT_DIR"

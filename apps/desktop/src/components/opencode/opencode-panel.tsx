@@ -53,7 +53,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
                 const parsed = JSON.parse(output);
                 const tasks = parseTasks(parsed);
                 if (tasks) return tasks;
-              } catch { }
+              } catch { /* ignore parse errors */ }
             }
             if (tp.state.input) {
               const tasks = parseTasks(tp.state.input);
@@ -64,7 +64,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
       }
     }
     return null;
-  }, [opencode.messages, opencode.getPartsForMessage]);
+  }, [opencode]);
 
   // Auto-scroll to bottom when messages/parts update
   useEffect(() => {
@@ -114,15 +114,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     handlePendingMessage();
   }, [
     pendingMessage,
-    opencode.connected,
-    opencode.selectedModel,
-    opencode.providers.length,
-    opencode.currentSessionId,
-    opencode.createSession,
-    opencode.sendMessage,
-    opencode.createSession,
-    opencode.selectedModel,
-    opencode.providers,
+    opencode,
     onPendingMessageSent,
   ]);
 
@@ -144,7 +136,7 @@ export const OpenCodePanel = memo(function OpenCodePanel({
     }
   }, [opencode]);
 
-  const handleSelectSession = useCallback(
+  const _handleSelectSession = useCallback(
     async (sessionId: string) => {
       await opencode.selectSession(sessionId);
       setShowSessionList(false);

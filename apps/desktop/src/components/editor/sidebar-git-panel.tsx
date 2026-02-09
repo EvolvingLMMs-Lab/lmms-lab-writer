@@ -308,7 +308,7 @@ export function GitSidebarPanel({
         </div>
       );
     },
-    [handleSelectChange, onStageFile, onDiscardFile, selectedChange],
+    [handleSelectChange, onStageFile, onUnstageFile, onDiscardFile, selectedChange],
   );
 
   if (!projectPath) {

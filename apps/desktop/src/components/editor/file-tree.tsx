@@ -91,6 +91,11 @@ async function copyToClipboard(text: string): Promise<void> {
     document.body.removeChild(textarea);
   }
 }
+
+async function copyNormalizedAbsolutePath(path: string): Promise<void> {
+  const normalizedPath = await normalize(path);
+  await copyToClipboard(normalizedPath);
+}
 import type { FileNode } from "@lmms-lab/writer-shared";
 import { ContextMenu, type ContextMenuItem } from "../ui/context-menu";
 import { ConfirmDialog } from "../ui/confirm-dialog";
@@ -101,7 +106,6 @@ import {
   ArrowSquareOutIcon,
   BookOpenTextIcon,
   BracketsCurlyIcon,
-  CaretRightIcon,
   ClipboardTextIcon,
   CopyIcon,
   CubeIcon,
@@ -601,8 +605,6 @@ function FileTreeInner({
     const elements = document.elementsFromPoint(x, y);
     for (const el of elements) {
       const treeItem = el.closest("[data-path]") as HTMLElement | null;
-      if (treeItem) {
-      }
       if (treeItem && containerRef.current?.contains(treeItem)) {
         const path = treeItem.dataset.path;
         const type = treeItem.dataset.type as "file" | "directory";
@@ -751,7 +753,6 @@ function FileTreeInner({
     // Perform move if valid target
     if (target && canDrop && draggedSnapshot) {
       performMove(draggedSnapshot, target.path);
-    } else {
     }
   }, [findDropTarget, isValidDropTarget, performMove]);
 
@@ -950,7 +951,8 @@ function FileTreeInner({
       if (projectPath) {
         items.push({
           label: "Copy Absolute Path",
-          onClick: () => copyToClipboard(pathSync.join(projectPath, node.path)),
+          onClick: () =>
+            copyNormalizedAbsolutePath(pathSync.join(projectPath, node.path)),
           icon: <CopyIcon size={16} />,
         });
       }
@@ -986,7 +988,7 @@ function FileTreeInner({
                 // Fallback: create empty file with same extension
                 await fileOperations.createFile(newPath);
               } else {
-                const content = await response.text();
+                const _content = await response.text();
                 await fileOperations.createFile(newPath);
                 // Note: We'd need a writeFile operation to copy content
                 // For now, just create the file structure
@@ -1093,7 +1095,7 @@ function FileTreeInner({
     if (projectPath) {
       items.push({
         label: "Copy Project Path",
-        onClick: () => copyToClipboard(projectPath),
+        onClick: () => copyNormalizedAbsolutePath(projectPath),
         icon: <ClipboardTextIcon size={16} />,
       });
 

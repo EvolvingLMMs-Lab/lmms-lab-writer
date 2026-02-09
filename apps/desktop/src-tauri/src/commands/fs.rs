@@ -1,8 +1,10 @@
-use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher, EventKind, event::ModifyKind};
-use std::path::PathBuf;
+use notify::{
+    event::{ModifyKind, RenameMode},
+    Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
@@ -41,36 +43,31 @@ impl Default for WatcherState {
     }
 }
 
+#[derive(Default)]
 pub struct ProjectState {
     pub project_path: Option<String>,
 }
 
-impl Default for ProjectState {
-    fn default() -> Self {
-        Self { project_path: None }
-    }
-}
-
 fn validate_path_within_project(path: &str, project_path: &str) -> Result<(), String> {
-    let canonical_project = std::fs::canonicalize(project_path)
-        .map_err(|e| format!("Invalid project path: {}", e))?;
-    
+    let canonical_project =
+        std::fs::canonicalize(project_path).map_err(|e| format!("Invalid project path: {}", e))?;
+
     let target_path = Path::new(path);
     let canonical_target = if target_path.exists() {
-        std::fs::canonicalize(target_path)
-            .map_err(|e| format!("Invalid target path: {}", e))?
+        std::fs::canonicalize(target_path).map_err(|e| format!("Invalid target path: {}", e))?
     } else {
-        let parent = target_path.parent()
+        let parent = target_path
+            .parent()
             .ok_or_else(|| "Invalid path: no parent directory".to_string())?;
-        let parent_canonical = std::fs::canonicalize(parent)
-            .map_err(|e| format!("Invalid parent path: {}", e))?;
+        let parent_canonical =
+            std::fs::canonicalize(parent).map_err(|e| format!("Invalid parent path: {}", e))?;
         parent_canonical.join(target_path.file_name().unwrap_or_default())
     };
-    
+
     if !canonical_target.starts_with(&canonical_project) {
         return Err("Access denied: path is outside project directory".to_string());
     }
-    
+
     Ok(())
 }
 
@@ -121,13 +118,13 @@ pub async fn set_project_path(
     state: tauri::State<'_, Mutex<ProjectState>>,
     path: String,
 ) -> Result<(), String> {
-    let canonical = std::fs::canonicalize(&path)
-        .map_err(|e| format!("Invalid project path: {}", e))?;
-    
+    let canonical =
+        std::fs::canonicalize(&path).map_err(|e| format!("Invalid project path: {}", e))?;
+
     if !canonical.is_dir() {
         return Err("Project path must be a directory".to_string());
     }
-    
+
     let mut state_guard = state.lock().map_err(|e| e.to_string())?;
     state_guard.project_path = Some(canonical.to_string_lossy().to_string());
     Ok(())
@@ -140,12 +137,14 @@ pub async fn read_file(
 ) -> Result<String, String> {
     let project_path = {
         let state_guard = state.lock().map_err(|e| e.to_string())?;
-        state_guard.project_path.clone()
+        state_guard
+            .project_path
+            .clone()
             .ok_or_else(|| "No project open".to_string())?
     };
-    
+
     validate_path_within_project(&path, &project_path)?;
-    
+
     let metadata = fs::metadata(&path).await.map_err(|e| e.to_string())?;
     if metadata.is_dir() {
         return Err("Cannot read directory as file".to_string());
@@ -162,10 +161,12 @@ pub async fn write_file(
 ) -> Result<(), String> {
     let project_path = {
         let state_guard = state.lock().map_err(|e| e.to_string())?;
-        state_guard.project_path.clone()
+        state_guard
+            .project_path
+            .clone()
             .ok_or_else(|| "No project open".to_string())?
     };
-    
+
     validate_path_within_project(&path, &project_path)?;
 
     ensure_utf8_encoding(encoding.as_deref())?;
@@ -179,7 +180,9 @@ pub async fn create_file(path: String, encoding: Option<String>) -> Result<(), S
     // Create parent directory if it doesn't exist
     if let Some(parent) = Path::new(&path).parent() {
         if !parent.exists() {
-            fs::create_dir_all(parent).await.map_err(|e| e.to_string())?;
+            fs::create_dir_all(parent)
+                .await
+                .map_err(|e| e.to_string())?;
         }
     }
 
@@ -214,7 +217,9 @@ pub async fn rename_path(old_path: String, new_path: String) -> Result<(), Strin
         return Err(format!("Path already exists: {}", new_path));
     }
 
-    fs::rename(&old_path, &new_path).await.map_err(|e| e.to_string())
+    fs::rename(&old_path, &new_path)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -241,11 +246,10 @@ pub async fn get_file_tree(dir: String) -> Result<Vec<FileNode>, String> {
     }
 
     let dir_clone = dir.clone();
-    let result = tauri::async_runtime::spawn_blocking(move || {
-        build_file_tree(Path::new(&dir_clone), "")
-    })
-    .await
-    .map_err(|e| e.to_string())?;
+    let result =
+        tauri::async_runtime::spawn_blocking(move || build_file_tree(Path::new(&dir_clone), ""))
+            .await
+            .map_err(|e| e.to_string())?;
 
     Ok(result)
 }
@@ -269,7 +273,7 @@ fn build_file_tree(dir: &Path, base_path: &str) -> Vec<FileNode> {
             Ok(ft) => ft,
             Err(_) => continue,
         };
-        
+
         let relative_path = if base_path.is_empty() {
             name.clone()
         } else {
@@ -326,7 +330,12 @@ fn event_kind_to_string(kind: &EventKind) -> &'static str {
         EventKind::Modify(modify_kind) => {
             // Distinguish rename events from other modifications
             match modify_kind {
-                ModifyKind::Name(_) => "rename",
+                ModifyKind::Name(rename_mode) => match rename_mode {
+                    // Some platforms report rename-as-delete/create pairs.
+                    RenameMode::From => "remove",
+                    RenameMode::To => "create",
+                    RenameMode::Both | RenameMode::Any | RenameMode::Other => "rename",
+                },
                 _ => "modify",
             }
         }
@@ -356,8 +365,8 @@ pub fn watch_directory(
     let app_handle = app.clone();
 
     // Canonicalize base_path for reliable path comparison on Windows
-    let base_path: PathBuf = std::fs::canonicalize(&path)
-        .map_err(|e| format!("Failed to canonicalize path: {}", e))?;
+    let base_path: PathBuf =
+        std::fs::canonicalize(&path).map_err(|e| format!("Failed to canonicalize path: {}", e))?;
 
     let watcher = RecommendedWatcher::new(
         move |res: Result<notify::Event, notify::Error>| {
@@ -377,7 +386,9 @@ pub fn watch_directory(
 
                         // Clean up old entries when map grows too large (prevent memory leak)
                         if events.len() > 100 {
-                            events.retain(|_, time| now.duration_since(*time) < Duration::from_secs(5));
+                            events.retain(|_, time| {
+                                now.duration_since(*time) < Duration::from_secs(5)
+                            });
                         }
 
                         if let Some(last) = events.get(&path_str) {
@@ -390,12 +401,10 @@ pub fn watch_directory(
 
                     // Calculate relative path with proper handling for Windows paths
                     let relative_path = match event_path.canonicalize() {
-                        Ok(canonical_event_path) => {
-                            canonical_event_path
-                                .strip_prefix(&base_path)
-                                .map(|p| p.to_string_lossy().replace("\\", "/"))
-                                .unwrap_or_else(|_| event_path.to_string_lossy().replace("\\", "/"))
-                        }
+                        Ok(canonical_event_path) => canonical_event_path
+                            .strip_prefix(&base_path)
+                            .map(|p| p.to_string_lossy().replace("\\", "/"))
+                            .unwrap_or_else(|_| event_path.to_string_lossy().replace("\\", "/")),
                         Err(_) => {
                             // File might have been deleted, try direct comparison
                             event_path
@@ -446,51 +455,139 @@ pub fn stop_watch(state: tauri::State<'_, Mutex<WatcherState>>) -> Result<(), St
 #[cfg(test)]
 mod tests {
     use super::*;
+    use notify::event::{CreateKind, RemoveKind};
+    use notify::EventKind;
     use std::fs;
+    use std::path::PathBuf;
     use tempfile::TempDir;
 
-    #[tokio::test]
-    async fn test_read_file_returns_content() {
+    #[test]
+    fn test_validate_path_within_project_allows_file_within_project() {
         let temp_dir = TempDir::new().unwrap();
-        let file_path = temp_dir.path().join("test.txt");
-        fs::write(&file_path, "hello world").unwrap();
+        let project = temp_dir.path().join("project");
+        fs::create_dir_all(&project).unwrap();
+        let file_path = project.join("main.tex");
+        fs::write(&file_path, "hello").unwrap();
 
-        let content = read_file(file_path.to_string_lossy().to_string()).await.unwrap();
-        assert_eq!(content, "hello world");
+        let result =
+            validate_path_within_project(&file_path.to_string_lossy(), &project.to_string_lossy());
+        assert!(result.is_ok());
     }
 
-    #[tokio::test]
-    async fn test_read_file_returns_error_for_missing_file() {
-        let result = read_file("/nonexistent/path/file.txt".to_string()).await;
+    #[test]
+    fn test_validate_path_within_project_rejects_outside_project() {
+        let temp_dir = TempDir::new().unwrap();
+        let project = temp_dir.path().join("project");
+        let outside = temp_dir.path().join("outside.txt");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(&outside, "nope").unwrap();
+
+        let result =
+            validate_path_within_project(&outside.to_string_lossy(), &project.to_string_lossy());
         assert!(result.is_err());
     }
 
     #[tokio::test]
-    async fn test_write_file_creates_file() {
+    async fn test_create_file_creates_utf8_file() {
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("new.txt");
 
-        write_file(file_path.to_string_lossy().to_string(), "test content".to_string())
+        create_file(
+            file_path.to_string_lossy().to_string(),
+            Some("utf-8".to_string()),
+        )
+        .await
+        .unwrap();
+
+        assert!(file_path.exists());
+        let content = fs::read_to_string(file_path).unwrap();
+        assert_eq!(content, "");
+    }
+
+    #[tokio::test]
+    async fn test_create_file_rejects_non_utf8_encoding() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("new.txt");
+
+        let result = create_file(
+            file_path.to_string_lossy().to_string(),
+            Some("latin1".to_string()),
+        )
+        .await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_rename_and_delete_path_for_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let old_path = temp_dir.path().join("draft.tex");
+        let new_path = temp_dir.path().join("renamed.tex");
+        fs::write(&old_path, "content").unwrap();
+
+        rename_path(
+            old_path.to_string_lossy().to_string(),
+            new_path.to_string_lossy().to_string(),
+        )
+        .await
+        .unwrap();
+
+        assert!(!old_path.exists());
+        assert!(new_path.exists());
+
+        delete_path(new_path.to_string_lossy().to_string())
             .await
             .unwrap();
+        assert!(!new_path.exists());
+    }
 
-        let content = fs::read_to_string(&file_path).unwrap();
-        assert_eq!(content, "test content");
+    #[test]
+    fn test_event_kind_to_string_handles_rename_modes() {
+        assert_eq!(
+            event_kind_to_string(&EventKind::Modify(ModifyKind::Name(RenameMode::From))),
+            "remove"
+        );
+        assert_eq!(
+            event_kind_to_string(&EventKind::Modify(ModifyKind::Name(RenameMode::To))),
+            "create"
+        );
+        assert_eq!(
+            event_kind_to_string(&EventKind::Modify(ModifyKind::Name(RenameMode::Both))),
+            "rename"
+        );
+        assert_eq!(
+            event_kind_to_string(&EventKind::Create(CreateKind::Any)),
+            "create"
+        );
+        assert_eq!(
+            event_kind_to_string(&EventKind::Remove(RemoveKind::Any)),
+            "remove"
+        );
+    }
+
+    #[test]
+    fn test_should_ignore_path_matches_ignored_directories() {
+        let ignored = PathBuf::from("/tmp/project/node_modules/pkg/index.js");
+        let normal = PathBuf::from("/tmp/project/src/main.tex");
+
+        assert!(should_ignore_path(&ignored));
+        assert!(!should_ignore_path(&normal));
     }
 
     #[tokio::test]
     async fn test_get_file_tree_returns_files_and_directories() {
         let temp_dir = TempDir::new().unwrap();
-        
+
         fs::write(temp_dir.path().join("file1.tex"), "").unwrap();
         fs::write(temp_dir.path().join("file2.txt"), "").unwrap();
         fs::create_dir(temp_dir.path().join("subdir")).unwrap();
         fs::write(temp_dir.path().join("subdir/nested.tex"), "").unwrap();
 
-        let tree = get_file_tree(temp_dir.path().to_string_lossy().to_string()).await.unwrap();
+        let tree = get_file_tree(temp_dir.path().to_string_lossy().to_string())
+            .await
+            .unwrap();
 
         assert!(!tree.is_empty());
-        
+
         let names: Vec<&str> = tree.iter().map(|n| n.name.as_str()).collect();
         assert!(names.contains(&"file1.tex"));
         assert!(names.contains(&"file2.txt"));
@@ -504,7 +601,9 @@ mod tests {
         fs::write(temp_dir.path().join(".gitignore"), "").unwrap();
         fs::write(temp_dir.path().join("visible.tex"), "").unwrap();
 
-        let tree = get_file_tree(temp_dir.path().to_string_lossy().to_string()).await.unwrap();
+        let tree = get_file_tree(temp_dir.path().to_string_lossy().to_string())
+            .await
+            .unwrap();
 
         let names: Vec<&str> = tree.iter().map(|n| n.name.as_str()).collect();
         assert!(names.contains(&".gitignore"));
@@ -520,7 +619,9 @@ mod tests {
         fs::write(temp_dir.path().join("main.log"), "").unwrap();
         fs::write(temp_dir.path().join("main.synctex.gz"), "").unwrap();
 
-        let tree = get_file_tree(temp_dir.path().to_string_lossy().to_string()).await.unwrap();
+        let tree = get_file_tree(temp_dir.path().to_string_lossy().to_string())
+            .await
+            .unwrap();
 
         let names: Vec<&str> = tree.iter().map(|n| n.name.as_str()).collect();
         assert!(names.contains(&"main.tex"));

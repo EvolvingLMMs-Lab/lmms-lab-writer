@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Github } from "lucide-react";
 
@@ -31,9 +32,12 @@ export function Header() {
           prefetch={true}
           className="text-base sm:text-lg font-bold tracking-tight flex items-center gap-2 sm:gap-3"
         >
-          <img
+          <Image
             src="/logo-small-light.svg"
             alt="LMMs-Lab Writer"
+            width={32}
+            height={32}
+            priority
             className="h-7 sm:h-8 w-auto"
           />
           <span className="hidden sm:inline">LMMs-Lab Writer</span>

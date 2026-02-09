@@ -67,10 +67,10 @@ export function LoginForm() {
       });
       // Check if PKCE is being used (URL should contain code_challenge)
       if (data?.url) {
-        const urlHasCodeChallenge = data.url.includes("code_challenge");
+        const _urlHasCodeChallenge = data.url.includes("code_challenge");
       }
       // Log ALL localStorage keys to see where code_verifier is stored
-      const allKeys = Object.keys(localStorage);
+      const _allKeys = Object.keys(localStorage);
 
       if (error) {
         setError(`GitHub OAuth error: ${error.message}`);

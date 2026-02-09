@@ -1,6 +1,6 @@
 # Developer Guide
 
-Full technical documentation for contributing to LMMs-Lab Writer.
+Comprehensive technical documentation for contributing to LMMs-Lab Writer.
 
 ## Architecture Overview
 
@@ -82,7 +82,7 @@ lmms-lab-writer/
 
 ## Prerequisites
 
-Before you start, install:
+Ensure you have the following installed:
 
 1. **Node.js** >= 20.0.0 — [nodejs.org](https://nodejs.org/)
 2. **pnpm** 10.x — `npm install -g pnpm`
@@ -95,7 +95,7 @@ Before you start, install:
 ## Getting Started
 
 ```bash
-# Clone
+# Clone the repository
 git clone https://github.com/EvolvingLMMs-Lab/lmms-lab-writer.git
 cd lmms-lab-writer
 
@@ -146,7 +146,7 @@ Linux:   apps/desktop/src-tauri/target/release/bundle/appimage/LMMs-Lab Writer_*
 
 ### Frontend → Backend Communication
 
-The React frontend communicates with the Rust backend through Tauri's IPC (Inter-Process Communication). All IPC calls go through a single React hook:
+The React frontend communicates with the Rust backend through Tauri's IPC (Inter-Process Communication). All IPC calls are routed through a single React hook:
 
 ```
 React Component

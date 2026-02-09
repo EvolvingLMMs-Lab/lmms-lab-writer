@@ -140,6 +140,38 @@ function parseUnifiedDiffContent(content: string): ParsedUnifiedDiff {
   };
 }
 
+type TreeNode = {
+  path: string;
+  type: "file" | "directory";
+  children?: TreeNode[];
+};
+
+function buildBasenameIndex(nodes: TreeNode[]): Map<string, string[]> {
+  const index = new Map<string, string[]>();
+  const stack = [...nodes];
+
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!node) continue;
+
+    if (node.type === "file") {
+      const name = pathSync.basename(node.path);
+      const existing = index.get(name);
+      if (existing) {
+        existing.push(node.path);
+      } else {
+        index.set(name, [node.path]);
+      }
+    }
+
+    if (node.children && node.children.length > 0) {
+      stack.push(...node.children);
+    }
+  }
+
+  return index;
+}
+
 const AI_COMMIT_DIFF_LIMIT = 30000;
 const AI_COMMIT_TIMEOUT_MS = 90000;
 const OPENCODE_STORAGE_KEY_AGENT = "opencode-selected-agent";
@@ -335,7 +367,7 @@ const PANEL_SPRING = {
 
 const INSTANT_TRANSITION = { duration: 0 } as const;
 
-const WEB_URL =
+const _WEB_URL =
   process.env.NEXT_PUBLIC_WEB_URL || "https://writer.lmms-lab.com";
 
 const MIN_PANEL_WIDTH = 200;
@@ -735,7 +767,6 @@ The AI assistant will read and update this file during compilation.
         const { type, message } = event.payload;
         if (type === "stderr") {
           console.error("[OpenCode]", message);
-        } else {
         }
       }).then((fn) => {
         unlisten = fn;
@@ -900,30 +931,64 @@ The AI assistant will read and update this file during compilation.
     return languageMap[ext] || "plaintext";
   }, []);
 
+  const filesByBasename = useMemo(
+    () => buildBasenameIndex(daemon.files as TreeNode[]),
+    [daemon.files],
+  );
+
+  const resolveSelectablePath = useCallback(
+    (candidatePath: string): string => {
+      const normalized = candidatePath.replace(/\\/g, "/");
+      if (normalized.includes("/")) {
+        return normalized;
+      }
+
+      const matches = filesByBasename.get(normalized) ?? [];
+      if (matches.length === 0) {
+        return normalized;
+      }
+
+      if (matches.length > 1) {
+        const preferred = matches[0];
+        if (preferred) {
+          toast(
+            `Multiple files named "${normalized}" found. Opening "${preferred}".`,
+            "error",
+          );
+          return preferred;
+        }
+      }
+
+      return matches[0] ?? normalized;
+    },
+    [filesByBasename, toast],
+  );
+
   const handleFileSelect = useCallback(
     async (path: string) => {
+      const resolvedPath = resolveSelectablePath(path);
       setEditorViewMode("file");
       setGitDiffPreview(null);
-      const fileType = getFileType(path);
+      const fileType = getFileType(resolvedPath);
 
       setOpenTabs((prev) => {
-        if (prev.includes(path)) return prev;
-        return [...prev, path];
+        if (prev.includes(resolvedPath)) return prev;
+        return [...prev, resolvedPath];
       });
-      setSelectedFile(path);
+      setSelectedFile(resolvedPath);
       setBinaryPreviewUrl(null);
 
       if (fileType === "text") {
         setIsLoadingFile(true);
         try {
-          const content = await daemon.readFile(path);
+          const content = await daemon.readFile(resolvedPath);
           setFileContent(content ?? "");
         } catch (err) {
           const errorStr = String(err);
 
           // Handle file not found - remove from tabs and notify user
           if (errorStr.includes("FILE_NOT_FOUND")) {
-            const fileName = pathSync.basename(path);
+            const fileName = pathSync.basename(resolvedPath);
             toast(
               `File "${fileName}" no longer exists and has been removed from tabs`,
               "error",
@@ -931,7 +996,7 @@ The AI assistant will read and update this file during compilation.
 
             // Remove the file from open tabs
             setOpenTabs((prev) => {
-              const newTabs = prev.filter((p) => p !== path);
+              const newTabs = prev.filter((p) => p !== resolvedPath);
 
               // Switch to another tab if available
               if (newTabs.length > 0) {
@@ -958,13 +1023,13 @@ The AI assistant will read and update this file during compilation.
         }
       } else {
         const fullPath = daemon.projectPath
-          ? pathSync.join(daemon.projectPath, path)
-          : path;
+          ? pathSync.join(daemon.projectPath, resolvedPath)
+          : resolvedPath;
         setBinaryPreviewUrl(convertFileSrc(fullPath));
         setFileContent("");
       }
     },
-    [daemon, getFileType, toast],
+    [daemon, getFileType, resolveSelectablePath, toast],
   );
 
   const loadGitDiffPreview = useCallback(

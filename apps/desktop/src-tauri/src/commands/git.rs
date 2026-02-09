@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use super::util::command;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GhStatus {
@@ -78,17 +78,18 @@ pub async fn git_status(dir: String) -> Result<GitStatus, String> {
     }
 
     let dir_ref = &dir;
-    
+
     // Check if repo has any commits
     let has_commits = run_git(dir_ref, &["rev-parse", "HEAD"]).await.is_ok();
-    
+
     let (branch_result, status_result, remote_result, upstream_result, ahead_behind_result) = tokio::join!(
         async {
             if has_commits {
                 run_git(dir_ref, &["rev-parse", "--abbrev-ref", "HEAD"]).await
             } else {
                 // No commits yet - get branch from symbolic-ref or default to "main"
-                run_git(dir_ref, &["symbolic-ref", "--short", "HEAD"]).await
+                run_git(dir_ref, &["symbolic-ref", "--short", "HEAD"])
+                    .await
                     .or_else(|_| Ok("main".to_string()))
             }
         },
@@ -107,14 +108,21 @@ pub async fn git_status(dir: String) -> Result<GitStatus, String> {
         },
         async {
             if has_commits {
-                run_git(dir_ref, &["rev-list", "--left-right", "--count", "HEAD...@{u}"]).await
+                run_git(
+                    dir_ref,
+                    &["rev-list", "--left-right", "--count", "HEAD...@{u}"],
+                )
+                .await
             } else {
                 Ok("0\t0".to_string())
             }
         }
     );
 
-    let branch = branch_result.unwrap_or_else(|_| "main".to_string()).trim().to_string();
+    let branch = branch_result
+        .unwrap_or_else(|_| "main".to_string())
+        .trim()
+        .to_string();
     let status_output = status_result.unwrap_or_default();
     let has_upstream = upstream_result.is_ok();
 
@@ -123,8 +131,8 @@ pub async fn git_status(dir: String) -> Result<GitStatus, String> {
         if line.len() < 3 {
             continue;
         }
-        let staged = line.chars().next().unwrap_or(' ') != ' '
-            && line.chars().next().unwrap_or(' ') != '?';
+        let staged =
+            line.chars().next().unwrap_or(' ') != ' ' && line.chars().next().unwrap_or(' ') != '?';
         let status_char = if staged {
             line.chars().next().unwrap_or(' ')
         } else {
@@ -167,10 +175,7 @@ pub async fn git_status(dir: String) -> Result<GitStatus, String> {
         .and_then(|output| {
             let parts: Vec<&str> = output.trim().split('\t').collect();
             if parts.len() == 2 {
-                Some((
-                    parts[0].parse().unwrap_or(0),
-                    parts[1].parse().unwrap_or(0),
-                ))
+                Some((parts[0].parse().unwrap_or(0), parts[1].parse().unwrap_or(0)))
             } else {
                 None
             }
@@ -193,8 +198,17 @@ pub async fn git_status(dir: String) -> Result<GitStatus, String> {
 pub async fn git_log(dir: String, limit: Option<i32>) -> Result<Vec<GitLogEntry>, String> {
     let limit = limit.unwrap_or(20);
     let format = "%H%n%h%n%s%n%an%n%ci%n---";
-    
-    let output = match run_git(&dir, &["log", &format!("-{}", limit), &format!("--format={}", format)]).await {
+
+    let output = match run_git(
+        &dir,
+        &[
+            "log",
+            &format!("-{}", limit),
+            &format!("--format={}", format),
+        ],
+    )
+    .await
+    {
         Ok(out) => out,
         Err(e) if e.contains("does not have any commits") => return Ok(Vec::new()),
         Err(e) => return Err(e),
@@ -237,10 +251,7 @@ pub async fn git_graph(dir: String, limit: Option<i32>) -> Result<Vec<String>, S
     .await
     {
         Ok(out) => out,
-        Err(e)
-            if e.contains("does not have any commits")
-                || e.contains("bad default revision") =>
-        {
+        Err(e) if e.contains("does not have any commits") || e.contains("bad default revision") => {
             return Ok(Vec::new())
         }
         Err(e) => return Err(e),
@@ -254,7 +265,11 @@ pub async fn git_graph(dir: String, limit: Option<i32>) -> Result<Vec<String>, S
 }
 
 #[tauri::command]
-pub async fn git_diff(dir: String, file: Option<String>, staged: Option<bool>) -> Result<String, String> {
+pub async fn git_diff(
+    dir: String,
+    file: Option<String>,
+    staged: Option<bool>,
+) -> Result<String, String> {
     let mut args = vec!["diff"];
     if staged.unwrap_or(false) {
         args.push("--staged");
@@ -286,8 +301,7 @@ pub async fn git_discard_file(dir: String, file: String) -> Result<(), String> {
             std::fs::remove_dir_all(&path)
                 .map_err(|e| format!("Failed to remove {}: {}", file, e))?;
         } else {
-            std::fs::remove_file(&path)
-                .map_err(|e| format!("Failed to remove {}: {}", file, e))?;
+            std::fs::remove_file(&path).map_err(|e| format!("Failed to remove {}: {}", file, e))?;
         }
     } else {
         // Tracked file: restore it
@@ -324,12 +338,17 @@ pub async fn git_commit(dir: String, message: String) -> Result<String, String> 
 
 #[tauri::command]
 pub async fn git_push(dir: String) -> Result<(), String> {
-    let has_commits = run_git(&dir, &["rev-parse", "--verify", "HEAD"]).await.is_ok();
+    let has_commits = run_git(&dir, &["rev-parse", "--verify", "HEAD"])
+        .await
+        .is_ok();
     if !has_commits {
         return Err("No commits to push".to_string());
     }
 
-    if run_git(&dir, &["remote", "get-url", "origin"]).await.is_err() {
+    if run_git(&dir, &["remote", "get-url", "origin"])
+        .await
+        .is_err()
+    {
         return Err("No remote named 'origin'. Add or publish a remote first.".to_string());
     }
 
@@ -371,11 +390,17 @@ pub async fn git_fetch(dir: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn git_pull(dir: String) -> Result<(), String> {
-    if run_git(&dir, &["remote", "get-url", "origin"]).await.is_err() {
+    if run_git(&dir, &["remote", "get-url", "origin"])
+        .await
+        .is_err()
+    {
         return Err("No remote named 'origin'. Add or publish a remote first.".to_string());
     }
 
-    let branch = if run_git(&dir, &["rev-parse", "--verify", "HEAD"]).await.is_ok() {
+    let branch = if run_git(&dir, &["rev-parse", "--verify", "HEAD"])
+        .await
+        .is_ok()
+    {
         run_git(&dir, &["rev-parse", "--abbrev-ref", "HEAD"])
             .await?
             .trim()
@@ -636,7 +661,7 @@ pub async fn git_clone(url: String, directory: String) -> Result<String, String>
     if url.starts_with('-') {
         return Err("Invalid URL: cannot start with '-'".to_string());
     }
-    
+
     let output = command("git")
         .args(["clone", "--", &url, &directory])
         .output()
@@ -759,7 +784,15 @@ pub async fn gh_auth_login() -> Result<String, String> {
     #[cfg(not(target_os = "windows"))]
     {
         std::process::Command::new("gh")
-            .args(["auth", "login", "--web", "--git-protocol", "https", "--hostname", "github.com"])
+            .args([
+                "auth",
+                "login",
+                "--web",
+                "--git-protocol",
+                "https",
+                "--hostname",
+                "github.com",
+            ])
             .spawn()
             .map_err(|e| e.to_string())?;
     }
@@ -775,7 +808,9 @@ pub async fn gh_create_repo(
     description: Option<String>,
 ) -> Result<GhRepoResult, String> {
     let visibility = if private { "--private" } else { "--public" };
-    let has_commits = run_git(&dir, &["rev-parse", "--verify", "HEAD"]).await.is_ok();
+    let has_commits = run_git(&dir, &["rev-parse", "--verify", "HEAD"])
+        .await
+        .is_ok();
 
     let mut args = vec![
         "repo",
