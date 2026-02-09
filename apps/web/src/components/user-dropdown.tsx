@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { clearUserCacheCookie } from "@/lib/user-cache";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
@@ -61,9 +62,11 @@ export function UserDropdown({
         className="flex items-center gap-2 hover:opacity-80 transition-opacity"
       >
         {avatarUrl ? (
-          <img
+          <Image
             src={avatarUrl}
             alt={displayName}
+            width={32}
+            height={32}
             className="size-8 border border-neutral-300"
           />
         ) : (
@@ -96,9 +99,11 @@ export function UserDropdown({
             className="p-5 border-b border-border flex items-center gap-4 hover:bg-neutral-50 transition-colors group"
           >
             {avatarUrl ? (
-              <img
+              <Image
                 src={avatarUrl}
                 alt={displayName}
+                width={48}
+                height={48}
                 className="size-12 border border-neutral-300"
               />
             ) : (

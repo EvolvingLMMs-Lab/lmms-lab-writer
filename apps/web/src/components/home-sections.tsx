@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   Download,
@@ -151,9 +152,12 @@ export function HeroSection() {
             ease: [0.25, 0.46, 0.45, 0.94],
           }}
         >
-          <img
+          <Image
             src="/logo-light.svg"
             alt="LMMs-Lab Writer — Think Deep, Write Easy."
+            width={320}
+            height={128}
+            priority
             className="h-20 md:h-32 w-auto"
           />
         </motion.div>
@@ -227,6 +231,7 @@ export function HeroSection() {
             src="/features/demo.webp"
             alt="LMMs-Lab Writer — AI-native LaTeX editor"
             className="w-full h-auto"
+            priority
           />
         </motion.div>
       </motion.div>

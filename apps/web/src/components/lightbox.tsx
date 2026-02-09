@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { m, AnimatePresence, useReducedMotion } from "framer-motion";
 
 const SPRING = { type: "spring", stiffness: 300, damping: 28, mass: 0.8 } as const;
@@ -9,9 +10,21 @@ interface LightboxImageProps {
   src: string;
   alt: string;
   className?: string;
+  width?: number;
+  height?: number;
+  sizes?: string;
+  priority?: boolean;
 }
 
-export function LightboxImage({ src, alt, className }: LightboxImageProps) {
+export function LightboxImage({
+  src,
+  alt,
+  className,
+  width = 1600,
+  height = 900,
+  sizes = "(max-width: 768px) 100vw, 60vw",
+  priority = false,
+}: LightboxImageProps) {
   const [open, setOpen] = useState(false);
   const prefersReducedMotion = useReducedMotion();
 
@@ -36,9 +49,13 @@ export function LightboxImage({ src, alt, className }: LightboxImageProps) {
 
   return (
     <>
-      <img
+      <Image
         src={src}
         alt={alt}
+        width={width}
+        height={height}
+        sizes={sizes}
+        priority={priority}
         className={`${className ?? ""} cursor-zoom-in`}
         onClick={() => setOpen(true)}
       />
