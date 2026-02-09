@@ -38,8 +38,8 @@ export default {
             "--tw-prose-headings": "#0a0a0a",
             "--tw-prose-links": "#0a0a0a",
             "--tw-prose-code": "#0a0a0a",
-            "--tw-prose-pre-bg": "#171717",
-            "--tw-prose-pre-code": "#fafafa",
+            "--tw-prose-pre-bg": "#fafafa",
+            "--tw-prose-pre-code": "#0a0a0a",
             maxWidth: "none",
             code: {
               backgroundColor: "#f5f5f5",
@@ -51,6 +51,7 @@ export default {
             "code::before": { content: "none" },
             "code::after": { content: "none" },
             pre: {
+              backgroundColor: "#f5f5f5",
               borderWidth: "1px",
               borderColor: "#e5e5e5",
               borderRadius: "0",

@@ -57,7 +57,7 @@ const mdxOptions = {
   rehypePlugins: [
     rehypeSlug,
     [rehypeAutolinkHeadings, { behavior: "wrap" }],
-    [rehypePrettyCode, { theme: "github-dark" }],
+    [rehypePrettyCode, { theme: "github-light" }],
   ],
 };
 
