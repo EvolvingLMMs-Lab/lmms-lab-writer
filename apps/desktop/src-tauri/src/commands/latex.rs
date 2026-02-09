@@ -1,3 +1,4 @@
+use super::util::command;
 use serde::{Deserialize, Serialize};
 use std::process::Stdio;
 use std::sync::Arc;
@@ -5,7 +6,6 @@ use tauri::{AppHandle, Emitter, State};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
 use tokio::sync::Mutex;
-use super::util::command;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LaTeXDistribution {
@@ -81,10 +81,7 @@ async fn find_compiler(name: &str) -> CompilerInfo {
     };
 
     // Try system PATH first
-    let output = command(which_cmd)
-        .arg(name)
-        .output()
-        .await;
+    let output = command(which_cmd).arg(name).output().await;
 
     if let Ok(output) = output {
         if output.status.success() {
@@ -145,11 +142,20 @@ fn get_common_paths(name: &str) -> Vec<String> {
             paths.push(format!("C:\\texlive\\{}\\bin\\windows\\{}.exe", year, name));
         }
         // MiKTeX paths
-        paths.push(format!("C:\\Program Files\\MiKTeX\\miktex\\bin\\x64\\{}.exe", name));
-        paths.push(format!("C:\\Program Files (x86)\\MiKTeX\\miktex\\bin\\{}.exe", name));
+        paths.push(format!(
+            "C:\\Program Files\\MiKTeX\\miktex\\bin\\x64\\{}.exe",
+            name
+        ));
+        paths.push(format!(
+            "C:\\Program Files (x86)\\MiKTeX\\miktex\\bin\\{}.exe",
+            name
+        ));
         // User MiKTeX
         if let Ok(home) = std::env::var("LOCALAPPDATA") {
-            paths.push(format!("{}\\Programs\\MiKTeX\\miktex\\bin\\x64\\{}.exe", home, name));
+            paths.push(format!(
+                "{}\\Programs\\MiKTeX\\miktex\\bin\\x64\\{}.exe",
+                home, name
+            ));
         }
     }
 
@@ -157,15 +163,30 @@ fn get_common_paths(name: &str) -> Vec<String> {
     {
         // TinyTeX paths (check user home directory first)
         if let Ok(home) = std::env::var("HOME") {
-            paths.push(format!("{}/Library/TinyTeX/bin/universal-darwin/{}", home, name));
-            paths.push(format!("{}/Library/TinyTeX/bin/x86_64-darwin/{}", home, name));
-            paths.push(format!("{}/Library/TinyTeX/bin/arm64-darwin/{}", home, name));
+            paths.push(format!(
+                "{}/Library/TinyTeX/bin/universal-darwin/{}",
+                home, name
+            ));
+            paths.push(format!(
+                "{}/Library/TinyTeX/bin/x86_64-darwin/{}",
+                home, name
+            ));
+            paths.push(format!(
+                "{}/Library/TinyTeX/bin/arm64-darwin/{}",
+                home, name
+            ));
         }
         paths.push(format!("/Library/TeX/texbin/{}", name));
         paths.push(format!("/opt/homebrew/bin/{}", name));
         paths.push(format!("/usr/local/bin/{}", name));
-        paths.push(format!("/usr/local/texlive/2024/bin/universal-darwin/{}", name));
-        paths.push(format!("/usr/local/texlive/2023/bin/universal-darwin/{}", name));
+        paths.push(format!(
+            "/usr/local/texlive/2024/bin/universal-darwin/{}",
+            name
+        ));
+        paths.push(format!(
+            "/usr/local/texlive/2023/bin/universal-darwin/{}",
+            name
+        ));
     }
 
     #[cfg(target_os = "linux")]
@@ -178,7 +199,10 @@ fn get_common_paths(name: &str) -> Vec<String> {
         paths.push(format!("/usr/bin/{}", name));
         paths.push(format!("/usr/local/bin/{}", name));
         for year in (2020..=2030).rev() {
-            paths.push(format!("/usr/local/texlive/{}/bin/x86_64-linux/{}", year, name));
+            paths.push(format!(
+                "/usr/local/texlive/{}/bin/x86_64-linux/{}",
+                year, name
+            ));
         }
     }
 
@@ -186,11 +210,7 @@ fn get_common_paths(name: &str) -> Vec<String> {
 }
 
 async fn get_compiler_version(name: &str, path: &str) -> Option<String> {
-    let output = command(path)
-        .arg("--version")
-        .output()
-        .await
-        .ok()?;
+    let output = command(path).arg("--version").output().await.ok()?;
 
     if output.status.success() {
         let version_output = String::from_utf8_lossy(&output.stdout);
@@ -275,7 +295,10 @@ pub async fn latex_compile(
     #[cfg(target_os = "macos")]
     let env_path = {
         if !env_path.contains("/Library/TeX/texbin") {
-            format!("/Library/TeX/texbin:/opt/homebrew/bin:/usr/local/bin:{}", env_path)
+            format!(
+                "/Library/TeX/texbin:/opt/homebrew/bin:/usr/local/bin:{}",
+                env_path
+            )
         } else {
             env_path
         }
@@ -283,7 +306,9 @@ pub async fn latex_compile(
     cmd.env("PATH", env_path);
 
     // Spawn the process
-    let child = cmd.spawn().map_err(|e| format!("Failed to start compiler: {}", e))?;
+    let child = cmd
+        .spawn()
+        .map_err(|e| format!("Failed to start compiler: {}", e))?;
 
     // Store the child process
     {
@@ -312,14 +337,14 @@ pub async fn latex_compile(
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
             while let Ok(Some(line)) = lines.next_line().await {
-                let is_error = line.contains("!") ||
-                              line.contains("Error") ||
-                              line.contains("error") ||
-                              line.starts_with("l.");
-                let is_warning = line.contains("Warning") ||
-                                line.contains("warning") ||
-                                line.contains("Overfull") ||
-                                line.contains("Underfull");
+                let is_error = line.contains("!")
+                    || line.contains("Error")
+                    || line.contains("error")
+                    || line.starts_with("l.");
+                let is_warning = line.contains("Warning")
+                    || line.contains("warning")
+                    || line.contains("Overfull")
+                    || line.contains("Underfull");
 
                 let event = CompileOutputEvent {
                     line,
@@ -378,9 +403,7 @@ pub async fn latex_compile(
     }
 
     // Determine the PDF path
-    let pdf_name = main_file
-        .strip_suffix(".tex")
-        .unwrap_or(&main_file);
+    let pdf_name = main_file.strip_suffix(".tex").unwrap_or(&main_file);
     let pdf_path = format!("{}/{}.pdf", directory, pdf_name);
 
     let pdf_exists = std::path::Path::new(&pdf_path).exists();
@@ -402,29 +425,37 @@ pub async fn latex_compile(
 }
 
 #[tauri::command]
-pub async fn latex_stop_compilation(
-    state: State<'_, LaTeXCompilationState>,
-) -> Result<(), String> {
+pub async fn latex_stop_compilation(state: State<'_, LaTeXCompilationState>) -> Result<(), String> {
     let mut process_guard = state.current_process.lock().await;
     if let Some(mut child) = process_guard.take() {
-        child.kill().await.map_err(|e| format!("Failed to stop compilation: {}", e))?;
+        child
+            .kill()
+            .await
+            .map_err(|e| format!("Failed to stop compilation: {}", e))?;
     }
     Ok(())
 }
 
 #[tauri::command]
-pub async fn latex_clean_aux_files(
-    directory: String,
-    main_file: String,
-) -> Result<(), String> {
-    let base_name = main_file
-        .strip_suffix(".tex")
-        .unwrap_or(&main_file);
+pub async fn latex_clean_aux_files(directory: String, main_file: String) -> Result<(), String> {
+    let base_name = main_file.strip_suffix(".tex").unwrap_or(&main_file);
 
     let aux_extensions = [
-        ".aux", ".log", ".out", ".toc", ".lof", ".lot",
-        ".fls", ".fdb_latexmk", ".synctex.gz", ".synctex",
-        ".bbl", ".blg", ".nav", ".snm", ".vrb",
+        ".aux",
+        ".log",
+        ".out",
+        ".toc",
+        ".lof",
+        ".lot",
+        ".fls",
+        ".fdb_latexmk",
+        ".synctex.gz",
+        ".synctex",
+        ".bbl",
+        ".blg",
+        ".nav",
+        ".snm",
+        ".vrb",
     ];
 
     for ext in &aux_extensions {
@@ -454,7 +485,8 @@ pub async fn latex_get_distributions() -> Result<Vec<LaTeXDistribution>, String>
         distributions.push(LaTeXDistribution {
             name: "MiKTeX".to_string(),
             id: "miktex".to_string(),
-            description: "Popular Windows distribution with on-demand package installation.".to_string(),
+            description: "Popular Windows distribution with on-demand package installation."
+                .to_string(),
             install_command: Some("winget install MiKTeX.MiKTeX".to_string()),
             download_url: Some("https://miktex.org/download".to_string()),
         });
@@ -479,7 +511,9 @@ pub async fn latex_get_distributions() -> Result<Vec<LaTeXDistribution>, String>
         distributions.push(LaTeXDistribution {
             name: "BasicTeX".to_string(),
             id: "basictex".to_string(),
-            description: "Smaller installation (~100MB). May need to install additional packages via tlmgr.".to_string(),
+            description:
+                "Smaller installation (~100MB). May need to install additional packages via tlmgr."
+                    .to_string(),
             install_command: Some("brew install --cask basictex".to_string()),
             download_url: Some("https://tug.org/mactex/morepackages.html".to_string()),
         });
@@ -511,7 +545,8 @@ pub async fn latex_get_distributions() -> Result<Vec<LaTeXDistribution>, String>
         distributions.push(LaTeXDistribution {
             name: "TeX Live (Basic + CJK)".to_string(),
             id: "texlive-cjk".to_string(),
-            description: "Basic installation with CJK (Chinese/Japanese/Korean) support.".to_string(),
+            description: "Basic installation with CJK (Chinese/Japanese/Korean) support."
+                .to_string(),
             install_command: Some(get_linux_install_command("texlive-cjk")),
             download_url: None,
         });
@@ -534,7 +569,9 @@ fn get_linux_install_command(package: &str) -> String {
         // Fedora/RHEL
         match package {
             "texlive-full" => "sudo dnf install -y texlive-scheme-full".to_string(),
-            "texlive-cjk" => "sudo dnf install -y texlive-scheme-basic texlive-xetex texlive-ctex".to_string(),
+            "texlive-cjk" => {
+                "sudo dnf install -y texlive-scheme-basic texlive-xetex texlive-ctex".to_string()
+            }
             _ => format!("sudo dnf install -y {}", package),
         }
     } else if std::path::Path::new("/usr/bin/pacman").exists() {
@@ -556,11 +593,14 @@ pub async fn latex_install(
     distribution_id: String,
 ) -> Result<InstallResult, String> {
     // Emit initial progress
-    let _ = app.emit("latex-install-progress", InstallProgress {
-        stage: "starting".to_string(),
-        message: "Preparing installation...".to_string(),
-        progress: Some(0.0),
-    });
+    let _ = app.emit(
+        "latex-install-progress",
+        InstallProgress {
+            stage: "starting".to_string(),
+            message: "Preparing installation...".to_string(),
+            progress: Some(0.0),
+        },
+    );
 
     #[cfg(target_os = "windows")]
     {
@@ -588,7 +628,9 @@ async fn install_windows(app: &AppHandle, distribution_id: &str) -> Result<Insta
         "miktex" => install_miktex_windows(app).await,
         _ => Ok(InstallResult {
             success: false,
-            message: "Please download and install this distribution manually from the official website.".to_string(),
+            message:
+                "Please download and install this distribution manually from the official website."
+                    .to_string(),
             needs_restart: false,
         }),
     }
@@ -596,11 +638,14 @@ async fn install_windows(app: &AppHandle, distribution_id: &str) -> Result<Insta
 
 #[cfg(target_os = "windows")]
 async fn install_tinytex_windows(app: &AppHandle) -> Result<InstallResult, String> {
-    let _ = app.emit("latex-install-progress", InstallProgress {
-        stage: "downloading".to_string(),
-        message: "Downloading TinyTeX installer...".to_string(),
-        progress: Some(0.1),
-    });
+    let _ = app.emit(
+        "latex-install-progress",
+        InstallProgress {
+            stage: "downloading".to_string(),
+            message: "Downloading TinyTeX installer...".to_string(),
+            progress: Some(0.1),
+        },
+    );
 
     // Download the install script
     let temp_dir = std::env::temp_dir();
@@ -620,7 +665,10 @@ async fn install_tinytex_windows(app: &AppHandle) -> Result<InstallResult, Strin
         .spawn()
         .map_err(|e| format!("Failed to download installer: {}", e))?;
 
-    let status = child.wait().await.map_err(|e| format!("Download failed: {}", e))?;
+    let status = child
+        .wait()
+        .await
+        .map_err(|e| format!("Download failed: {}", e))?;
 
     if !status.success() {
         return Ok(InstallResult {
@@ -630,11 +678,14 @@ async fn install_tinytex_windows(app: &AppHandle) -> Result<InstallResult, Strin
         });
     }
 
-    let _ = app.emit("latex-install-progress", InstallProgress {
-        stage: "installing".to_string(),
-        message: "Installing TinyTeX... This may take a few minutes.".to_string(),
-        progress: Some(0.3),
-    });
+    let _ = app.emit(
+        "latex-install-progress",
+        InstallProgress {
+            stage: "installing".to_string(),
+            message: "Installing TinyTeX... This may take a few minutes.".to_string(),
+            progress: Some(0.3),
+        },
+    );
 
     // Run the install script
     let mut child = command("cmd")
@@ -651,26 +702,35 @@ async fn install_tinytex_windows(app: &AppHandle) -> Result<InstallResult, Strin
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
             while let Ok(Some(line)) = lines.next_line().await {
-                let _ = app_clone.emit("latex-install-progress", InstallProgress {
-                    stage: "installing".to_string(),
-                    message: line,
-                    progress: None,
-                });
+                let _ = app_clone.emit(
+                    "latex-install-progress",
+                    InstallProgress {
+                        stage: "installing".to_string(),
+                        message: line,
+                        progress: None,
+                    },
+                );
             }
         });
     }
 
-    let status = child.wait().await.map_err(|e| format!("Installation failed: {}", e))?;
+    let status = child
+        .wait()
+        .await
+        .map_err(|e| format!("Installation failed: {}", e))?;
 
     // Clean up
     let _ = std::fs::remove_file(&script_path);
 
     if status.success() {
-        let _ = app.emit("latex-install-progress", InstallProgress {
-            stage: "complete".to_string(),
-            message: "TinyTeX installed successfully!".to_string(),
-            progress: Some(1.0),
-        });
+        let _ = app.emit(
+            "latex-install-progress",
+            InstallProgress {
+                stage: "complete".to_string(),
+                message: "TinyTeX installed successfully!".to_string(),
+                progress: Some(1.0),
+            },
+        );
 
         Ok(InstallResult {
             success: true,
@@ -689,16 +749,16 @@ async fn install_tinytex_windows(app: &AppHandle) -> Result<InstallResult, Strin
 #[cfg(target_os = "windows")]
 async fn install_miktex_windows(app: &AppHandle) -> Result<InstallResult, String> {
     // Check if winget is available
-    let _ = app.emit("latex-install-progress", InstallProgress {
-        stage: "checking".to_string(),
-        message: "Checking for winget...".to_string(),
-        progress: Some(0.1),
-    });
+    let _ = app.emit(
+        "latex-install-progress",
+        InstallProgress {
+            stage: "checking".to_string(),
+            message: "Checking for winget...".to_string(),
+            progress: Some(0.1),
+        },
+    );
 
-    let winget_check = command("winget")
-        .arg("--version")
-        .output()
-        .await;
+    let winget_check = command("winget").arg("--version").output().await;
 
     if winget_check.is_err() || !winget_check.unwrap().status.success() {
         return Ok(InstallResult {
@@ -709,14 +769,22 @@ async fn install_miktex_windows(app: &AppHandle) -> Result<InstallResult, String
     }
 
     // Install MiKTeX via winget
-    let _ = app.emit("latex-install-progress", InstallProgress {
-        stage: "installing".to_string(),
-        message: "Installing MiKTeX via winget... This may take several minutes.".to_string(),
-        progress: Some(0.2),
-    });
+    let _ = app.emit(
+        "latex-install-progress",
+        InstallProgress {
+            stage: "installing".to_string(),
+            message: "Installing MiKTeX via winget... This may take several minutes.".to_string(),
+            progress: Some(0.2),
+        },
+    );
 
     let mut child = command("winget")
-        .args(["install", "MiKTeX.MiKTeX", "--accept-package-agreements", "--accept-source-agreements"])
+        .args([
+            "install",
+            "MiKTeX.MiKTeX",
+            "--accept-package-agreements",
+            "--accept-source-agreements",
+        ])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -729,23 +797,32 @@ async fn install_miktex_windows(app: &AppHandle) -> Result<InstallResult, String
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
             while let Ok(Some(line)) = lines.next_line().await {
-                let _ = app_clone.emit("latex-install-progress", InstallProgress {
-                    stage: "installing".to_string(),
-                    message: line,
-                    progress: None,
-                });
+                let _ = app_clone.emit(
+                    "latex-install-progress",
+                    InstallProgress {
+                        stage: "installing".to_string(),
+                        message: line,
+                        progress: None,
+                    },
+                );
             }
         });
     }
 
-    let status = child.wait().await.map_err(|e| format!("Installation failed: {}", e))?;
+    let status = child
+        .wait()
+        .await
+        .map_err(|e| format!("Installation failed: {}", e))?;
 
     if status.success() {
-        let _ = app.emit("latex-install-progress", InstallProgress {
-            stage: "complete".to_string(),
-            message: "MiKTeX installed successfully!".to_string(),
-            progress: Some(1.0),
-        });
+        let _ = app.emit(
+            "latex-install-progress",
+            InstallProgress {
+                stage: "complete".to_string(),
+                message: "MiKTeX installed successfully!".to_string(),
+                progress: Some(1.0),
+            },
+        );
 
         Ok(InstallResult {
             success: true,
@@ -776,11 +853,14 @@ async fn install_macos(app: &AppHandle, distribution_id: &str) -> Result<Install
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 async fn install_tinytex_unix(app: &AppHandle) -> Result<InstallResult, String> {
-    let _ = app.emit("latex-install-progress", InstallProgress {
-        stage: "downloading".to_string(),
-        message: "Downloading and installing TinyTeX...".to_string(),
-        progress: Some(0.1),
-    });
+    let _ = app.emit(
+        "latex-install-progress",
+        InstallProgress {
+            stage: "downloading".to_string(),
+            message: "Downloading and installing TinyTeX...".to_string(),
+            progress: Some(0.1),
+        },
+    );
 
     // Use curl to download and execute the install script
     let mut child = command("sh")
@@ -800,11 +880,14 @@ async fn install_tinytex_unix(app: &AppHandle) -> Result<InstallResult, String> 
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
             while let Ok(Some(line)) = lines.next_line().await {
-                let _ = app_clone.emit("latex-install-progress", InstallProgress {
-                    stage: "installing".to_string(),
-                    message: line,
-                    progress: None,
-                });
+                let _ = app_clone.emit(
+                    "latex-install-progress",
+                    InstallProgress {
+                        stage: "installing".to_string(),
+                        message: line,
+                        progress: None,
+                    },
+                );
             }
         });
     }
@@ -816,23 +899,32 @@ async fn install_tinytex_unix(app: &AppHandle) -> Result<InstallResult, String> 
             let reader = BufReader::new(stderr);
             let mut lines = reader.lines();
             while let Ok(Some(line)) = lines.next_line().await {
-                let _ = app_clone.emit("latex-install-progress", InstallProgress {
-                    stage: "installing".to_string(),
-                    message: line,
-                    progress: None,
-                });
+                let _ = app_clone.emit(
+                    "latex-install-progress",
+                    InstallProgress {
+                        stage: "installing".to_string(),
+                        message: line,
+                        progress: None,
+                    },
+                );
             }
         });
     }
 
-    let status = child.wait().await.map_err(|e| format!("Installation failed: {}", e))?;
+    let status = child
+        .wait()
+        .await
+        .map_err(|e| format!("Installation failed: {}", e))?;
 
     if status.success() {
-        let _ = app.emit("latex-install-progress", InstallProgress {
-            stage: "complete".to_string(),
-            message: "TinyTeX installed successfully!".to_string(),
-            progress: Some(1.0),
-        });
+        let _ = app.emit(
+            "latex-install-progress",
+            InstallProgress {
+                stage: "complete".to_string(),
+                message: "TinyTeX installed successfully!".to_string(),
+                progress: Some(1.0),
+            },
+        );
 
         Ok(InstallResult {
             success: true,
@@ -849,18 +941,21 @@ async fn install_tinytex_unix(app: &AppHandle) -> Result<InstallResult, String> 
 }
 
 #[cfg(target_os = "macos")]
-async fn install_brew_cask(app: &AppHandle, distribution_id: &str) -> Result<InstallResult, String> {
+async fn install_brew_cask(
+    app: &AppHandle,
+    distribution_id: &str,
+) -> Result<InstallResult, String> {
     // Check if Homebrew is available
-    let _ = app.emit("latex-install-progress", InstallProgress {
-        stage: "checking".to_string(),
-        message: "Checking for Homebrew...".to_string(),
-        progress: Some(0.1),
-    });
+    let _ = app.emit(
+        "latex-install-progress",
+        InstallProgress {
+            stage: "checking".to_string(),
+            message: "Checking for Homebrew...".to_string(),
+            progress: Some(0.1),
+        },
+    );
 
-    let brew_check = command("brew")
-        .arg("--version")
-        .output()
-        .await;
+    let brew_check = command("brew").arg("--version").output().await;
 
     if brew_check.is_err() || !brew_check.unwrap().status.success() {
         return Ok(InstallResult {
@@ -882,11 +977,14 @@ async fn install_brew_cask(app: &AppHandle, distribution_id: &str) -> Result<Ins
         }
     };
 
-    let _ = app.emit("latex-install-progress", InstallProgress {
-        stage: "installing".to_string(),
-        message: format!("Installing {} via Homebrew... This may take a while.", cask),
-        progress: Some(0.2),
-    });
+    let _ = app.emit(
+        "latex-install-progress",
+        InstallProgress {
+            stage: "installing".to_string(),
+            message: format!("Installing {} via Homebrew... This may take a while.", cask),
+            progress: Some(0.2),
+        },
+    );
 
     let mut child = command("brew")
         .args(["install", "--cask", cask])
@@ -902,23 +1000,32 @@ async fn install_brew_cask(app: &AppHandle, distribution_id: &str) -> Result<Ins
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
             while let Ok(Some(line)) = lines.next_line().await {
-                let _ = app_clone.emit("latex-install-progress", InstallProgress {
-                    stage: "installing".to_string(),
-                    message: line,
-                    progress: None,
-                });
+                let _ = app_clone.emit(
+                    "latex-install-progress",
+                    InstallProgress {
+                        stage: "installing".to_string(),
+                        message: line,
+                        progress: None,
+                    },
+                );
             }
         });
     }
 
-    let status = child.wait().await.map_err(|e| format!("Installation failed: {}", e))?;
+    let status = child
+        .wait()
+        .await
+        .map_err(|e| format!("Installation failed: {}", e))?;
 
     if status.success() {
-        let _ = app.emit("latex-install-progress", InstallProgress {
-            stage: "complete".to_string(),
-            message: format!("{} installed successfully!", cask),
-            progress: Some(1.0),
-        });
+        let _ = app.emit(
+            "latex-install-progress",
+            InstallProgress {
+                stage: "complete".to_string(),
+                message: format!("{} installed successfully!", cask),
+                progress: Some(1.0),
+            },
+        );
 
         Ok(InstallResult {
             success: true,
@@ -928,7 +1035,10 @@ async fn install_brew_cask(app: &AppHandle, distribution_id: &str) -> Result<Ins
     } else {
         Ok(InstallResult {
             success: false,
-            message: format!("Installation failed. Please try installing {} manually.", cask),
+            message: format!(
+                "Installation failed. Please try installing {} manually.",
+                cask
+            ),
             needs_restart: false,
         })
     }
@@ -946,16 +1056,20 @@ async fn install_linux(app: &AppHandle, distribution_id: &str) -> Result<Install
     if install_cmd.starts_with('#') {
         return Ok(InstallResult {
             success: false,
-            message: "Could not detect package manager. Please install TeX Live manually.".to_string(),
+            message: "Could not detect package manager. Please install TeX Live manually."
+                .to_string(),
             needs_restart: false,
         });
     }
 
-    let _ = app.emit("latex-install-progress", InstallProgress {
-        stage: "installing".to_string(),
-        message: format!("Running: {}", install_cmd),
-        progress: Some(0.1),
-    });
+    let _ = app.emit(
+        "latex-install-progress",
+        InstallProgress {
+            stage: "installing".to_string(),
+            message: format!("Running: {}", install_cmd),
+            progress: Some(0.1),
+        },
+    );
 
     // For Linux, we need to show the user the command since it requires sudo
     // We can't run sudo directly from the app without a proper privilege escalation mechanism
@@ -971,10 +1085,7 @@ async fn install_linux(app: &AppHandle, distribution_id: &str) -> Result<Install
 
 /// Open the download URL for manual installation
 #[tauri::command]
-pub async fn latex_open_download_page(
-    app: AppHandle,
-    url: String,
-) -> Result<(), String> {
+pub async fn latex_open_download_page(app: AppHandle, url: String) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
     app.opener()
         .open_url(&url, None::<&str>)
@@ -1099,10 +1210,16 @@ pub async fn latex_detect_main_file(
             if lower_name.starts_with("chapter") || lower_name.starts_with("section") {
                 score -= 3;
             }
-            if lower_name == "preamble.tex" || lower_name == "packages.tex" || lower_name == "macros.tex" {
+            if lower_name == "preamble.tex"
+                || lower_name == "packages.tex"
+                || lower_name == "macros.tex"
+            {
                 score -= 5;
             }
-            if lower_name == "abstract.tex" || lower_name == "appendix.tex" || lower_name == "bibliography.tex" {
+            if lower_name == "abstract.tex"
+                || lower_name == "appendix.tex"
+                || lower_name == "bibliography.tex"
+            {
                 score -= 3;
             }
 
@@ -1127,7 +1244,10 @@ pub async fn latex_detect_main_file(
                 tex_files,
                 detection_method: "auto_detected".to_string(),
                 needs_user_input: false,
-                message: format!("Auto-detected main file: {} (contains \\documentclass)", best.0),
+                message: format!(
+                    "Auto-detected main file: {} (contains \\documentclass)",
+                    best.0
+                ),
             });
         }
     }
@@ -1136,8 +1256,16 @@ pub async fn latex_detect_main_file(
     // Sort tex_files to put likely candidates first
     let mut sorted_files = tex_files.clone();
     sorted_files.sort_by(|a, b| {
-        let score_a = candidates.iter().find(|c| &c.0 == a).map(|c| c.1).unwrap_or(0);
-        let score_b = candidates.iter().find(|c| &c.0 == b).map(|c| c.1).unwrap_or(0);
+        let score_a = candidates
+            .iter()
+            .find(|c| &c.0 == a)
+            .map(|c| c.1)
+            .unwrap_or(0);
+        let score_b = candidates
+            .iter()
+            .find(|c| &c.0 == b)
+            .map(|c| c.1)
+            .unwrap_or(0);
         score_b.cmp(&score_a)
     });
 
@@ -1146,6 +1274,9 @@ pub async fn latex_detect_main_file(
         tex_files: sorted_files,
         detection_method: "ambiguous".to_string(),
         needs_user_input: true,
-        message: format!("Multiple .tex files found ({}). Please select the main file.", tex_files.len()),
+        message: format!(
+            "Multiple .tex files found ({}). Please select the main file.",
+            tex_files.len()
+        ),
     })
 }

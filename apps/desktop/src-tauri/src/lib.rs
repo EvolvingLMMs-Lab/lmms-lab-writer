@@ -50,9 +50,10 @@ pub fn run() {
         .manage(LaTeXCompilationState::default())
         .manage(Mutex::new(WatcherState::default()))
         .manage(Mutex::new(ProjectState::default()))
-        .manage(Arc::new(TokioMutex::new(
-            commands::auth::AuthCallbackState::default(),
-        )) as AuthCallbackStateWrapper)
+        .manage(
+            Arc::new(TokioMutex::new(commands::auth::AuthCallbackState::default()))
+                as AuthCallbackStateWrapper,
+        )
         .invoke_handler(tauri::generate_handler![
             commands::auth::start_auth_callback_server,
             commands::auth::stop_auth_callback_server,

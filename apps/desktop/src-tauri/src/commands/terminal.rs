@@ -15,7 +15,10 @@ fn build_env_path(original: String) -> String {
 fn build_env_path(original: String) -> String {
     let mut env_path = original;
     if !env_path.contains("/opt/homebrew/bin") {
-        env_path = format!("/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:{}", env_path);
+        env_path = format!(
+            "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:{}",
+            env_path
+        );
     }
     env_path
 }
@@ -81,8 +84,8 @@ fn is_executable_available(executable: &str) -> bool {
     #[cfg(target_os = "windows")]
     {
         let has_extension = executable_path.extension().is_some();
-        let path_ext = std::env::var("PATHEXT")
-            .unwrap_or_else(|_| ".COM;.EXE;.BAT;.CMD".to_string());
+        let path_ext =
+            std::env::var("PATHEXT").unwrap_or_else(|_| ".COM;.EXE;.BAT;.CMD".to_string());
         let extensions: Vec<String> = path_ext
             .split(';')
             .filter_map(|ext| {

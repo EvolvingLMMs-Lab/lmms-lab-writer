@@ -1,11 +1,11 @@
+use super::util::command;
+use serde::{Deserialize, Serialize};
 use std::process::Stdio;
 use std::sync::Mutex;
-use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child as TokioChild;
 use tokio::time::{sleep, Duration};
-use super::util::command;
 
 pub struct OpenCodeState {
     pub process: Mutex<Option<TokioChild>>,
@@ -36,7 +36,11 @@ async fn find_opencode() -> Option<String> {
     };
 
     // On Windows, use 'where' command; on Unix, use 'which'
-    let which_cmd = if cfg!(target_os = "windows") { "where" } else { "which" };
+    let which_cmd = if cfg!(target_os = "windows") {
+        "where"
+    } else {
+        "which"
+    };
 
     for candidate in &candidates {
         if let Ok(output) = command(which_cmd).arg(candidate).output().await {
@@ -85,7 +89,10 @@ async fn find_opencode() -> Option<String> {
                 }
             }
             None
-        }).await.ok().flatten();
+        })
+        .await
+        .ok()
+        .flatten();
 
         if result.is_some() {
             return result;
@@ -96,7 +103,9 @@ async fn find_opencode() -> Option<String> {
 }
 
 #[tauri::command]
-pub async fn opencode_status(state: tauri::State<'_, OpenCodeState>) -> Result<OpenCodeStatus, String> {
+pub async fn opencode_status(
+    state: tauri::State<'_, OpenCodeState>,
+) -> Result<OpenCodeStatus, String> {
     let process_running = state
         .process
         .lock()
@@ -225,10 +234,13 @@ pub async fn opencode_start(
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
             while let Ok(Some(line)) = lines.next_line().await {
-                let _ = app_clone.emit("opencode-log", serde_json::json!({
-                    "type": "stdout",
-                    "message": line
-                }));
+                let _ = app_clone.emit(
+                    "opencode-log",
+                    serde_json::json!({
+                        "type": "stdout",
+                        "message": line
+                    }),
+                );
             }
         });
     }
@@ -239,10 +251,13 @@ pub async fn opencode_start(
             let reader = BufReader::new(stderr);
             let mut lines = reader.lines();
             while let Ok(Some(line)) = lines.next_line().await {
-                let _ = app_clone.emit("opencode-log", serde_json::json!({
-                    "type": "stderr",
-                    "message": line
-                }));
+                let _ = app_clone.emit(
+                    "opencode-log",
+                    serde_json::json!({
+                        "type": "stderr",
+                        "message": line
+                    }),
+                );
             }
         });
     }
@@ -260,7 +275,10 @@ pub async fn opencode_start(
                 Path: {}\n\
                 Directory: {}\n\n\
                 Check the opencode-log events for detailed output.",
-                status.code().map(|c| c.to_string()).unwrap_or_else(|| "signal".to_string()),
+                status
+                    .code()
+                    .map(|c| c.to_string())
+                    .unwrap_or_else(|| "signal".to_string()),
                 opencode_path,
                 directory
             );
@@ -400,7 +418,7 @@ mod tests {
     #[tokio::test]
     async fn test_find_opencode_returns_valid_path_when_installed() {
         let result = find_opencode().await;
-        
+
         if let Some(path) = result {
             assert!(
                 path.contains("opencode"),
@@ -418,7 +436,7 @@ mod tests {
     #[tokio::test]
     async fn test_find_opencode_never_panics() {
         let result = find_opencode().await;
-        
+
         if let Some(path) = &result {
             assert!(!path.is_empty());
         }
@@ -427,10 +445,10 @@ mod tests {
     #[test]
     fn test_opencode_state_default_has_no_process_and_port_4096() {
         let state = OpenCodeState::default();
-        
+
         let process = state.process.lock().unwrap();
         assert!(process.is_none(), "Default state should have no process");
-        
+
         let port = state.port.lock().unwrap();
         assert_eq!(*port, 4096, "Default port should be 4096");
     }
@@ -442,12 +460,12 @@ mod tests {
             port: 4096,
             installed: true,
         };
-        
+
         let json = serde_json::to_string(&status).unwrap();
         assert!(json.contains("\"running\":true"));
         assert!(json.contains("\"port\":4096"));
         assert!(json.contains("\"installed\":true"));
-        
+
         let deserialized: OpenCodeStatus = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.running, status.running);
         assert_eq!(deserialized.port, status.port);
