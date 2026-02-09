@@ -141,7 +141,7 @@ export function HeroSection() {
           <img
             src="/logo-light.svg"
             alt="LMMs-Lab Writer — Think Deep, Write Easy."
-            className="h-16 md:h-24 w-auto"
+            className="h-20 md:h-32 w-auto"
           />
         </motion.div>
         <motion.p
