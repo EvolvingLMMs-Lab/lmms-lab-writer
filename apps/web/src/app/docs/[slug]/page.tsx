@@ -6,6 +6,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { MDXRemote } from "next-mdx-remote/rsc";
+import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypePrettyCode from "rehype-pretty-code";
@@ -54,6 +55,7 @@ export async function generateMetadata({
 }
 
 const mdxOptions = {
+  remarkPlugins: [remarkGfm],
   rehypePlugins: [
     rehypeSlug,
     [rehypeAutolinkHeadings, { behavior: "wrap" }],

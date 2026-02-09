@@ -229,7 +229,7 @@ export function FeaturesSection() {
         >
           {features.map((feature) => (
             <FadeInStaggerItem key={feature.title}>
-              <MotionCard className="border border-border p-6 h-full">
+              <MotionCard className="border border-foreground p-6 h-full">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-8 h-8 border border-foreground flex items-center justify-center bg-neutral-50">
                     <feature.icon className="w-4 h-4" />
@@ -274,12 +274,12 @@ export function ComparisonSection() {
           </h2>
         </FadeIn>
 
-        <FadeIn className="hidden md:block border border-border">
-          <div className="grid grid-cols-3 border-b border-border font-mono text-muted text-xs">
-            <div className="p-4 border-r border-border uppercase tracking-wider">
+        <FadeIn className="hidden md:block border border-foreground">
+          <div className="grid grid-cols-3 border-b border-foreground font-mono text-muted text-xs">
+            <div className="p-4 border-r border-foreground uppercase tracking-wider">
               Feature
             </div>
-            <div className="p-4 border-r border-border uppercase tracking-wider">
+            <div className="p-4 border-r border-foreground uppercase tracking-wider">
               Overleaf
             </div>
             <div className="p-4 bg-neutral-50 text-foreground tracking-tight font-medium text-sm">
@@ -298,13 +298,13 @@ export function ComparisonSection() {
                 ease: [0.25, 0.46, 0.45, 0.94],
               }}
               className={`grid grid-cols-3 text-sm ${
-                i !== comparisons.length - 1 ? "border-b border-border" : ""
+                i !== comparisons.length - 1 ? "border-b border-foreground" : ""
               }`}
             >
-              <div className="p-4 border-r border-border font-medium text-muted">
+              <div className="p-4 border-r border-foreground font-medium text-muted">
                 {row.feature}
               </div>
-              <div className="p-4 border-r border-border text-muted">
+              <div className="p-4 border-r border-foreground text-muted">
                 {row.overleaf}
               </div>
               <div className="p-4 flex items-start gap-2 bg-neutral-50 font-medium">
@@ -318,12 +318,12 @@ export function ComparisonSection() {
         <FadeInStagger className="md:hidden space-y-4" staggerDelay={0.08}>
           {comparisons.map((row) => (
             <FadeInStaggerItem key={row.feature}>
-              <MotionCard className="border border-border">
-                <div className="px-4 py-3 border-b border-border bg-neutral-50 font-medium text-sm">
+              <MotionCard className="border border-foreground">
+                <div className="px-4 py-3 border-b border-foreground bg-neutral-50 font-medium text-sm">
                   {row.feature}
                 </div>
                 <div className="grid grid-cols-2 text-sm">
-                  <div className="p-4 border-r border-border">
+                  <div className="p-4 border-r border-foreground">
                     <div className="text-xs text-muted uppercase tracking-wider mb-1">
                       Overleaf
                     </div>

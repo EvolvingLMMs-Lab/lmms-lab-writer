@@ -53,8 +53,40 @@ export default {
             pre: {
               backgroundColor: "#f5f5f5",
               borderWidth: "1px",
-              borderColor: "#e5e5e5",
+              borderColor: "#0a0a0a",
               borderRadius: "0",
+            },
+            table: {
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: "0.875em",
+            },
+            thead: {
+              borderBottomWidth: "2px",
+              borderBottomColor: "#0a0a0a",
+            },
+            "thead th": {
+              padding: "0.75rem 1rem",
+              fontWeight: "600",
+              textAlign: "left",
+              verticalAlign: "bottom",
+            },
+            "tbody td": {
+              padding: "0.75rem 1rem",
+              verticalAlign: "top",
+            },
+            "tbody tr": {
+              borderBottomWidth: "1px",
+              borderBottomColor: "#0a0a0a",
+            },
+            "tbody tr:last-child": {
+              borderBottomWidth: "0",
+            },
+            "thead th:first-child, tbody td:first-child": {
+              paddingLeft: "0",
+            },
+            "thead th:last-child, tbody td:last-child": {
+              paddingRight: "0",
             },
             a: {
               color: "#0a0a0a",

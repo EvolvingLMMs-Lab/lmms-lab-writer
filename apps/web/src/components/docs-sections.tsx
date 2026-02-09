@@ -1,118 +1,148 @@
 "use client";
 
 import Link from "next/link";
-import { m, useReducedMotion } from "framer-motion";
+import {
+  Download,
+  Zap,
+  Sparkles,
+  Bot,
+  FileText,
+  Terminal,
+  GitBranch,
+  type LucideIcon,
+} from "lucide-react";
+import {
+  FadeIn,
+  FadeInStagger,
+  FadeInStaggerItem,
+  MotionCard,
+} from "@/components/motion";
 
-const INSTANT_TRANSITION = { duration: 0 } as const;
-
-function useFadeInVariants() {
-  const prefersReducedMotion = useReducedMotion();
-
-  return {
-    hidden: prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 16 },
-    visible: (delay: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: prefersReducedMotion
-        ? INSTANT_TRANSITION
-        : {
-            duration: 0.4,
-            delay,
-            ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
-          },
-    }),
-  };
-}
-
-function useStaggerVariants() {
-  const prefersReducedMotion = useReducedMotion();
-
-  return {
-    container: {
-      hidden: prefersReducedMotion ? { opacity: 1 } : { opacity: 0 },
-      visible: {
-        opacity: 1,
-        transition: prefersReducedMotion
-          ? INSTANT_TRANSITION
-          : { staggerChildren: 0.08, delayChildren: 0.1 },
-      },
-    },
-    item: {
-      hidden: prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 12 },
-      visible: {
-        opacity: 1,
-        y: 0,
-        transition: prefersReducedMotion
-          ? INSTANT_TRANSITION
-          : {
-              duration: 0.3,
-              ease: [0.25, 0.46, 0.45, 0.94] as [
-                number,
-                number,
-                number,
-                number,
-              ],
-            },
-      },
-    },
-  };
-}
+type DocItem = {
+  title: string;
+  href: string;
+  description: string;
+  icon: LucideIcon;
+};
 
 type Section = {
   title: string;
-  items: { title: string; href: string }[];
+  items: DocItem[];
 };
 
-export function DocsContent({ sections }: { sections: Section[] }) {
-  const prefersReducedMotion = useReducedMotion();
-  const fadeIn = useFadeInVariants();
-  const stagger = useStaggerVariants();
+const sections: Section[] = [
+  {
+    title: "Getting Started",
+    items: [
+      {
+        title: "Installation",
+        href: "/docs/installation",
+        description:
+          "How to install LMMs-Lab Writer on macOS and Windows.",
+        icon: Download,
+      },
+      {
+        title: "Quick Start",
+        href: "/docs/quick-start",
+        description:
+          "Get up and running with LMMs-Lab Writer in 5 minutes.",
+        icon: Zap,
+      },
+    ],
+  },
+  {
+    title: "AI Integration",
+    items: [
+      {
+        title: "OpenCode",
+        href: "/docs/opencode",
+        description:
+          "Using the built-in OpenCode AI panel for AI-assisted LaTeX writing.",
+        icon: Sparkles,
+      },
+      {
+        title: "AI Agents",
+        href: "/docs/ai-agents",
+        description:
+          "Using Claude Code, Cursor, Codex CLI, and other AI tools.",
+        icon: Bot,
+      },
+    ],
+  },
+  {
+    title: "Features",
+    items: [
+      {
+        title: "LaTeX Compilation",
+        href: "/docs/compilation",
+        description:
+          "Compiling documents with pdfLaTeX, XeLaTeX, LuaLaTeX, and Latexmk.",
+        icon: FileText,
+      },
+      {
+        title: "Terminal",
+        href: "/docs/terminal",
+        description:
+          "Using the built-in terminal for shell access and CLI tools.",
+        icon: Terminal,
+      },
+      {
+        title: "Git Integration",
+        href: "/docs/git",
+        description:
+          "Version control, diffing, and GitHub publishing built into the editor.",
+        icon: GitBranch,
+      },
+    ],
+  },
+];
 
+export function DocsContent() {
   return (
     <main className="flex-1 py-16 px-6">
       <div className="max-w-5xl mx-auto">
-        <m.h1
-          className="text-2xl font-medium tracking-tight mb-10"
-          initial="hidden"
-          animate="visible"
-          custom={0}
-          variants={fadeIn}
-        >
-          Documentation
-        </m.h1>
+        <FadeIn>
+          <h1 className="text-2xl font-medium tracking-tight mb-2">
+            Documentation
+          </h1>
+          <p className="text-sm text-muted mb-12">
+            Everything you need to get started with LMMs-Lab Writer.
+          </p>
+        </FadeIn>
 
-        <m.div
-          className="space-y-10 max-w-2xl"
-          initial="hidden"
-          animate="visible"
-          variants={stagger.container}
-        >
+        <div className="space-y-10">
           {sections.map((section) => (
-            <m.div key={section.title} variants={stagger.item}>
-              <h2 className="text-sm font-medium mb-3">{section.title}</h2>
-              <ul className="space-y-2">
+            <div key={section.title}>
+              <FadeIn>
+                <h2 className="text-xs font-medium uppercase tracking-wider text-muted mb-4">
+                  {section.title}
+                </h2>
+              </FadeIn>
+              <FadeInStagger
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                staggerDelay={0.06}
+              >
                 {section.items.map((item) => (
-                  <m.li
-                    key={item.href}
-                    whileHover={prefersReducedMotion ? undefined : { x: 4 }}
-                    transition={
-                      prefersReducedMotion
-                        ? INSTANT_TRANSITION
-                        : { type: "spring", stiffness: 400, damping: 25 }
-                    }
-                  >
-                    <Link
-                      href={item.href}
-                      className="text-sm text-muted hover:text-foreground transition-colors"
-                    >
-                      {item.title}
+                  <FadeInStaggerItem key={item.href}>
+                    <Link href={item.href} className="block h-full">
+                      <MotionCard className="border border-border p-5 h-full">
+                        <div className="flex items-center gap-3 mb-2.5">
+                          <div className="w-8 h-8 border border-foreground flex items-center justify-center bg-neutral-50 shrink-0">
+                            <item.icon className="w-4 h-4" />
+                          </div>
+                          <h3 className="text-sm font-medium">{item.title}</h3>
+                        </div>
+                        <p className="text-sm text-muted leading-relaxed">
+                          {item.description}
+                        </p>
+                      </MotionCard>
                     </Link>
-                  </m.li>
+                  </FadeInStaggerItem>
                 ))}
-              </ul>
-            </m.div>
+              </FadeInStagger>
+            </div>
           ))}
-        </m.div>
+        </div>
       </div>
     </main>
   );
