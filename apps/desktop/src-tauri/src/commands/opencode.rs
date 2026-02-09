@@ -83,12 +83,9 @@ async fn find_opencode() -> Option<String> {
         ];
 
         let result = tokio::task::spawn_blocking(move || {
-            for path in common_paths {
-                if std::path::Path::new(&path).exists() {
-                    return Some(path);
-                }
-            }
-            None
+            common_paths
+                .into_iter()
+                .find(|path| std::path::Path::new(path).exists())
         })
         .await
         .ok()

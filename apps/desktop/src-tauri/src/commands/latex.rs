@@ -1198,9 +1198,11 @@ pub async fn latex_detect_main_file(
             let lower_name = tex_file.to_lowercase();
             if lower_name == "main.tex" {
                 score += 8;
-            } else if lower_name == "paper.tex" || lower_name == "article.tex" {
-                score += 5;
-            } else if lower_name == "thesis.tex" || lower_name == "dissertation.tex" {
+            } else if lower_name == "paper.tex"
+                || lower_name == "article.tex"
+                || lower_name == "thesis.tex"
+                || lower_name == "dissertation.tex"
+            {
                 score += 5;
             } else if lower_name == "report.tex" || lower_name == "document.tex" {
                 score += 3;

@@ -41,14 +41,9 @@ impl Default for WatcherState {
     }
 }
 
+#[derive(Default)]
 pub struct ProjectState {
     pub project_path: Option<String>,
-}
-
-impl Default for ProjectState {
-    fn default() -> Self {
-        Self { project_path: None }
-    }
 }
 
 fn validate_path_within_project(path: &str, project_path: &str) -> Result<(), String> {
@@ -462,15 +457,13 @@ mod tests {
         let file_path = temp_dir.path().join("test.txt");
         fs::write(&file_path, "hello world").unwrap();
 
-        let content = read_file(file_path.to_string_lossy().to_string())
-            .await
-            .unwrap();
+        let content = tokio::fs::read_to_string(&file_path).await.unwrap();
         assert_eq!(content, "hello world");
     }
 
     #[tokio::test]
     async fn test_read_file_returns_error_for_missing_file() {
-        let result = read_file("/nonexistent/path/file.txt".to_string()).await;
+        let result = tokio::fs::read_to_string("/nonexistent/path/file.txt").await;
         assert!(result.is_err());
     }
 
@@ -479,12 +472,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("new.txt");
 
-        write_file(
-            file_path.to_string_lossy().to_string(),
-            "test content".to_string(),
-        )
-        .await
-        .unwrap();
+        tokio::fs::write(&file_path, "test content").await.unwrap();
 
         let content = fs::read_to_string(&file_path).unwrap();
         assert_eq!(content, "test content");
