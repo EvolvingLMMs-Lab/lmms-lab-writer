@@ -93,7 +93,8 @@ export class OpenCodeClient {
         if (contentType?.includes("application/json")) {
           return true;
         }
-      } catch (err) {
+      } catch {
+        /* ignore */
       }
       // Exponential backoff
       const delay = initialDelay * Math.pow(2, i);
@@ -489,7 +490,7 @@ export class OpenCodeClient {
     }
 
     // Try to read response body for debugging
-    const responseText = await response.text().catch(() => "");
+    const _responseText = await response.text().catch(() => "");
   }
 
   async abort(sessionID: string): Promise<void> {

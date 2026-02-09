@@ -8,8 +8,8 @@ export interface UseLatexCompilerOptions {
 }
 
 export function useLatexCompiler({
-  settings,
-  projectPath,
+  settings: _settings,
+  projectPath: _projectPath,
 }: UseLatexCompilerOptions) {
   const [compilersStatus, setCompilersStatus] =
     useState<LaTeXCompilersStatus | null>(null);

@@ -796,7 +796,7 @@ export function useTauriDaemon(options?: TauriDaemonOptions) {
         (event) => {
           if (isCleanedUp) return;
 
-          const { path, kind } = event.payload;
+          const { kind } = event.payload;
 
           setLastFileChange(event.payload);
 

@@ -335,7 +335,7 @@ const PANEL_SPRING = {
 
 const INSTANT_TRANSITION = { duration: 0 } as const;
 
-const WEB_URL =
+const _WEB_URL =
   process.env.NEXT_PUBLIC_WEB_URL || "https://writer.lmms-lab.com";
 
 const MIN_PANEL_WIDTH = 200;
@@ -735,7 +735,6 @@ The AI assistant will read and update this file during compilation.
         const { type, message } = event.payload;
         if (type === "stderr") {
           console.error("[OpenCode]", message);
-        } else {
         }
       }).then((fn) => {
         unlisten = fn;

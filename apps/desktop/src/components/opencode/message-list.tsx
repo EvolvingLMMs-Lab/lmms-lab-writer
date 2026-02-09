@@ -45,6 +45,8 @@ export function MessageList({
     return result;
   }, [messages, getPartsForMessage]);
 
+  const [turnsParent] = useAutoAnimate({ duration: 200 });
+
   if (messages.length === 0) {
     return (
       <div className="h-full flex items-center justify-center text-muted text-xs">
@@ -52,8 +54,6 @@ export function MessageList({
       </div>
     );
   }
-
-  const [turnsParent] = useAutoAnimate({ duration: 200 });
 
   return (
     <div ref={turnsParent} className="space-y-6">
@@ -102,7 +102,7 @@ function MessageTurn({
   onAnswer?: (questionID: string, answers: string[][]) => void;
 }) {
   const [stepsParent] = useAutoAnimate({ duration: 150 });
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   // Deduplicate parts
   const dedupedParts = useMemo(() => {

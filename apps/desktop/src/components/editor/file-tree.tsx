@@ -101,7 +101,6 @@ import {
   ArrowSquareOutIcon,
   BookOpenTextIcon,
   BracketsCurlyIcon,
-  CaretRightIcon,
   ClipboardTextIcon,
   CopyIcon,
   CubeIcon,
@@ -601,8 +600,6 @@ function FileTreeInner({
     const elements = document.elementsFromPoint(x, y);
     for (const el of elements) {
       const treeItem = el.closest("[data-path]") as HTMLElement | null;
-      if (treeItem) {
-      }
       if (treeItem && containerRef.current?.contains(treeItem)) {
         const path = treeItem.dataset.path;
         const type = treeItem.dataset.type as "file" | "directory";
@@ -751,7 +748,6 @@ function FileTreeInner({
     // Perform move if valid target
     if (target && canDrop && draggedSnapshot) {
       performMove(draggedSnapshot, target.path);
-    } else {
     }
   }, [findDropTarget, isValidDropTarget, performMove]);
 
@@ -986,7 +982,7 @@ function FileTreeInner({
                 // Fallback: create empty file with same extension
                 await fileOperations.createFile(newPath);
               } else {
-                const content = await response.text();
+                const _content = await response.text();
                 await fileOperations.createFile(newPath);
                 // Note: We'd need a writeFile operation to copy content
                 // For now, just create the file structure

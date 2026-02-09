@@ -236,6 +236,7 @@ export const Terminal = memo(function Terminal({
       termRef.current = null;
       fitAddonRef.current = null;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- resolvedTheme intentionally excluded to avoid recreating PTY on theme change
   }, [mounted, projectPath, shellMode, customShell]);
 
   if (!mounted) {
