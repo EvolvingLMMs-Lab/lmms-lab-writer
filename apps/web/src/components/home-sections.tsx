@@ -269,18 +269,16 @@ export function FeaturesSection() {
               transition={{ duration: 0.2 }}
             >
               {"image" in activeFeature && activeFeature.image && (
-                <div className="mb-4 border border-border overflow-hidden rounded-sm bg-neutral-50 flex items-center justify-center p-2">
+                <div className="mb-4 border border-border overflow-hidden rounded-sm">
                   <img
                     src={activeFeature.image}
                     alt={activeFeature.title}
-                    className="max-h-[180px] w-auto max-w-full object-contain rounded-sm"
+                    className="w-full h-auto"
                   />
                 </div>
               )}
               <p className="text-sm text-muted leading-relaxed">
-                {"detail" in activeFeature && activeFeature.detail
-                  ? activeFeature.detail
-                  : activeFeature.description}
+                {activeFeature.description}
               </p>
             </motion.div>
           </AnimatePresence>
@@ -320,7 +318,7 @@ export function FeaturesSection() {
             </div>
 
             {/* Right: detail panel */}
-            <div className="w-3/5 p-6 flex flex-col justify-center min-h-[400px]">
+            <div className="w-3/5 flex flex-col justify-center min-h-[400px]">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeIndex}
@@ -328,21 +326,28 @@ export function FeaturesSection() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
+                  className="h-full flex flex-col"
                 >
-                  {"image" in activeFeature && activeFeature.image && (
-                    <div className="mb-5 border border-border overflow-hidden rounded-sm bg-neutral-50 flex items-center justify-center p-3">
-                      <img
-                        src={activeFeature.image}
-                        alt={activeFeature.title}
-                        className="max-h-[220px] w-auto max-w-full object-contain rounded-sm"
-                      />
+                  {"image" in activeFeature && activeFeature.image ? (
+                    <>
+                      <div className="flex-1 bg-neutral-50 flex items-center justify-center overflow-hidden">
+                        <img
+                          src={activeFeature.image}
+                          alt={activeFeature.title}
+                          className="w-full h-auto"
+                        />
+                      </div>
+                      <p className="text-sm text-muted leading-relaxed p-5 border-t border-border">
+                        {activeFeature.description}
+                      </p>
+                    </>
+                  ) : (
+                    <div className="flex-1 flex items-center p-6">
+                      <p className="text-sm text-muted leading-relaxed">
+                        {activeFeature.description}
+                      </p>
                     </div>
                   )}
-                  <p className="text-sm text-muted leading-relaxed">
-                    {"detail" in activeFeature && activeFeature.detail
-                      ? activeFeature.detail
-                      : activeFeature.description}
-                  </p>
                 </motion.div>
               </AnimatePresence>
             </div>
