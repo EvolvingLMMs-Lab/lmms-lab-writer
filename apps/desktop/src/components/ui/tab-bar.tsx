@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   XIcon,
   XCircleIcon,
@@ -19,6 +20,21 @@ export interface TabItem {
 
 export type TabReorderPosition = "before" | "after";
 
+type TabDropIndicator = {
+  tabId: string;
+  position: TabReorderPosition;
+};
+
+export type TabDragEndPayload = {
+  tabId: string;
+  clientX: number;
+  clientY: number;
+  dropTarget:
+    | { type: "tab"; tabId: string; position: TabReorderPosition }
+    | { type: "outside" }
+    | { type: "none" };
+};
+
 export interface TabBarProps<T extends TabItem> {
   tabs: T[];
   activeTab: string;
@@ -29,6 +45,7 @@ export interface TabBarProps<T extends TabItem> {
     targetId: string,
     position: TabReorderPosition,
   ) => void;
+  onTabDragEnd?: (payload: TabDragEndPayload) => void;
   onCloseOthers?: (id: string) => void;
   onCloseToLeft?: (id: string) => void;
   onCloseToRight?: (id: string) => void;
@@ -37,12 +54,33 @@ export interface TabBarProps<T extends TabItem> {
   className?: string;
 }
 
+type DragState = {
+  isDragging: boolean;
+  draggedTabId: string | null;
+  draggedTabLabel: string | null;
+  mouseX: number;
+  mouseY: number;
+  dropIndicator: TabDropIndicator | null;
+};
+
+const DRAG_THRESHOLD_PX = 6;
+
+const initialDragState: DragState = {
+  isDragging: false,
+  draggedTabId: null,
+  draggedTabLabel: null,
+  mouseX: 0,
+  mouseY: 0,
+  dropIndicator: null,
+};
+
 export function TabBar<T extends TabItem>({
   tabs,
   activeTab,
   onTabSelect,
   onTabClose,
   onTabReorder,
+  onTabDragEnd,
   onCloseOthers,
   onCloseToLeft,
   onCloseToRight,
@@ -55,20 +93,28 @@ export function TabBar<T extends TabItem>({
     y: number;
     tabId: string;
   } | null>(null);
-  const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
-  const [dropIndicator, setDropIndicator] = useState<{
-    tabId: string;
-    position: TabReorderPosition;
-  } | null>(null);
+  const [dragState, setDragState] = useState<DragState>(initialDragState);
 
-  const resetDragState = useCallback(() => {
-    setDraggedTabId(null);
-    setDropIndicator(null);
-  }, []);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const tabRefs = useRef(new Map<string, HTMLDivElement>());
+  const draggedTabIdRef = useRef<string | null>(null);
+  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const dropIndicatorRef = useRef<TabDropIndicator | null>(null);
+  const isDraggingRef = useRef(false);
+  const suppressTabClickRef = useRef(false);
+  const handleMouseMoveRef = useRef<((e: MouseEvent) => void) | null>(null);
+  const handleMouseUpRef = useRef<((e: MouseEvent) => void) | null>(null);
+
+  const tabLabelById = useMemo(() => {
+    const labelMap = new Map<string, string>();
+    for (const tab of tabs) {
+      labelMap.set(tab.id, tab.label);
+    }
+    return labelMap;
+  }, [tabs]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent, tabId: string) => {
-      // Middle click to close
       if (e.button === 1 && onTabClose) {
         e.preventDefault();
         onTabClose(tabId);
@@ -141,73 +187,201 @@ export function TabBar<T extends TabItem>({
     [tabs, onTabClose, onCloseOthers, onCloseToLeft, onCloseToRight, onCloseAll],
   );
 
-  const handleDragStart = useCallback(
-    (e: React.DragEvent<HTMLDivElement>, tabId: string) => {
+  const clearDocumentDragListeners = useCallback(() => {
+    if (handleMouseMoveRef.current) {
+      document.removeEventListener("mousemove", handleMouseMoveRef.current);
+      handleMouseMoveRef.current = null;
+    }
+    if (handleMouseUpRef.current) {
+      document.removeEventListener("mouseup", handleMouseUpRef.current);
+      handleMouseUpRef.current = null;
+    }
+  }, []);
+
+  const resetDragState = useCallback(() => {
+    clearDocumentDragListeners();
+    draggedTabIdRef.current = null;
+    dragStartPosRef.current = null;
+    dropIndicatorRef.current = null;
+    isDraggingRef.current = false;
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    setDragState(initialDragState);
+  }, [clearDocumentDragListeners]);
+
+  useEffect(() => {
+    return () => {
+      resetDragState();
+    };
+  }, [resetDragState]);
+
+  const setTabRef = useCallback(
+    (tabId: string, element: HTMLDivElement | null) => {
+      if (element) {
+        tabRefs.current.set(tabId, element);
+        return;
+      }
+      tabRefs.current.delete(tabId);
+    },
+    [],
+  );
+
+  const isPointInsideContainer = useCallback((x: number, y: number): boolean => {
+    const container = containerRef.current;
+    if (!container) return false;
+    const rect = container.getBoundingClientRect();
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  }, []);
+
+  const findDropIndicator = useCallback(
+    (
+      pointerX: number,
+      pointerY: number,
+      draggedTabId: string,
+    ): TabDropIndicator | null => {
+      if (!isPointInsideContainer(pointerX, pointerY)) return null;
+
+      const availableTabs = tabs.filter((tab) => tab.id !== draggedTabId);
+      if (availableTabs.length === 0) return null;
+
+      let candidate: TabDropIndicator | null = null;
+      for (const tab of availableTabs) {
+        const tabElement = tabRefs.current.get(tab.id);
+        if (!tabElement) continue;
+        const rect = tabElement.getBoundingClientRect();
+        if (pointerX < rect.left + rect.width / 2) {
+          return { tabId: tab.id, position: "before" };
+        }
+        candidate = { tabId: tab.id, position: "after" };
+      }
+      return candidate;
+    },
+    [tabs, isPointInsideContainer],
+  );
+
+  const handleDocumentMouseMove = useCallback(
+    (e: MouseEvent) => {
+      const draggedTabId = draggedTabIdRef.current;
+      const dragStartPos = dragStartPosRef.current;
+      if (!draggedTabId || !dragStartPos) return;
+
+      if (!isDraggingRef.current) {
+        const dx = e.clientX - dragStartPos.x;
+        const dy = e.clientY - dragStartPos.y;
+        if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD_PX) return;
+        isDraggingRef.current = true;
+      }
+
+      const indicator = findDropIndicator(e.clientX, e.clientY, draggedTabId);
+      dropIndicatorRef.current = indicator;
+
+      setDragState((prev) => ({
+        ...prev,
+        isDragging: true,
+        mouseX: e.clientX,
+        mouseY: e.clientY,
+        dropIndicator: indicator,
+      }));
+    },
+    [findDropIndicator],
+  );
+
+  const handleDocumentMouseUp = useCallback(
+    (e: MouseEvent) => {
+      const draggedTabId = draggedTabIdRef.current;
+      const dropIndicator = dropIndicatorRef.current;
+      const wasDragging = isDraggingRef.current;
+
+      let didReorder = false;
+      if (
+        wasDragging &&
+        draggedTabId &&
+        dropIndicator &&
+        dropIndicator.tabId !== draggedTabId &&
+        onTabReorder
+      ) {
+        onTabReorder(draggedTabId, dropIndicator.tabId, dropIndicator.position);
+        didReorder = true;
+      }
+
+      if (wasDragging && draggedTabId) {
+        const dropTarget: TabDragEndPayload["dropTarget"] =
+          dropIndicator && dropIndicator.tabId !== draggedTabId
+            ? {
+                type: "tab",
+                tabId: dropIndicator.tabId,
+                position: dropIndicator.position,
+              }
+            : isPointInsideContainer(e.clientX, e.clientY)
+              ? { type: "none" }
+              : { type: "outside" };
+
+        onTabDragEnd?.({
+          tabId: draggedTabId,
+          clientX: e.clientX,
+          clientY: e.clientY,
+          dropTarget,
+        });
+
+        if (didReorder || dropTarget.type === "none") {
+          suppressTabClickRef.current = true;
+          window.setTimeout(() => {
+            suppressTabClickRef.current = false;
+          }, 0);
+        }
+      }
+
+      resetDragState();
+    },
+    [onTabReorder, onTabDragEnd, isPointInsideContainer, resetDragState],
+  );
+
+  const handleTabPointerDown = useCallback(
+    (e: React.MouseEvent, tabId: string) => {
       if (!onTabReorder) return;
-      setDraggedTabId(tabId);
-      setDropIndicator(null);
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", tabId);
-    },
-    [onTabReorder],
-  );
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      if (target.closest("[data-tab-close='true']")) return;
 
-  const handleDragOverTab = useCallback(
-    (e: React.DragEvent<HTMLDivElement>, tabId: string) => {
-      if (!onTabReorder || !draggedTabId || draggedTabId === tabId) return;
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-      const rect = e.currentTarget.getBoundingClientRect();
-      const position: TabReorderPosition =
-        e.clientX < rect.left + rect.width / 2 ? "before" : "after";
-      setDropIndicator({ tabId, position });
-    },
-    [onTabReorder, draggedTabId],
-  );
-
-  const handleDropOnTab = useCallback(
-    (e: React.DragEvent<HTMLDivElement>, tabId: string) => {
-      if (!onTabReorder || !draggedTabId) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const rect = e.currentTarget.getBoundingClientRect();
-      const position: TabReorderPosition =
-        e.clientX < rect.left + rect.width / 2 ? "before" : "after";
-      if (draggedTabId !== tabId) {
-        onTabReorder(draggedTabId, tabId, position);
-      }
       resetDragState();
+      e.preventDefault();
+
+      draggedTabIdRef.current = tabId;
+      dragStartPosRef.current = { x: e.clientX, y: e.clientY };
+      isDraggingRef.current = false;
+      dropIndicatorRef.current = null;
+      document.body.style.cursor = "grabbing";
+      document.body.style.userSelect = "none";
+
+      setDragState({
+        isDragging: false,
+        draggedTabId: tabId,
+        draggedTabLabel: tabLabelById.get(tabId) ?? tabId,
+        mouseX: e.clientX,
+        mouseY: e.clientY,
+        dropIndicator: null,
+      });
+
+      handleMouseMoveRef.current = handleDocumentMouseMove;
+      handleMouseUpRef.current = handleDocumentMouseUp;
+      document.addEventListener("mousemove", handleDocumentMouseMove);
+      document.addEventListener("mouseup", handleDocumentMouseUp);
     },
-    [onTabReorder, draggedTabId, resetDragState],
+    [
+      onTabReorder,
+      resetDragState,
+      tabLabelById,
+      handleDocumentMouseMove,
+      handleDocumentMouseUp,
+    ],
   );
 
-  const handleContainerDragOver = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      if (!onTabReorder || !draggedTabId) return;
-      const target = e.target as HTMLElement | null;
-      if (target?.closest("[data-tab-id]")) return;
-      e.preventDefault();
-      const lastTab = tabs[tabs.length - 1];
-      if (lastTab) {
-        setDropIndicator({ tabId: lastTab.id, position: "after" });
-      }
+  const handleTabClick = useCallback(
+    (tabId: string) => {
+      if (suppressTabClickRef.current) return;
+      onTabSelect(tabId);
     },
-    [onTabReorder, draggedTabId, tabs],
-  );
-
-  const handleContainerDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      if (!onTabReorder || !draggedTabId) return;
-      const target = e.target as HTMLElement | null;
-      if (target?.closest("[data-tab-id]")) return;
-      e.preventDefault();
-      const lastTab = tabs[tabs.length - 1];
-      if (lastTab && lastTab.id !== draggedTabId) {
-        onTabReorder(draggedTabId, lastTab.id, "after");
-      }
-      resetDragState();
-    },
-    [onTabReorder, draggedTabId, tabs, resetDragState],
+    [onTabSelect],
   );
 
   if (variant === "sidebar") {
@@ -238,60 +412,65 @@ export function TabBar<T extends TabItem>({
     );
   }
 
-  // Editor variant
+  const dropTargetLabel = dragState.dropIndicator
+    ? tabLabelById.get(dragState.dropIndicator.tabId) ?? dragState.dropIndicator.tabId
+    : null;
+
   return (
     <>
       <div
-        onDragOver={handleContainerDragOver}
-        onDrop={handleContainerDrop}
+        ref={containerRef}
         className={`flex items-center border-b border-border bg-accent-hover overflow-x-auto min-h-[34px] ${className}`}
+        style={{
+          cursor:
+            onTabReorder && dragState.isDragging ? "grabbing" : undefined,
+        }}
       >
         {tabs.map((tab) => {
           const isActive = tab.id === activeTab;
-          const isDragged = draggedTabId === tab.id;
+          const isDragged =
+            dragState.isDragging && dragState.draggedTabId === tab.id;
           const showDropBefore =
-            dropIndicator?.tabId === tab.id &&
-            dropIndicator.position === "before";
+            dragState.dropIndicator?.tabId === tab.id &&
+            dragState.dropIndicator.position === "before";
           const showDropAfter =
-            dropIndicator?.tabId === tab.id &&
-            dropIndicator.position === "after";
+            dragState.dropIndicator?.tabId === tab.id &&
+            dragState.dropIndicator.position === "after";
+
           return (
             <div
               key={tab.id}
+              ref={(node) => setTabRef(tab.id, node)}
               data-tab-id={tab.id}
-              draggable={Boolean(onTabReorder)}
-              onDragStart={(e) => handleDragStart(e, tab.id)}
-              onDragOver={(e) => handleDragOverTab(e, tab.id)}
-              onDrop={(e) => handleDropOnTab(e, tab.id)}
-              onDragEnd={resetDragState}
-              className={`group relative flex items-center border-r border-border transition-colors ${
+              className={`group relative flex items-center border-r border-border transition-colors select-none ${
                 isActive
                   ? "bg-background text-foreground"
                   : "text-muted hover:text-foreground hover:bg-background/50"
-              } ${onTabReorder ? "cursor-grab active:cursor-grabbing" : ""} ${isDragged ? "opacity-60" : ""}`}
+              } ${onTabReorder ? "cursor-grab" : ""} ${isDragged ? "opacity-40" : ""}`}
               title={tab.title ?? tab.label}
-              onMouseDown={(e) => handleMouseDown(e, tab.id)}
+              onMouseDown={(e) => {
+                handleMouseDown(e, tab.id);
+                handleTabPointerDown(e, tab.id);
+              }}
               onContextMenu={(e) => handleContextMenu(e, tab.id)}
             >
               {showDropBefore && (
                 <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-0.5 bg-accent z-10" />
               )}
               <button
-                onClick={() => onTabSelect(tab.id)}
+                onClick={() => handleTabClick(tab.id)}
                 className="px-3 py-1.5 text-sm truncate max-w-[120px]"
               >
                 {tab.label}
               </button>
               {onTabClose && (
                 <button
+                  onMouseDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation();
                     onTabClose(tab.id);
                   }}
-                  draggable={false}
-                  onDragStart={(e) => {
-                    e.preventDefault();
-                  }}
+                  data-tab-close="true"
                   className={`w-6 h-full flex items-center justify-center hover:bg-surface-tertiary ${
                     isActive
                       ? "opacity-100"
@@ -309,6 +488,22 @@ export function TabBar<T extends TabItem>({
           );
         })}
       </div>
+
+      {dragState.isDragging && dragState.draggedTabLabel && createPortal(
+        <div
+          className="fixed pointer-events-none z-[9999] flex items-center gap-2 px-3 py-1 border border-border bg-background text-xs"
+          style={{
+            left: dragState.mouseX + 14,
+            top: dragState.mouseY + 14,
+          }}
+        >
+          <span className="truncate max-w-[220px]">{dragState.draggedTabLabel}</span>
+          {dropTargetLabel && (
+            <span className="text-muted whitespace-nowrap">-&gt; {dropTargetLabel}</span>
+          )}
+        </div>,
+        document.body,
+      )}
 
       {contextMenu && (
         <ContextMenu
