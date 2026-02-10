@@ -10,8 +10,25 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - Windows
+        - macOS
+        - Others
+    validations:
+      required: true
+
+  - type: input
+    id: os_other
+    attributes:
+      label: If you selected "Others", please specify
+      placeholder: "e.g. Linux, Ubuntu 22.04"
+
   - type: textarea
     id: context
     attributes:
-      label: Environment (optional)
-      placeholder: "OS, app version, screenshots, logs — anything that helps."
+      label: Additional context (optional)
+      placeholder: "App version, screenshots, logs — anything that helps."
