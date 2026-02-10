@@ -1,11 +1,33 @@
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { DocsContent } from "@/components/docs-sections";
-import { DEFAULT_LOCALE } from "@/lib/i18n";
+import {
+  SUPPORTED_LOCALES,
+  DEFAULT_LOCALE,
+  isLocale,
+  type Locale,
+} from "@/lib/i18n";
 import { getMessages } from "@/lib/messages";
 
-export default function DocsPage() {
-  const locale = DEFAULT_LOCALE;
+export function generateStaticParams() {
+  return SUPPORTED_LOCALES.filter((l) => l !== DEFAULT_LOCALE).map(
+    (locale) => ({ locale }),
+  );
+}
+
+export default async function LocaleDocsPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale: rawLocale } = await params;
+
+  if (!isLocale(rawLocale) || rawLocale === DEFAULT_LOCALE) {
+    notFound();
+  }
+
+  const locale: Locale = rawLocale;
   const messages = getMessages(locale);
 
   return (

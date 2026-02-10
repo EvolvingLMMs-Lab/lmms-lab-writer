@@ -376,6 +376,33 @@ export function FeaturesSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }
   );
 }
 
+export function VideoSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }) {
+  const messages = getMessages(locale);
+
+  return (
+    <section className="py-12 md:py-20 px-6 border-t border-border">
+      <FadeIn className="max-w-5xl mx-auto">
+        <h2 className="text-xl md:text-2xl font-medium mb-4 text-center">
+          {messages.home.videoTitle}
+        </h2>
+        <p className="text-base md:text-lg text-muted mb-8 md:mb-10 text-center">
+          {messages.home.videoSubtitle}
+        </p>
+        <div className="relative w-full overflow-hidden rounded-sm border border-border shadow-lg" style={{ paddingBottom: "56.25%" }}>
+          <iframe
+            className="absolute inset-0 w-full h-full"
+            src="https://www.youtube.com/embed/KIj7kfkVvSs?si=br2z2qsQ2p7JlIj9"
+            title="LMMs-Lab Writer Demo"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+          />
+        </div>
+      </FadeIn>
+    </section>
+  );
+}
+
 export function DemoSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }) {
   const messages = getMessages(locale);
 

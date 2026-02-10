@@ -2,7 +2,13 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Header } from "@/components/header";
-import { DEFAULT_LOCALE } from "@/lib/i18n";
+import {
+  SUPPORTED_LOCALES,
+  DEFAULT_LOCALE,
+  isLocale,
+  withLocalePrefix,
+  type Locale,
+} from "@/lib/i18n";
 import { getMessages } from "@/lib/messages";
 import fs from "fs";
 import path from "path";
@@ -35,15 +41,18 @@ function getAllDocSlugs() {
     .map((file) => file.replace(/\.mdx$/, ""));
 }
 
-export async function generateStaticParams() {
+export function generateStaticParams() {
   const slugs = getAllDocSlugs();
-  return slugs.map((slug) => ({ slug }));
+  const locales = SUPPORTED_LOCALES.filter((l) => l !== DEFAULT_LOCALE);
+  return locales.flatMap((locale) =>
+    slugs.map((slug) => ({ locale, slug })),
+  );
 }
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ locale: string; slug: string }>;
 }) {
   const { slug } = await params;
   const doc = getDocBySlug(slug);
@@ -65,19 +74,24 @@ const mdxOptions = {
   ],
 };
 
-export default async function DocPage({
+export default async function LocaleDocPage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ locale: string; slug: string }>;
 }) {
-  const { slug } = await params;
+  const { locale: rawLocale, slug } = await params;
+
+  if (!isLocale(rawLocale) || rawLocale === DEFAULT_LOCALE) {
+    notFound();
+  }
+
+  const locale: Locale = rawLocale;
   const doc = getDocBySlug(slug);
 
   if (!doc) {
     notFound();
   }
 
-  const locale = DEFAULT_LOCALE;
   const messages = getMessages(locale);
 
   return (
@@ -87,7 +101,7 @@ export default async function DocPage({
       <main className="py-12 px-6">
         <article className="max-w-5xl mx-auto">
           <Link
-            href="/docs"
+            href={withLocalePrefix("/docs", locale)}
             className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground mb-8"
           >
             <ArrowLeft className="w-4 h-4" />
