@@ -9,6 +9,10 @@ const FeaturesSection = dynamic(
 const DemoSection = dynamic(
   () => import("@/components/home-sections").then((mod) => mod.DemoSection),
 );
+const VideoSection = dynamic(
+  () =>
+    import("@/components/home-sections").then((mod) => mod.VideoSection),
+);
 const ComparisonSection = dynamic(
   () =>
     import("@/components/home-sections").then((mod) => mod.ComparisonSection),
@@ -22,6 +26,7 @@ export default function HomePage() {
       <main className="flex-1">
         <HeroSection />
         <FeaturesSection />
+        <VideoSection />
         <DemoSection />
         <ComparisonSection />
       </main>

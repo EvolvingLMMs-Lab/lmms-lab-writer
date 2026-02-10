@@ -38,6 +38,8 @@ interface HomeCopy {
   featuresSubtitle: string;
   tapToZoom: string;
   features: HomeFeatureCopy[];
+  videoTitle: string;
+  videoSubtitle: string;
   demoTitle: string;
   demoSubtitle: string;
   comparisonTitle: string;
@@ -181,6 +183,8 @@ const MESSAGES: Record<Locale, WebMessages> = {
             "Runs natively on macOS and Windows. Built with Tauri for native performance - not an Electron wrapper.",
         },
       ],
+      videoTitle: "Demo Video",
+      videoSubtitle: "Watch LMMs-Lab Writer in action.",
       demoTitle: "See it in action.",
       demoSubtitle:
         "Every legendary paper started somewhere. Yours starts here.",
@@ -427,6 +431,8 @@ const MESSAGES: Record<Locale, WebMessages> = {
             "原生支持 macOS 与 Windows。基于 Tauri，提供原生性能，而非 Electron 壳层。",
         },
       ],
+      videoTitle: "演示视频",
+      videoSubtitle: "观看 LMMs-Lab Writer 的实际操作演示。",
       demoTitle: "实际演示",
       demoSubtitle:
         "每一篇经典论文都始于某处，你的也从这里开始。",
@@ -662,6 +668,8 @@ const MESSAGES: Record<Locale, WebMessages> = {
             "macOS と Windows でネイティブ動作。Electron ラッパーではなく、Tauri による高性能な実装です。",
         },
       ],
+      videoTitle: "デモ動画",
+      videoSubtitle: "LMMs-Lab Writer の動作をご覧ください。",
       demoTitle: "動作デモ",
       demoSubtitle: "名作論文も最初の一行から始まります。次はあなたの番です。",
       comparisonTitle: "まだ不便さを感じるのには理由があります。",
