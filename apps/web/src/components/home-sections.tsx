@@ -389,14 +389,25 @@ export function VideoSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }) {
           {messages.home.videoSubtitle}
         </p>
         <div className="relative w-full overflow-hidden rounded-sm border border-border shadow-lg" style={{ paddingBottom: "56.25%" }}>
-          <iframe
-            className="absolute inset-0 w-full h-full"
-            src="https://www.youtube.com/embed/KIj7kfkVvSs?si=br2z2qsQ2p7JlIj9"
-            title="LMMs-Lab Writer Demo"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            referrerPolicy="strict-origin-when-cross-origin"
-            allowFullScreen
-          />
+          {locale === "zh" ? (
+            <iframe
+              className="absolute inset-0 w-full h-full"
+              src="//player.bilibili.com/player.html?isOutside=true&aid=116046207918071&bvid=BV1JpFQzbEL4&cid=35963929212&p=1"
+              title="LMMs-Lab Writer Demo"
+              scrolling="no"
+              frameBorder="no"
+              allowFullScreen
+            />
+          ) : (
+            <iframe
+              className="absolute inset-0 w-full h-full"
+              src="https://www.youtube.com/embed/KIj7kfkVvSs?si=br2z2qsQ2p7JlIj9"
+              title="LMMs-Lab Writer Demo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            />
+          )}
         </div>
       </FadeIn>
     </section>
