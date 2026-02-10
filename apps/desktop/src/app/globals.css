@@ -72,6 +72,28 @@
 @import "@xterm/xterm/css/xterm.css";
 @import "dockview-react/dist/styles/dockview.css";
 
+.dockview-editor-layout {
+  --dv-group-view-background-color: var(--background);
+  --dv-tabs-and-actions-container-background-color: var(--background);
+  --dv-tab-divider-color: var(--border);
+  --dv-separator-border: var(--border);
+  --dv-sash-color: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --dv-active-sash-color: color-mix(in srgb, var(--foreground) 24%, transparent);
+}
+
+.dockview-editor-layout .dv-groupview > .dv-tabs-and-actions-container {
+  display: none;
+}
+
+.dockview-editor-layout .dv-groupview > .dv-content-container {
+  inset: 0;
+}
+
+.dockview-editor-layout .dv-resize-container {
+  border: 0;
+  box-shadow: none;
+}
+
 :root {
   --background: #fafafa;
   --foreground: #0a0a0a;

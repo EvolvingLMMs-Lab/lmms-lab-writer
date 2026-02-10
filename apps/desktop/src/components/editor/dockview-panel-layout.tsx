@@ -4,7 +4,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -20,6 +19,7 @@ const PANEL_COMPONENT_ID = "workspace-panel-content";
 
 type PanelParams = {
   panelId: string;
+  content: ReactNode;
 };
 
 export type DockviewPanelItem = {
@@ -46,16 +46,11 @@ export function DockviewPanelLayout({
   onApiReady,
 }: DockviewPanelLayoutProps) {
   const [api, setApi] = useState<DockviewApi | null>(null);
-  const panelContentRef = useRef<Map<string, ReactNode>>(new Map());
-
-  panelContentRef.current = new Map(
-    panels.map((panel) => [panel.id, panel.content]),
-  );
 
   const PanelContent = useCallback(
     ({ params }: IDockviewPanelProps<PanelParams>) => (
       <div className="h-full min-h-0 overflow-hidden">
-        {panelContentRef.current.get(params.panelId) ?? null}
+        {params.content ?? null}
       </div>
     ),
     [],
@@ -107,6 +102,10 @@ export function DockviewPanelLayout({
         if ((existing.title ?? "") !== panel.title) {
           existing.api.setTitle(panel.title);
         }
+        existing.api.updateParameters({
+          panelId: panel.id,
+          content: panel.content,
+        });
         continue;
       }
 
@@ -115,7 +114,10 @@ export function DockviewPanelLayout({
           id: panel.id,
           component: PANEL_COMPONENT_ID,
           title: panel.title,
-          params: { panelId: panel.id },
+          params: {
+            panelId: panel.id,
+            content: panel.content,
+          },
           inactive: panel.inactive ?? true,
         });
         continue;
@@ -128,7 +130,10 @@ export function DockviewPanelLayout({
         id: panel.id,
         component: PANEL_COMPONENT_ID,
         title: panel.title,
-        params: { panelId: panel.id },
+        params: {
+          panelId: panel.id,
+          content: panel.content,
+        },
         inactive: panel.inactive ?? true,
         position:
           panel.position ?? {
@@ -153,6 +158,8 @@ export function DockviewPanelLayout({
       disableFloatingGroups
       singleTabMode="default"
       noPanelsOverlay="emptyGroup"
+      scrollbars="native"
+      disableTabsOverflowList
     />
   );
 }

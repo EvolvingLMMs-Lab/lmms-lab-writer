@@ -15,6 +15,10 @@ import {
 } from "@/components/ui/tab-bar";
 import { EditorSkeleton } from "@/components/editor/editor-skeleton";
 import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
+import {
+  DockviewPanelLayout,
+  type DockviewPanelItem,
+} from "@/components/editor/dockview-panel-layout";
 import { FileSidebarPanel } from "@/components/editor/sidebar-file-panel";
 import { GitSidebarPanel } from "@/components/editor/sidebar-git-panel";
 import { GitHubPublishDialog } from "@/components/editor/github-publish-dialog";
@@ -1813,11 +1817,7 @@ The AI assistant will read and update this file during compilation.
       const splitFileType = splitSelectedFile ? getFileType(splitSelectedFile) : "text";
 
       return (
-        <div
-          className={`w-1/2 min-w-0 flex flex-col overflow-hidden ${
-            side === "left" ? "border-r border-border" : "border-l border-border"
-          }`}
-        >
+        <div className="h-full min-h-0 flex flex-col overflow-hidden">
           {splitSelectedFile && (
             <div>
               <TabBar
@@ -2444,6 +2444,187 @@ The AI assistant will read and update this file during compilation.
     return parseUnifiedDiffContent(gitDiffPreview.content);
   }, [gitDiffPreview?.content]);
 
+  const primaryEditorPaneContent = (
+    <div className="h-full min-h-0 flex flex-col overflow-hidden">
+      {selectedFile && (
+        <TabBar
+          tabs={editorTabs}
+          activeTab={selectedFile}
+          onTabSelect={handleFileSelect}
+          onTabClose={handleCloseTab}
+          onTabReorder={handleReorderTabs}
+          onTabDragMove={handleEditorTabDragMove}
+          onTabDragEnd={handleEditorTabDragEnd}
+          onCloseOthers={handleCloseOtherTabs}
+          onCloseToLeft={handleCloseTabsToLeft}
+          onCloseToRight={handleCloseTabsToRight}
+          onCloseAll={handleCloseAllTabs}
+          variant="editor"
+        />
+      )}
+
+      {selectedFile ? (
+        isShowingGitDiff ? (
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="border-b border-border bg-accent-hover px-3 py-2 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-sm font-medium truncate">
+                  {gitDiffPreview.path}
+                </div>
+                <div className="text-xs text-muted flex items-center gap-2">
+                  <span>
+                    {gitDiffPreview.staged
+                      ? "Staged changes"
+                      : "Working tree changes"}
+                  </span>
+                  {parsedGitDiff && parsedGitDiff.hasRenderableHunks && (
+                    <span>
+                      +{parsedGitDiff.added} / -{parsedGitDiff.removed}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() =>
+                    void loadGitDiffPreview(gitDiffPreview.path, gitDiffPreview.staged)
+                  }
+                  className="btn btn-sm btn-secondary"
+                >
+                  Refresh Diff
+                </button>
+                <button
+                  onClick={() => {
+                    void handleFileSelect(gitDiffPreview.path);
+                  }}
+                  className="btn btn-sm btn-secondary"
+                >
+                  Open File
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 min-h-0">
+              {gitDiffPreview.isLoading ? (
+                <EditorSkeleton className="h-full" />
+              ) : gitDiffPreview.error ? (
+                <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
+                  Failed to load diff: {gitDiffPreview.error}
+                </div>
+              ) : parsedGitDiff?.isBinary ? (
+                <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
+                  Binary file diff is not previewable in editor.
+                </div>
+              ) : !gitDiffPreview.content.trim() ? (
+                <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
+                  No textual diff available for this file.
+                </div>
+              ) : parsedGitDiff && parsedGitDiff.hasRenderableHunks ? (
+                <GitMonacoDiffEditor
+                  original={parsedGitDiff.original}
+                  modified={parsedGitDiff.modified}
+                  filePath={gitDiffPreview.path}
+                  className="h-full"
+                />
+              ) : (
+                <MonacoEditor
+                  content={gitDiffPreview.content}
+                  readOnly
+                  onContentChange={() => {}}
+                  language="diff"
+                  editorSettings={editorSettings.settings}
+                  editorTheme={editorSettings.editorTheme}
+                  className="h-full"
+                />
+              )}
+            </div>
+          </div>
+        ) : binaryPreviewUrl ? (
+          <div className="flex-1 flex flex-col bg-accent-hover overflow-hidden">
+            {getFileType(selectedFile) === "pdf" && (
+              <div className="flex items-center justify-end px-2 py-1 border-b border-border bg-surface-secondary">
+                <button
+                  onClick={() => setPdfRefreshKey((k) => k + 1)}
+                  className="flex items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-foreground hover:bg-surface-tertiary rounded transition-colors"
+                  title="Refresh PDF"
+                >
+                  <ArrowClockwiseIcon className="w-3.5 h-3.5" />
+                  Refresh
+                </button>
+              </div>
+            )}
+            <div className="flex-1 flex items-center justify-center overflow-auto p-4">
+              {getFileType(selectedFile) === "image" ? (
+                <img
+                  src={binaryPreviewUrl}
+                  alt={selectedFile}
+                  className="max-w-full max-h-full object-contain"
+                />
+              ) : (
+                <iframe
+                  key={pdfRefreshKey}
+                  src={binaryPreviewUrl}
+                  className="w-full h-full border-0"
+                  title={`PDF: ${selectedFile}`}
+                />
+              )}
+            </div>
+          </div>
+        ) : isLoadingFile ? (
+          <EditorSkeleton className="flex-1 min-h-0" />
+        ) : (
+          <motion.div
+            key={selectedFile}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="flex-1 min-h-0"
+          >
+            <EditorErrorBoundary>
+              <MonacoEditor
+                content={fileContent}
+                readOnly={false}
+                onContentChange={handleContentChange}
+                language={getFileLanguage(selectedFile)}
+                editorSettings={editorSettings.settings}
+                editorTheme={editorSettings.editorTheme}
+                className="h-full"
+              />
+            </EditorErrorBoundary>
+          </motion.div>
+        )
+      ) : (
+        <div className="flex-1 min-h-0 flex items-center justify-center px-6 text-sm text-muted bg-accent-hover">
+          Drop a tab here to open this panel.
+        </div>
+      )}
+    </div>
+  );
+
+  const editorPanelItems: DockviewPanelItem[] = [];
+  if (selectedFile || openTabs.length > 0) {
+    editorPanelItems.push({
+      id: "editor-primary",
+      title: selectedFile ? pathSync.basename(selectedFile) : "Editor",
+      content: primaryEditorPaneContent,
+      inactive: false,
+    });
+  }
+  if (splitPane) {
+    editorPanelItems.push({
+      id: `editor-split-${splitPane.side}`,
+      title: splitPane.selectedFile
+        ? pathSync.basename(splitPane.selectedFile)
+        : "Split",
+      content: renderSplitPane(splitPane.side),
+      inactive: true,
+      position: {
+        referencePanel: "editor-primary",
+        direction: splitPane.side,
+      },
+    });
+  }
+
   return (
     <div className="h-dvh flex flex-col">
       <div className="flex-shrink-0 flex flex-col">
@@ -2730,26 +2911,10 @@ The AI assistant will read and update this file during compilation.
         </AnimatePresence>
 
         <div className="flex-1 min-w-0 w-0 flex flex-col overflow-hidden">
-          {!splitPane && selectedFile && (
-            <TabBar
-              tabs={editorTabs}
-              activeTab={selectedFile}
-              onTabSelect={handleFileSelect}
-              onTabClose={handleCloseTab}
-              onTabReorder={handleReorderTabs}
-              onTabDragMove={handleEditorTabDragMove}
-              onTabDragEnd={handleEditorTabDragEnd}
-              onCloseOthers={handleCloseOtherTabs}
-              onCloseToLeft={handleCloseTabsToLeft}
-              onCloseToRight={handleCloseTabsToRight}
-              onCloseAll={handleCloseAllTabs}
-              variant="editor"
-            />
-          )}
-          {daemon.projectPath && (selectedFile || splitPane?.selectedFile) ? (
+          {daemon.projectPath && editorPanelItems.length > 0 ? (
             <div
               ref={editorWorkspaceRef}
-              className={`relative flex-1 min-h-0 ${splitPane ? "flex" : "flex flex-col"}`}
+              className="relative flex-1 min-h-0"
             >
               {splitDropHint && (
                 <div className="pointer-events-none absolute inset-0 z-10">
@@ -2763,168 +2928,10 @@ The AI assistant will read and update this file during compilation.
                 </div>
               )}
 
-              {splitPane?.side === "left" && renderSplitPane("left")}
-
-              <div
-              className={`min-h-0 overflow-hidden ${
-                  splitPane
-                    ? "w-1/2 min-w-0 flex flex-col"
-                    : "flex-1 flex flex-col"
-                }`}
-              >
-                {splitPane && selectedFile && (
-                  <TabBar
-                    tabs={editorTabs}
-                    activeTab={selectedFile}
-                    onTabSelect={handleFileSelect}
-                    onTabClose={handleCloseTab}
-                    onTabReorder={handleReorderTabs}
-                    onTabDragMove={handleEditorTabDragMove}
-                    onTabDragEnd={handleEditorTabDragEnd}
-                    onCloseOthers={handleCloseOtherTabs}
-                    onCloseToLeft={handleCloseTabsToLeft}
-                    onCloseToRight={handleCloseTabsToRight}
-                    onCloseAll={handleCloseAllTabs}
-                    variant="editor"
-                  />
-                )}
-
-                {selectedFile ? (
-                  isShowingGitDiff ? (
-                    <div className="flex-1 min-h-0 flex flex-col">
-                      <div className="border-b border-border bg-accent-hover px-3 py-2 flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium truncate">
-                            {gitDiffPreview.path}
-                          </div>
-                          <div className="text-xs text-muted flex items-center gap-2">
-                            <span>
-                              {gitDiffPreview.staged
-                                ? "Staged changes"
-                                : "Working tree changes"}
-                            </span>
-                            {parsedGitDiff && parsedGitDiff.hasRenderableHunks && (
-                              <span>
-                                +{parsedGitDiff.added} / -{parsedGitDiff.removed}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => void loadGitDiffPreview(gitDiffPreview.path, gitDiffPreview.staged)}
-                            className="btn btn-sm btn-secondary"
-                          >
-                            Refresh Diff
-                          </button>
-                          <button
-                            onClick={() => {
-                              void handleFileSelect(gitDiffPreview.path);
-                            }}
-                            className="btn btn-sm btn-secondary"
-                          >
-                            Open File
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex-1 min-h-0">
-                        {gitDiffPreview.isLoading ? (
-                          <EditorSkeleton className="h-full" />
-                        ) : gitDiffPreview.error ? (
-                          <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
-                            Failed to load diff: {gitDiffPreview.error}
-                          </div>
-                        ) : parsedGitDiff?.isBinary ? (
-                          <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
-                            Binary file diff is not previewable in editor.
-                          </div>
-                        ) : !gitDiffPreview.content.trim() ? (
-                          <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
-                            No textual diff available for this file.
-                          </div>
-                        ) : parsedGitDiff && parsedGitDiff.hasRenderableHunks ? (
-                          <GitMonacoDiffEditor
-                            original={parsedGitDiff.original}
-                            modified={parsedGitDiff.modified}
-                            filePath={gitDiffPreview.path}
-                            className="h-full"
-                          />
-                        ) : (
-                          <MonacoEditor
-                            content={gitDiffPreview.content}
-                            readOnly
-                            onContentChange={() => {}}
-                            language="diff"
-                            editorSettings={editorSettings.settings}
-                            editorTheme={editorSettings.editorTheme}
-                            className="h-full"
-                          />
-                        )}
-                      </div>
-                    </div>
-                  ) : binaryPreviewUrl ? (
-                    <div className="flex-1 flex flex-col bg-accent-hover overflow-hidden">
-                      {getFileType(selectedFile) === "pdf" && (
-                        <div className="flex items-center justify-end px-2 py-1 border-b border-border bg-surface-secondary">
-                          <button
-                            onClick={() => setPdfRefreshKey((k) => k + 1)}
-                            className="flex items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-foreground hover:bg-surface-tertiary rounded transition-colors"
-                            title="Refresh PDF"
-                          >
-                            <ArrowClockwiseIcon className="w-3.5 h-3.5" />
-                            Refresh
-                          </button>
-                        </div>
-                      )}
-                      <div className="flex-1 flex items-center justify-center overflow-auto p-4">
-                        {getFileType(selectedFile) === "image" ? (
-                          <img
-                            src={binaryPreviewUrl}
-                            alt={selectedFile}
-                            className="max-w-full max-h-full object-contain"
-                          />
-                        ) : (
-                          <iframe
-                            key={pdfRefreshKey}
-                            src={binaryPreviewUrl}
-                            className="w-full h-full border-0"
-                            title={`PDF: ${selectedFile}`}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  ) : isLoadingFile ? (
-                    <EditorSkeleton className="flex-1 min-h-0" />
-                  ) : (
-                    <motion.div
-                      key={selectedFile}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.15, ease: "easeOut" }}
-                      className="flex-1 min-h-0"
-                    >
-                      <EditorErrorBoundary>
-                        <MonacoEditor
-                          content={fileContent}
-                          readOnly={false}
-                          onContentChange={handleContentChange}
-                          language={getFileLanguage(selectedFile)}
-                          editorSettings={editorSettings.settings}
-                          editorTheme={editorSettings.editorTheme}
-                          className="h-full"
-                        />
-                      </EditorErrorBoundary>
-                    </motion.div>
-                  )
-                ) : (
-                  <div className="flex-1 min-h-0 flex items-center justify-center px-6 text-sm text-muted bg-accent-hover">
-                    Drop a tab here to open this panel.
-                  </div>
-                )}
-              </div>
-
-              {splitPane?.side === "right" && renderSplitPane("right")}
+              <DockviewPanelLayout
+                panels={editorPanelItems}
+                className="dockview-editor-layout"
+              />
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center">
