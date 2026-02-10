@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -24,6 +24,8 @@ import {
 } from "@/components/motion";
 import { PaperDemo } from "@/components/paper-demo";
 import { LightboxImage } from "@/components/lightbox";
+import { DEFAULT_LOCALE, withLocalePrefix, type Locale } from "@/lib/i18n";
+import { getMessages } from "@/lib/messages";
 
 const GPU_SPRING = {
   type: "spring",
@@ -32,108 +34,36 @@ const GPU_SPRING = {
   mass: 0.5,
 } as const;
 
-const comparisons = [
-  {
-    feature: "File storage",
-    overleaf: "Cloud only",
-    writer: "Local (your machine)",
-  },
-  {
-    feature: "AI editing",
-    overleaf: "Basic grammar",
-    writer: "OpenCode + any AI agent",
-  },
-  {
-    feature: "Non-English",
-    overleaf: "Limited CJK support",
-    writer: "Full Unicode, XeLaTeX, system fonts",
-  },
-  {
-    feature: "LaTeX setup",
-    overleaf: "Pre-configured",
-    writer: "One-click install, agent-managed",
-  },
-  {
-    feature: "Git integration",
-    overleaf: "Paid plans only",
-    writer: "Free, built into sidebar",
-  },
-  {
-    feature: "Offline work",
-    overleaf: "Not available",
-    writer: "Full support",
-  },
-  {
-    feature: "Compilation",
-    overleaf: "Cloud queue",
-    writer: "Local, instant",
-  },
-  {
-    feature: "Open source",
-    overleaf: "No",
-    writer: "MIT license",
-  },
-  { feature: "Price", overleaf: "$21-42/month", writer: "Free" },
-];
-
-const features = [
+const FEATURE_VISUALS = [
   {
     icon: Sparkles,
-    title: "OpenCode AI Integration",
-    description:
-      "Built-in AI panel that reads your entire project. Chat, attach files, switch models. Also works with Claude Code, Cursor, and Codex.",
-    detail:
-      "Chat with AI to create LaTeX documents from scratch. The AI understands your entire project context — attach files, switch between models, and get intelligent suggestions tailored to your writing. From Beamer presentations to research papers, describe what you need and let the AI handle the LaTeX.",
     image: "/features/interaction.png",
   },
   {
     icon: Zap,
-    title: "One-Click LaTeX Setup",
-    description:
-      "Auto-detects and installs a minimal LaTeX distribution. Missing packages install automatically during compilation. Zero configuration.",
-    detail:
-      "No more hour-long TeX Live installations. LMMs-Lab Writer auto-detects and installs a minimal LaTeX distribution for you — TinyTeX, MiKTeX, or TeX Live. If a package is missing during compilation, it gets installed automatically. Zero manual configuration — just open the app and start writing.",
     image: "/features/latex.png",
   },
   {
     icon: Globe,
-    title: "Built for Every Language",
-    description:
-      "Full Unicode support via XeLaTeX and LuaLaTeX. CJK, Arabic, Cyrillic — all work out of the box with system fonts.",
-    detail:
-      "Write in any language without extra configuration. XeLaTeX and LuaLaTeX provide full Unicode support out of the box — Chinese, Japanese, Korean, Arabic, Cyrillic, and more. Missing font packages are installed automatically during compilation.",
     image: "/features/compile-cn.png",
   },
   {
     icon: GitBranch,
-    title: "Git-Native Collaboration",
-    description:
-      "Stage, commit, diff, push, pull — all from the sidebar. AI-generated commit messages. One-click GitHub publishing.",
-    detail:
-      "AI writes your commit messages so you can focus on writing, not documenting changes. Publish your project to GitHub with a single click. A clear diff view lets you see exactly what changed — no terminal needed.",
     image: "/features/git-support.png",
   },
   {
     icon: Lock,
-    title: "Fully Open Source",
-    description:
-      "MIT licensed. Your files never leave your machine. No telemetry, no vendor lock-in. Fork it, modify it — it's yours.",
-    detail:
-      "Fully MIT licensed and hosted on GitHub. Your files never leave your machine — no telemetry, no vendor lock-in. Fork it, modify it, contribute back — it's yours.",
     image: "/features/github.png",
   },
   {
     icon: Monitor,
-    title: "Cross-Platform",
-    description:
-      "Runs natively on macOS and Windows. Built with Tauri for native performance — not an Electron wrapper.",
-    detail:
-      "Runs natively on macOS and Windows with Tauri — true native performance, not an Electron wrapper. Same seamless experience on every platform.",
     image: "/features/cross-platform.png",
   },
 ];
 
-export function HeroSection() {
+export function HeroSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }) {
+  const messages = getMessages(locale);
+
   return (
     <section className="py-16 md:py-24 px-6 bg-cream">
       <motion.div
@@ -154,7 +84,7 @@ export function HeroSection() {
         >
           <Image
             src="/logo-light.svg"
-            alt="LMMs-Lab Writer — Think Deep, Write Easy."
+            alt={messages.home.heroImageAlt}
             width={320}
             height={128}
             priority
@@ -171,8 +101,7 @@ export function HeroSection() {
             ease: [0.25, 0.46, 0.45, 0.94],
           }}
         >
-          The AI-native LaTeX editor. One-click setup, every language, Git
-          built-in, fully open source.
+          {messages.home.heroDescription}
         </motion.p>
         <motion.div
           className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4"
@@ -192,12 +121,12 @@ export function HeroSection() {
             className="w-full sm:w-auto"
           >
             <Link
-              href="/download"
+              href={withLocalePrefix("/download", locale)}
               prefetch={true}
               className="btn btn-primary w-full sm:w-auto"
             >
               <Download className="w-4 h-4" />
-              Download
+              {messages.home.downloadCta}
             </Link>
           </motion.div>
           <motion.div
@@ -208,12 +137,12 @@ export function HeroSection() {
             className="w-full sm:w-auto"
           >
             <Link
-              href="/docs"
+              href={withLocalePrefix("/docs", locale)}
               prefetch={true}
               className="btn btn-secondary w-full sm:w-auto"
             >
               <FileText className="w-4 h-4" />
-              Documentation
+              {messages.home.documentationCta}
             </Link>
           </motion.div>
         </motion.div>
@@ -229,7 +158,7 @@ export function HeroSection() {
         >
           <LightboxImage
             src="/features/demo.webp"
-            alt="LMMs-Lab Writer — AI-native LaTeX editor"
+            alt={messages.home.heroImageAlt}
             className="w-full h-auto"
             priority
           />
@@ -241,19 +170,36 @@ export function HeroSection() {
 
 const AUTO_PLAY_MS = 5000; // cycle every 5s
 
-export function FeaturesSection() {
+export function FeaturesSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }) {
+  const messages = getMessages(locale);
+  const features = useMemo(
+    () =>
+      messages.home.features.map((feature, index) => {
+        const visual = FEATURE_VISUALS[index] ?? FEATURE_VISUALS[0]!;
+        return {
+          ...feature,
+          icon: visual.icon,
+          image: visual.image,
+        };
+      }),
+    [messages.home.features],
+  );
   const [activeIndex, setActiveIndex] = useState(0);
   const activeFeature = features[activeIndex] ?? features[0]!;
   const pausedUntil = useRef(0);
 
   // Auto-cycle through features when not paused
   useEffect(() => {
+    if (features.length === 0) return;
+
     const id = setInterval(() => {
       if (Date.now() < pausedUntil.current) return;
-      setActiveIndex((prev: number) => prev < 0 ? prev : (prev + 1) % features.length);
+      setActiveIndex((prev: number) =>
+        prev < 0 ? prev : (prev + 1) % features.length,
+      );
     }, AUTO_PLAY_MS);
     return () => clearInterval(id);
-  }, []);
+  }, [features.length]);
 
   const handleSelect = useCallback((i: number) => {
     // Pause auto-play for 12s after user interaction
@@ -266,11 +212,10 @@ export function FeaturesSection() {
       <div className="max-w-[clamp(64rem,65vw,85rem)] mx-auto">
         <FadeIn>
           <h2 className="text-2xl font-medium mb-2 text-center">
-            Everything you need. Nothing you don&apos;t.
+            {messages.home.featuresTitle}
           </h2>
           <p className="text-sm text-muted mb-8 md:mb-12 text-center max-w-xl mx-auto">
-            Built for researchers who&apos;d rather focus on ideas than LaTeX
-            boilerplate.
+            {messages.home.featuresSubtitle}
           </p>
         </FadeIn>
 
@@ -324,7 +269,7 @@ export function FeaturesSection() {
                           className="w-full h-auto"
                         />
                         <p className="text-xs text-muted text-center py-1.5">
-                          Tap to zoom
+                          {messages.home.tapToZoom}
                         </p>
                       </div>
                     )}
@@ -342,7 +287,7 @@ export function FeaturesSection() {
         <FadeIn>
           <div className="hidden md:flex border border-foreground">
             {/* Left: feature list + description */}
-            <div className="w-2/5 border-r border-foreground shrink-0 flex flex-col">
+            <div className="w-[38%] border-r border-foreground shrink-0 flex flex-col">
               {features.map((feature, i) => (
                 <div
                   key={feature.title}
@@ -399,7 +344,7 @@ export function FeaturesSection() {
             </div>
 
             {/* Right: image / visual panel */}
-            <div className="w-3/5 bg-neutral-50 flex items-center justify-center p-6 min-h-[max(400px,35vh)]">
+            <div className="w-[62%] bg-neutral-50 flex items-stretch justify-center p-3 min-h-[max(400px,35vh)]">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeIndex}
@@ -407,13 +352,14 @@ export function FeaturesSection() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.98 }}
                   transition={{ duration: 0.2 }}
-                  className="flex items-center justify-center"
+                  className="flex items-center justify-center w-full h-full"
                 >
                   {"image" in activeFeature && activeFeature.image ? (
                     <LightboxImage
                       src={activeFeature.image}
                       alt={activeFeature.title}
-                      className="max-h-[clamp(360px,40vh,600px)] w-auto max-w-full object-contain rounded-sm border border-border shadow-sm"
+                      sizes="(max-width: 1024px) 100vw, 58vw"
+                      className="w-full h-full object-contain rounded-sm border border-border shadow-sm"
                     />
                   ) : (
                     <div className="text-center px-8">
@@ -430,15 +376,17 @@ export function FeaturesSection() {
   );
 }
 
-export function DemoSection() {
+export function DemoSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }) {
+  const messages = getMessages(locale);
+
   return (
     <section className="py-12 md:py-20 px-6 border-t border-border">
       <FadeIn className="max-w-5xl mx-auto">
         <h2 className="text-xl md:text-2xl font-medium mb-4 text-center">
-          See it in action.
+          {messages.home.demoTitle}
         </h2>
         <p className="text-base md:text-lg text-muted mb-8 md:mb-10 text-center">
-          Every legendary paper started somewhere. Yours starts here.
+          {messages.home.demoSubtitle}
         </p>
         <PaperDemo />
       </FadeIn>
@@ -446,29 +394,32 @@ export function DemoSection() {
   );
 }
 
-export function ComparisonSection() {
+export function ComparisonSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }) {
+  const messages = getMessages(locale);
+  const comparisonColumns = messages.home.comparisonColumns;
+
   return (
     <section className="py-12 md:py-20 px-6 border-t border-border">
       <div className="max-w-5xl mx-auto">
         <FadeIn>
           <h2 className="text-2xl font-medium mb-8 md:mb-10 text-center">
-            There&apos;s a reason you&apos;re still frustrated.
+            {messages.home.comparisonTitle}
           </h2>
         </FadeIn>
 
         <FadeIn className="hidden md:block border border-foreground">
           <div className="grid grid-cols-3 border-b border-foreground font-mono text-muted text-xs">
             <div className="p-4 border-r border-foreground uppercase tracking-wider">
-              Feature
+              {comparisonColumns.feature}
             </div>
             <div className="p-4 border-r border-foreground uppercase tracking-wider">
-              Overleaf
+              {comparisonColumns.overleaf}
             </div>
             <div className="p-4 bg-neutral-50 text-foreground tracking-tight font-medium text-sm">
-              LMMs-Lab Writer
+              {comparisonColumns.writer}
             </div>
           </div>
-          {comparisons.map((row, i) => (
+          {messages.home.comparisons.map((row, i) => (
             <motion.div
               key={row.feature}
               initial={{ opacity: 0 }}
@@ -480,7 +431,9 @@ export function ComparisonSection() {
                 ease: [0.25, 0.46, 0.45, 0.94],
               }}
               className={`grid grid-cols-3 text-sm ${
-                i !== comparisons.length - 1 ? "border-b border-foreground" : ""
+                i !== messages.home.comparisons.length - 1
+                  ? "border-b border-foreground"
+                  : ""
               }`}
             >
               <div className="p-4 border-r border-foreground font-medium text-muted">
@@ -498,7 +451,7 @@ export function ComparisonSection() {
         </FadeIn>
 
         <FadeInStagger className="md:hidden space-y-4" staggerDelay={0.08}>
-          {comparisons.map((row) => (
+          {messages.home.comparisons.map((row) => (
             <FadeInStaggerItem key={row.feature}>
               <MotionCard className="border border-foreground">
                 <div className="px-4 py-3 border-b border-foreground bg-neutral-50 font-medium text-sm">
@@ -507,13 +460,13 @@ export function ComparisonSection() {
                 <div className="grid grid-cols-2 text-sm">
                   <div className="p-4 border-r border-foreground">
                     <div className="text-xs text-muted uppercase tracking-wider mb-1">
-                      Overleaf
+                      {comparisonColumns.overleaf}
                     </div>
                     <div className="text-muted">{row.overleaf}</div>
                   </div>
                   <div className="p-4 bg-neutral-50">
                     <div className="text-xs text-muted uppercase tracking-wider mb-1">
-                      Writer
+                      {comparisonColumns.writer}
                     </div>
                     <div className="flex items-start gap-2 font-medium">
                       <CheckCircle2 className="w-4 h-4 shrink-0 text-foreground mt-0.5" />

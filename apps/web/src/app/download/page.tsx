@@ -3,7 +3,10 @@ import { Suspense } from "react";
 import { Header } from "@/components/header";
 import { createClient } from "@/lib/supabase/server";
 import { GITHUB_CONFIG, canDownload } from "@/lib/github/config";
+import { DEFAULT_LOCALE, interpolate, type Locale } from "@/lib/i18n";
+import { getMessages } from "@/lib/messages";
 import {
+  InstallationPolicySection,
   DownloadSection,
   HomebrewSection,
   RELEASE_VERSION,
@@ -27,7 +30,8 @@ function DownloadSkeleton() {
   );
 }
 
-async function DownloadContent() {
+async function DownloadContent({ locale }: { locale: Locale }) {
+  const messages = getMessages(locale).download;
   const supabase = await createClient();
   const {
     data: { session },
@@ -39,6 +43,7 @@ async function DownloadContent() {
         inks={0}
         requiredInks={GITHUB_CONFIG.INKS_TO_DOWNLOAD}
         isLoggedIn={false}
+        locale={locale}
       />
     );
   }
@@ -59,6 +64,7 @@ async function DownloadContent() {
         inks={inks}
         requiredInks={GITHUB_CONFIG.INKS_TO_DOWNLOAD}
         isLoggedIn={true}
+        locale={locale}
       />
     );
   }
@@ -69,10 +75,10 @@ async function DownloadContent() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">
-              You have {inks} inks - ready to download
+              {interpolate(messages.readyBannerTitle, { inks })}
             </p>
             <p className="text-xs text-muted mt-1">
-              Beta period: No inks deducted when you download or use the app
+              {messages.readyBannerNote}
             </p>
           </div>
           <span className="text-xs font-mono text-muted uppercase tracking-wider">
@@ -80,35 +86,44 @@ async function DownloadContent() {
           </span>
         </div>
       </div>
-      <HomebrewSection />
-      <DownloadSection />
-      <NpmPackageSection />
-      <InstallationSection />
-      <RequirementsSection />
-      <BuildSection />
+      <HomebrewSection locale={locale} />
+      <DownloadSection locale={locale} />
+      <NpmPackageSection locale={locale} />
+      <InstallationSection locale={locale} />
+      <RequirementsSection locale={locale} />
+      <BuildSection locale={locale} />
     </>
   );
 }
 
 export default function DownloadPage() {
+  const locale = DEFAULT_LOCALE;
+  const messages = getMessages(locale).download;
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header locale={locale} showLanguageSwitcher />
 
       <main className="flex-1 py-16 px-6">
         <div className="max-w-5xl mx-auto">
-          <h1 className="text-2xl font-medium tracking-tight mb-2">Download</h1>
-          <p className="text-muted mb-10">Version {RELEASE_VERSION}</p>
+          <h1 className="text-2xl font-medium tracking-tight mb-2">
+            {messages.pageTitle}
+          </h1>
+          <p className="text-muted mb-6">
+            {messages.versionLabel} {RELEASE_VERSION}
+          </p>
+
+          <InstallationPolicySection locale={locale} />
 
           <Suspense fallback={<DownloadSkeleton />}>
-            <DownloadContent />
+            <DownloadContent locale={locale} />
           </Suspense>
         </div>
       </main>
 
       <footer className="border-t border-border px-6">
         <div className="max-w-5xl mx-auto py-6 text-sm text-muted">
-          Built by{" "}
+          {getMessages(locale).footer.builtBy}{" "}
           <Link
             href="https://www.lmms-lab.com/"
             className="hover:text-foreground transition-colors"

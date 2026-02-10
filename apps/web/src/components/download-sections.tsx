@@ -1,13 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { Download, Apple, Monitor, ChevronDown } from "lucide-react";
-import { useEffect, useState } from "react";
 import {
-  motion,
-  FadeIn,
-} from "@/components/motion";
+  Download,
+  Apple,
+  Monitor,
+  ChevronDown,
+  ShieldCheck,
+  Eye,
+  Scaling,
+  TerminalSquare,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { motion, FadeIn } from "@/components/motion";
 import { GITHUB_CONFIG } from "@/lib/github/config";
+import { DEFAULT_LOCALE, interpolate, type Locale } from "@/lib/i18n";
+import { getMessages } from "@/lib/messages";
 
 const GPU_SPRING = {
   type: "spring",
@@ -83,7 +91,89 @@ function detectPlatform(): Platform {
   return "unknown";
 }
 
-export function DownloadSection() {
+export function InstallationPolicySection({
+  locale = DEFAULT_LOCALE,
+}: {
+  locale?: Locale;
+}) {
+  const messages = getMessages(locale).download;
+
+  return (
+    <FadeIn className="max-w-2xl mb-10">
+      <div className="border-2 border-black bg-white shadow-[6px_6px_0_0_#000]">
+        <div className="px-4 py-2 border-b-2 border-black bg-black text-white text-xs font-mono uppercase tracking-wider">
+          {messages.installNoticeBadge}
+        </div>
+
+        <div className="p-5 sm:p-6 space-y-4">
+          <h2 className="text-base sm:text-lg font-medium leading-tight">
+            {messages.installNoticeTitle}
+          </h2>
+          <p className="text-sm text-muted leading-relaxed">
+            {messages.installNoticeIntro}
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="border border-black bg-neutral-50 p-3">
+              <div className="flex items-center gap-2 mb-1.5">
+                <TerminalSquare className="w-4 h-4" />
+                <h3 className="text-xs font-medium uppercase tracking-wide">
+                  {messages.installNoticeSudoTitle}
+                </h3>
+              </div>
+              <p className="text-xs text-muted leading-relaxed">
+                {messages.installNoticeSudoBody}
+              </p>
+            </div>
+
+            <div className="border border-black bg-neutral-50 p-3">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Eye className="w-4 h-4" />
+                <h3 className="text-xs font-medium uppercase tracking-wide">
+                  {messages.installNoticeOpenSourceTitle}
+                </h3>
+              </div>
+              <p className="text-xs text-muted leading-relaxed">
+                {messages.installNoticeOpenSourceBody}
+              </p>
+            </div>
+
+            <div className="border border-black bg-neutral-50 p-3 sm:col-span-2">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Scaling className="w-4 h-4" />
+                <h3 className="text-xs font-medium uppercase tracking-wide">
+                  {messages.installNoticeIndependenceTitle}
+                </h3>
+              </div>
+              <p className="text-xs text-muted leading-relaxed">
+                {messages.installNoticeIndependenceBody}
+              </p>
+            </div>
+          </div>
+
+          <div className="border border-[#ff5500] bg-[#fff4ec] p-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <ShieldCheck className="w-4 h-4 text-[#ff5500]" />
+              <h3 className="text-xs font-medium uppercase tracking-wide">
+                {messages.installOrderLabel}
+              </h3>
+            </div>
+            <p className="text-xs leading-relaxed text-foreground">
+              <span className="font-medium">{messages.installOrderPrimary}</span>
+              {"  >  "}
+              <span>{messages.installOrderSecondary}</span>
+              {"  >  "}
+              <span>{messages.installOrderTertiary}</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </FadeIn>
+  );
+}
+
+export function DownloadSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }) {
+  const messages = getMessages(locale).download;
   const [detectedPlatform, setDetectedPlatform] = useState<Platform>("unknown");
   const [showAllPlatforms, setShowAllPlatforms] = useState(false);
 
@@ -91,9 +181,10 @@ export function DownloadSection() {
     setDetectedPlatform(detectPlatform());
   }, []);
 
-  const recommendedPlatform = detectedPlatform === "macOS" || detectedPlatform === "Windows"
-    ? detectedPlatform
-    : "macOS";
+  const recommendedPlatform =
+    detectedPlatform === "macOS" || detectedPlatform === "Windows"
+      ? detectedPlatform
+      : "macOS";
 
   const recommended = platforms[recommendedPlatform];
   const otherPlatformKey = recommendedPlatform === "macOS" ? "Windows" : "macOS";
@@ -106,12 +197,12 @@ export function DownloadSection() {
         <div className="flex items-center gap-2 mb-4">
           <h2 className="text-sm font-medium">
             {detectedPlatform !== "unknown" && detectedPlatform !== "Linux"
-              ? "Recommended for your system"
-              : "Download"}
+              ? messages.recommendedForSystem
+              : messages.genericDownload}
           </h2>
           {detectedPlatform !== "unknown" && detectedPlatform !== "Linux" && (
             <span className="text-xs px-2 py-0.5 bg-black text-white">
-              {detectedPlatform} detected
+              {interpolate(messages.platformDetected, { platform: detectedPlatform })}
             </span>
           )}
         </div>
@@ -152,8 +243,10 @@ export function DownloadSection() {
           onClick={() => setShowAllPlatforms(!showAllPlatforms)}
           className="flex items-center gap-2 text-sm text-muted hover:text-black transition-colors mb-4"
         >
-          <ChevronDown className={`w-4 h-4 transition-transform ${showAllPlatforms ? "rotate-180" : ""}`} />
-          Other platforms
+          <ChevronDown
+            className={`w-4 h-4 transition-transform ${showAllPlatforms ? "rotate-180" : ""}`}
+          />
+          {messages.otherPlatforms}
         </button>
 
         {showAllPlatforms && (
@@ -190,7 +283,8 @@ export function DownloadSection() {
   );
 }
 
-export function HomebrewSection() {
+export function HomebrewSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }) {
+  const messages = getMessages(locale).download;
   const [detectedPlatform, setDetectedPlatform] = useState<Platform>("unknown");
 
   useEffect(() => {
@@ -205,29 +299,31 @@ export function HomebrewSection() {
   return (
     <FadeIn className="mt-10 pt-8 border-t border-border max-w-2xl">
       <h2 className="text-sm font-medium mb-3">
-        Install via Homebrew{" "}
-        <span className="text-xs font-normal text-muted">(Recommended)</span>
+        {messages.installViaHomebrew}{" "}
+        <span className="text-xs font-normal text-muted">({messages.recommendedTag})</span>
       </h2>
       <pre className="text-sm text-muted bg-neutral-50 p-4 overflow-x-auto border border-border">
         {`brew tap EvolvingLMMs-Lab/tap
 brew install --cask lmms-lab-writer`}
       </pre>
       <p className="text-xs text-muted mt-2">
-        No security warnings. Auto-updates with{" "}
-        <code className="bg-neutral-100 px-1">brew upgrade</code>.
+        {messages.homebrewNote}
       </p>
     </FadeIn>
   );
 }
 
-export function NpmPackageSection() {
+export function NpmPackageSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }) {
+  const messages = getMessages(locale).download;
   const packageUrl = blobUrl(npmTarballFile);
 
   return (
     <FadeIn className="mt-10 pt-8 border-t border-border max-w-2xl">
-      <h2 className="text-sm font-medium mb-3">NPM package</h2>
+      <h2 className="text-sm font-medium mb-3">{messages.npmPackage}</h2>
       <div className="text-sm text-muted space-y-4">
-        <p>Latest tarball of <code className="bg-neutral-100 px-1">@lmms-lab/writer-shared</code>:</p>
+        <p>
+          {messages.latestTarball} <code className="bg-neutral-100 px-1">@lmms-lab/writer-shared</code>:
+        </p>
         <Link
           href={packageUrl}
           className="flex items-center justify-between gap-3 p-3 border border-border hover:border-black transition-colors"
@@ -243,7 +339,8 @@ export function NpmPackageSection() {
   );
 }
 
-export function InstallationSection() {
+export function InstallationSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }) {
+  const messages = getMessages(locale).download;
   const [detectedPlatform, setDetectedPlatform] = useState<Platform>("unknown");
 
   useEffect(() => {
@@ -253,19 +350,17 @@ export function InstallationSection() {
   if (detectedPlatform === "Windows") {
     return (
       <FadeIn className="mt-10 pt-8 border-t border-border max-w-2xl">
-        <h2 className="text-sm font-medium mb-3">Installation</h2>
+        <h2 className="text-sm font-medium mb-3">{messages.installation}</h2>
         <div className="text-sm text-muted space-y-4">
           <div className="bg-neutral-50 border border-border p-4 space-y-3">
-            <p className="font-medium text-foreground">To install:</p>
+            <p className="font-medium text-foreground">{messages.windowsInstallIntro}</p>
             <ol className="list-decimal list-inside space-y-2">
-              <li>Download the .msi file</li>
-              <li>Double-click to run the installer</li>
-              <li>Follow the installation wizard</li>
+              <li>{messages.windowsStep1}</li>
+              <li>{messages.windowsStep2}</li>
+              <li>{messages.windowsStep3}</li>
             </ol>
           </div>
-          <p className="text-xs">
-            Windows may show a SmartScreen warning. Click &quot;More info&quot; then &quot;Run anyway&quot; to proceed.
-          </p>
+          <p className="text-xs">{messages.windowsWarning}</p>
         </div>
       </FadeIn>
     );
@@ -273,17 +368,14 @@ export function InstallationSection() {
 
   return (
     <FadeIn className="mt-10 pt-8 border-t border-border max-w-2xl">
-      <h2 className="text-sm font-medium mb-3">Manual Installation</h2>
+      <h2 className="text-sm font-medium mb-3">{messages.manualInstallation}</h2>
       <div className="text-sm text-muted space-y-4">
-        <p>
-          This build is not notarized yet. If macOS blocks the installer, use
-          the terminal commands below.
-        </p>
+        <p>{messages.notNotarized}</p>
         <div className="bg-neutral-50 border border-border p-4 space-y-3">
-          <p className="font-medium text-foreground">Install from DMG (recommended):</p>
+          <p className="font-medium text-foreground">{messages.installFromDmg}</p>
           <ol className="list-decimal list-inside space-y-2">
-            <li>Download the .dmg file</li>
-            <li>Run in Terminal:</li>
+            <li>{messages.dmgStep1}</li>
+            <li>{messages.dmgStep2}</li>
           </ol>
           <pre className="bg-white p-3 overflow-x-auto border border-border text-xs">
             {`xattr -cr ~/Downloads/LMMs-Lab\\ Writer_*.dmg
@@ -294,29 +386,26 @@ hdiutil detach "/Volumes/LMMs-Lab Writer"`}
           </pre>
         </div>
         <div className="bg-neutral-50 border border-border p-4 space-y-3">
-          <p className="font-medium text-foreground">Install from PKG (CLI):</p>
+          <p className="font-medium text-foreground">{messages.installFromPkg}</p>
           <pre className="bg-white p-3 overflow-x-auto border border-border text-xs">
             {`xattr -cr ~/Downloads/LMMs-Lab_Writer_*.pkg
 sudo installer -pkg ~/Downloads/LMMs-Lab_Writer_*.pkg -target / -allowUntrusted`}
           </pre>
           <p className="text-xs">
-            <code className="bg-neutral-100 px-1">-allowUntrusted</code> is
-            required because PKG is not Developer ID signed yet.
+            <code className="bg-neutral-100 px-1">-allowUntrusted</code> {messages.pkgUntrustedNote}
           </p>
         </div>
         <details className="cursor-pointer">
           <summary className="font-medium text-foreground hover:underline">
-            Alternative: Right-click method
+            {messages.alternativeMethod}
           </summary>
           <ol className="mt-2 list-decimal list-inside space-y-2 text-sm">
             <li>
-              <span className="font-medium">Right-click</span> the downloaded
-              file and select <span className="font-medium">Open</span>
+              <span className="font-medium">{messages.altStep1Prefix}</span>{" "}
+              {messages.altStep1Action} <span className="font-medium">{messages.altStep1Open}</span>
             </li>
-            <li>
-              Click <span className="font-medium">Open</span> in the dialog
-            </li>
-            <li>Finish installation (or drag app to Applications for DMG)</li>
+            <li>{messages.altStep2}</li>
+            <li>{messages.altStep3}</li>
           </ol>
         </details>
       </div>
@@ -324,7 +413,8 @@ sudo installer -pkg ~/Downloads/LMMs-Lab_Writer_*.pkg -target / -allowUntrusted`
   );
 }
 
-export function RequirementsSection() {
+export function RequirementsSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }) {
+  const messages = getMessages(locale).download;
   const [detectedPlatform, setDetectedPlatform] = useState<Platform>("unknown");
 
   useEffect(() => {
@@ -333,10 +423,10 @@ export function RequirementsSection() {
 
   return (
     <FadeIn className="mt-10 pt-8 border-t border-border max-w-2xl">
-      <h2 className="text-sm font-medium mb-3">Requirements</h2>
+      <h2 className="text-sm font-medium mb-3">{messages.requirements}</h2>
       <ul className="text-sm text-muted space-y-1">
         <li>
-          LaTeX distribution (
+          {messages.latexDistribution} (
           {detectedPlatform === "Windows" ? (
             <>
               <Link
@@ -392,16 +482,18 @@ export function RequirementsSection() {
           )}
           )
         </li>
-        <li>Git (optional, for version control)</li>
+        <li>{messages.gitOptional}</li>
       </ul>
     </FadeIn>
   );
 }
 
-export function BuildSection() {
+export function BuildSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }) {
+  const messages = getMessages(locale).download;
+
   return (
     <FadeIn className="mt-10 pt-8 border-t border-border max-w-2xl">
-      <h2 className="text-sm font-medium mb-3">Build from source</h2>
+      <h2 className="text-sm font-medium mb-3">{messages.buildFromSource}</h2>
       <pre className="text-sm text-muted bg-neutral-50 p-4 overflow-x-auto border border-border">
         {`git clone https://github.com/EvolvingLMMs-Lab/lmms-lab-writer.git
 cd lmms-lab-writer
@@ -416,28 +508,33 @@ export function InksGate({
   inks,
   requiredInks,
   isLoggedIn,
+  locale = DEFAULT_LOCALE,
 }: {
   inks: number;
   requiredInks: number;
   isLoggedIn: boolean;
+  locale?: Locale;
 }) {
+  const messages = getMessages(locale).download;
   const progressPercent = Math.min((inks / requiredInks) * 100, 100);
 
   return (
     <FadeIn className="max-w-2xl">
       <div className="border-2 border-dashed border-neutral-300 p-8">
         <h2 className="text-xl font-medium mb-2">
-          {requiredInks} inks required to download
+          {interpolate(messages.inksGateTitle, { requiredInks })}
         </h2>
         <p className="text-sm text-muted mb-6">
-          Star top {GITHUB_CONFIG.MAX_ELIGIBLE_REPOS} repos to earn inks. 1 repo
-          = {GITHUB_CONFIG.INKS_PER_STAR} inks.
+          {interpolate(messages.inksGateDescription, {
+            maxRepos: GITHUB_CONFIG.MAX_ELIGIBLE_REPOS,
+            inksPerStar: GITHUB_CONFIG.INKS_PER_STAR,
+          })}
         </p>
 
         {isLoggedIn && (
           <div className="mb-6">
             <div className="flex items-center justify-between text-sm mb-2">
-              <span className="text-muted">Your inks</span>
+              <span className="text-muted">{messages.yourInks}</span>
               <span className="font-mono">{inks} inks</span>
             </div>
             <div className="w-full h-2 bg-neutral-100 border border-neutral-200">
@@ -450,12 +547,8 @@ export function InksGate({
         )}
 
         <div className="border border-black bg-neutral-50 p-4 mb-6">
-          <p className="text-sm font-medium mb-1">Beta users: Permanent inks</p>
-          <p className="text-xs text-muted">
-            Inks earned during beta never expire. After public launch, the app
-            will be free to download, but premium AI features will consume inks
-            daily. Lock in your inks now.
-          </p>
+          <p className="text-sm font-medium mb-1">{messages.betaUsersTitle}</p>
+          <p className="text-xs text-muted">{messages.betaUsersDescription}</p>
         </div>
 
         {isLoggedIn ? (
@@ -463,20 +556,21 @@ export function InksGate({
             href="/profile#earn-inks"
             className="inline-flex items-center gap-2 px-6 py-3 border-2 border-black text-sm font-mono uppercase tracking-wider hover:bg-neutral-100 transition-colors"
           >
-            Go to Profile to Earn Inks
+            {messages.goToProfile}
           </Link>
         ) : (
           <Link
             href="/login"
             className="inline-flex items-center gap-2 px-6 py-3 border-2 border-black text-sm font-mono uppercase tracking-wider hover:bg-neutral-100 transition-colors"
           >
-            Sign in to Get Started
+            {messages.signInToGetStarted}
           </Link>
         )}
 
         <p className="text-xs text-muted mt-4">
-          Star {Math.ceil(requiredInks / GITHUB_CONFIG.INKS_PER_STAR)} repos to
-          earn enough inks
+          {interpolate(messages.starEnoughInks, {
+            repoCount: Math.ceil(requiredInks / GITHUB_CONFIG.INKS_PER_STAR),
+          })}
         </p>
       </div>
     </FadeIn>
