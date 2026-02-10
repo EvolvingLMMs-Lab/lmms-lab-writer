@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Github } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Github, ChevronDown, Globe } from "lucide-react";
 
 import { UserDropdown } from "@/components/user-dropdown";
 import { getUserCacheFromCookie, type CachedUser } from "@/lib/user-cache";
@@ -35,27 +35,56 @@ function LanguageSwitcher({
   label: string;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const basePath = stripLocalePrefix(pathname || "/");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function handleSelect(targetLocale: Locale) {
+    setLocaleCookie(targetLocale);
+    setOpen(false);
+    router.push(withLocalePrefix(basePath, targetLocale));
+  }
 
   return (
-    <div className="hidden sm:flex items-center border border-border text-xs">
-      <span className="sr-only">{label}</span>
-      {SUPPORTED_LOCALES.map((targetLocale) => (
-        <Link
-          key={targetLocale}
-          href={withLocalePrefix(basePath, targetLocale)}
-          onClick={() => setLocaleCookie(targetLocale)}
-          className={`px-2.5 py-1 border-r border-border last:border-r-0 transition-colors ${
-            targetLocale === locale
-              ? "bg-foreground text-white"
-              : "text-muted hover:text-foreground hover:bg-neutral-100"
-          }`}
-          aria-current={targetLocale === locale ? "page" : undefined}
-          prefetch={true}
-        >
-          {LOCALE_LABELS[targetLocale]}
-        </Link>
-      ))}
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 border border-border text-xs text-muted hover:text-foreground hover:bg-neutral-100 transition-colors"
+        aria-label={label}
+      >
+        <Globe className="w-3.5 h-3.5" />
+        <span>{LOCALE_LABELS[locale]}</span>
+        <ChevronDown className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1 min-w-[7rem] bg-white border border-border shadow-[2px_2px_0_0_rgba(0,0,0,1)] z-50">
+          {SUPPORTED_LOCALES.map((targetLocale) => (
+            <button
+              key={targetLocale}
+              onClick={() => handleSelect(targetLocale)}
+              className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                targetLocale === locale
+                  ? "bg-foreground text-white"
+                  : "text-muted hover:text-foreground hover:bg-neutral-100"
+              }`}
+            >
+              {LOCALE_LABELS[targetLocale]}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
