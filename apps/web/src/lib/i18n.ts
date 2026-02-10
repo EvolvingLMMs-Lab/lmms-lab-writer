@@ -77,7 +77,7 @@ export function interpolate(
   return output;
 }
 
-const LOCALE_COOKIE = "locale";
+export const LOCALE_COOKIE = "locale";
 
 export function getLocaleCookie(): Locale {
   if (typeof document === "undefined") return DEFAULT_LOCALE;
@@ -98,6 +98,34 @@ export async function getServerLocale(): Promise<Locale> {
   const cookieStore = await cookies();
   const value = cookieStore.get(LOCALE_COOKIE)?.value;
   return value && isLocale(value) ? value : DEFAULT_LOCALE;
+}
+
+/**
+ * Parse the Accept-Language header and return the best matching locale.
+ * e.g. "zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7" → "zh"
+ */
+export function localeFromAcceptLanguage(header: string | null): Locale {
+  if (!header) return DEFAULT_LOCALE;
+
+  const entries = header
+    .split(",")
+    .map((part) => {
+      const [rawLang, qPart] = part.trim().split(";");
+      const lang = rawLang?.trim().toLowerCase() ?? "";
+      const q = qPart ? parseFloat(qPart.replace("q=", "")) : 1;
+      return { lang, q };
+    })
+    .sort((a, b) => b.q - a.q);
+
+  for (const { lang } of entries) {
+    // exact match: "zh", "en", "ja"
+    if (isLocale(lang)) return lang;
+    // prefix match: "zh-cn" → "zh", "ja-jp" → "ja"
+    const prefix = lang.split("-")[0];
+    if (prefix && isLocale(prefix)) return prefix;
+  }
+
+  return DEFAULT_LOCALE;
 }
 
 export function detectLocale(pathname?: string): Locale {
