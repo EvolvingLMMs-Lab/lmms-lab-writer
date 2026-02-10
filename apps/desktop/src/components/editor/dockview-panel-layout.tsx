@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useState,
@@ -19,8 +21,9 @@ const PANEL_COMPONENT_ID = "workspace-panel-content";
 
 type PanelParams = {
   panelId: string;
-  content: ReactNode;
 };
+
+const PanelContentContext = createContext<Map<string, ReactNode>>(new Map());
 
 export type DockviewPanelItem = {
   id: string;
@@ -38,6 +41,15 @@ type DockviewPanelLayoutProps = {
   onApiReady?: (api: DockviewApi) => void;
 };
 
+function PanelContentRenderer({ params }: IDockviewPanelProps<PanelParams>) {
+  const contentMap = useContext(PanelContentContext);
+  return (
+    <div className="h-full min-h-0 overflow-hidden">
+      {contentMap.get(params.panelId) ?? null}
+    </div>
+  );
+}
+
 export function DockviewPanelLayout({
   panels,
   className = "",
@@ -47,21 +59,20 @@ export function DockviewPanelLayout({
 }: DockviewPanelLayoutProps) {
   const [api, setApi] = useState<DockviewApi | null>(null);
 
-  const PanelContent = useCallback(
-    ({ params }: IDockviewPanelProps<PanelParams>) => (
-      <div className="h-full min-h-0 overflow-hidden">
-        {params.content ?? null}
-      </div>
-    ),
+  const components = useMemo(
+    () => ({
+      [PANEL_COMPONENT_ID]: PanelContentRenderer,
+    }),
     [],
   );
 
-  const components = useMemo(
-    () => ({
-      [PANEL_COMPONENT_ID]: PanelContent,
-    }),
-    [PanelContent],
-  );
+  const contentMap = useMemo(() => {
+    const map = new Map<string, ReactNode>();
+    for (const panel of panels) {
+      map.set(panel.id, panel.content);
+    }
+    return map;
+  }, [panels]);
 
   const handleReady = useCallback(
     (event: DockviewReadyEvent) => {
@@ -101,10 +112,6 @@ export function DockviewPanelLayout({
         if ((existing.title ?? "") !== panel.title) {
           existing.api.setTitle(panel.title);
         }
-        existing.api.updateParameters({
-          panelId: panel.id,
-          content: panel.content,
-        });
         continue;
       }
 
@@ -115,7 +122,6 @@ export function DockviewPanelLayout({
           title: panel.title,
           params: {
             panelId: panel.id,
-            content: panel.content,
           },
           inactive: panel.inactive ?? true,
         });
@@ -131,7 +137,6 @@ export function DockviewPanelLayout({
         title: panel.title,
         params: {
           panelId: panel.id,
-          content: panel.content,
         },
         inactive: panel.inactive ?? true,
         position:
@@ -149,16 +154,18 @@ export function DockviewPanelLayout({
   }, [api, activePanelId]);
 
   return (
-    <DockviewReact
-      className={`h-full w-full dockview-theme-light ${className}`}
-      components={components}
-      onReady={handleReady}
-      hideBorders={false}
-      disableFloatingGroups
-      singleTabMode="default"
-      noPanelsOverlay="emptyGroup"
-      scrollbars="native"
-      disableTabsOverflowList
-    />
+    <PanelContentContext.Provider value={contentMap}>
+      <DockviewReact
+        className={`h-full w-full dockview-theme-light ${className}`}
+        components={components}
+        onReady={handleReady}
+        hideBorders={false}
+        disableFloatingGroups
+        singleTabMode="default"
+        noPanelsOverlay="emptyGroup"
+        scrollbars="native"
+        disableTabsOverflowList
+      />
+    </PanelContentContext.Provider>
   );
 }
