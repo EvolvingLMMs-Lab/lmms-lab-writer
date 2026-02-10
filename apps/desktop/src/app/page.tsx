@@ -374,6 +374,8 @@ const MIN_PANEL_WIDTH = 200;
 const MAX_SIDEBAR_WIDTH = 480;
 const MIN_TERMINAL_HEIGHT = 120;
 const MAX_TERMINAL_HEIGHT_RATIO = 0.5;
+const MIN_HEADER_HEIGHT = 48;
+const MAX_HEADER_HEIGHT = 120;
 
 export default function EditorPage() {
   const editorSettings = useEditorSettings();
@@ -418,7 +420,14 @@ export default function EditorPage() {
     }
     return 224;
   });
-  const [resizing, setResizing] = useState<"sidebar" | "right" | "bottom" | null>(null);
+  const [headerHeight, setHeaderHeight] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("headerHeight");
+      return saved ? parseInt(saved, 10) : 72;
+    }
+    return 72;
+  });
+  const [resizing, setResizing] = useState<"sidebar" | "right" | "bottom" | "header" | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"files" | "git">("files");
   const [highlightedFile, _setHighlightedFile] = useState<string | null>(null);
 
@@ -459,6 +468,7 @@ export default function EditorPage() {
   const sidebarWidthRef = useRef(sidebarWidth);
   const rightPanelWidthRef = useRef(rightPanelWidth);
   const terminalHeightRef = useRef(terminalHeight);
+  const headerHeightRef = useRef(headerHeight);
   const rafIdRef = useRef<number | null>(null);
 
   const gitStatus = daemon.gitStatus;
@@ -745,6 +755,10 @@ The AI assistant will read and update this file during compilation.
   }, [terminalHeight]);
 
   useEffect(() => {
+    localStorage.setItem("headerHeight", String(headerHeight));
+  }, [headerHeight]);
+
+  useEffect(() => {
     checkOpencodeStatus();
   }, [checkOpencodeStatus]);
 
@@ -779,11 +793,12 @@ The AI assistant will read and update this file during compilation.
   }, []);
 
   const startResize = useCallback(
-    (panel: "sidebar" | "right" | "bottom") => {
+    (panel: "sidebar" | "right" | "bottom" | "header") => {
       setResizing(panel);
       sidebarWidthRef.current = sidebarWidth;
       rightPanelWidthRef.current = rightPanelWidth;
       terminalHeightRef.current = terminalHeight;
+      headerHeightRef.current = headerHeight;
       document.documentElement.style.setProperty(
         "--sidebar-width",
         `${sidebarWidth}px`,
@@ -796,11 +811,15 @@ The AI assistant will read and update this file during compilation.
         "--terminal-height",
         `${terminalHeight}px`,
       );
+      document.documentElement.style.setProperty(
+        "--header-height",
+        `${headerHeight}px`,
+      );
     },
-    [sidebarWidth, rightPanelWidth, terminalHeight],
+    [sidebarWidth, rightPanelWidth, terminalHeight, headerHeight],
   );
 
-  const handleResizeDrag = useCallback((panel: "sidebar" | "right" | "bottom", info: PanInfo) => {
+  const handleResizeDrag = useCallback((panel: "sidebar" | "right" | "bottom" | "header", info: PanInfo) => {
     if (rafIdRef.current !== null) return;
 
     rafIdRef.current = requestAnimationFrame(() => {
@@ -825,7 +844,7 @@ The AI assistant will read and update this file during compilation.
           "--right-panel-width",
           `${newWidth}px`,
         );
-      } else {
+      } else if (panel === "bottom") {
         const maxHeight = Math.floor(window.innerHeight * MAX_TERMINAL_HEIGHT_RATIO);
         const newHeight = Math.min(
           Math.max(window.innerHeight - info.point.y, MIN_TERMINAL_HEIGHT),
@@ -834,6 +853,16 @@ The AI assistant will read and update this file during compilation.
         terminalHeightRef.current = newHeight;
         document.documentElement.style.setProperty(
           "--terminal-height",
+          `${newHeight}px`,
+        );
+      } else if (panel === "header") {
+        const newHeight = Math.min(
+          Math.max(info.point.y, MIN_HEADER_HEIGHT),
+          MAX_HEADER_HEIGHT,
+        );
+        headerHeightRef.current = newHeight;
+        document.documentElement.style.setProperty(
+          "--header-height",
           `${newHeight}px`,
         );
       }
@@ -849,9 +878,11 @@ The AI assistant will read and update this file during compilation.
     setSidebarWidth(sidebarWidthRef.current);
     setRightPanelWidth(rightPanelWidthRef.current);
     setTerminalHeight(terminalHeightRef.current);
+    setHeaderHeight(headerHeightRef.current);
     document.documentElement.style.removeProperty("--sidebar-width");
     document.documentElement.style.removeProperty("--right-panel-width");
     document.documentElement.style.removeProperty("--terminal-height");
+    document.documentElement.style.removeProperty("--header-height");
     setResizing(null);
   }, []);
 
@@ -1752,133 +1783,162 @@ The AI assistant will read and update this file during compilation.
 
   return (
     <div className="h-dvh flex flex-col">
-      <header className="border-b border-border flex-shrink-0 h-[72px] flex items-center">
-        <div className="w-full px-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              onClick={() => {
-                import("@tauri-apps/plugin-shell").then(({ open }) => {
-                  open("https://writer.lmms-lab.com");
-                });
-              }}
-              className="hover:opacity-70 transition-opacity flex items-center"
-              title="Visit writer.lmms-lab.com"
-              aria-label="Open LMMs-Lab website"
-            >
-              <img
-                src="/logo-small-light.svg"
-                alt="LMMs-Lab Writer"
-                className="h-7 w-auto dark:hidden"
-              />
-              <img
-                src="/logo-small-dark.svg"
-                alt="LMMs-Lab Writer"
-                className="h-7 w-auto hidden dark:block"
-              />
-            </button>
-            <span className="text-border">/</span>
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="text-sm font-medium px-2 py-1 -ml-2 truncate">
-                {daemon.projectPath
-                  ? pathSync.basename(daemon.projectPath)
-                  : "LMMs-Lab Writer"}
+      <div className="flex-shrink-0 flex flex-col">
+        <header
+          style={{
+            height:
+              resizing === "header"
+                ? "var(--header-height)"
+                : headerHeight,
+            willChange: resizing === "header" ? "height" : undefined,
+          }}
+          className="border-b border-border flex items-center"
+        >
+          <div className="w-full px-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                onClick={() => {
+                  import("@tauri-apps/plugin-shell").then(({ open }) => {
+                    open("https://writer.lmms-lab.com");
+                  });
+                }}
+                className="hover:opacity-70 transition-opacity flex items-center"
+                title="Visit writer.lmms-lab.com"
+                aria-label="Open LMMs-Lab website"
+              >
+                <img
+                  src="/logo-small-light.svg"
+                  alt="LMMs-Lab Writer"
+                  className="h-7 w-auto dark:hidden"
+                />
+                <img
+                  src="/logo-small-dark.svg"
+                  alt="LMMs-Lab Writer"
+                  className="h-7 w-auto hidden dark:block"
+                />
+              </button>
+              <span className="text-border">/</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="text-sm font-medium px-2 py-1 -ml-2 truncate">
+                  {daemon.projectPath
+                    ? pathSync.basename(daemon.projectPath)
+                    : "LMMs-Lab Writer"}
+                </div>
+                {isSaving && (
+                  <span className="text-xs text-muted shrink-0">Saving...</span>
+                )}
               </div>
-              {isSaving && (
-                <span className="text-xs text-muted shrink-0">Saving...</span>
+            </div>
+
+            <div className="flex items-center gap-3 h-8">
+              {daemon.projectPath && (
+                <button
+                  onClick={() => setShowSidebar((prev) => !prev)}
+                  className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-background text-foreground ${
+                    showSidebar
+                      ? "border-foreground"
+                      : "hover:bg-accent-hover hover:border-border-dark"
+                  }`}
+                  title="Toggle Sidebar"
+                >
+                  <SidebarSimpleIcon className="size-4" weight="bold" />
+                </button>
+              )}
+
+              {daemon.projectPath && (
+                <button
+                  onClick={() => setShowTerminal((prev) => !prev)}
+                  className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-background text-foreground ${
+                    showTerminal
+                      ? "border-foreground"
+                      : "hover:bg-accent-hover hover:border-border-dark"
+                  }`}
+                  title="Toggle Terminal"
+                >
+                  <TerminalIcon className="size-4" weight="bold" />
+                </button>
+              )}
+
+              <button
+                onClick={handleToggleRightPanel}
+                className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-background text-foreground ${
+                  showRightPanel
+                    ? "border-foreground"
+                    : "hover:bg-accent-hover hover:border-border-dark"
+                }`}
+                title="Toggle Agent Mode"
+              >
+                <RobotIcon className="size-4" weight="bold" />
+              </button>
+
+              {daemon.projectPath && (
+                <>
+                  <span className="text-border text-lg select-none">/</span>
+                  <div className="flex items-center gap-2 h-8">
+                    <button
+                      onClick={handleCompileWithDetection}
+                      disabled={latexSettings.isDetecting}
+                      className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-background text-foreground ${
+                        latexSettings.isDetecting
+                          ? "opacity-50 cursor-not-allowed"
+                          : "hover:bg-accent-hover hover:border-border-dark"
+                      }`}
+                      title="Compile (Ctrl+Shift+B)"
+                    >
+                      <PlayCircleIcon className="size-4" />
+                    </button>
+
+                    <button
+                      onClick={() => setShowLatexSettings(true)}
+                      className="h-8 w-8 border border-border bg-background text-foreground hover:bg-accent-hover hover:border-border-dark transition-colors flex items-center justify-center"
+                      title="LaTeX Settings"
+                      aria-label="LaTeX Settings"
+                    >
+                      <GearIcon className="size-4" />
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {!auth.loading && (
+                <>
+                  <span className="text-border text-lg select-none">/</span>
+                  {auth.profile ? (
+                    <UserDropdown profile={auth.profile} />
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setShowLoginCodeModal(true);
+                      }}
+                      className="h-8 px-3 text-sm border-2 border-foreground bg-background text-foreground shadow-[3px_3px_0_0_var(--foreground)] hover:shadow-[1px_1px_0_0_var(--foreground)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center"
+                    >
+                      Login
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
-
-          <div className="flex items-center gap-3 h-8">
-            {daemon.projectPath && (
-              <button
-                onClick={() => setShowSidebar((prev) => !prev)}
-                className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-background text-foreground ${
-                  showSidebar
-                    ? "border-foreground"
-                    : "hover:bg-accent-hover hover:border-border-dark"
-                }`}
-                title="Toggle Sidebar"
-              >
-                <SidebarSimpleIcon className="size-4" weight="bold" />
-              </button>
-            )}
-
-            {daemon.projectPath && (
-              <button
-                onClick={() => setShowTerminal((prev) => !prev)}
-                className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-background text-foreground ${
-                  showTerminal
-                    ? "border-foreground"
-                    : "hover:bg-accent-hover hover:border-border-dark"
-                }`}
-                title="Toggle Terminal"
-              >
-                <TerminalIcon className="size-4" weight="bold" />
-              </button>
-            )}
-
-            <button
-              onClick={handleToggleRightPanel}
-              className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-background text-foreground ${
-                showRightPanel
-                  ? "border-foreground"
-                  : "hover:bg-accent-hover hover:border-border-dark"
-              }`}
-              title="Toggle Agent Mode"
-            >
-              <RobotIcon className="size-4" weight="bold" />
-            </button>
-
-            {daemon.projectPath && (
-              <>
-                <span className="text-border text-lg select-none">/</span>
-                <div className="flex items-center gap-2 h-8">
-                  <button
-                    onClick={handleCompileWithDetection}
-                    disabled={latexSettings.isDetecting}
-                    className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-background text-foreground ${
-                      latexSettings.isDetecting
-                        ? "opacity-50 cursor-not-allowed"
-                        : "hover:bg-accent-hover hover:border-border-dark"
-                    }`}
-                    title="Compile (Ctrl+Shift+B)"
-                  >
-                    <PlayCircleIcon className="size-4" />
-                  </button>
-
-                  <button
-                    onClick={() => setShowLatexSettings(true)}
-                    className="h-8 w-8 border border-border bg-background text-foreground hover:bg-accent-hover hover:border-border-dark transition-colors flex items-center justify-center"
-                    title="LaTeX Settings"
-                    aria-label="LaTeX Settings"
-                  >
-                    <GearIcon className="size-4" />
-                  </button>
-                </div>
-              </>
-            )}
-
-            {!auth.loading && (
-              <>
-                <span className="text-border text-lg select-none">/</span>
-                {auth.profile ? (
-                  <UserDropdown profile={auth.profile} />
-                ) : (
-                  <button
-                    onClick={() => {
-                      setShowLoginCodeModal(true);
-                    }}
-                    className="h-8 px-3 text-sm border-2 border-foreground bg-background text-foreground shadow-[3px_3px_0_0_var(--foreground)] hover:shadow-[1px_1px_0_0_var(--foreground)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center"
-                  >
-                    Login
-                  </button>
-                )}
-              </>
-            )}
-          </div>
+        </header>
+        <div className="relative group h-1 flex-shrink-0">
+          <motion.div
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0}
+            dragMomentum={false}
+            onDragStart={() => startResize("header")}
+            onDrag={(event, info) =>
+              handleResizeDrag("header", info)
+            }
+            onDragEnd={endResize}
+            className="absolute inset-x-0 -top-1 -bottom-1 cursor-row-resize z-10"
+            style={{ y: 0 }}
+          />
+          <div
+            className={`w-full h-full transition-colors ${resizing === "header" ? "bg-foreground/20" : "group-hover:bg-foreground/20"}`}
+          />
         </div>
-      </header>
+      </div>
 
       <main className="flex-1 min-h-0 flex relative overflow-hidden">
         <AnimatePresence mode="wait">
