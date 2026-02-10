@@ -165,6 +165,7 @@ interface DownloadCopy {
   installViaHomebrew: string;
   recommendedTag: string;
   homebrewNote: string;
+  homebrewArchFallback: string;
   npmPackage: string;
   latestTarball: string;
   installation: string;
@@ -423,6 +424,8 @@ const MESSAGES: Record<Locale, WebMessages> = {
       recommendedTag: "Recommended",
       homebrewNote:
         "No security warnings. Auto-updates with brew upgrade.",
+      homebrewArchFallback:
+        "If Homebrew shows an architecture mismatch (for example Intel Mac), use the Intel (x64) DMG/PKG downloads below.",
       npmPackage: "NPM package",
       latestTarball:
         "Latest tarball of @lmms-lab/writer-shared:",
@@ -741,6 +744,8 @@ const MESSAGES: Record<Locale, WebMessages> = {
       installViaHomebrew: "通过 Homebrew 安装",
       recommendedTag: "推荐",
       homebrewNote: "无安全警告，可通过 brew upgrade 自动更新。",
+      homebrewArchFallback:
+        "如果 Homebrew 出现架构不匹配（例如 Intel Mac），请使用下方 Intel (x64) 的 DMG/PKG 下载包。",
       npmPackage: "NPM 包",
       latestTarball: "@lmms-lab/writer-shared 的最新 tarball：",
       installation: "安装",
@@ -1060,6 +1065,8 @@ const MESSAGES: Record<Locale, WebMessages> = {
       recommendedTag: "推奨",
       homebrewNote:
         "セキュリティ警告なし。brew upgrade で自動更新できます。",
+      homebrewArchFallback:
+        "Homebrew でアーキテクチャ不一致（Intel Mac など）が出る場合は、下の Intel (x64) DMG/PKG を使ってください。",
       npmPackage: "NPM パッケージ",
       latestTarball:
         "@lmms-lab/writer-shared の最新 tarball:",

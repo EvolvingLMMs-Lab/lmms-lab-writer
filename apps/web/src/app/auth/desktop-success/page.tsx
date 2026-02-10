@@ -4,8 +4,23 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useLocale } from "@/lib/useLocale";
 import { getMessages } from "@/lib/messages";
+import { createClient as createStandardClient } from "@supabase/supabase-js";
 
 type CallbackStatus = "pending" | "sending" | "sent" | "failed";
+
+function createDesktopSupabaseClient() {
+  return createStandardClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        flowType: "pkce",
+        persistSession: true,
+        storage: window.localStorage,
+      },
+    },
+  );
+}
 
 function DesktopSuccessContent() {
   const searchParams = useSearchParams();
@@ -21,13 +36,17 @@ function DesktopSuccessContent() {
   useEffect(() => {
     const portFromUrl = searchParams.get("callback_port");
     const portFromStorage = sessionStorage.getItem("auth_callback_port");
-    const port = portFromUrl || portFromStorage;
+    const portFromLocalStorage = localStorage.getItem("auth_callback_port");
+    const port = portFromUrl || portFromStorage || portFromLocalStorage;
 
     if (port) {
       setCallbackPort(port);
       // Clean up sessionStorage after reading
       if (portFromStorage) {
         sessionStorage.removeItem("auth_callback_port");
+      }
+      if (portFromLocalStorage) {
+        localStorage.removeItem("auth_callback_port");
       }
     }
   }, [searchParams]);
@@ -46,9 +65,31 @@ function DesktopSuccessContent() {
       // Check for PKCE code in query params (PKCE flow)
       const authCode = searchParams.get("code");
       if (authCode) {
+        // Preferred path: let Supabase exchange code using internally managed PKCE verifier.
+        try {
+          const supabase = createDesktopSupabaseClient();
+          const { data, error: exchangeError } =
+            await supabase.auth.exchangeCodeForSession(authCode);
 
-        // Find the code_verifier in localStorage
-        const allKeys = Object.keys(localStorage);
+          if (!exchangeError && data.session?.access_token && data.session.refresh_token) {
+            const code = btoa(
+              JSON.stringify({
+                accessToken: data.session.access_token,
+                refreshToken: data.session.refresh_token,
+              }),
+            );
+            setLoginCode(code);
+            return;
+          }
+        } catch {
+          // Continue to legacy fallback below
+        }
+
+        // Legacy fallback: read code_verifier manually from storage
+        const allKeys = [
+          ...Object.keys(localStorage),
+          ...Object.keys(sessionStorage),
+        ];
 
         const codeVerifierKey = allKeys.find(k => k.includes('code-verifier'));
         if (!codeVerifierKey) {
@@ -56,7 +97,9 @@ function DesktopSuccessContent() {
           return;
         }
 
-        const codeVerifierRaw = localStorage.getItem(codeVerifierKey);
+        const codeVerifierRaw =
+          localStorage.getItem(codeVerifierKey) ||
+          sessionStorage.getItem(codeVerifierKey);
 
         // Parse the code_verifier (it's stored as JSON string)
         let codeVerifier: string;
@@ -102,6 +145,7 @@ function DesktopSuccessContent() {
 
           // Clear the code_verifier from storage
           localStorage.removeItem(codeVerifierKey);
+          sessionStorage.removeItem(codeVerifierKey);
 
           setLoginCode(code);
           return;
