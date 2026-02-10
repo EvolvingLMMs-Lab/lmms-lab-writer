@@ -2,11 +2,15 @@
 
 import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "@/lib/useLocale";
+import { getMessages } from "@/lib/messages";
 
 export function RefreshStarsButton() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const locale = useLocale();
+  const t = getMessages(locale);
 
   const handleRefresh = async () => {
     try {
@@ -41,7 +45,7 @@ export function RefreshStarsButton() {
         onClick={handleRefresh}
         disabled={loading}
         className="text-xs text-muted hover:text-black transition-colors disabled:opacity-50 flex items-center gap-1"
-        title={error || "Refresh star status"}
+        title={error || t.profile.refreshStarStatus}
       >
         <svg
           className={`size-3.5 ${loading ? "animate-spin" : ""}`}
@@ -56,7 +60,7 @@ export function RefreshStarsButton() {
             d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
           />
         </svg>
-        {loading ? "Refreshing..." : "Refresh"}
+        {loading ? t.profile.refreshing : t.profile.refresh}
       </button>
       {error && (
         <span className="text-xs text-red-600" title={error}>

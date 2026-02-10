@@ -5,12 +5,16 @@ import { useSearchParams } from "next/navigation";
 import { Github } from "lucide-react";
 import { createClient as createSSRClient } from "@/lib/supabase/client";
 import { createClient as createStandardClient } from "@supabase/supabase-js";
+import { useLocale } from "@/lib/useLocale";
+import { getMessages } from "@/lib/messages";
 
 export function LoginForm() {
   const searchParams = useSearchParams();
   const source = searchParams.get("source");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const locale = useLocale();
+  const t = getMessages(locale);
 
   // Get appropriate Supabase client based on flow
   const getSupabaseClient = () => {
@@ -100,13 +104,13 @@ export function LoginForm() {
         className="btn btn-secondary w-full"
       >
         <Github className="w-4 h-4" />
-        {loading ? "Connecting..." : "Continue with GitHub"}
+        {loading ? t.auth.connecting : t.auth.continueWithGitHub}
       </button>
 
       {error && <p className="text-sm text-red-600 mt-4">{error}</p>}
 
       <p className="text-xs text-muted text-center mt-6">
-        GitHub account required to track starred repositories and earn inks.
+        {t.auth.githubAccountRequired}
       </p>
     </>
   );

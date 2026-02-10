@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { m } from "framer-motion";
+import { useLocale } from "@/lib/useLocale";
+import { getMessages } from "@/lib/messages";
 
 const SignupForm = dynamic(
   () => import("@/components/auth/signup-form").then((m) => m.SignupForm),
@@ -24,6 +26,9 @@ const fadeIn = {
 };
 
 export default function SignupPage() {
+  const locale = useLocale();
+  const t = getMessages(locale);
+
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
@@ -33,7 +38,7 @@ export default function SignupPage() {
             className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground mb-8"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to home
+            {t.auth.backToHome}
           </Link>
         </m.div>
 
@@ -44,7 +49,7 @@ export default function SignupPage() {
           custom={0.1}
           variants={fadeIn}
         >
-          Create an account
+          {t.auth.createAccount}
         </m.h1>
         <m.p
           className="text-sm text-muted mb-8"
@@ -53,7 +58,7 @@ export default function SignupPage() {
           custom={0.15}
           variants={fadeIn}
         >
-          Create an account with GitHub to get started.
+          {t.auth.createAccountDescription}
         </m.p>
 
         <m.div

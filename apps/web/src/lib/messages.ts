@@ -38,6 +38,8 @@ interface HomeCopy {
   featuresSubtitle: string;
   tapToZoom: string;
   features: HomeFeatureCopy[];
+  videoTitle: string;
+  videoSubtitle: string;
   demoTitle: string;
   demoSubtitle: string;
   comparisonTitle: string;
@@ -61,6 +63,81 @@ interface DocsCopy {
   sections: DocsSectionCopy[];
   backToDocs: string;
   notFound: string;
+}
+
+interface CommonCopy {
+  loading: string;
+}
+
+interface AuthCopy {
+  backToHome: string;
+  signIn: string;
+  signInDescription: string;
+  createAccount: string;
+  createAccountDescription: string;
+  checkingLoginStatus: string;
+  connecting: string;
+  continueWithGitHub: string;
+  connectGitHub: string;
+  githubAccountRequired: string;
+  alreadyHaveAccount: string;
+  signInLink: string;
+}
+
+interface UserDropdownCopy {
+  inks: string;
+  download: string;
+  earnMore: string;
+  signingOut: string;
+  signOut: string;
+}
+
+interface ProfileCopy {
+  title: string;
+  joined: string;
+  justNow: string;
+  hoursAgo: string;
+  yesterday: string;
+  daysAgo: string;
+  connectedAccounts: string;
+  accountDetails: string;
+  userId: string;
+  email: string;
+  registered: string;
+  lastSignIn: string;
+  inksTitle: string;
+  betaInksNeverExpire: string;
+  readyToDownload: string;
+  moreInksToUnlock: string;
+  earnInks: string;
+  earnInksArrow: string;
+  starTopRepos: string;
+  earnInksTitle: string;
+  refresh: string;
+  refreshing: string;
+  refreshStarStatus: string;
+  connectGitHubTitle: string;
+  connectGitHubDescription: string;
+  recommended: string;
+  starred: string;
+  star: string;
+  starTopReposFooter: string;
+}
+
+interface DesktopSuccessCopy {
+  loginFailed: string;
+  tryAgain: string;
+  loginSuccessful: string;
+  loggedIn: string;
+  sendingCode: string;
+  codeSent: string;
+  copyCodePrompt: string;
+  copyCode: string;
+  copied: string;
+  codeManualCopy: string;
+  codeExpires: string;
+  returnToDesktop: string;
+  closeWindow: string;
 }
 
 interface DownloadCopy {
@@ -124,15 +201,23 @@ interface DownloadCopy {
 }
 
 interface WebMessages {
+  common: CommonCopy;
   header: HeaderCopy;
   home: HomeCopy;
   footer: FooterCopy;
   docs: DocsCopy;
   download: DownloadCopy;
+  auth: AuthCopy;
+  userDropdown: UserDropdownCopy;
+  profile: ProfileCopy;
+  desktopSuccess: DesktopSuccessCopy;
 }
 
 const MESSAGES: Record<Locale, WebMessages> = {
   en: {
+    common: {
+      loading: "Loading...",
+    },
     header: {
       loading: "Loading",
       getStarted: "Get Started",
@@ -181,6 +266,8 @@ const MESSAGES: Record<Locale, WebMessages> = {
             "Runs natively on macOS and Windows. Built with Tauri for native performance - not an Electron wrapper.",
         },
       ],
+      videoTitle: "Demo Video",
+      videoSubtitle: "Watch LMMs-Lab Writer in action.",
       demoTitle: "See it in action.",
       demoSubtitle:
         "Every legendary paper started somewhere. Yours starts here.",
@@ -377,8 +464,87 @@ const MESSAGES: Record<Locale, WebMessages> = {
       starEnoughInks:
         "Star {repoCount} repos to earn enough inks",
     },
+    auth: {
+      backToHome: "Back to home",
+      signIn: "Sign in",
+      signInDescription: "Sign in with GitHub to access your account.",
+      createAccount: "Create an account",
+      createAccountDescription:
+        "Create an account with GitHub to get started.",
+      checkingLoginStatus: "Checking login status...",
+      connecting: "Connecting...",
+      continueWithGitHub: "Continue with GitHub",
+      connectGitHub: "Connect GitHub",
+      githubAccountRequired:
+        "GitHub account required to track starred repositories and earn inks.",
+      alreadyHaveAccount: "Already have an account?",
+      signInLink: "Sign in",
+    },
+    userDropdown: {
+      inks: "inks",
+      download: "Download",
+      earnMore: "Earn more \u2192",
+      signingOut: "Signing out...",
+      signOut: "Sign out",
+    },
+    profile: {
+      title: "Profile",
+      joined: "Joined {date}",
+      justNow: "Just now",
+      hoursAgo: "{hours}h ago",
+      yesterday: "Yesterday",
+      daysAgo: "{days} days ago",
+      connectedAccounts: "Connected Accounts",
+      accountDetails: "Account Details",
+      userId: "User ID",
+      email: "Email",
+      registered: "Registered",
+      lastSignIn: "Last Sign In",
+      inksTitle: "Inks",
+      betaInksNeverExpire: "Beta - Inks never expire",
+      readyToDownload: "Ready to download",
+      moreInksToUnlock: "{count} more inks to unlock download",
+      earnInks: "Earn inks",
+      earnInksArrow: "Earn inks \u2192",
+      starTopRepos:
+        "Star top {maxRepos} repos to earn inks. Need {requiredInks} inks to download.",
+      earnInksTitle: "Earn Inks",
+      refresh: "Refresh",
+      refreshing: "Refreshing...",
+      refreshStarStatus: "Refresh star status",
+      connectGitHubTitle: "Connect GitHub",
+      connectGitHubDescription:
+        "Link your GitHub account to track starred repos and earn inks.",
+      recommended: "Recommended",
+      starred: "Starred",
+      star: "Star",
+      starTopReposFooter:
+        "Star top {maxRepos} repos to earn inks | 1 repo = {inksPerStar} inks",
+    },
+    desktopSuccess: {
+      loginFailed: "Login Failed",
+      tryAgain: "Try Again",
+      loginSuccessful: "Login Successful!",
+      loggedIn: "Logged In!",
+      sendingCode: "Sending login code to desktop app...",
+      codeSent:
+        "Login code sent to desktop app. You can close this window.",
+      copyCodePrompt:
+        "Copy the login code below and paste it in the desktop app.",
+      copyCode: "Copy Code",
+      copied: "Copied!",
+      codeManualCopy: "You can also copy the code manually if needed.",
+      codeExpires:
+        "This code expires when your session expires. Get a new code if login fails.",
+      returnToDesktop: "Return to the desktop app to continue.",
+      closeWindow:
+        "You can close this window after pasting the code in the app.",
+    },
   },
   zh: {
+    common: {
+      loading: "加载中...",
+    },
     header: {
       loading: "加载中",
       getStarted: "开始使用",
@@ -427,6 +593,8 @@ const MESSAGES: Record<Locale, WebMessages> = {
             "原生支持 macOS 与 Windows。基于 Tauri，提供原生性能，而非 Electron 壳层。",
         },
       ],
+      videoTitle: "演示视频",
+      videoSubtitle: "观看 LMMs-Lab Writer 的实际操作演示。",
       demoTitle: "实际演示",
       demoSubtitle:
         "每一篇经典论文都始于某处，你的也从这里开始。",
@@ -612,8 +780,83 @@ const MESSAGES: Record<Locale, WebMessages> = {
       signInToGetStarted: "登录并开始",
       starEnoughInks: "给 {repoCount} 个仓库点 Star 即可获得足够 inks",
     },
+    auth: {
+      backToHome: "返回首页",
+      signIn: "登录",
+      signInDescription: "使用 GitHub 登录以访问你的账户。",
+      createAccount: "创建账户",
+      createAccountDescription: "使用 GitHub 创建账户并开始使用。",
+      checkingLoginStatus: "正在检查登录状态...",
+      connecting: "连接中...",
+      continueWithGitHub: "使用 GitHub 继续",
+      connectGitHub: "关联 GitHub",
+      githubAccountRequired:
+        "需要 GitHub 账户来跟踪 Star 的仓库并获取 inks。",
+      alreadyHaveAccount: "已有账户？",
+      signInLink: "登录",
+    },
+    userDropdown: {
+      inks: "inks",
+      download: "下载",
+      earnMore: "获取更多 \u2192",
+      signingOut: "正在退出...",
+      signOut: "退出登录",
+    },
+    profile: {
+      title: "个人资料",
+      joined: "加入于 {date}",
+      justNow: "刚刚",
+      hoursAgo: "{hours} 小时前",
+      yesterday: "昨天",
+      daysAgo: "{days} 天前",
+      connectedAccounts: "关联账户",
+      accountDetails: "账户详情",
+      userId: "用户 ID",
+      email: "邮箱",
+      registered: "注册时间",
+      lastSignIn: "上次登录",
+      inksTitle: "Inks",
+      betaInksNeverExpire: "Beta 期间 - Inks 永不过期",
+      readyToDownload: "可以下载",
+      moreInksToUnlock: "还需 {count} inks 解锁下载",
+      earnInks: "获取 inks",
+      earnInksArrow: "获取 inks \u2192",
+      starTopRepos:
+        "给前 {maxRepos} 个仓库点 Star 获取 inks。需要 {requiredInks} inks 才能下载。",
+      earnInksTitle: "获取 Inks",
+      refresh: "刷新",
+      refreshing: "刷新中...",
+      refreshStarStatus: "刷新 Star 状态",
+      connectGitHubTitle: "关联 GitHub",
+      connectGitHubDescription:
+        "关联你的 GitHub 账户以跟踪 Star 的仓库并获取 inks。",
+      recommended: "推荐",
+      starred: "已 Star",
+      star: "Star",
+      starTopReposFooter:
+        "给前 {maxRepos} 个仓库点 Star 获取 inks | 1 个仓库 = {inksPerStar} inks",
+    },
+    desktopSuccess: {
+      loginFailed: "登录失败",
+      tryAgain: "重试",
+      loginSuccessful: "登录成功！",
+      loggedIn: "已登录！",
+      sendingCode: "正在向桌面应用发送登录码...",
+      codeSent: "登录码已发送到桌面应用，你可以关闭此窗口。",
+      copyCodePrompt: "复制下方的登录码并粘贴到桌面应用中。",
+      copyCode: "复制代码",
+      copied: "已复制！",
+      codeManualCopy: "你也可以手动复制代码。",
+      codeExpires:
+        "此代码在会话过期时失效。如果登录失败，请获取新代码。",
+      returnToDesktop: "返回桌面应用继续操作。",
+      closeWindow: "在桌面应用中粘贴代码后即可关闭此窗口。",
+    },
   },
   ja: {
+    common: {
+      loading: "読み込み中...",
+    },
     header: {
       loading: "読み込み中",
       getStarted: "はじめる",
@@ -662,6 +905,8 @@ const MESSAGES: Record<Locale, WebMessages> = {
             "macOS と Windows でネイティブ動作。Electron ラッパーではなく、Tauri による高性能な実装です。",
         },
       ],
+      videoTitle: "デモ動画",
+      videoSubtitle: "LMMs-Lab Writer の動作をご覧ください。",
       demoTitle: "動作デモ",
       demoSubtitle: "名作論文も最初の一行から始まります。次はあなたの番です。",
       comparisonTitle: "まだ不便さを感じるのには理由があります。",
@@ -855,6 +1100,84 @@ const MESSAGES: Record<Locale, WebMessages> = {
       signInToGetStarted: "サインインして開始",
       starEnoughInks:
         "{repoCount} リポジトリに Star すると必要な inks を満たせます",
+    },
+    auth: {
+      backToHome: "ホームに戻る",
+      signIn: "サインイン",
+      signInDescription:
+        "GitHub でサインインしてアカウントにアクセスします。",
+      createAccount: "アカウント作成",
+      createAccountDescription:
+        "GitHub でアカウントを作成して始めましょう。",
+      checkingLoginStatus: "ログイン状態を確認中...",
+      connecting: "接続中...",
+      continueWithGitHub: "GitHub で続ける",
+      connectGitHub: "GitHub を連携",
+      githubAccountRequired:
+        "Star したリポジトリの追跡と inks の獲得には GitHub アカウントが必要です。",
+      alreadyHaveAccount: "アカウントをお持ちですか？",
+      signInLink: "サインイン",
+    },
+    userDropdown: {
+      inks: "inks",
+      download: "ダウンロード",
+      earnMore: "もっと獲得 \u2192",
+      signingOut: "サインアウト中...",
+      signOut: "サインアウト",
+    },
+    profile: {
+      title: "プロフィール",
+      joined: "{date} に参加",
+      justNow: "たった今",
+      hoursAgo: "{hours} 時間前",
+      yesterday: "昨日",
+      daysAgo: "{days} 日前",
+      connectedAccounts: "連携アカウント",
+      accountDetails: "アカウント詳細",
+      userId: "ユーザー ID",
+      email: "メール",
+      registered: "登録日",
+      lastSignIn: "最終サインイン",
+      inksTitle: "Inks",
+      betaInksNeverExpire: "ベータ期間 - Inks は失効しません",
+      readyToDownload: "ダウンロード可能",
+      moreInksToUnlock:
+        "ダウンロード解除まであと {count} inks",
+      earnInks: "inks を獲得",
+      earnInksArrow: "inks を獲得 \u2192",
+      starTopRepos:
+        "上位 {maxRepos} リポジトリに Star して inks を獲得。ダウンロードには {requiredInks} inks が必要です。",
+      earnInksTitle: "Inks を獲得",
+      refresh: "更新",
+      refreshing: "更新中...",
+      refreshStarStatus: "Star 状態を更新",
+      connectGitHubTitle: "GitHub を連携",
+      connectGitHubDescription:
+        "GitHub アカウントを連携して Star したリポジトリを追跡し、inks を獲得しましょう。",
+      recommended: "推奨",
+      starred: "Star 済み",
+      star: "Star",
+      starTopReposFooter:
+        "上位 {maxRepos} リポジトリに Star して inks を獲得 | 1 リポジトリ = {inksPerStar} inks",
+    },
+    desktopSuccess: {
+      loginFailed: "ログイン失敗",
+      tryAgain: "再試行",
+      loginSuccessful: "ログイン成功！",
+      loggedIn: "ログイン済み！",
+      sendingCode: "デスクトップアプリにログインコードを送信中...",
+      codeSent:
+        "ログインコードをデスクトップアプリに送信しました。このウィンドウを閉じてください。",
+      copyCodePrompt:
+        "下のログインコードをコピーしてデスクトップアプリに貼り付けてください。",
+      copyCode: "コードをコピー",
+      copied: "コピー済み！",
+      codeManualCopy: "手動でコードをコピーすることもできます。",
+      codeExpires:
+        "このコードはセッション終了時に失効します。ログインに失敗した場合は新しいコードを取得してください。",
+      returnToDesktop: "デスクトップアプリに戻って続行してください。",
+      closeWindow:
+        "アプリにコードを貼り付けた後、このウィンドウを閉じてください。",
     },
   },
 };

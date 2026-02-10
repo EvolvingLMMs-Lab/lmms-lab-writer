@@ -209,7 +209,7 @@ export function FeaturesSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }
 
   return (
     <section className="py-12 md:py-20 px-6 border-t border-border">
-      <div className="max-w-[clamp(64rem,65vw,85rem)] mx-auto">
+      <div className="max-w-5xl mx-auto">
         <FadeIn>
           <h2 className="text-2xl font-medium mb-2 text-center">
             {messages.home.featuresTitle}
@@ -372,6 +372,44 @@ export function FeaturesSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }
           </div>
         </FadeIn>
       </div>
+    </section>
+  );
+}
+
+export function VideoSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }) {
+  const messages = getMessages(locale);
+
+  return (
+    <section className="py-12 md:py-20 px-6 border-t border-border">
+      <FadeIn className="max-w-5xl mx-auto">
+        <h2 className="text-xl md:text-2xl font-medium mb-4 text-center">
+          {messages.home.videoTitle}
+        </h2>
+        <p className="text-base md:text-lg text-muted mb-8 md:mb-10 text-center">
+          {messages.home.videoSubtitle}
+        </p>
+        <div className="relative w-full overflow-hidden rounded-sm border border-border shadow-lg" style={{ paddingBottom: "56.25%" }}>
+          {locale === "zh" ? (
+            <iframe
+              className="absolute inset-0 w-full h-full"
+              src="//player.bilibili.com/player.html?isOutside=true&aid=116046207918071&bvid=BV1JpFQzbEL4&cid=35963929212&p=1"
+              title="LMMs-Lab Writer Demo"
+              scrolling="no"
+              frameBorder="no"
+              allowFullScreen
+            />
+          ) : (
+            <iframe
+              className="absolute inset-0 w-full h-full"
+              src="https://www.youtube.com/embed/KIj7kfkVvSs?si=br2z2qsQ2p7JlIj9"
+              title="LMMs-Lab Writer Demo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            />
+          )}
+        </div>
+      </FadeIn>
     </section>
   );
 }
