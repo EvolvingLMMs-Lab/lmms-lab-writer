@@ -2,6 +2,8 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useLocale } from "@/lib/useLocale";
+import { getMessages } from "@/lib/messages";
 
 type CallbackStatus = "pending" | "sending" | "sent" | "failed";
 
@@ -13,6 +15,8 @@ function DesktopSuccessContent() {
   const [callbackStatus, setCallbackStatus] = useState<CallbackStatus>("pending");
   // Get callback_port from URL or sessionStorage (OAuth flow loses URL params)
   const [callbackPort, setCallbackPort] = useState<string | null>(null);
+  const locale = useLocale();
+  const t = getMessages(locale);
 
   useEffect(() => {
     const portFromUrl = searchParams.get("callback_port");
@@ -202,13 +206,13 @@ function DesktopSuccessContent() {
               />
             </svg>
           </div>
-          <h1 className="text-xl font-medium mb-2">Login Failed</h1>
+          <h1 className="text-xl font-medium mb-2">{t.desktopSuccess.loginFailed}</h1>
           <p className="text-muted text-sm mb-6">{error}</p>
           <a
             href="/login?source=desktop"
             className="inline-block px-4 py-2 border-2 border-black bg-white hover:bg-neutral-50 transition-colors"
           >
-            Try Again
+            {t.desktopSuccess.tryAgain}
           </a>
         </div>
       </div>
@@ -220,7 +224,7 @@ function DesktopSuccessContent() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="max-w-md w-full p-8 text-center">
           <div className="w-8 h-8 border-2 border-black border-t-transparent animate-spin mx-auto mb-4" />
-          <h1 className="text-xl font-medium">Loading...</h1>
+          <h1 className="text-xl font-medium">{t.common.loading}</h1>
         </div>
       </div>
     );
@@ -253,13 +257,13 @@ function DesktopSuccessContent() {
             )}
           </div>
           <h1 className="text-xl font-medium mb-2">
-            {callbackStatus === "sent" ? "Logged In!" : "Login Successful!"}
+            {callbackStatus === "sent" ? t.desktopSuccess.loggedIn : t.desktopSuccess.loginSuccessful}
           </h1>
           <p className="text-muted text-sm">
-            {callbackStatus === "sending" && "Sending login code to desktop app..."}
-            {callbackStatus === "sent" && "Login code sent to desktop app. You can close this window."}
+            {callbackStatus === "sending" && t.desktopSuccess.sendingCode}
+            {callbackStatus === "sent" && t.desktopSuccess.codeSent}
             {(callbackStatus === "failed" || callbackStatus === "pending") &&
-              "Copy the login code below and paste it in the desktop app."}
+              t.desktopSuccess.copyCodePrompt}
           </p>
         </div>
 
@@ -280,21 +284,21 @@ function DesktopSuccessContent() {
                   : "border-black bg-black text-white hover:bg-neutral-800"
               }`}
             >
-              {copied ? "Copied!" : "Copy Code"}
+              {copied ? t.desktopSuccess.copied : t.desktopSuccess.copyCode}
             </button>
           </div>
           <p className="text-xs text-muted">
             {callbackStatus === "sent"
-              ? "You can also copy the code manually if needed."
-              : "This code expires when your session expires. Get a new code if login fails."}
+              ? t.desktopSuccess.codeManualCopy
+              : t.desktopSuccess.codeExpires}
           </p>
         </div>
 
         {/* Footer */}
         <p className="text-xs text-muted text-center mt-6">
           {callbackStatus === "sent"
-            ? "Return to the desktop app to continue."
-            : "You can close this window after pasting the code in the app."}
+            ? t.desktopSuccess.returnToDesktop
+            : t.desktopSuccess.closeWindow}
         </p>
       </div>
     </div>

@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { m } from "framer-motion";
+import { useLocale } from "@/lib/useLocale";
+import { getMessages } from "@/lib/messages";
 
 const LoginForm = dynamic(
   () => import("@/components/auth/login-form").then((m) => m.LoginForm),
@@ -46,6 +48,8 @@ function ErrorMessage() {
 
 function LoginPageContent() {
   const [ready, setReady] = useState(false);
+  const locale = useLocale();
+  const t = getMessages(locale);
 
   useEffect(() => {
     // Always show the login form - even if logged in, user needs to go through
@@ -58,7 +62,7 @@ function LoginPageContent() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-black border-t-transparent animate-spin mx-auto mb-4" />
-          <p className="text-sm text-muted">Checking login status...</p>
+          <p className="text-sm text-muted">{t.auth.checkingLoginStatus}</p>
         </div>
       </div>
     );
@@ -73,7 +77,7 @@ function LoginPageContent() {
             className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground mb-8"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to home
+            {t.auth.backToHome}
           </Link>
         </m.div>
 
@@ -84,7 +88,7 @@ function LoginPageContent() {
           custom={0.1}
           variants={fadeIn}
         >
-          Sign in
+          {t.auth.signIn}
         </m.h1>
         <m.p
           className="text-sm text-muted mb-8"
@@ -93,7 +97,7 @@ function LoginPageContent() {
           custom={0.15}
           variants={fadeIn}
         >
-          Sign in with GitHub to access your account.
+          {t.auth.signInDescription}
         </m.p>
 
         <Suspense fallback={null}>

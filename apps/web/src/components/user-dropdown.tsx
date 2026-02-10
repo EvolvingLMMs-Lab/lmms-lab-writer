@@ -2,6 +2,8 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { clearUserCacheCookie } from "@/lib/user-cache";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
+import { getMessages } from "@/lib/messages";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,6 +15,7 @@ type Props = {
   avatarUrl?: string | null;
   inks?: number;
   canDownload?: boolean;
+  locale?: Locale;
 };
 
 export function UserDropdown({
@@ -21,7 +24,9 @@ export function UserDropdown({
   avatarUrl,
   inks = 0,
   canDownload = false,
+  locale = DEFAULT_LOCALE,
 }: Props) {
+  const t = getMessages(locale);
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -133,7 +138,7 @@ export function UserDropdown({
           <div className="px-5 py-4 border-b border-border bg-neutral-50 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-sm font-mono tabular-nums">{inks}</span>
-              <span className="text-sm text-muted">inks</span>
+              <span className="text-sm text-muted">{t.userDropdown.inks}</span>
             </div>
             {canDownload ? (
               <Link
@@ -141,7 +146,7 @@ export function UserDropdown({
                 onClick={() => setIsOpen(false)}
                 className="px-3 py-1 border border-black text-xs font-mono uppercase tracking-wider hover:bg-neutral-100 transition-colors"
               >
-                Download
+                {t.userDropdown.download}
               </Link>
             ) : (
               <Link
@@ -149,7 +154,7 @@ export function UserDropdown({
                 onClick={() => setIsOpen(false)}
                 className="text-xs text-muted hover:text-black transition-colors"
               >
-                Earn more →
+                {t.userDropdown.earnMore}
               </Link>
             )}
           </div>
@@ -160,7 +165,7 @@ export function UserDropdown({
               disabled={isSigningOut}
               className="text-sm text-muted hover:text-black transition-colors disabled:opacity-50"
             >
-              {isSigningOut ? "Signing out..." : "Sign out"}
+              {isSigningOut ? t.userDropdown.signingOut : t.userDropdown.signOut}
             </button>
           </div>
         </div>

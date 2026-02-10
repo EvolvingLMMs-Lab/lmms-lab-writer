@@ -21,6 +21,8 @@ import {
   RepoItem,
 } from "@/components/profile-sections";
 import { InkDropAnimation } from "@/components/ink-drop-animation";
+import { getServerLocale, interpolate } from "@/lib/i18n";
+import { getMessages } from "@/lib/messages";
 
 function formatStarCount(count: number): string {
   if (count >= 1000) {
@@ -29,27 +31,37 @@ function formatStarCount(count: number): string {
   return count.toString();
 }
 
-function formatDate(date: string): string {
-  return new Date(date).toLocaleDateString("en-US", {
+const LOCALE_MAP: Record<string, string> = {
+  en: "en-US",
+  zh: "zh-CN",
+  ja: "ja-JP",
+};
+
+function formatDate(date: string, lang = "en"): string {
+  return new Date(date).toLocaleDateString(LOCALE_MAP[lang] || "en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
 }
 
-function formatRelativeDate(date: string): string {
+function formatRelativeDate(
+  date: string,
+  profileMessages: { justNow: string; hoursAgo: string; yesterday: string; daysAgo: string },
+  lang = "en",
+): string {
   const d = new Date(date);
   const now = new Date();
   const diff = now.getTime() - d.getTime();
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
-  if (hours < 1) return "Just now";
-  if (hours < 24) return `${hours}h ago`;
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days} days ago`;
+  if (hours < 1) return profileMessages.justNow;
+  if (hours < 24) return interpolate(profileMessages.hoursAgo, { hours });
+  if (days === 1) return profileMessages.yesterday;
+  if (days < 7) return interpolate(profileMessages.daysAgo, { days });
 
-  return d.toLocaleDateString("en-US", {
+  return d.toLocaleDateString(LOCALE_MAP[lang] || "en-US", {
     month: "short",
     day: "numeric",
   });
@@ -121,6 +133,8 @@ function ReposSkeleton() {
 
 async function ProfileUserCard() {
   const supabase = await createClient();
+  const locale = await getServerLocale();
+  const t = getMessages(locale);
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -159,7 +173,7 @@ async function ProfileUserCard() {
           <p className="text-lg font-medium truncate">{displayName}</p>
           <p className="text-sm text-muted truncate">{email}</p>
           <p className="text-sm text-muted mt-1">
-            Joined {formatDate(user.created_at)}
+            {interpolate(t.profile.joined, { date: formatDate(user.created_at, locale) })}
           </p>
         </div>
       </div>
@@ -169,6 +183,8 @@ async function ProfileUserCard() {
 
 async function ConnectedAccountsSection() {
   const supabase = await createClient();
+  const locale = await getServerLocale();
+  const t = getMessages(locale);
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -190,7 +206,7 @@ async function ConnectedAccountsSection() {
     <ProfileSection delay={0.1} className="border border-border mb-8">
       <div className="px-6 py-4 border-b border-border bg-neutral-50">
         <h2 className="text-sm font-mono uppercase tracking-wider">
-          Connected Accounts
+          {t.profile.connectedAccounts}
         </h2>
       </div>
       <div className="p-6">
@@ -237,6 +253,8 @@ async function ConnectedAccountsSection() {
 
 async function InksSection() {
   const supabase = await createClient();
+  const locale = await getServerLocale();
+  const t = getMessages(locale);
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -257,9 +275,9 @@ async function InksSection() {
   return (
     <ProfileSection delay={0.15} className="border border-border mb-8">
       <div className="px-6 py-4 border-b border-border bg-neutral-50 flex items-center justify-between">
-        <h2 className="text-sm font-mono uppercase tracking-wider">Inks</h2>
+        <h2 className="text-sm font-mono uppercase tracking-wider">{t.profile.inksTitle}</h2>
         <span className="text-xs font-mono text-muted uppercase tracking-wider">
-          Beta - Inks never expire
+          {t.profile.betaInksNeverExpire}
         </span>
       </div>
       <div className="p-6">
@@ -267,13 +285,13 @@ async function InksSection() {
           <div>
             <p className="text-3xl font-light tabular-nums mb-1">
               {inks}
-              <span className="text-sm text-muted font-normal ml-2">inks</span>
+              <span className="text-sm text-muted font-normal ml-2">{t.userDropdown.inks}</span>
             </p>
             {hasEnoughInks ? (
-              <p className="text-sm text-muted">Ready to download</p>
+              <p className="text-sm text-muted">{t.profile.readyToDownload}</p>
             ) : (
               <p className="text-sm text-muted">
-                {requiredInks - inks} more inks to unlock download
+                {interpolate(t.profile.moreInksToUnlock, { count: requiredInks - inks })}
               </p>
             )}
           </div>
@@ -282,20 +300,22 @@ async function InksSection() {
               href="/download"
               className="px-4 py-2 border border-black text-sm font-mono uppercase tracking-wider hover:bg-neutral-100 transition-colors"
             >
-              Download
+              {t.userDropdown.download}
             </Link>
           ) : (
             <a
               href="#earn-inks"
               className="text-sm text-muted hover:text-black transition-colors"
             >
-              Earn inks →
+              {t.profile.earnInksArrow}
             </a>
           )}
         </div>
         <p className="text-xs text-muted">
-          Star top {GITHUB_CONFIG.MAX_ELIGIBLE_REPOS} repos to earn inks. Need{" "}
-          {requiredInks} inks to download.
+          {interpolate(t.profile.starTopRepos, {
+            maxRepos: GITHUB_CONFIG.MAX_ELIGIBLE_REPOS,
+            requiredInks,
+          })}
         </p>
       </div>
     </ProfileSection>
@@ -324,6 +344,8 @@ async function InkDropAnimationWrapper() {
 
 async function AccountDetailsSection() {
   const supabase = await createClient();
+  const locale = await getServerLocale();
+  const t = getMessages(locale);
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -336,29 +358,29 @@ async function AccountDetailsSection() {
     <ProfileSection delay={0.2} className="border border-border mb-8">
       <div className="px-6 py-4 border-b border-border bg-neutral-50">
         <h2 className="text-sm font-mono uppercase tracking-wider">
-          Account Details
+          {t.profile.accountDetails}
         </h2>
       </div>
       <div className="divide-y divide-border">
         <div className="px-6 py-4 flex items-center justify-between">
-          <span className="text-sm text-muted">User ID</span>
+          <span className="text-sm text-muted">{t.profile.userId}</span>
           <code className="text-sm font-mono bg-neutral-100 px-2 py-1">
             {user.id.slice(0, 8)}
           </code>
         </div>
         <div className="px-6 py-4 flex items-center justify-between">
-          <span className="text-sm text-muted">Email</span>
+          <span className="text-sm text-muted">{t.profile.email}</span>
           <span className="text-sm">{user.email}</span>
         </div>
         <div className="px-6 py-4 flex items-center justify-between">
-          <span className="text-sm text-muted">Registered</span>
-          <span className="text-sm">{formatDate(user.created_at)}</span>
+          <span className="text-sm text-muted">{t.profile.registered}</span>
+          <span className="text-sm">{formatDate(user.created_at, locale)}</span>
         </div>
         {user.last_sign_in_at && (
           <div className="px-6 py-4 flex items-center justify-between">
-            <span className="text-sm text-muted">Last Sign In</span>
+            <span className="text-sm text-muted">{t.profile.lastSignIn}</span>
             <span className="text-sm">
-              {formatRelativeDate(user.last_sign_in_at)}
+              {formatRelativeDate(user.last_sign_in_at, t.profile, locale)}
             </span>
           </div>
         )}
@@ -369,6 +391,8 @@ async function AccountDetailsSection() {
 
 async function SuggestedReposSection() {
   const supabase = await createClient();
+  const locale = await getServerLocale();
+  const t = getMessages(locale);
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -411,11 +435,11 @@ async function SuggestedReposSection() {
     >
       <div className="px-6 py-4 border-b border-border bg-neutral-50 flex items-center justify-between">
         <h2 className="text-sm font-mono uppercase tracking-wider">
-          Earn Inks
+          {t.profile.earnInksTitle}
         </h2>
         <div className="flex items-center gap-4">
           {isGitHubConnected && <RefreshStarsButton />}
-          <span className="text-xs text-muted font-mono">{inks} inks</span>
+          <span className="text-xs text-muted font-mono">{inks} {t.userDropdown.inks}</span>
         </div>
       </div>
 
@@ -429,9 +453,9 @@ async function SuggestedReposSection() {
             >
               <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
             </svg>
-            <h3 className="text-lg font-medium mb-2">Connect GitHub</h3>
+            <h3 className="text-lg font-medium mb-2">{t.profile.connectGitHubTitle}</h3>
             <p className="text-sm text-muted mb-6 max-w-sm mx-auto">
-              Link your GitHub account to track starred repos and earn inks.
+              {t.profile.connectGitHubDescription}
             </p>
             <GitHubLoginButton />
           </div>
@@ -476,7 +500,7 @@ async function SuggestedReposSection() {
                       </a>
                       {isEligible && (
                         <span className="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 border border-border text-muted flex-shrink-0">
-                          Recommended
+                          {t.profile.recommended}
                         </span>
                       )}
                     </div>
@@ -495,11 +519,11 @@ async function SuggestedReposSection() {
 
                 {isStarred && isEligible ? (
                   <span className="text-xs font-mono uppercase tracking-wider text-black ml-4 flex-shrink-0">
-                    +{GITHUB_CONFIG.INKS_PER_STAR} inks
+                    +{GITHUB_CONFIG.INKS_PER_STAR} {t.userDropdown.inks}
                   </span>
                 ) : isStarred ? (
                   <span className="text-xs font-mono uppercase tracking-wider text-muted ml-4 flex-shrink-0">
-                    Starred
+                    {t.profile.starred}
                   </span>
                 ) : (
                   <a
@@ -508,7 +532,7 @@ async function SuggestedReposSection() {
                     rel="noopener noreferrer"
                     className="px-4 py-1.5 border border-black text-xs font-mono uppercase tracking-wider hover:bg-neutral-100 transition-colors ml-4 flex-shrink-0"
                   >
-                    Star
+                    {t.profile.star}
                   </a>
                 )}
               </RepoItem>
@@ -517,8 +541,10 @@ async function SuggestedReposSection() {
         </RepoList>
 
         <p className="text-sm text-muted text-center pt-4 border-t border-border">
-          Star top {GITHUB_CONFIG.MAX_ELIGIBLE_REPOS} repos to earn inks | 1
-          repo = {GITHUB_CONFIG.INKS_PER_STAR} inks
+          {interpolate(t.profile.starTopReposFooter, {
+            maxRepos: GITHUB_CONFIG.MAX_ELIGIBLE_REPOS,
+            inksPerStar: GITHUB_CONFIG.INKS_PER_STAR,
+          })}
         </p>
       </div>
     </ProfileSection>
@@ -527,6 +553,8 @@ async function SuggestedReposSection() {
 
 export default async function ProfilePage() {
   const supabase = await createClient();
+  const locale = await getServerLocale();
+  const t = getMessages(locale);
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -537,14 +565,14 @@ export default async function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header locale={locale} />
       <Suspense fallback={null}>
         <InkDropAnimationWrapper />
       </Suspense>
 
       <main className="px-6 py-12">
         <div className="max-w-5xl mx-auto">
-          <ProfileTitle>Profile</ProfileTitle>
+          <ProfileTitle>{t.profile.title}</ProfileTitle>
 
           <Suspense fallback={<ProfileCardSkeleton />}>
             <ProfileUserCard />
