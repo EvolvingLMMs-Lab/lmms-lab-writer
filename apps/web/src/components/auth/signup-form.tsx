@@ -4,10 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { Github } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useLocale } from "@/lib/useLocale";
+import { getMessages } from "@/lib/messages";
 
 export function SignupForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const locale = useLocale();
+  const t = getMessages(locale);
 
   const handleGitHubSignup = async () => {
     setLoading(true);
@@ -47,22 +51,22 @@ export function SignupForm() {
         className="btn btn-secondary w-full"
       >
         <Github className="w-4 h-4" />
-        {loading ? "Connecting..." : "Continue with GitHub"}
+        {loading ? t.auth.connecting : t.auth.continueWithGitHub}
       </button>
 
       {error && <p className="text-sm text-red-600 mt-4">{error}</p>}
 
       <p className="text-xs text-muted text-center mt-6">
-        GitHub account required to track starred repositories and earn inks.
+        {t.auth.githubAccountRequired}
       </p>
 
       <p className="text-sm text-muted text-center mt-4">
-        Already have an account?{" "}
+        {t.auth.alreadyHaveAccount}{" "}
         <Link
           href="/login"
           className="underline underline-offset-2 hover:text-foreground"
         >
-          Sign in
+          {t.auth.signInLink}
         </Link>
       </p>
     </>

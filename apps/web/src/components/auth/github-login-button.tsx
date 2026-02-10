@@ -3,9 +3,13 @@
 import { useState } from "react";
 import { Github } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useLocale } from "@/lib/useLocale";
+import { getMessages } from "@/lib/messages";
 
 export function GitHubLoginButton() {
   const [loading, setLoading] = useState(false);
+  const locale = useLocale();
+  const t = getMessages(locale);
 
   const handleGitHubLogin = async () => {
     setLoading(true);
@@ -25,7 +29,7 @@ export function GitHubLoginButton() {
       className="btn btn-secondary inline-flex items-center gap-2"
     >
       <Github className="w-4 h-4" />
-      {loading ? "Connecting..." : "Connect GitHub"}
+      {loading ? t.auth.connecting : t.auth.connectGitHub}
     </button>
   );
 }

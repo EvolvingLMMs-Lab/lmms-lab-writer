@@ -76,3 +76,35 @@ export function interpolate(
 
   return output;
 }
+
+const LOCALE_COOKIE = "locale";
+
+export function getLocaleCookie(): Locale {
+  if (typeof document === "undefined") return DEFAULT_LOCALE;
+  const match = document.cookie.match(
+    new RegExp(`(?:^|;\\s*)${LOCALE_COOKIE}=([^;]*)`),
+  );
+  const value = match?.[1];
+  return value && isLocale(value) ? value : DEFAULT_LOCALE;
+}
+
+export function setLocaleCookie(locale: Locale): void {
+  if (typeof document === "undefined") return;
+  document.cookie = `${LOCALE_COOKIE}=${locale};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+}
+
+export async function getServerLocale(): Promise<Locale> {
+  const { cookies } = await import("next/headers");
+  const cookieStore = await cookies();
+  const value = cookieStore.get(LOCALE_COOKIE)?.value;
+  return value && isLocale(value) ? value : DEFAULT_LOCALE;
+}
+
+export function detectLocale(pathname?: string): Locale {
+  if (pathname) {
+    const segments = normalizePathname(pathname).split("/");
+    const maybeLocale = segments[1];
+    if (maybeLocale && isLocale(maybeLocale)) return maybeLocale;
+  }
+  return getLocaleCookie();
+}

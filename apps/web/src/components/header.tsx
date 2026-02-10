@@ -12,6 +12,7 @@ import {
   DEFAULT_LOCALE,
   LOCALE_LABELS,
   SUPPORTED_LOCALES,
+  setLocaleCookie,
   stripLocalePrefix,
   withLocalePrefix,
   type Locale,
@@ -43,6 +44,7 @@ function LanguageSwitcher({
         <Link
           key={targetLocale}
           href={withLocalePrefix(basePath, targetLocale)}
+          onClick={() => setLocaleCookie(targetLocale)}
           className={`px-2.5 py-1 border-r border-border last:border-r-0 transition-colors ${
             targetLocale === locale
               ? "bg-foreground text-white"
@@ -105,6 +107,7 @@ export function Header({
               avatarUrl={user.avatarUrl}
               inks={user.inks}
               canDownload={user.canDownload}
+              locale={locale}
             />
           ) : (
             <Link
