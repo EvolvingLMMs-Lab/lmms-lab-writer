@@ -1,7 +1,13 @@
+import { notFound } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Header } from "@/components/header";
 import { HeroSection, FooterLink } from "@/components/home-sections";
-import { DEFAULT_LOCALE } from "@/lib/i18n";
+import {
+  SUPPORTED_LOCALES,
+  DEFAULT_LOCALE,
+  isLocale,
+  type Locale,
+} from "@/lib/i18n";
 
 const FeaturesSection = dynamic(
   () =>
@@ -19,8 +25,24 @@ const ComparisonSection = dynamic(
     import("@/components/home-sections").then((mod) => mod.ComparisonSection),
 );
 
-export default function HomePage() {
-  const locale = DEFAULT_LOCALE;
+export function generateStaticParams() {
+  return SUPPORTED_LOCALES.filter((l) => l !== DEFAULT_LOCALE).map(
+    (locale) => ({ locale }),
+  );
+}
+
+export default async function LocaleHomePage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale: rawLocale } = await params;
+
+  if (!isLocale(rawLocale) || rawLocale === DEFAULT_LOCALE) {
+    notFound();
+  }
+
+  const locale: Locale = rawLocale;
 
   return (
     <div className="min-h-screen flex flex-col">
