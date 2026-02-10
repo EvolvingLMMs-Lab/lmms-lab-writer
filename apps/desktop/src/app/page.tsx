@@ -398,8 +398,6 @@ const MIN_PANEL_WIDTH = 200;
 const MAX_SIDEBAR_WIDTH = 480;
 const MIN_TERMINAL_HEIGHT = 120;
 const MAX_TERMINAL_HEIGHT_RATIO = 0.5;
-const MIN_HEADER_HEIGHT = 48;
-const MAX_HEADER_HEIGHT = 120;
 
 export default function EditorPage() {
   const editorSettings = useEditorSettings();
@@ -446,14 +444,7 @@ export default function EditorPage() {
     }
     return 224;
   });
-  const [headerHeight, setHeaderHeight] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("headerHeight");
-      return saved ? parseInt(saved, 10) : 72;
-    }
-    return 72;
-  });
-  const [resizing, setResizing] = useState<"sidebar" | "right" | "bottom" | "header" | null>(null);
+  const [resizing, setResizing] = useState<"sidebar" | "right" | "bottom" | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"files" | "git">("files");
   const [highlightedFile, _setHighlightedFile] = useState<string | null>(null);
 
@@ -497,7 +488,7 @@ export default function EditorPage() {
   const sidebarWidthRef = useRef(sidebarWidth);
   const rightPanelWidthRef = useRef(rightPanelWidth);
   const terminalHeightRef = useRef(terminalHeight);
-  const headerHeightRef = useRef(headerHeight);
+
   const rafIdRef = useRef<number | null>(null);
 
   const gitStatus = daemon.gitStatus;
@@ -783,9 +774,6 @@ The AI assistant will read and update this file during compilation.
     localStorage.setItem("terminalHeight", String(terminalHeight));
   }, [terminalHeight]);
 
-  useEffect(() => {
-    localStorage.setItem("headerHeight", String(headerHeight));
-  }, [headerHeight]);
 
   useEffect(() => {
     checkOpencodeStatus();
@@ -836,12 +824,11 @@ The AI assistant will read and update this file during compilation.
   }, []);
 
   const startResize = useCallback(
-    (panel: "sidebar" | "right" | "bottom" | "header") => {
+    (panel: "sidebar" | "right" | "bottom") => {
       setResizing(panel);
       sidebarWidthRef.current = sidebarWidth;
       rightPanelWidthRef.current = rightPanelWidth;
       terminalHeightRef.current = terminalHeight;
-      headerHeightRef.current = headerHeight;
       document.documentElement.style.setProperty(
         "--sidebar-width",
         `${sidebarWidth}px`,
@@ -854,15 +841,11 @@ The AI assistant will read and update this file during compilation.
         "--terminal-height",
         `${terminalHeight}px`,
       );
-      document.documentElement.style.setProperty(
-        "--header-height",
-        `${headerHeight}px`,
-      );
     },
-    [sidebarWidth, rightPanelWidth, terminalHeight, headerHeight],
+    [sidebarWidth, rightPanelWidth, terminalHeight],
   );
 
-  const handleResizeDrag = useCallback((panel: "sidebar" | "right" | "bottom" | "header", info: PanInfo) => {
+  const handleResizeDrag = useCallback((panel: "sidebar" | "right" | "bottom", info: PanInfo) => {
     if (rafIdRef.current !== null) return;
 
     rafIdRef.current = requestAnimationFrame(() => {
@@ -898,16 +881,6 @@ The AI assistant will read and update this file during compilation.
           "--terminal-height",
           `${newHeight}px`,
         );
-      } else if (panel === "header") {
-        const newHeight = Math.min(
-          Math.max(info.point.y, MIN_HEADER_HEIGHT),
-          MAX_HEADER_HEIGHT,
-        );
-        headerHeightRef.current = newHeight;
-        document.documentElement.style.setProperty(
-          "--header-height",
-          `${newHeight}px`,
-        );
       }
       rafIdRef.current = null;
     });
@@ -921,11 +894,9 @@ The AI assistant will read and update this file during compilation.
     setSidebarWidth(sidebarWidthRef.current);
     setRightPanelWidth(rightPanelWidthRef.current);
     setTerminalHeight(terminalHeightRef.current);
-    setHeaderHeight(headerHeightRef.current);
     document.documentElement.style.removeProperty("--sidebar-width");
     document.documentElement.style.removeProperty("--right-panel-width");
     document.documentElement.style.removeProperty("--terminal-height");
-    document.documentElement.style.removeProperty("--header-height");
     setResizing(null);
   }, []);
 
@@ -2629,14 +2600,7 @@ The AI assistant will read and update this file during compilation.
     <div className="h-dvh flex flex-col">
       <div className="flex-shrink-0 flex flex-col">
         <header
-          style={{
-            height:
-              resizing === "header"
-                ? "var(--header-height)"
-                : headerHeight,
-            willChange: resizing === "header" ? "height" : undefined,
-          }}
-          className="border-b border-border flex items-center"
+          className="h-12 border-b border-border flex items-center"
         >
           <div className="w-full px-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
@@ -2764,24 +2728,6 @@ The AI assistant will read and update this file during compilation.
             </div>
           </div>
         </header>
-        <div className="relative group h-1 flex-shrink-0">
-          <motion.div
-            drag="y"
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={0}
-            dragMomentum={false}
-            onDragStart={() => startResize("header")}
-            onDrag={(event, info) =>
-              handleResizeDrag("header", info)
-            }
-            onDragEnd={endResize}
-            className="absolute inset-x-0 -top-1 -bottom-1 cursor-row-resize z-10"
-            style={{ y: 0 }}
-          />
-          <div
-            className={`w-full h-full transition-colors ${resizing === "header" ? "bg-foreground/20" : "group-hover:bg-foreground/20"}`}
-          />
-        </div>
       </div>
 
       <main className="flex-1 min-h-0 flex relative overflow-hidden">

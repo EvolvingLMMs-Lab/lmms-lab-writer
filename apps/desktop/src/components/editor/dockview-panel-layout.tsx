@@ -86,8 +86,7 @@ export function DockviewPanelLayout({
   useEffect(() => {
     if (!api) return;
 
-    const expectedPanels = panels.map((panel) => panel.id);
-    const expectedPanelSet = new Set(expectedPanels);
+    const expectedPanelSet = new Set(panels.map((p) => p.id));
 
     for (const panel of [...api.panels]) {
       if (!expectedPanelSet.has(panel.id)) {
