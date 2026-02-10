@@ -35,6 +35,12 @@ export type TabDragEndPayload = {
     | { type: "none" };
 };
 
+export type TabDragMovePayload = {
+  tabId: string;
+  clientX: number;
+  clientY: number;
+};
+
 export interface TabBarProps<T extends TabItem> {
   tabs: T[];
   activeTab: string;
@@ -45,6 +51,7 @@ export interface TabBarProps<T extends TabItem> {
     targetId: string,
     position: TabReorderPosition,
   ) => void;
+  onTabDragMove?: (payload: TabDragMovePayload | null) => void;
   onTabDragEnd?: (payload: TabDragEndPayload) => void;
   onCloseOthers?: (id: string) => void;
   onCloseToLeft?: (id: string) => void;
@@ -80,6 +87,7 @@ export function TabBar<T extends TabItem>({
   onTabSelect,
   onTabClose,
   onTabReorder,
+  onTabDragMove,
   onTabDragEnd,
   onCloseOthers,
   onCloseToLeft,
@@ -207,7 +215,8 @@ export function TabBar<T extends TabItem>({
     document.body.style.cursor = "";
     document.body.style.userSelect = "";
     setDragState(initialDragState);
-  }, [clearDocumentDragListeners]);
+    onTabDragMove?.(null);
+  }, [clearDocumentDragListeners, onTabDragMove]);
 
   useEffect(() => {
     return () => {
@@ -282,8 +291,14 @@ export function TabBar<T extends TabItem>({
         mouseY: e.clientY,
         dropIndicator: indicator,
       }));
+
+      onTabDragMove?.({
+        tabId: draggedTabId,
+        clientX: e.clientX,
+        clientY: e.clientY,
+      });
     },
-    [findDropIndicator],
+    [findDropIndicator, onTabDragMove],
   );
 
   const handleDocumentMouseUp = useCallback(

@@ -6,7 +6,13 @@ import { useTauriDaemon } from "@/lib/tauri";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
 import { InputDialog } from "@/components/ui/input-dialog";
-import { TabBar, type TabItem, type TabReorderPosition } from "@/components/ui/tab-bar";
+import {
+  TabBar,
+  type TabItem,
+  type TabReorderPosition,
+  type TabDragMovePayload,
+  type TabDragEndPayload,
+} from "@/components/ui/tab-bar";
 import { EditorSkeleton } from "@/components/editor/editor-skeleton";
 import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
 import { FileSidebarPanel } from "@/components/editor/sidebar-file-panel";
@@ -68,6 +74,20 @@ type GitDiffPreviewState = {
   content: string;
   isLoading: boolean;
   error: string | null;
+};
+
+type SplitPaneSide = "left" | "right";
+type DragSourcePane = "primary" | "split";
+
+type SplitPaneState = {
+  side: SplitPaneSide;
+  openTabs: string[];
+  selectedFile?: string;
+  content: string;
+  isLoading: boolean;
+  error: string | null;
+  binaryPreviewUrl: string | null;
+  pdfRefreshKey: number;
 };
 
 type ParsedUnifiedDiff = {
@@ -393,6 +413,8 @@ export default function EditorPage() {
   const [fileContent, setFileContent] = useState<string>("");
   const [editorViewMode, setEditorViewMode] = useState<EditorViewMode>("file");
   const [gitDiffPreview, setGitDiffPreview] = useState<GitDiffPreviewState | null>(null);
+  const [splitPane, setSplitPane] = useState<SplitPaneState | null>(null);
+  const [splitDropHint, setSplitDropHint] = useState<SplitPaneSide | null>(null);
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [binaryPreviewUrl, setBinaryPreviewUrl] = useState<string | null>(null);
   const [pdfRefreshKey, setPdfRefreshKey] = useState(0);
@@ -458,11 +480,14 @@ export default function EditorPage() {
   const [ghPublishError, setGhPublishError] = useState<string | null>(null);
 
   const contentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const splitContentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const opencodeStartedForPathRef = useRef<string | null>(null);
   const savingVisualTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSaveTimeRef = useRef<{ path: string; time: number } | null>(null);
   const [isLoadingFile, setIsLoadingFile] = useState(false);
   const gitDiffRequestIdRef = useRef(0);
+  const splitLoadRequestIdRef = useRef(0);
+  const editorWorkspaceRef = useRef<HTMLDivElement | null>(null);
 
   // RAF-based resize refs for 60fps performance
   const sidebarWidthRef = useRef(sidebarWidth);
@@ -765,12 +790,26 @@ The AI assistant will read and update this file during compilation.
   useEffect(() => {
     if (!daemon.projectPath) {
       opencodeStartedForPathRef.current = null;
+      if (splitContentSaveTimeoutRef.current) {
+        clearTimeout(splitContentSaveTimeoutRef.current);
+        splitContentSaveTimeoutRef.current = null;
+      }
+      setSplitPane(null);
     }
   }, [daemon.projectPath]);
 
   useEffect(() => {
     setShowTerminal(Boolean(daemon.projectPath));
   }, [daemon.projectPath]);
+
+  useEffect(() => {
+    return () => {
+      if (splitContentSaveTimeoutRef.current) {
+        clearTimeout(splitContentSaveTimeoutRef.current);
+        splitContentSaveTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Listen for opencode logs from Tauri backend
   useEffect(() => {
@@ -1127,6 +1166,9 @@ The AI assistant will read and update this file during compilation.
     const { path, kind } = daemon.lastFileChange;
 
     if (kind === "remove") {
+      if (splitPane?.openTabs.includes(path)) {
+        setSplitPane(null);
+      }
       // Check if the deleted file is in open tabs
       setOpenTabs((prev) => {
         if (!prev.includes(path)) return prev;
@@ -1143,6 +1185,9 @@ The AI assistant will read and update this file during compilation.
           } else {
             setSelectedFile(undefined);
             setFileContent("");
+            setBinaryPreviewUrl(null);
+            setGitDiffPreview(null);
+            setEditorViewMode("file");
           }
         }
 
@@ -1165,8 +1210,30 @@ The AI assistant will read and update this file during compilation.
           console.error("Failed to reload modified file:", err);
         });
       }
+
+      if (
+        splitPane &&
+        path === splitPane.selectedFile &&
+        !splitPane.binaryPreviewUrl &&
+        !isOurSave
+      ) {
+        daemon.readFile(path).then((content) => {
+          if (content !== null) {
+            setSplitPane((prev) => {
+              if (!prev || prev.selectedFile !== path) return prev;
+              return {
+                ...prev,
+                content,
+                error: null,
+              };
+            });
+          }
+        }).catch((err) => {
+          console.error("Failed to reload modified split file:", err);
+        });
+      }
     }
-  }, [daemon.lastFileChange, selectedFile, handleFileSelect, daemon]);
+  }, [daemon.lastFileChange, selectedFile, handleFileSelect, daemon, splitPane]);
 
   const handleCloseTab = useCallback(
     (path: string, e?: React.MouseEvent) => {
@@ -1181,6 +1248,7 @@ The AI assistant will read and update this file during compilation.
           } else {
             setSelectedFile(undefined);
             setFileContent("");
+            setBinaryPreviewUrl(null);
             setGitDiffPreview(null);
             setEditorViewMode("file");
           }
@@ -1237,6 +1305,7 @@ The AI assistant will read and update this file during compilation.
     setFileContent("");
     setGitDiffPreview(null);
     setEditorViewMode("file");
+    setSplitPane(null);
   }, []);
 
   const handleReorderTabs = useCallback(
@@ -1266,6 +1335,571 @@ The AI assistant will read and update this file during compilation.
       });
     },
     [],
+  );
+
+  const closeSplitPane = useCallback(() => {
+    if (splitContentSaveTimeoutRef.current) {
+      clearTimeout(splitContentSaveTimeoutRef.current);
+      splitContentSaveTimeoutRef.current = null;
+    }
+    setSplitPane(null);
+  }, []);
+
+  const openFileInSplitPane = useCallback(
+    async (
+      path: string,
+      side: SplitPaneSide,
+      options?: { moveFromPrimary?: boolean },
+    ) => {
+      const resolvedPath = resolveSelectablePath(path);
+      const fileType = getFileType(resolvedPath);
+      const requestId = splitLoadRequestIdRef.current + 1;
+      splitLoadRequestIdRef.current = requestId;
+
+      if (splitContentSaveTimeoutRef.current) {
+        clearTimeout(splitContentSaveTimeoutRef.current);
+        splitContentSaveTimeoutRef.current = null;
+      }
+
+      if (options?.moveFromPrimary) {
+        setOpenTabs((prev) => {
+          if (!prev.includes(resolvedPath)) return prev;
+
+          const idx = prev.indexOf(resolvedPath);
+          const newTabs = prev.filter((p) => p !== resolvedPath);
+          if (selectedFile === resolvedPath) {
+            const nextFile = newTabs[Math.min(idx, newTabs.length - 1)];
+            if (nextFile) {
+              void handleFileSelect(nextFile);
+            } else {
+              setSelectedFile(undefined);
+              setFileContent("");
+              setBinaryPreviewUrl(null);
+              setGitDiffPreview(null);
+              setEditorViewMode("file");
+            }
+          }
+          return newTabs;
+        });
+      }
+
+      if (fileType === "text") {
+        setSplitPane((prev) => {
+          const base: SplitPaneState = prev ?? {
+            side,
+            openTabs: [],
+            selectedFile: undefined,
+            content: "",
+            isLoading: false,
+            error: null,
+            binaryPreviewUrl: null,
+            pdfRefreshKey: 0,
+          };
+          return {
+            ...base,
+            side,
+            openTabs: base.openTabs.includes(resolvedPath)
+              ? base.openTabs
+              : [...base.openTabs, resolvedPath],
+            selectedFile: resolvedPath,
+            content: "",
+            isLoading: true,
+            error: null,
+            binaryPreviewUrl: null,
+          };
+        });
+
+        try {
+          const content = await daemon.readFile(resolvedPath);
+          if (splitLoadRequestIdRef.current !== requestId) return;
+          setSplitPane((prev) => {
+            if (!prev || prev.selectedFile !== resolvedPath) return prev;
+            return {
+              ...prev,
+              side,
+              content: content ?? "",
+              isLoading: false,
+              error: null,
+              binaryPreviewUrl: null,
+            };
+          });
+        } catch (err) {
+          if (splitLoadRequestIdRef.current !== requestId) return;
+          const errorStr = String(err);
+          if (errorStr.includes("FILE_NOT_FOUND")) {
+            toast(
+              `File "${pathSync.basename(resolvedPath)}" no longer exists`,
+              "error",
+            );
+            setSplitPane(null);
+            return;
+          }
+          setSplitPane((prev) => {
+            if (!prev || prev.selectedFile !== resolvedPath) return prev;
+            return {
+              ...prev,
+              isLoading: false,
+              error: errorStr,
+            };
+          });
+        }
+        return;
+      }
+
+      const fullPath = daemon.projectPath
+        ? pathSync.join(daemon.projectPath, resolvedPath)
+        : resolvedPath;
+      setSplitPane((prev) => {
+        const base: SplitPaneState = prev ?? {
+          side,
+          openTabs: [],
+          selectedFile: undefined,
+          content: "",
+          isLoading: false,
+          error: null,
+          binaryPreviewUrl: null,
+          pdfRefreshKey: 0,
+        };
+        return {
+          ...base,
+          side,
+          openTabs: base.openTabs.includes(resolvedPath)
+            ? base.openTabs
+            : [...base.openTabs, resolvedPath],
+          selectedFile: resolvedPath,
+          content: "",
+          isLoading: false,
+          error: null,
+          binaryPreviewUrl: convertFileSrc(fullPath),
+          pdfRefreshKey: 0,
+        };
+      });
+    },
+    [
+      daemon,
+      getFileType,
+      resolveSelectablePath,
+      toast,
+      selectedFile,
+      handleFileSelect,
+    ],
+  );
+
+  const handleSplitContentChange = useCallback(
+    (content: string) => {
+      setSplitPane((prev) => {
+        if (!prev || prev.binaryPreviewUrl) return prev;
+        return {
+          ...prev,
+          content,
+        };
+      });
+
+      if (splitContentSaveTimeoutRef.current) {
+        clearTimeout(splitContentSaveTimeoutRef.current);
+      }
+
+      const fileToSave = splitPane?.selectedFile;
+      if (!fileToSave) return;
+
+      splitContentSaveTimeoutRef.current = setTimeout(async () => {
+        try {
+          await daemon.writeFile(fileToSave, content);
+          lastSaveTimeRef.current = { path: fileToSave, time: Date.now() };
+        } catch (error) {
+          console.error("Failed to save split pane file:", error);
+        }
+      }, 500);
+    },
+    [daemon, splitPane?.selectedFile],
+  );
+
+  const handleSplitTabSelect = useCallback(
+    (path: string) => {
+      if (!splitPane) return;
+      void openFileInSplitPane(path, splitPane.side);
+    },
+    [splitPane, openFileInSplitPane],
+  );
+
+  const handleSplitCloseTab = useCallback(
+    (path: string) => {
+      if (!splitPane) return;
+
+      const idx = splitPane.openTabs.indexOf(path);
+      if (idx < 0) return;
+      const newTabs = splitPane.openTabs.filter((p) => p !== path);
+      if (newTabs.length === 0) {
+        closeSplitPane();
+        return;
+      }
+
+      const nextSelected =
+        splitPane.selectedFile === path
+          ? newTabs[Math.min(idx, newTabs.length - 1)]
+          : splitPane.selectedFile ?? newTabs[0];
+
+      setSplitPane((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          openTabs: newTabs,
+          selectedFile: nextSelected,
+        };
+      });
+
+      if (splitPane.selectedFile === path && nextSelected) {
+        void openFileInSplitPane(nextSelected, splitPane.side);
+      }
+    },
+    [splitPane, closeSplitPane, openFileInSplitPane],
+  );
+
+  const handleSplitCloseOtherTabs = useCallback(
+    (keepPath: string) => {
+      if (!splitPane) return;
+      setSplitPane((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          openTabs: [keepPath],
+          selectedFile: keepPath,
+        };
+      });
+      if (splitPane.selectedFile !== keepPath) {
+        void openFileInSplitPane(keepPath, splitPane.side);
+      }
+    },
+    [splitPane, openFileInSplitPane],
+  );
+
+  const handleSplitCloseTabsToLeft = useCallback(
+    (path: string) => {
+      if (!splitPane) return;
+      const idx = splitPane.openTabs.indexOf(path);
+      if (idx <= 0) return;
+      const newTabs = splitPane.openTabs.slice(idx);
+      setSplitPane((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          openTabs: newTabs,
+          selectedFile:
+            prev.selectedFile && newTabs.includes(prev.selectedFile)
+              ? prev.selectedFile
+              : path,
+        };
+      });
+      if (splitPane.selectedFile && !newTabs.includes(splitPane.selectedFile)) {
+        void openFileInSplitPane(path, splitPane.side);
+      }
+    },
+    [splitPane, openFileInSplitPane],
+  );
+
+  const handleSplitCloseTabsToRight = useCallback(
+    (path: string) => {
+      if (!splitPane) return;
+      const idx = splitPane.openTabs.indexOf(path);
+      if (idx === splitPane.openTabs.length - 1) return;
+      const newTabs = splitPane.openTabs.slice(0, idx + 1);
+      setSplitPane((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          openTabs: newTabs,
+          selectedFile:
+            prev.selectedFile && newTabs.includes(prev.selectedFile)
+              ? prev.selectedFile
+              : path,
+        };
+      });
+      if (splitPane.selectedFile && !newTabs.includes(splitPane.selectedFile)) {
+        void openFileInSplitPane(path, splitPane.side);
+      }
+    },
+    [splitPane, openFileInSplitPane],
+  );
+
+  const handleSplitReorderTabs = useCallback(
+    (
+      draggedPath: string,
+      targetPath: string,
+      position: TabReorderPosition,
+    ) => {
+      if (draggedPath === targetPath) return;
+      setSplitPane((prev) => {
+        if (!prev) return prev;
+        const fromIndex = prev.openTabs.indexOf(draggedPath);
+        const targetIndex = prev.openTabs.indexOf(targetPath);
+        if (fromIndex < 0 || targetIndex < 0) return prev;
+
+        const reordered = [...prev.openTabs];
+        const [movedTab] = reordered.splice(fromIndex, 1);
+        if (!movedTab) return prev;
+
+        const targetAfterRemoval = reordered.indexOf(targetPath);
+        if (targetAfterRemoval < 0) return prev;
+
+        const insertIndex =
+          position === "before" ? targetAfterRemoval : targetAfterRemoval + 1;
+        reordered.splice(insertIndex, 0, movedTab);
+        return {
+          ...prev,
+          openTabs: reordered,
+        };
+      });
+    },
+    [],
+  );
+
+  const resolveSplitDropSide = useCallback(
+    (
+      clientX: number,
+      clientY: number,
+      source: DragSourcePane,
+    ): SplitPaneSide | null => {
+      const container = editorWorkspaceRef.current;
+      if (!container) return null;
+
+      const rect = container.getBoundingClientRect();
+      const isInsideEditorWorkspace =
+        clientX >= rect.left &&
+        clientX <= rect.right &&
+        clientY >= rect.top &&
+        clientY <= rect.bottom;
+
+      if (!isInsideEditorWorkspace) return null;
+
+      const hoveredSide: SplitPaneSide =
+        clientX < rect.left + rect.width / 2 ? "left" : "right";
+
+      if (!splitPane) return source === "primary" ? hoveredSide : null;
+
+      const splitSide: SplitPaneSide = splitPane.side;
+      const primarySide: SplitPaneSide =
+        splitSide === "left" ? "right" : "left";
+
+      if (source === "primary") {
+        return hoveredSide === splitSide ? splitSide : null;
+      }
+
+      return hoveredSide === primarySide ? primarySide : null;
+    },
+    [splitPane],
+  );
+
+  const handleEditorTabDragMove = useCallback(
+    (payload: TabDragMovePayload | null) => {
+      if (!payload) {
+        setSplitDropHint(null);
+        return;
+      }
+
+      setSplitDropHint(
+        resolveSplitDropSide(payload.clientX, payload.clientY, "primary"),
+      );
+    },
+    [resolveSplitDropSide],
+  );
+
+  const moveTabFromSplitToPrimary = useCallback(
+    (path: string) => {
+      if (!splitPane) return;
+      const resolvedPath = resolveSelectablePath(path);
+      const currentIndex = splitPane.openTabs.indexOf(resolvedPath);
+      if (currentIndex < 0) return;
+
+      const nextTabs = splitPane.openTabs.filter((p) => p !== resolvedPath);
+      if (nextTabs.length === 0) {
+        closeSplitPane();
+      } else {
+        const nextSelected =
+          splitPane.selectedFile === resolvedPath
+            ? nextTabs[Math.min(currentIndex, nextTabs.length - 1)]
+            : splitPane.selectedFile ?? nextTabs[0];
+
+        setSplitPane((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            openTabs: nextTabs,
+            selectedFile: nextSelected,
+          };
+        });
+
+        if (splitPane.selectedFile === resolvedPath && nextSelected) {
+          void openFileInSplitPane(nextSelected, splitPane.side);
+        }
+      }
+
+      void handleFileSelect(resolvedPath);
+    },
+    [
+      splitPane,
+      resolveSelectablePath,
+      closeSplitPane,
+      openFileInSplitPane,
+      handleFileSelect,
+    ],
+  );
+
+  const handleSplitTabDragMove = useCallback(
+    (payload: TabDragMovePayload | null) => {
+      if (!payload) {
+        setSplitDropHint(null);
+        return;
+      }
+
+      setSplitDropHint(
+        resolveSplitDropSide(payload.clientX, payload.clientY, "split"),
+      );
+    },
+    [resolveSplitDropSide],
+  );
+
+  const handleEditorTabDragEnd = useCallback(
+    (payload: TabDragEndPayload) => {
+      setSplitDropHint(null);
+      if (payload.dropTarget.type !== "outside") return;
+
+      const side = resolveSplitDropSide(
+        payload.clientX,
+        payload.clientY,
+        "primary",
+      );
+      if (!side) return;
+
+      void openFileInSplitPane(payload.tabId, side, { moveFromPrimary: true });
+    },
+    [openFileInSplitPane, resolveSplitDropSide],
+  );
+
+  const handleSplitTabDragEnd = useCallback(
+    (payload: TabDragEndPayload) => {
+      setSplitDropHint(null);
+      if (payload.dropTarget.type !== "outside") return;
+
+      const side = resolveSplitDropSide(
+        payload.clientX,
+        payload.clientY,
+        "split",
+      );
+      if (!side || !splitPane) return;
+
+      const primarySide: SplitPaneSide =
+        splitPane.side === "left" ? "right" : "left";
+      if (side !== primarySide) return;
+
+      moveTabFromSplitToPrimary(payload.tabId);
+    },
+    [resolveSplitDropSide, splitPane, moveTabFromSplitToPrimary],
+  );
+
+  const splitPaneTabs = useMemo(
+    (): TabItem[] =>
+      splitPane?.openTabs.map((path) => ({
+        id: path,
+        label: pathSync.basename(path),
+        title: path,
+      })) ?? [],
+    [splitPane?.openTabs],
+  );
+
+  const renderSplitPane = useCallback(
+    (side: SplitPaneSide) => {
+      if (!splitPane || splitPane.side !== side) return null;
+      const splitSelectedFile = splitPane.selectedFile;
+      const splitFileType = splitSelectedFile ? getFileType(splitSelectedFile) : "text";
+
+      return (
+        <div
+          className={`w-1/2 min-w-0 flex flex-col overflow-hidden ${
+            side === "left" ? "border-r border-border" : "border-l border-border"
+          }`}
+        >
+          {splitSelectedFile && (
+            <div>
+              <TabBar
+                tabs={splitPaneTabs}
+                activeTab={splitSelectedFile}
+                onTabSelect={handleSplitTabSelect}
+                onTabClose={handleSplitCloseTab}
+                onTabReorder={handleSplitReorderTabs}
+                onTabDragMove={handleSplitTabDragMove}
+                onTabDragEnd={handleSplitTabDragEnd}
+                onCloseOthers={handleSplitCloseOtherTabs}
+                onCloseToLeft={handleSplitCloseTabsToLeft}
+                onCloseToRight={handleSplitCloseTabsToRight}
+                onCloseAll={closeSplitPane}
+                variant="editor"
+              />
+            </div>
+          )}
+
+          <div className="flex-1 min-h-0">
+            {!splitSelectedFile ? (
+              <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
+                Drag a tab here to open a second editor group.
+              </div>
+            ) : splitPane.isLoading ? (
+              <EditorSkeleton className="h-full" />
+            ) : splitPane.error ? (
+              <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
+                Failed to load file: {splitPane.error}
+              </div>
+            ) : splitPane.binaryPreviewUrl ? (
+              <div className="h-full flex items-center justify-center overflow-auto p-4 bg-accent-hover">
+                {splitFileType === "image" ? (
+                  <img
+                    src={splitPane.binaryPreviewUrl}
+                    alt={splitSelectedFile}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                ) : (
+                  <iframe
+                    key={splitPane.pdfRefreshKey}
+                    src={splitPane.binaryPreviewUrl}
+                    className="w-full h-full border-0"
+                    title={`PDF: ${splitSelectedFile}`}
+                  />
+                )}
+              </div>
+            ) : (
+              <EditorErrorBoundary>
+                <MonacoEditor
+                  content={splitPane.content}
+                  readOnly={false}
+                  onContentChange={handleSplitContentChange}
+                  language={getFileLanguage(splitSelectedFile)}
+                  editorSettings={editorSettings.settings}
+                  editorTheme={editorSettings.editorTheme}
+                  className="h-full"
+                />
+              </EditorErrorBoundary>
+            )}
+          </div>
+        </div>
+      );
+    },
+    [
+      splitPane,
+      getFileType,
+      closeSplitPane,
+      splitPaneTabs,
+      handleSplitTabSelect,
+      handleSplitCloseTab,
+      handleSplitReorderTabs,
+      handleSplitTabDragMove,
+      handleSplitTabDragEnd,
+      handleSplitCloseOtherTabs,
+      handleSplitCloseTabsToLeft,
+      handleSplitCloseTabsToRight,
+      handleSplitContentChange,
+      getFileLanguage,
+      editorSettings.settings,
+      editorSettings.editorTheme,
+    ],
   );
 
   // Convert openTabs to TabItem format for TabBar
@@ -2096,13 +2730,15 @@ The AI assistant will read and update this file during compilation.
         </AnimatePresence>
 
         <div className="flex-1 min-w-0 w-0 flex flex-col overflow-hidden">
-          {selectedFile && (
+          {!splitPane && selectedFile && (
             <TabBar
               tabs={editorTabs}
               activeTab={selectedFile}
               onTabSelect={handleFileSelect}
               onTabClose={handleCloseTab}
               onTabReorder={handleReorderTabs}
+              onTabDragMove={handleEditorTabDragMove}
+              onTabDragEnd={handleEditorTabDragEnd}
               onCloseOthers={handleCloseOtherTabs}
               onCloseToLeft={handleCloseTabsToLeft}
               onCloseToRight={handleCloseTabsToRight}
@@ -2110,134 +2746,186 @@ The AI assistant will read and update this file during compilation.
               variant="editor"
             />
           )}
-          {daemon.projectPath && selectedFile ? (
-            isShowingGitDiff ? (
-              <div className="flex-1 min-h-0 flex flex-col">
-                <div className="border-b border-border bg-accent-hover px-3 py-2 flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium truncate">
-                      {gitDiffPreview.path}
-                    </div>
-                    <div className="text-xs text-muted flex items-center gap-2">
-                      <span>
-                        {gitDiffPreview.staged
-                          ? "Staged changes"
-                          : "Working tree changes"}
-                      </span>
-                      {parsedGitDiff && parsedGitDiff.hasRenderableHunks && (
-                        <span>
-                          +{parsedGitDiff.added} / -{parsedGitDiff.removed}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => void loadGitDiffPreview(gitDiffPreview.path, gitDiffPreview.staged)}
-                      className="btn btn-sm btn-secondary"
-                    >
-                      Refresh Diff
-                    </button>
-                    <button
-                      onClick={() => {
-                        void handleFileSelect(gitDiffPreview.path);
-                      }}
-                      className="btn btn-sm btn-secondary"
-                    >
-                      Open File
-                    </button>
-                  </div>
+          {daemon.projectPath && (selectedFile || splitPane?.selectedFile) ? (
+            <div
+              ref={editorWorkspaceRef}
+              className={`relative flex-1 min-h-0 ${splitPane ? "flex" : "flex flex-col"}`}
+            >
+              {splitDropHint && (
+                <div className="pointer-events-none absolute inset-0 z-10">
+                  <div
+                    className={`absolute inset-y-0 w-1/2 transition-opacity duration-100 ${
+                      splitDropHint === "left"
+                        ? "left-0 border-r border-accent/40 bg-gradient-to-r from-foreground/15 to-transparent shadow-[inset_-20px_0_24px_-20px_rgba(0,0,0,0.45)]"
+                        : "right-0 border-l border-accent/40 bg-gradient-to-l from-foreground/15 to-transparent shadow-[inset_20px_0_24px_-20px_rgba(0,0,0,0.45)]"
+                    }`}
+                  />
                 </div>
+              )}
 
-                <div className="flex-1 min-h-0">
-                  {gitDiffPreview.isLoading ? (
-                    <EditorSkeleton className="h-full" />
-                  ) : gitDiffPreview.error ? (
-                    <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
-                      Failed to load diff: {gitDiffPreview.error}
+              {splitPane?.side === "left" && renderSplitPane("left")}
+
+              <div
+              className={`min-h-0 overflow-hidden ${
+                  splitPane
+                    ? "w-1/2 min-w-0 flex flex-col"
+                    : "flex-1 flex flex-col"
+                }`}
+              >
+                {splitPane && selectedFile && (
+                  <TabBar
+                    tabs={editorTabs}
+                    activeTab={selectedFile}
+                    onTabSelect={handleFileSelect}
+                    onTabClose={handleCloseTab}
+                    onTabReorder={handleReorderTabs}
+                    onTabDragMove={handleEditorTabDragMove}
+                    onTabDragEnd={handleEditorTabDragEnd}
+                    onCloseOthers={handleCloseOtherTabs}
+                    onCloseToLeft={handleCloseTabsToLeft}
+                    onCloseToRight={handleCloseTabsToRight}
+                    onCloseAll={handleCloseAllTabs}
+                    variant="editor"
+                  />
+                )}
+
+                {selectedFile ? (
+                  isShowingGitDiff ? (
+                    <div className="flex-1 min-h-0 flex flex-col">
+                      <div className="border-b border-border bg-accent-hover px-3 py-2 flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate">
+                            {gitDiffPreview.path}
+                          </div>
+                          <div className="text-xs text-muted flex items-center gap-2">
+                            <span>
+                              {gitDiffPreview.staged
+                                ? "Staged changes"
+                                : "Working tree changes"}
+                            </span>
+                            {parsedGitDiff && parsedGitDiff.hasRenderableHunks && (
+                              <span>
+                                +{parsedGitDiff.added} / -{parsedGitDiff.removed}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => void loadGitDiffPreview(gitDiffPreview.path, gitDiffPreview.staged)}
+                            className="btn btn-sm btn-secondary"
+                          >
+                            Refresh Diff
+                          </button>
+                          <button
+                            onClick={() => {
+                              void handleFileSelect(gitDiffPreview.path);
+                            }}
+                            className="btn btn-sm btn-secondary"
+                          >
+                            Open File
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-h-0">
+                        {gitDiffPreview.isLoading ? (
+                          <EditorSkeleton className="h-full" />
+                        ) : gitDiffPreview.error ? (
+                          <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
+                            Failed to load diff: {gitDiffPreview.error}
+                          </div>
+                        ) : parsedGitDiff?.isBinary ? (
+                          <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
+                            Binary file diff is not previewable in editor.
+                          </div>
+                        ) : !gitDiffPreview.content.trim() ? (
+                          <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
+                            No textual diff available for this file.
+                          </div>
+                        ) : parsedGitDiff && parsedGitDiff.hasRenderableHunks ? (
+                          <GitMonacoDiffEditor
+                            original={parsedGitDiff.original}
+                            modified={parsedGitDiff.modified}
+                            filePath={gitDiffPreview.path}
+                            className="h-full"
+                          />
+                        ) : (
+                          <MonacoEditor
+                            content={gitDiffPreview.content}
+                            readOnly
+                            onContentChange={() => {}}
+                            language="diff"
+                            editorSettings={editorSettings.settings}
+                            editorTheme={editorSettings.editorTheme}
+                            className="h-full"
+                          />
+                        )}
+                      </div>
                     </div>
-                  ) : parsedGitDiff?.isBinary ? (
-                    <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
-                      Binary file diff is not previewable in editor.
+                  ) : binaryPreviewUrl ? (
+                    <div className="flex-1 flex flex-col bg-accent-hover overflow-hidden">
+                      {getFileType(selectedFile) === "pdf" && (
+                        <div className="flex items-center justify-end px-2 py-1 border-b border-border bg-surface-secondary">
+                          <button
+                            onClick={() => setPdfRefreshKey((k) => k + 1)}
+                            className="flex items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-foreground hover:bg-surface-tertiary rounded transition-colors"
+                            title="Refresh PDF"
+                          >
+                            <ArrowClockwiseIcon className="w-3.5 h-3.5" />
+                            Refresh
+                          </button>
+                        </div>
+                      )}
+                      <div className="flex-1 flex items-center justify-center overflow-auto p-4">
+                        {getFileType(selectedFile) === "image" ? (
+                          <img
+                            src={binaryPreviewUrl}
+                            alt={selectedFile}
+                            className="max-w-full max-h-full object-contain"
+                          />
+                        ) : (
+                          <iframe
+                            key={pdfRefreshKey}
+                            src={binaryPreviewUrl}
+                            className="w-full h-full border-0"
+                            title={`PDF: ${selectedFile}`}
+                          />
+                        )}
+                      </div>
                     </div>
-                  ) : !gitDiffPreview.content.trim() ? (
-                    <div className="h-full flex items-center justify-center px-6 text-sm text-muted">
-                      No textual diff available for this file.
-                    </div>
-                  ) : parsedGitDiff && parsedGitDiff.hasRenderableHunks ? (
-                    <GitMonacoDiffEditor
-                      original={parsedGitDiff.original}
-                      modified={parsedGitDiff.modified}
-                      filePath={gitDiffPreview.path}
-                      className="h-full"
-                    />
+                  ) : isLoadingFile ? (
+                    <EditorSkeleton className="flex-1 min-h-0" />
                   ) : (
-                    <MonacoEditor
-                      content={gitDiffPreview.content}
-                      readOnly
-                      onContentChange={() => {}}
-                      language="diff"
-                      editorSettings={editorSettings.settings}
-                      editorTheme={editorSettings.editorTheme}
-                      className="h-full"
-                    />
-                  )}
-                </div>
-              </div>
-            ) : binaryPreviewUrl ? (
-              <div className="flex-1 flex flex-col bg-accent-hover overflow-hidden">
-                {getFileType(selectedFile) === "pdf" && (
-                  <div className="flex items-center justify-end px-2 py-1 border-b border-border bg-surface-secondary">
-                    <button
-                      onClick={() => setPdfRefreshKey((k) => k + 1)}
-                      className="flex items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-foreground hover:bg-surface-tertiary rounded transition-colors"
-                      title="Refresh PDF"
+                    <motion.div
+                      key={selectedFile}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
+                      className="flex-1 min-h-0"
                     >
-                      <ArrowClockwiseIcon className="w-3.5 h-3.5" />
-                      Refresh
-                    </button>
+                      <EditorErrorBoundary>
+                        <MonacoEditor
+                          content={fileContent}
+                          readOnly={false}
+                          onContentChange={handleContentChange}
+                          language={getFileLanguage(selectedFile)}
+                          editorSettings={editorSettings.settings}
+                          editorTheme={editorSettings.editorTheme}
+                          className="h-full"
+                        />
+                      </EditorErrorBoundary>
+                    </motion.div>
+                  )
+                ) : (
+                  <div className="flex-1 min-h-0 flex items-center justify-center px-6 text-sm text-muted bg-accent-hover">
+                    Drop a tab here to open this panel.
                   </div>
                 )}
-                <div className="flex-1 flex items-center justify-center overflow-auto p-4">
-                  {getFileType(selectedFile) === "image" ? (
-                    <img
-                      src={binaryPreviewUrl}
-                      alt={selectedFile}
-                      className="max-w-full max-h-full object-contain"
-                    />
-                  ) : (
-                    <iframe
-                      key={pdfRefreshKey}
-                      src={binaryPreviewUrl}
-                      className="w-full h-full border-0"
-                      title={`PDF: ${selectedFile}`}
-                    />
-                  )}
-                </div>
               </div>
-            ) : isLoadingFile ? (
-                <EditorSkeleton className="flex-1 min-h-0" />
-            ) : (
-              <motion.div
-                key={selectedFile}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.15, ease: "easeOut" }}
-                className="flex-1 min-h-0"
-              >
-                <EditorErrorBoundary>
-                  <MonacoEditor
-                    content={fileContent}
-                    readOnly={false}
-                    onContentChange={handleContentChange}
-                    language={getFileLanguage(selectedFile)}
-                    editorSettings={editorSettings.settings}
-                    editorTheme={editorSettings.editorTheme}
-                    className="h-full"
-                  />
-                </EditorErrorBoundary>
-              </motion.div>
-            )
+
+              {splitPane?.side === "right" && renderSplitPane("right")}
+            </div>
           ) : (
             <div className="flex-1 flex items-center justify-center">
               {daemon.projectPath ? (
