@@ -209,7 +209,7 @@ export function FeaturesSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }
 
   return (
     <section className="py-12 md:py-20 px-6 border-t border-border">
-      <div className="max-w-[clamp(64rem,65vw,85rem)] mx-auto">
+      <div className="max-w-5xl mx-auto">
         <FadeIn>
           <h2 className="text-2xl font-medium mb-2 text-center">
             {messages.home.featuresTitle}
