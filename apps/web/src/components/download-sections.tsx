@@ -97,6 +97,16 @@ export function InstallationPolicySection({
   locale?: Locale;
 }) {
   const messages = getMessages(locale).download;
+  const [detectedPlatform, setDetectedPlatform] = useState<Platform>("unknown");
+
+  useEffect(() => {
+    setDetectedPlatform(detectPlatform());
+  }, []);
+
+  // Hide macOS-specific install notes on Windows
+  if (detectedPlatform === "Windows") {
+    return null;
+  }
 
   return (
     <FadeIn className="max-w-2xl mb-10">
