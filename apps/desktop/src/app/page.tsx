@@ -6,7 +6,7 @@ import { useTauriDaemon } from "@/lib/tauri";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
 import { InputDialog } from "@/components/ui/input-dialog";
-import { TabBar, TabItem } from "@/components/ui/tab-bar";
+import { TabBar, type TabItem, type TabReorderPosition } from "@/components/ui/tab-bar";
 import { EditorSkeleton } from "@/components/editor/editor-skeleton";
 import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
 import { FileSidebarPanel } from "@/components/editor/sidebar-file-panel";
@@ -1239,6 +1239,35 @@ The AI assistant will read and update this file during compilation.
     setEditorViewMode("file");
   }, []);
 
+  const handleReorderTabs = useCallback(
+    (
+      draggedPath: string,
+      targetPath: string,
+      position: TabReorderPosition,
+    ) => {
+      if (draggedPath === targetPath) return;
+
+      setOpenTabs((prev) => {
+        const fromIndex = prev.indexOf(draggedPath);
+        const targetIndex = prev.indexOf(targetPath);
+        if (fromIndex < 0 || targetIndex < 0) return prev;
+
+        const reordered = [...prev];
+        const [movedTab] = reordered.splice(fromIndex, 1);
+        if (!movedTab) return prev;
+
+        const targetAfterRemoval = reordered.indexOf(targetPath);
+        if (targetAfterRemoval < 0) return prev;
+
+        const insertIndex =
+          position === "before" ? targetAfterRemoval : targetAfterRemoval + 1;
+        reordered.splice(insertIndex, 0, movedTab);
+        return reordered;
+      });
+    },
+    [],
+  );
+
   // Convert openTabs to TabItem format for TabBar
   const editorTabs = useMemo(
     (): TabItem[] =>
@@ -2073,6 +2102,7 @@ The AI assistant will read and update this file during compilation.
               activeTab={selectedFile}
               onTabSelect={handleFileSelect}
               onTabClose={handleCloseTab}
+              onTabReorder={handleReorderTabs}
               onCloseOthers={handleCloseOtherTabs}
               onCloseToLeft={handleCloseTabsToLeft}
               onCloseToRight={handleCloseTabsToRight}

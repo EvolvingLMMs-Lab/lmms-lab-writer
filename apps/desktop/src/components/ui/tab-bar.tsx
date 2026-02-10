@@ -17,11 +17,18 @@ export interface TabItem {
   badge?: string | number;
 }
 
+export type TabReorderPosition = "before" | "after";
+
 export interface TabBarProps<T extends TabItem> {
   tabs: T[];
   activeTab: string;
   onTabSelect: (id: string) => void;
   onTabClose?: (id: string) => void;
+  onTabReorder?: (
+    draggedId: string,
+    targetId: string,
+    position: TabReorderPosition,
+  ) => void;
   onCloseOthers?: (id: string) => void;
   onCloseToLeft?: (id: string) => void;
   onCloseToRight?: (id: string) => void;
@@ -35,6 +42,7 @@ export function TabBar<T extends TabItem>({
   activeTab,
   onTabSelect,
   onTabClose,
+  onTabReorder,
   onCloseOthers,
   onCloseToLeft,
   onCloseToRight,
@@ -47,6 +55,16 @@ export function TabBar<T extends TabItem>({
     y: number;
     tabId: string;
   } | null>(null);
+  const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<{
+    tabId: string;
+    position: TabReorderPosition;
+  } | null>(null);
+
+  const resetDragState = useCallback(() => {
+    setDraggedTabId(null);
+    setDropIndicator(null);
+  }, []);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent, tabId: string) => {
@@ -123,6 +141,75 @@ export function TabBar<T extends TabItem>({
     [tabs, onTabClose, onCloseOthers, onCloseToLeft, onCloseToRight, onCloseAll],
   );
 
+  const handleDragStart = useCallback(
+    (e: React.DragEvent<HTMLDivElement>, tabId: string) => {
+      if (!onTabReorder) return;
+      setDraggedTabId(tabId);
+      setDropIndicator(null);
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", tabId);
+    },
+    [onTabReorder],
+  );
+
+  const handleDragOverTab = useCallback(
+    (e: React.DragEvent<HTMLDivElement>, tabId: string) => {
+      if (!onTabReorder || !draggedTabId || draggedTabId === tabId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      const rect = e.currentTarget.getBoundingClientRect();
+      const position: TabReorderPosition =
+        e.clientX < rect.left + rect.width / 2 ? "before" : "after";
+      setDropIndicator({ tabId, position });
+    },
+    [onTabReorder, draggedTabId],
+  );
+
+  const handleDropOnTab = useCallback(
+    (e: React.DragEvent<HTMLDivElement>, tabId: string) => {
+      if (!onTabReorder || !draggedTabId) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const rect = e.currentTarget.getBoundingClientRect();
+      const position: TabReorderPosition =
+        e.clientX < rect.left + rect.width / 2 ? "before" : "after";
+      if (draggedTabId !== tabId) {
+        onTabReorder(draggedTabId, tabId, position);
+      }
+      resetDragState();
+    },
+    [onTabReorder, draggedTabId, resetDragState],
+  );
+
+  const handleContainerDragOver = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      if (!onTabReorder || !draggedTabId) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("[data-tab-id]")) return;
+      e.preventDefault();
+      const lastTab = tabs[tabs.length - 1];
+      if (lastTab) {
+        setDropIndicator({ tabId: lastTab.id, position: "after" });
+      }
+    },
+    [onTabReorder, draggedTabId, tabs],
+  );
+
+  const handleContainerDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      if (!onTabReorder || !draggedTabId) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("[data-tab-id]")) return;
+      e.preventDefault();
+      const lastTab = tabs[tabs.length - 1];
+      if (lastTab && lastTab.id !== draggedTabId) {
+        onTabReorder(draggedTabId, lastTab.id, "after");
+      }
+      resetDragState();
+    },
+    [onTabReorder, draggedTabId, tabs, resetDragState],
+  );
+
   if (variant === "sidebar") {
     return (
       <div className={`flex items-center border-b border-border ${className}`}>
@@ -155,22 +242,40 @@ export function TabBar<T extends TabItem>({
   return (
     <>
       <div
+        onDragOver={handleContainerDragOver}
+        onDrop={handleContainerDrop}
         className={`flex items-center border-b border-border bg-accent-hover overflow-x-auto min-h-[34px] ${className}`}
       >
         {tabs.map((tab) => {
           const isActive = tab.id === activeTab;
+          const isDragged = draggedTabId === tab.id;
+          const showDropBefore =
+            dropIndicator?.tabId === tab.id &&
+            dropIndicator.position === "before";
+          const showDropAfter =
+            dropIndicator?.tabId === tab.id &&
+            dropIndicator.position === "after";
           return (
             <div
               key={tab.id}
-              className={`group flex items-center border-r border-border transition-colors ${
+              data-tab-id={tab.id}
+              draggable={Boolean(onTabReorder)}
+              onDragStart={(e) => handleDragStart(e, tab.id)}
+              onDragOver={(e) => handleDragOverTab(e, tab.id)}
+              onDrop={(e) => handleDropOnTab(e, tab.id)}
+              onDragEnd={resetDragState}
+              className={`group relative flex items-center border-r border-border transition-colors ${
                 isActive
                   ? "bg-background text-foreground"
                   : "text-muted hover:text-foreground hover:bg-background/50"
-              }`}
+              } ${onTabReorder ? "cursor-grab active:cursor-grabbing" : ""} ${isDragged ? "opacity-60" : ""}`}
               title={tab.title ?? tab.label}
               onMouseDown={(e) => handleMouseDown(e, tab.id)}
               onContextMenu={(e) => handleContextMenu(e, tab.id)}
             >
+              {showDropBefore && (
+                <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-0.5 bg-accent z-10" />
+              )}
               <button
                 onClick={() => onTabSelect(tab.id)}
                 className="px-3 py-1.5 text-sm truncate max-w-[120px]"
@@ -183,6 +288,10 @@ export function TabBar<T extends TabItem>({
                     e.stopPropagation();
                     onTabClose(tab.id);
                   }}
+                  draggable={false}
+                  onDragStart={(e) => {
+                    e.preventDefault();
+                  }}
                   className={`w-6 h-full flex items-center justify-center hover:bg-surface-tertiary ${
                     isActive
                       ? "opacity-100"
@@ -192,6 +301,9 @@ export function TabBar<T extends TabItem>({
                 >
                   <XIcon className="w-3 h-3" />
                 </button>
+              )}
+              {showDropAfter && (
+                <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-0.5 bg-accent z-10" />
               )}
             </div>
           );
