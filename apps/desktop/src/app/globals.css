@@ -70,6 +70,7 @@
 
 @import "overlayscrollbars/overlayscrollbars.css";
 @import "@xterm/xterm/css/xterm.css";
+@import "dockview-react/dist/styles/dockview.css";
 
 :root {
   --background: #fafafa;

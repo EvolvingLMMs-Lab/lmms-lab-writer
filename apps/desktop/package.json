@@ -50,6 +50,8 @@
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
     "clsx": "^2.1.1",
+    "dockview": "^4.13.1",
+    "dockview-react": "^4.13.1",
     "framer-motion": "^12.29.2",
     "katex": "^0.16.28",
     "monaco-editor": "^0.55.1",
