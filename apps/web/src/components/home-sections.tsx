@@ -263,7 +263,7 @@ export function FeaturesSection() {
 
   return (
     <section className="py-12 md:py-20 px-6 border-t border-border">
-      <div className="max-w-5xl 2xl:max-w-6xl mx-auto">
+      <div className="max-w-[clamp(64rem,65vw,85rem)] mx-auto">
         <FadeIn>
           <h2 className="text-2xl font-medium mb-2 text-center">
             Everything you need. Nothing you don&apos;t.
@@ -399,7 +399,7 @@ export function FeaturesSection() {
             </div>
 
             {/* Right: image / visual panel */}
-            <div className="w-3/5 bg-neutral-50 flex items-center justify-center p-6 min-h-[400px] 2xl:min-h-[480px]">
+            <div className="w-3/5 bg-neutral-50 flex items-center justify-center p-6 min-h-[max(400px,35vh)]">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeIndex}
@@ -413,7 +413,7 @@ export function FeaturesSection() {
                     <LightboxImage
                       src={activeFeature.image}
                       alt={activeFeature.title}
-                      className="max-h-[360px] 2xl:max-h-[440px] w-auto max-w-full object-contain rounded-sm border border-border shadow-sm"
+                      className="max-h-[clamp(360px,40vh,600px)] w-auto max-w-full object-contain rounded-sm border border-border shadow-sm"
                     />
                   ) : (
                     <div className="text-center px-8">
