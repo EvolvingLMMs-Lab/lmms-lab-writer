@@ -2588,7 +2588,7 @@ The AI assistant will read and update this file during compilation.
         ? pathSync.basename(splitPane.selectedFile)
         : "Split",
       content: renderSplitPane(splitPane.side),
-      inactive: true,
+      inactive: false,
       position: {
         referencePanel: "editor-primary",
         direction: splitPane.side,
