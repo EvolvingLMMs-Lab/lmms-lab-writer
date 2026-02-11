@@ -27,8 +27,10 @@ const GPU_SPRING = {
 const BLOB_URL = "https://uv96nthsmy3qxwco.public.blob.vercel-storage.com";
 export const RELEASE_VERSION = "0.1.0";
 
-const macPkgFile = `LMMs-Lab_Writer_${RELEASE_VERSION}_aarch64.pkg`;
-const macDmgFile = `LMMs-Lab Writer_${RELEASE_VERSION}_aarch64.dmg`;
+const macArmPkgFile = `LMMs-Lab_Writer_${RELEASE_VERSION}_aarch64.pkg`;
+const macArmDmgFile = `LMMs-Lab Writer_${RELEASE_VERSION}_aarch64.dmg`;
+const macIntelPkgFile = `LMMs-Lab_Writer_${RELEASE_VERSION}_x64.pkg`;
+const macIntelDmgFile = `LMMs-Lab Writer_${RELEASE_VERSION}_x64.dmg`;
 const windowsExeFile = `LMMs-Lab Writer_${RELEASE_VERSION}_x64-setup.exe`;
 const windowsMsiFile = `LMMs-Lab Writer_${RELEASE_VERSION}_x64_en-US.msi`;
 const npmTarballFile = `lmms-lab-writer-shared-${RELEASE_VERSION}.tgz`;
@@ -38,6 +40,15 @@ function blobUrl(filename: string): string {
 }
 
 type Platform = "macOS" | "Windows" | "Linux" | "unknown";
+type MacArch = "arm64" | "x64" | "unknown";
+
+type DownloadVariant = {
+  label: string;
+  sublabel: string;
+  file: string;
+  url: string;
+  arch?: MacArch;
+};
 
 const platforms = {
   macOS: {
@@ -47,14 +58,30 @@ const platforms = {
       {
         label: "DMG Bundle",
         sublabel: "Apple Silicon (M1/M2/M3/M4)",
-        file: macDmgFile,
-        url: blobUrl(macDmgFile),
+        file: macArmDmgFile,
+        url: blobUrl(macArmDmgFile),
+        arch: "arm64" as const,
       },
       {
         label: "PKG Installer",
         sublabel: "Apple Silicon (M1/M2/M3/M4)",
-        file: macPkgFile,
-        url: blobUrl(macPkgFile),
+        file: macArmPkgFile,
+        url: blobUrl(macArmPkgFile),
+        arch: "arm64" as const,
+      },
+      {
+        label: "DMG Bundle",
+        sublabel: "Intel (x64)",
+        file: macIntelDmgFile,
+        url: blobUrl(macIntelDmgFile),
+        arch: "x64" as const,
+      },
+      {
+        label: "PKG Installer",
+        sublabel: "Intel (x64)",
+        file: macIntelPkgFile,
+        url: blobUrl(macIntelPkgFile),
+        arch: "x64" as const,
       },
     ],
   },
@@ -67,12 +94,14 @@ const platforms = {
         sublabel: "64-bit (exe)",
         file: windowsExeFile,
         url: blobUrl(windowsExeFile),
+        arch: "unknown" as const,
       },
       {
         label: "Windows MSI",
         sublabel: "64-bit (msi)",
         file: windowsMsiFile,
         url: blobUrl(windowsMsiFile),
+        arch: "unknown" as const,
       },
     ],
   },
@@ -87,6 +116,24 @@ function detectPlatform(): Platform {
   if (platform.includes("mac") || ua.includes("mac")) return "macOS";
   if (platform.includes("win") || ua.includes("win")) return "Windows";
   if (platform.includes("linux") || ua.includes("linux")) return "Linux";
+
+  return "unknown";
+}
+
+function detectMacArch(): MacArch {
+  if (typeof window === "undefined") return "unknown";
+
+  const uaData = (
+    navigator as Navigator & { userAgentData?: { architecture?: string } }
+  ).userAgentData;
+  const architecture = uaData?.architecture?.toLowerCase();
+
+  if (architecture?.includes("arm")) return "arm64";
+  if (architecture?.includes("x86") || architecture?.includes("x64")) return "x64";
+
+  const ua = navigator.userAgent.toLowerCase();
+  if (ua.includes("arm64") || ua.includes("aarch64")) return "arm64";
+  if (ua.includes("x86_64") || ua.includes("intel")) return "x64";
 
   return "unknown";
 }
@@ -185,10 +232,12 @@ export function InstallationPolicySection({
 export function DownloadSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }) {
   const messages = getMessages(locale).download;
   const [detectedPlatform, setDetectedPlatform] = useState<Platform>("unknown");
+  const [detectedMacArch, setDetectedMacArch] = useState<MacArch>("unknown");
   const [showAllPlatforms, setShowAllPlatforms] = useState(false);
 
   useEffect(() => {
     setDetectedPlatform(detectPlatform());
+    setDetectedMacArch(detectMacArch());
   }, []);
 
   const recommendedPlatform =
@@ -199,6 +248,11 @@ export function DownloadSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }
   const recommended = platforms[recommendedPlatform];
   const otherPlatformKey = recommendedPlatform === "macOS" ? "Windows" : "macOS";
   const other = platforms[otherPlatformKey];
+  const recommendedVariants: DownloadVariant[] = recommendedPlatform === "macOS"
+    ? detectedMacArch === "unknown"
+      ? recommended.variants
+      : recommended.variants.filter((variant) => variant.arch === detectedMacArch)
+    : recommended.variants;
 
   return (
     <FadeIn className="max-w-2xl">
@@ -218,7 +272,7 @@ export function DownloadSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }
         </div>
 
         <div className="space-y-4">
-          {recommended.variants.map((variant) => (
+          {recommendedVariants.map((variant) => (
             <motion.div
               key={variant.file}
               whileHover={{ scale: 1.01, y: -2 }}
@@ -318,6 +372,9 @@ brew install --cask lmms-lab-writer`}
       </pre>
       <p className="text-xs text-muted mt-2">
         {messages.homebrewNote}
+      </p>
+      <p className="text-xs text-muted mt-2">
+        {messages.homebrewArchFallback}
       </p>
     </FadeIn>
   );

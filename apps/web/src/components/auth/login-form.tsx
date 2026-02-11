@@ -45,14 +45,18 @@ export function LoginForm() {
       // Preserve source parameter (e.g., desktop) through OAuth flow
       if (source === "desktop") {
         sessionStorage.setItem("auth_source", "desktop");
+        localStorage.setItem("auth_source", "desktop");
         // Also preserve callback_port for auto-login feature
         const callbackPort = searchParams.get("callback_port");
         if (callbackPort) {
           sessionStorage.setItem("auth_callback_port", callbackPort);
+          localStorage.setItem("auth_callback_port", callbackPort);
         }
       } else {
         sessionStorage.removeItem("auth_source");
         sessionStorage.removeItem("auth_callback_port");
+        localStorage.removeItem("auth_source");
+        localStorage.removeItem("auth_callback_port");
       }
 
       // For desktop flow, redirect directly to desktop-success to keep PKCE state

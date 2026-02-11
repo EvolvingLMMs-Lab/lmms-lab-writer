@@ -28,6 +28,8 @@ To update later:
 brew upgrade lmms-lab-writer
 ```
 
+If Homebrew reports an architecture mismatch on Intel Macs, install the Intel (`x64`) DMG/PKG from the download page.
+
 #### Manual Installation
 
 Two formats are available from the [download page](/download):
@@ -35,7 +37,7 @@ Two formats are available from the [download page](/download):
 - **DMG** (`.dmg`) — Drag-and-drop installation. Open the image and drag the app to your Applications folder.
 - **PKG** (`.pkg`) — Guided installer. Double-click and follow the wizard.
 
-Both are for **Apple Silicon** (M1/M2/M3/M4).
+Both Apple Silicon (`aarch64`) and Intel (`x64`) builds are provided.
 
 Since the app is not yet signed with an Apple Developer certificate, macOS will block it. Remove the quarantine attribute first:
 
