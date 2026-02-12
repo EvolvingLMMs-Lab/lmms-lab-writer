@@ -47,7 +47,6 @@ const PdfViewer = dynamic(
   { ssr: false },
 );
 import {
-  ArrowClockwiseIcon,
   GearIcon,
   PlayCircleIcon,
   SidebarSimpleIcon,
@@ -424,7 +423,7 @@ export default function EditorPage() {
   const [splitDropHint, setSplitDropHint] = useState<SplitPaneSide | null>(null);
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [binaryPreviewUrl, setBinaryPreviewUrl] = useState<string | null>(null);
-  const [pdfRefreshKey, setPdfRefreshKey] = useState(0);
+  const [pdfRefreshKey, _setPdfRefreshKey] = useState(0);
   const [pendingGoToLine, setPendingGoToLine] = useState(0);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(false);
@@ -1997,6 +1996,7 @@ The AI assistant will read and update this file during compilation.
       handleSplitCloseOtherTabs,
       handleSplitCloseTabsToLeft,
       handleSplitCloseTabsToRight,
+      handleSplitSynctexClick,
       handleSplitContentChange,
       getFileLanguage,
       editorSettings.settings,
