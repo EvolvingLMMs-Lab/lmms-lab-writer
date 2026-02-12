@@ -401,7 +401,7 @@ export function VideoSection({ locale = DEFAULT_LOCALE }: { locale?: Locale }) {
           ) : (
             <iframe
               className="absolute inset-0 w-full h-full"
-              src="https://www.youtube.com/embed/KIj7kfkVvSs?si=br2z2qsQ2p7JlIj9"
+              src="https://www.youtube.com/embed/rX0FdCEqw0s?si=6ikHQcGs6NMLlmJ8"
               title="LMMs-Lab Writer Demo"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               referrerPolicy="strict-origin-when-cross-origin"
