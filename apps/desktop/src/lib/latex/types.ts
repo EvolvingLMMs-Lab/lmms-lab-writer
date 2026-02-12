@@ -86,6 +86,13 @@ export interface InstallResult {
   needs_restart: boolean;
 }
 
+// SyncTeX inverse search result
+export interface SynctexResult {
+  file: string;
+  line: number;
+  column: number;
+}
+
 // Main file detection types
 export interface MainFileDetectionResult {
   main_file: string | null;

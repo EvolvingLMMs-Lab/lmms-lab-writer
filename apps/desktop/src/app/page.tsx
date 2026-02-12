@@ -40,7 +40,8 @@ import {
 import { RecentProjects } from "@/components/recent-projects";
 import { useRecentProjects } from "@/lib/recent-projects";
 import { pathSync } from "@/lib/path";
-import type { MainFileDetectionResult } from "@/lib/latex/types";
+import type { MainFileDetectionResult, SynctexResult } from "@/lib/latex/types";
+import { PdfViewer } from "@/components/editor/pdf-viewer";
 import {
   ArrowClockwiseIcon,
   GearIcon,
@@ -420,6 +421,7 @@ export default function EditorPage() {
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [binaryPreviewUrl, setBinaryPreviewUrl] = useState<string | null>(null);
   const [pdfRefreshKey, setPdfRefreshKey] = useState(0);
+  const [pendingGoToLine, setPendingGoToLine] = useState(0);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(false);
   const [showTerminal, setShowTerminal] = useState(false);
@@ -780,6 +782,13 @@ The AI assistant will read and update this file during compilation.
   }, [checkOpencodeStatus]);
 
   useEffect(() => {
+    if (pendingGoToLine > 0) {
+      const timer = setTimeout(() => setPendingGoToLine(0), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [pendingGoToLine]);
+
+  useEffect(() => {
     if (!daemon.projectPath) {
       opencodeStartedForPathRef.current = null;
       if (splitContentSaveTimeoutRef.current) {
@@ -1075,6 +1084,68 @@ The AI assistant will read and update this file during compilation.
       }
     },
     [daemon, getFileType, resolveSelectablePath, toast],
+  );
+
+  const handleSynctexClick = useCallback(
+    async (page: number, x: number, y: number) => {
+      if (!daemon.projectPath || !selectedFile) return;
+
+      // Resolve the PDF path on disk
+      const pdfPath = pathSync.join(daemon.projectPath, selectedFile);
+
+      try {
+        const result = await invoke<SynctexResult>("latex_synctex_edit", {
+          pdfPath,
+          page,
+          x,
+          y,
+        });
+
+        // Resolve the file path relative to project directory
+        let resolvedFile = result.file;
+        if (resolvedFile.startsWith(daemon.projectPath)) {
+          resolvedFile = resolvedFile.slice(daemon.projectPath.length);
+          // Remove leading slash/backslash
+          resolvedFile = resolvedFile.replace(/^[/\\]+/, "");
+        }
+
+        // Open the file and navigate to the line
+        await handleFileSelect(resolvedFile);
+        setPendingGoToLine(result.line);
+      } catch (err) {
+        console.error("SyncTeX lookup failed:", err);
+      }
+    },
+    [daemon.projectPath, selectedFile, handleFileSelect],
+  );
+
+  const handleSplitSynctexClick = useCallback(
+    async (page: number, x: number, y: number) => {
+      if (!daemon.projectPath || !splitPane?.selectedFile) return;
+
+      const pdfPath = pathSync.join(daemon.projectPath, splitPane.selectedFile);
+
+      try {
+        const result = await invoke<SynctexResult>("latex_synctex_edit", {
+          pdfPath,
+          page,
+          x,
+          y,
+        });
+
+        let resolvedFile = result.file;
+        if (resolvedFile.startsWith(daemon.projectPath)) {
+          resolvedFile = resolvedFile.slice(daemon.projectPath.length);
+          resolvedFile = resolvedFile.replace(/^[/\\]+/, "");
+        }
+
+        await handleFileSelect(resolvedFile);
+        setPendingGoToLine(result.line);
+      } catch (err) {
+        console.error("SyncTeX lookup failed:", err);
+      }
+    },
+    [daemon.projectPath, splitPane?.selectedFile, handleFileSelect],
   );
 
   const loadGitDiffPreview = useCallback(
@@ -1827,6 +1898,12 @@ The AI assistant will read and update this file during compilation.
                     alt={splitSelectedFile}
                     className="max-w-full max-h-full object-contain"
                   />
+                ) : splitFileType === "pdf" ? (
+                  <PdfViewer
+                    src={splitPane.binaryPreviewUrl}
+                    refreshKey={splitPane.pdfRefreshKey}
+                    onSynctexClick={handleSplitSynctexClick}
+                  />
                 ) : (
                   <iframe
                     key={splitPane.pdfRefreshKey}
@@ -2512,34 +2589,30 @@ The AI assistant will read and update this file during compilation.
           </div>
         ) : binaryPreviewUrl ? (
           <div className="flex-1 flex flex-col bg-accent-hover overflow-hidden">
-            {getFileType(selectedFile) === "pdf" && (
-              <div className="flex items-center justify-end px-2 py-1 border-b border-border bg-surface-secondary">
-                <button
-                  onClick={() => setPdfRefreshKey((k) => k + 1)}
-                  className="flex items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-foreground hover:bg-surface-tertiary rounded transition-colors"
-                  title="Refresh PDF"
-                >
-                  <ArrowClockwiseIcon className="w-3.5 h-3.5" />
-                  Refresh
-                </button>
-              </div>
-            )}
-            <div className="flex-1 flex items-center justify-center overflow-auto p-4">
-              {getFileType(selectedFile) === "image" ? (
+            {getFileType(selectedFile) === "image" ? (
+              <div className="flex-1 flex items-center justify-center overflow-auto p-4">
                 <img
                   src={binaryPreviewUrl}
                   alt={selectedFile}
                   className="max-w-full max-h-full object-contain"
                 />
-              ) : (
+              </div>
+            ) : getFileType(selectedFile) === "pdf" ? (
+              <PdfViewer
+                src={binaryPreviewUrl}
+                refreshKey={pdfRefreshKey}
+                onSynctexClick={handleSynctexClick}
+              />
+            ) : (
+              <div className="flex-1 flex items-center justify-center overflow-auto p-4">
                 <iframe
                   key={pdfRefreshKey}
                   src={binaryPreviewUrl}
                   className="w-full h-full border-0"
-                  title={`PDF: ${selectedFile}`}
+                  title={`File: ${selectedFile}`}
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         ) : isLoadingFile ? (
           <EditorSkeleton className="flex-1 min-h-0" />
@@ -2559,6 +2632,7 @@ The AI assistant will read and update this file during compilation.
                 language={getFileLanguage(selectedFile)}
                 editorSettings={editorSettings.settings}
                 editorTheme={editorSettings.editorTheme}
+                goToLine={pendingGoToLine}
                 className="h-full"
               />
             </EditorErrorBoundary>

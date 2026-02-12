@@ -289,6 +289,7 @@ pub async fn latex_compile(
     let mut cmd_args = vec![
         "-interaction=nonstopmode".to_string(),
         "-file-line-error".to_string(),
+        "-synctex=1".to_string(),
     ];
 
     // Add user-provided arguments
@@ -463,8 +464,6 @@ pub async fn latex_clean_aux_files(directory: String, main_file: String) -> Resu
         ".lot",
         ".fls",
         ".fdb_latexmk",
-        ".synctex.gz",
-        ".synctex",
         ".bbl",
         ".blg",
         ".nav",
@@ -480,6 +479,82 @@ pub async fn latex_clean_aux_files(directory: String, main_file: String) -> Resu
     }
 
     Ok(())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SynctexResult {
+    pub file: String,
+    pub line: u32,
+    pub column: u32,
+}
+
+#[tauri::command]
+pub async fn latex_synctex_edit(
+    pdf_path: String,
+    page: u32,
+    x: f64,
+    y: f64,
+) -> Result<SynctexResult, String> {
+    // Find the synctex binary using the same logic as compiler detection
+    let synctex_info = find_compiler("synctex").await;
+    let synctex_bin = if synctex_info.available {
+        synctex_info.path.unwrap_or_else(|| "synctex".to_string())
+    } else {
+        "synctex".to_string()
+    };
+
+    let input_spec = format!("{}:{}:{}:{}", page, x, y, pdf_path);
+
+    let mut cmd = command(&synctex_bin);
+    cmd.arg("edit").arg("-o").arg(&input_spec);
+
+    // Ensure PATH includes common TeX directories
+    let env_path = std::env::var("PATH").unwrap_or_default();
+    #[cfg(target_os = "macos")]
+    let env_path = {
+        if !env_path.contains("/Library/TeX/texbin") {
+            format!(
+                "/Library/TeX/texbin:/opt/homebrew/bin:/usr/local/bin:{}",
+                env_path
+            )
+        } else {
+            env_path
+        }
+    };
+    cmd.env("PATH", env_path);
+
+    let output = cmd
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run synctex: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("synctex edit failed: {}", stderr));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse the output to extract Input, Line, Column
+    let mut file = String::new();
+    let mut line: u32 = 0;
+    let mut column: u32 = 0;
+
+    for output_line in stdout.lines() {
+        if let Some(val) = output_line.strip_prefix("Input:") {
+            file = val.trim().to_string();
+        } else if let Some(val) = output_line.strip_prefix("Line:") {
+            line = val.trim().parse().unwrap_or(0);
+        } else if let Some(val) = output_line.strip_prefix("Column:") {
+            column = val.trim().parse().unwrap_or(0);
+        }
+    }
+
+    if file.is_empty() || line == 0 {
+        return Err("Could not find source location for this position".to_string());
+    }
+
+    Ok(SynctexResult { file, line, column })
 }
 
 /// Get recommended LaTeX distributions for the current platform

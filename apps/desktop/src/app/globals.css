@@ -800,3 +800,8 @@ kbd {
 .animate-highlight {
   animation: file-highlight 1.5s ease-in-out;
 }
+
+.synctex-line-highlight {
+  background-color: rgba(255, 200, 0, 0.3);
+  transition: background-color 0.3s ease;
+}

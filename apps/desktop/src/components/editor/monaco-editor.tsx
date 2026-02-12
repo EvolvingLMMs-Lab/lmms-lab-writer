@@ -18,6 +18,7 @@ type Props = {
   editorSettings?: Partial<EditorSettings>;
   editorTheme?: EditorTheme;
   onContentChange?: (content: string) => void;
+  goToLine?: number;
 };
 
 type VimModeController = {
@@ -53,6 +54,7 @@ export const MonacoEditor = memo(function MonacoEditor({
   editorSettings,
   editorTheme = "one-light",
   onContentChange,
+  goToLine,
 }: Props) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
@@ -144,6 +146,44 @@ export const MonacoEditor = memo(function MonacoEditor({
       monacoRef.current.editor.setTheme(editorTheme);
     }
   }, [editorTheme]);
+
+  useEffect(() => {
+    const ed = editorRef.current;
+    if (!ed || !goToLine || goToLine <= 0) return;
+
+    ed.revealLineInCenter(goToLine);
+    ed.setPosition({ lineNumber: goToLine, column: 1 });
+    ed.focus();
+
+    // Briefly highlight the line
+    const decorations = ed.deltaDecorations(
+      [],
+      [
+        {
+          range: {
+            startLineNumber: goToLine,
+            startColumn: 1,
+            endLineNumber: goToLine,
+            endColumn: 1,
+          },
+          options: {
+            isWholeLine: true,
+            className: "synctex-line-highlight",
+            overviewRuler: {
+              color: "rgba(255, 200, 0, 0.6)",
+              position: 1,
+            },
+          },
+        },
+      ],
+    );
+
+    const timer = setTimeout(() => {
+      ed.deltaDecorations(decorations, []);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [goToLine]);
 
   useEffect(() => {
     const statusNode = vimStatusRef.current;
