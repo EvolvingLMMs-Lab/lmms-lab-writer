@@ -67,6 +67,7 @@
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^19.2.4",
     "react-markdown": "^10.1.0",
+    "pdfjs-dist": "5.4.296",
     "react-pdf": "^10.3.0",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",

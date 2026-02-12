@@ -41,7 +41,10 @@ import { RecentProjects } from "@/components/recent-projects";
 import { useRecentProjects } from "@/lib/recent-projects";
 import { pathSync } from "@/lib/path";
 import type { MainFileDetectionResult, SynctexResult } from "@/lib/latex/types";
-import { PdfViewer } from "@/components/editor/pdf-viewer";
+const PdfViewer = dynamic(
+  () => import("@/components/editor/pdf-viewer").then((mod) => mod.PdfViewer),
+  { ssr: false },
+);
 import {
   ArrowClockwiseIcon,
   GearIcon,
