@@ -787,7 +787,7 @@ The AI assistant will read and update this file during compilation.
   useEffect(() => {
     if (pendingGoToLine > 0) {
       // Give the editor time to load new file content before clearing
-      const timer = setTimeout(() => setPendingGoToLine(0), 500);
+      const timer = setTimeout(() => setPendingGoToLine(0), 3000);
       return () => clearTimeout(timer);
     }
   }, [pendingGoToLine]);
