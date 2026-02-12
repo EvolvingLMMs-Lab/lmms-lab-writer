@@ -2,6 +2,31 @@
 export type EditorTheme = "one-light" | "one-dark";
 export type TerminalShellMode = "auto" | "custom";
 
+// Editor view modes
+export type EditorViewMode = "file" | "git-diff";
+
+export type GitDiffPreviewState = {
+  path: string;
+  staged: boolean;
+  content: string;
+  isLoading: boolean;
+  error: string | null;
+};
+
+export type SplitPaneSide = "left" | "right";
+export type DragSourcePane = "primary" | "split";
+
+export type SplitPaneState = {
+  side: SplitPaneSide;
+  openTabs: string[];
+  selectedFile?: string;
+  content: string;
+  isLoading: boolean;
+  error: string | null;
+  binaryPreviewUrl: string | null;
+  pdfRefreshKey: number;
+};
+
 // Minimap configuration matching Monaco Editor API
 export interface MinimapSettings {
   enabled: boolean;

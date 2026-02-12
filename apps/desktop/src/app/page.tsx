@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import { useTauriDaemon } from "@/lib/tauri";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
@@ -13,7 +12,6 @@ import {
   type TabDragMovePayload,
   type TabDragEndPayload,
 } from "@/components/ui/tab-bar";
-import { EditorSkeleton } from "@/components/editor/editor-skeleton";
 import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
 import {
   DockviewPanelLayout,
@@ -23,7 +21,7 @@ import { FileSidebarPanel } from "@/components/editor/sidebar-file-panel";
 import { GitSidebarPanel } from "@/components/editor/sidebar-git-panel";
 import { GitHubPublishDialog } from "@/components/editor/github-publish-dialog";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import { motion, AnimatePresence, useReducedMotion, type PanInfo } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { UserDropdown, LoginCodeModal } from "@/components/auth";
 import {
   useLatexSettings,
@@ -32,6 +30,13 @@ import {
   findMainTexFile,
 } from "@/lib/latex";
 import { useEditorSettings } from "@/lib/editor";
+import type {
+  EditorViewMode,
+  GitDiffPreviewState,
+  SplitPaneSide,
+  DragSourcePane,
+  SplitPaneState,
+} from "@/lib/editor/types";
 import {
   LaTeXSettingsDialog,
   LaTeXInstallPrompt,
@@ -42,10 +47,6 @@ import { RecentProjects } from "@/components/recent-projects";
 import { useRecentProjects } from "@/lib/recent-projects";
 import { pathSync } from "@/lib/path";
 import { COMPILE_PROMPT, type MainFileDetectionResult, type SynctexResult } from "@/lib/latex/types";
-const PdfViewer = dynamic(
-  () => import("@/components/editor/pdf-viewer").then((mod) => mod.PdfViewer),
-  { ssr: false },
-);
 import {
   GearIcon,
   PlayCircleIcon,
@@ -54,354 +55,36 @@ import {
   RobotIcon,
 } from "@phosphor-icons/react";
 
-function throttle<T extends (...args: Parameters<T>) => void>(
-  fn: T,
-  limit: number,
-): T {
-  let lastCall = 0;
-  return ((...args: Parameters<T>) => {
-    const now = Date.now();
-    if (now - lastCall >= limit) {
-      lastCall = now;
-      fn(...args);
-    }
-  }) as T;
-}
+// Extracted utilities
+import {
+  parseUnifiedDiffContent,
+  buildBasenameIndex,
+  getFileType,
+  getFileLanguage,
+  type TreeNode,
+} from "@/lib/editor/file-utils";
+import {
+  PANEL_SPRING,
+  INSTANT_TRANSITION,
+  MonacoEditor,
+  GitMonacoDiffEditor,
+  EditorTerminal,
+  OpenCodePanel,
+  OpenCodeDisconnectedDialog,
+  OpenCodeErrorBoundary,
+  OpenCodeErrorDialog,
+  PdfViewer,
+} from "@/lib/editor/constants";
 
-type OpenCodeStatus = {
-  running: boolean;
-  port: number;
-  installed: boolean;
-};
+import { EditorSkeleton } from "@/components/editor/editor-skeleton";
 
-type OpenCodeDaemonStatus = "stopped" | "starting" | "running" | "unavailable";
-type EditorViewMode = "file" | "git-diff";
-type GitDiffPreviewState = {
-  path: string;
-  staged: boolean;
-  content: string;
-  isLoading: boolean;
-  error: string | null;
-};
-
-type SplitPaneSide = "left" | "right";
-type DragSourcePane = "primary" | "split";
-
-type SplitPaneState = {
-  side: SplitPaneSide;
-  openTabs: string[];
-  selectedFile?: string;
-  content: string;
-  isLoading: boolean;
-  error: string | null;
-  binaryPreviewUrl: string | null;
-  pdfRefreshKey: number;
-};
-
-type ParsedUnifiedDiff = {
-  original: string;
-  modified: string;
-  added: number;
-  removed: number;
-  hasRenderableHunks: boolean;
-  isBinary: boolean;
-};
-
-function parseUnifiedDiffContent(content: string): ParsedUnifiedDiff {
-  const normalized = content.replace(/\r\n/g, "\n");
-  const lines = normalized.split("\n");
-  const originalLines: string[] = [];
-  const modifiedLines: string[] = [];
-  let inHunk = false;
-  let added = 0;
-  let removed = 0;
-  let isBinary = false;
-
-  for (const line of lines) {
-    if (
-      line.startsWith("Binary files ") ||
-      line.startsWith("GIT binary patch")
-    ) {
-      isBinary = true;
-    }
-
-    if (line.startsWith("@@")) {
-      inHunk = true;
-      continue;
-    }
-
-    if (!inHunk) continue;
-    if (line === "\\ No newline at end of file") continue;
-
-    if (line.startsWith("+") && !line.startsWith("+++")) {
-      modifiedLines.push(line.slice(1));
-      added += 1;
-      continue;
-    }
-
-    if (line.startsWith("-") && !line.startsWith("---")) {
-      originalLines.push(line.slice(1));
-      removed += 1;
-      continue;
-    }
-
-    if (line.startsWith(" ")) {
-      const contextLine = line.slice(1);
-      originalLines.push(contextLine);
-      modifiedLines.push(contextLine);
-      continue;
-    }
-
-    if (line.length === 0) {
-      originalLines.push("");
-      modifiedLines.push("");
-    }
-  }
-
-  return {
-    original: originalLines.join("\n"),
-    modified: modifiedLines.join("\n"),
-    added,
-    removed,
-    hasRenderableHunks: originalLines.length > 0 || modifiedLines.length > 0,
-    isBinary,
-  };
-}
-
-type TreeNode = {
-  path: string;
-  type: "file" | "directory";
-  children?: TreeNode[];
-};
-
-function buildBasenameIndex(nodes: TreeNode[]): Map<string, string[]> {
-  const index = new Map<string, string[]>();
-  const stack = [...nodes];
-
-  while (stack.length > 0) {
-    const node = stack.pop();
-    if (!node) continue;
-
-    if (node.type === "file") {
-      const name = pathSync.basename(node.path);
-      const existing = index.get(name);
-      if (existing) {
-        existing.push(node.path);
-      } else {
-        index.set(name, [node.path]);
-      }
-    }
-
-    if (node.children && node.children.length > 0) {
-      stack.push(...node.children);
-    }
-  }
-
-  return index;
-}
-
-const AI_COMMIT_DIFF_LIMIT = 30000;
-const AI_COMMIT_TIMEOUT_MS = 90000;
-const OPENCODE_STORAGE_KEY_AGENT = "opencode-selected-agent";
-const OPENCODE_STORAGE_KEY_MODEL = "opencode-selected-model";
-
-type OpenCodeMessagePart = {
-  type?: string;
-  text?: string;
-};
-
-type OpenCodeMessageInfo = {
-  id?: string;
-  role?: string;
-  parentID?: string;
-  error?: {
-    data?: {
-      message?: string;
-    };
-  };
-};
-
-type OpenCodeMessageItem = {
-  info?: OpenCodeMessageInfo;
-  parts?: OpenCodeMessagePart[];
-};
-
-type PreferredOpenCodeConfig = {
-  agent?: string;
-  model?: {
-    providerID: string;
-    modelID: string;
-  };
-};
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function extractTextParts(parts: OpenCodeMessagePart[] | undefined): string[] {
-  if (!Array.isArray(parts)) return [];
-  return parts
-    .filter((part) => part.type === "text" && typeof part.text === "string")
-    .map((part) => part.text as string);
-}
-
-function parseOpenCodeMessageResponse(data: unknown): OpenCodeMessageItem | null {
-  if (!data || typeof data !== "object") return null;
-  const candidate = data as OpenCodeMessageItem;
-  return candidate;
-}
-
-function getPreferredOpenCodeConfig(): PreferredOpenCodeConfig {
-  if (typeof window === "undefined") return {};
-
-  let agent: string | undefined;
-  let model:
-    | {
-        providerID: string;
-        modelID: string;
-      }
-    | undefined;
-
-  try {
-    const savedAgent = localStorage.getItem(OPENCODE_STORAGE_KEY_AGENT);
-    if (savedAgent) {
-      agent = savedAgent;
-    }
-
-    const savedModelRaw = localStorage.getItem(OPENCODE_STORAGE_KEY_MODEL);
-    if (savedModelRaw) {
-      const savedModel = JSON.parse(savedModelRaw) as {
-        providerId?: unknown;
-        modelId?: unknown;
-      };
-      if (
-        typeof savedModel.providerId === "string" &&
-        typeof savedModel.modelId === "string"
-      ) {
-        model = {
-          providerID: savedModel.providerId,
-          modelID: savedModel.modelId,
-        };
-      }
-    }
-  } catch {
-    return {};
-  }
-
-  return { agent, model };
-}
-
-function sanitizeAiCommitMessage(raw: string): string {
-  let text = raw.trim();
-
-  text = text.replace(/^```[a-zA-Z]*\s*/m, "");
-  text = text.replace(/\s*```$/, "");
-  text = text.replace(/^commit message\s*[:：]\s*/i, "");
-
-  if (
-    (text.startsWith('"') && text.endsWith('"')) ||
-    (text.startsWith("'") && text.endsWith("'"))
-  ) {
-    text = text.slice(1, -1).trim();
-  }
-
-  return text.trim();
-}
-
-function buildAiCommitPrompt(diff: string, scope: "staged" | "unstaged"): string {
-  return [
-    `Generate a git commit message from the following ${scope} changes.`,
-    "Do not call tools. Only output the final commit message.",
-    "Output rules:",
-    "1. Return only the commit message text, no markdown and no code block.",
-    "2. First line is a concise subject in imperative mood, <= 72 chars.",
-    "3. Add a short body only when necessary.",
-    "",
-    "Diff:",
-    diff,
-  ].join("\n");
-}
-
-const MonacoEditor = dynamic(
-  () =>
-    import("@/components/editor/monaco-editor").then((mod) => mod.MonacoEditor),
-  { ssr: false },
-);
-
-const GitMonacoDiffEditor = dynamic(
-  () =>
-    import("@/components/editor/monaco-diff-editor").then(
-      (mod) => mod.MonacoDiffEditor,
-    ),
-  {
-    ssr: false,
-    loading: () => <EditorSkeleton className="h-full" />,
-  },
-);
-
-const EditorTerminal = dynamic(
-  () => import("@/components/editor/terminal").then((mod) => mod.Terminal),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-full flex items-center px-4 text-sm text-muted">
-        Loading terminal...
-      </div>
-    ),
-  },
-);
-
-const OpenCodePanel = dynamic(
-  () =>
-    import("@/components/opencode/opencode-panel").then(
-      (mod) => mod.OpenCodePanel,
-    ),
-  {
-    ssr: false,
-    loading: () => <OpenCodePanelSkeleton />,
-  },
-);
-
-const OpenCodeDisconnectedDialog = dynamic(
-  () =>
-    import("@/components/opencode/opencode-disconnected-dialog").then(
-      (mod) => mod.OpenCodeDisconnectedDialog,
-    ),
-  { ssr: false },
-);
-
-const OpenCodeErrorBoundary = dynamic(
-  () =>
-    import("@/components/opencode/opencode-error-boundary").then(
-      (mod) => mod.OpenCodeErrorBoundary,
-    ),
-  { ssr: false },
-);
-
-const OpenCodeErrorDialog = dynamic(
-  () =>
-    import("@/components/opencode/opencode-error-dialog").then(
-      (mod) => mod.OpenCodeErrorDialog,
-    ),
-  { ssr: false },
-);
-
-const PANEL_SPRING = {
-  type: "spring",
-  stiffness: 400,
-  damping: 35,
-  mass: 0.8,
-} as const;
-
-const INSTANT_TRANSITION = { duration: 0 } as const;
-
-const _WEB_URL =
-  process.env.NEXT_PUBLIC_WEB_URL || "https://writer.lmms-lab.com";
-
-const MIN_PANEL_WIDTH = 200;
-const MAX_SIDEBAR_WIDTH = 480;
-const MIN_TERMINAL_HEIGHT = 120;
-const MAX_TERMINAL_HEIGHT_RATIO = 0.5;
+// Extracted hooks
+import { usePanelResize } from "@/lib/editor/use-panel-resize";
+import { useKeyboardShortcuts } from "@/lib/editor/use-keyboard-shortcuts";
+import { useProjectManagement } from "@/lib/editor/use-project-management";
+import { useOpencodeDaemon } from "@/lib/opencode/use-opencode-daemon";
+import { useGitOperations } from "@/lib/editor/use-git-operations";
+import { useAiCommit } from "@/lib/opencode/use-ai-commit";
 
 export default function EditorPage() {
   const editorSettings = useEditorSettings();
@@ -415,6 +98,29 @@ export default function EditorPage() {
   const { toast } = useToast();
   const recentProjects = useRecentProjects();
 
+  // Extracted hooks
+  const opencodeDaemon = useOpencodeDaemon({
+    projectPath: daemon.projectPath,
+    toast,
+  });
+
+  const panelResize = usePanelResize({
+    onCompactResize: () => opencodeDaemon.setShowRightPanel(false),
+  });
+
+  const gitOps = useGitOperations({ daemon, toast });
+
+  const projectMgmt = useProjectManagement({
+    daemon,
+    recentProjects,
+    toast,
+    onProjectOpen: () => {
+      setShowSidebar(true);
+      opencodeDaemon.setShowRightPanel(true);
+    },
+  });
+
+  // Local state
   const [selectedFile, setSelectedFile] = useState<string>();
   const [fileContent, setFileContent] = useState<string>("");
   const [editorViewMode, setEditorViewMode] = useState<EditorViewMode>("file");
@@ -426,58 +132,22 @@ export default function EditorPage() {
   const [pdfRefreshKey, _setPdfRefreshKey] = useState(0);
   const [pendingGoToLine, setPendingGoToLine] = useState(0);
   const [showSidebar, setShowSidebar] = useState(false);
-  const [showRightPanel, setShowRightPanel] = useState(false);
   const [showTerminal, setShowTerminal] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("sidebarWidth");
-      return saved ? parseInt(saved, 10) : 280;
-    }
-    return 280;
-  });
-  const [rightPanelWidth, setRightPanelWidth] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("rightPanelWidth");
-      return saved ? parseInt(saved, 10) : 280;
-    }
-    return 280;
-  });
-  const [terminalHeight, setTerminalHeight] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("terminalHeight");
-      return saved ? parseInt(saved, 10) : 224;
-    }
-    return 224;
-  });
-  const [resizing, setResizing] = useState<"sidebar" | "right" | "bottom" | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"files" | "git">("files");
   const [highlightedFile, _setHighlightedFile] = useState<string | null>(null);
 
-  const [commitMessage, setCommitMessage] = useState("");
-  const [showCommitInput, setShowCommitInput] = useState(false);
-  const [isGeneratingCommitMessageAI, setIsGeneratingCommitMessageAI] =
-    useState(false);
-  const [showRemoteInput, setShowRemoteInput] = useState(false);
-  const [remoteUrl, setRemoteUrl] = useState("");
   const [createDialog, setCreateDialog] = useState<{
     type: "file" | "directory";
   } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [opencodeDaemonStatus, setOpencodeDaemonStatus] =
-    useState<OpenCodeDaemonStatus>("stopped");
-  const [opencodePort, setOpencodePort] = useState(4096);
-  const [showDisconnectedDialog, setShowDisconnectedDialog] = useState(false);
   const [showLatexSettings, setShowLatexSettings] = useState(false);
   const [showLoginCodeModal, setShowLoginCodeModal] = useState(false);
   const [pendingOpenCodeMessage, setPendingOpenCodeMessage] = useState<
     string | null
   >(null);
-  const [opencodeError, setOpencodeError] = useState<string | null>(null);
 
   const [showMainFileDialog, setShowMainFileDialog] = useState(false);
   const [mainFileDetectionResult, setMainFileDetectionResult] = useState<MainFileDetectionResult | null>(null);
-  const [showGitHubPublishDialog, setShowGitHubPublishDialog] = useState(false);
-  const [ghPublishError, setGhPublishError] = useState<string | null>(null);
   const [showSynctexInstallDialog, setShowSynctexInstallDialog] = useState(false);
   const pendingSynctexRetryRef = useRef<{
     page: number; x: number; y: number; context: "main" | "split";
@@ -485,20 +155,12 @@ export default function EditorPage() {
 
   const contentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const splitContentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const opencodeStartedForPathRef = useRef<string | null>(null);
   const savingVisualTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSaveTimeRef = useRef<{ path: string; time: number } | null>(null);
   const [isLoadingFile, setIsLoadingFile] = useState(false);
   const gitDiffRequestIdRef = useRef(0);
   const splitLoadRequestIdRef = useRef(0);
   const editorWorkspaceRef = useRef<HTMLDivElement | null>(null);
-
-  // RAF-based resize refs for 60fps performance
-  const sidebarWidthRef = useRef(sidebarWidth);
-  const rightPanelWidthRef = useRef(rightPanelWidth);
-  const terminalHeightRef = useRef(terminalHeight);
-
-  const rafIdRef = useRef<number | null>(null);
 
   const gitStatus = daemon.gitStatus;
   const stagedChanges = useMemo(
@@ -510,6 +172,17 @@ export default function EditorPage() {
       gitStatus?.changes.filter((c: { staged: boolean }) => !c.staged) ?? [],
     [gitStatus?.changes],
   );
+
+  const aiCommit = useAiCommit({
+    projectPath: daemon.projectPath,
+    opencodePort: opencodeDaemon.opencodePort,
+    stagedChanges,
+    checkOpencodeStatus: opencodeDaemon.checkOpencodeStatus,
+    startOpencode: opencodeDaemon.startOpencode,
+    gitDiff: daemon.gitDiff,
+    gitCommit: daemon.gitCommit,
+    toast,
+  });
 
   // LaTeX settings and editor settings
   const latexSettings = useLatexSettings();
@@ -588,7 +261,7 @@ The AI assistant will read and update this file during compilation.
 
     // If detection found a main file and doesn't need user input, proceed
     if (result.main_file && !result.needs_user_input) {
-      setShowRightPanel(true);
+      opencodeDaemon.setShowRightPanel(true);
       setPendingOpenCodeMessage(
         COMPILE_PROMPT.replace("{mainFile}", result.main_file)
       );
@@ -613,180 +286,16 @@ The AI assistant will read and update this file during compilation.
     setMainFileDetectionResult(null);
 
     // Proceed with compilation
-    setShowRightPanel(true);
+    opencodeDaemon.setShowRightPanel(true);
     setPendingOpenCodeMessage(
       COMPILE_PROMPT.replace("{mainFile}", mainFile)
     );
-  }, [latexSettings]);
+  }, [latexSettings, opencodeDaemon]);
 
   const handleMainFileDialogCancel = useCallback(() => {
     setShowMainFileDialog(false);
     setMainFileDetectionResult(null);
   }, []);
-
-  const checkOpencodeStatus = useCallback(async () => {
-    try {
-      const status = await invoke<OpenCodeStatus>("opencode_status");
-      if (!status.installed) {
-        setOpencodeDaemonStatus("unavailable");
-      } else if (status.running) {
-        setOpencodeDaemonStatus("running");
-        setOpencodePort(status.port);
-      } else {
-        setOpencodeDaemonStatus("stopped");
-      }
-      return status;
-    } catch {
-      setOpencodeDaemonStatus("unavailable");
-      return null;
-    }
-  }, []);
-
-  const startOpencode = useCallback(
-    async (directory: string) => {
-      if (opencodeDaemonStatus === "unavailable") return null;
-      try {
-        setOpencodeDaemonStatus("starting");
-        const status = await invoke<OpenCodeStatus>("opencode_start", {
-          directory,
-          port: 4096,
-        });
-        setOpencodeDaemonStatus("running");
-        setOpencodePort(status.port);
-        opencodeStartedForPathRef.current = directory;
-        return status;
-      } catch (err) {
-        console.error("Failed to start OpenCode:", err);
-        setOpencodeDaemonStatus("unavailable");
-        toast(
-          "OpenCode is not installed or configured correctly. Please install it from https://opencode.ai/ or run: npm i -g opencode-ai@latest",
-          "error",
-        );
-        return null;
-      }
-    },
-    [opencodeDaemonStatus, toast],
-  );
-
-  const restartOpencode = useCallback(async () => {
-    if (!daemon.projectPath) {
-      toast("Please open a project first.", "error");
-      return;
-    }
-
-    // If status is "unavailable", re-check if OpenCode is now installed
-    if (opencodeDaemonStatus === "unavailable") {
-      const status = await checkOpencodeStatus();
-      if (!status?.installed) {
-        toast(
-          "OpenCode is still not installed. Please install it first:\nnpm i -g opencode-ai@latest\nor\nbrew install sst/tap/opencode",
-          "error",
-        );
-        return;
-      }
-      // OpenCode is now installed, proceed to start it
-      if (!status.running) {
-        await startOpencode(daemon.projectPath);
-        toast("OpenCode started successfully!", "success");
-      }
-      return;
-    }
-
-    try {
-      setOpencodeDaemonStatus("starting");
-      setOpencodeError(null);
-      const currentStatus = await invoke<OpenCodeStatus>("opencode_status");
-
-      if (!currentStatus.installed) {
-        setOpencodeDaemonStatus("unavailable");
-        setOpencodeError(
-          "OpenCode is not installed. Please install it first using npm or Homebrew.",
-        );
-        return;
-      }
-
-      const status = await invoke<OpenCodeStatus>("opencode_restart", {
-        directory: daemon.projectPath,
-      });
-      setOpencodeDaemonStatus("running");
-      setOpencodePort(status.port);
-      toast("OpenCode started successfully!", "success");
-    } catch (err) {
-      console.error("Failed to start OpenCode:", err);
-      setOpencodeDaemonStatus("stopped");
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      setOpencodeError(errorMessage);
-    }
-  }, [
-    daemon.projectPath,
-    opencodeDaemonStatus,
-    toast,
-    checkOpencodeStatus,
-    startOpencode,
-  ]);
-
-  const handleMaxReconnectFailed = useCallback(() => {
-    setShowDisconnectedDialog(true);
-  }, []);
-
-  const handleCloseDisconnectedDialog = useCallback(() => {
-    setShowDisconnectedDialog(false);
-  }, []);
-
-  const handleRestartFromDialog = useCallback(() => {
-    setShowDisconnectedDialog(false);
-    restartOpencode();
-  }, [restartOpencode]);
-
-  const handleCloseErrorDialog = useCallback(() => {
-    setOpencodeError(null);
-  }, []);
-
-  const handleKillPort = useCallback(
-    async (port: number) => {
-      await invoke("kill_port_process", { port });
-      setOpencodeError(null);
-      await restartOpencode();
-    },
-    [restartOpencode],
-  );
-
-  const handleToggleRightPanel = useCallback(async () => {
-    const willOpen = !showRightPanel;
-    setShowRightPanel(willOpen);
-
-    if (willOpen && daemon.projectPath && opencodeDaemonStatus === "stopped") {
-      const status = await checkOpencodeStatus();
-      if (status?.installed && !status.running) {
-        await startOpencode(daemon.projectPath);
-      } else if (status?.running) {
-        opencodeStartedForPathRef.current = daemon.projectPath;
-      }
-    }
-  }, [
-    showRightPanel,
-    daemon.projectPath,
-    opencodeDaemonStatus,
-    checkOpencodeStatus,
-    startOpencode,
-  ]);
-
-  useEffect(() => {
-    localStorage.setItem("sidebarWidth", String(sidebarWidth));
-  }, [sidebarWidth]);
-
-  useEffect(() => {
-    localStorage.setItem("rightPanelWidth", String(rightPanelWidth));
-  }, [rightPanelWidth]);
-
-  useEffect(() => {
-    localStorage.setItem("terminalHeight", String(terminalHeight));
-  }, [terminalHeight]);
-
-
-  useEffect(() => {
-    checkOpencodeStatus();
-  }, [checkOpencodeStatus]);
 
   useEffect(() => {
     if (pendingGoToLine > 0) {
@@ -798,7 +307,6 @@ The AI assistant will read and update this file during compilation.
 
   useEffect(() => {
     if (!daemon.projectPath) {
-      opencodeStartedForPathRef.current = null;
       if (splitContentSaveTimeoutRef.current) {
         clearTimeout(splitContentSaveTimeoutRef.current);
         splitContentSaveTimeoutRef.current = null;
@@ -818,179 +326,6 @@ The AI assistant will read and update this file during compilation.
         splitContentSaveTimeoutRef.current = null;
       }
     };
-  }, []);
-
-  // Listen for opencode logs from Tauri backend
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-
-    import("@tauri-apps/api/event").then(({ listen }) => {
-      listen<{ type: string; message: string }>("opencode-log", (event) => {
-        const { type, message } = event.payload;
-        if (type === "stderr") {
-          console.error("[OpenCode]", message);
-        }
-      }).then((fn) => {
-        unlisten = fn;
-      });
-    });
-
-    return () => {
-      unlisten?.();
-    };
-  }, []);
-
-  const startResize = useCallback(
-    (panel: "sidebar" | "right" | "bottom") => {
-      setResizing(panel);
-      sidebarWidthRef.current = sidebarWidth;
-      rightPanelWidthRef.current = rightPanelWidth;
-      terminalHeightRef.current = terminalHeight;
-      document.documentElement.style.setProperty(
-        "--sidebar-width",
-        `${sidebarWidth}px`,
-      );
-      document.documentElement.style.setProperty(
-        "--right-panel-width",
-        `${rightPanelWidth}px`,
-      );
-      document.documentElement.style.setProperty(
-        "--terminal-height",
-        `${terminalHeight}px`,
-      );
-    },
-    [sidebarWidth, rightPanelWidth, terminalHeight],
-  );
-
-  const handleResizeDrag = useCallback((panel: "sidebar" | "right" | "bottom", info: PanInfo) => {
-    if (rafIdRef.current !== null) return;
-
-    rafIdRef.current = requestAnimationFrame(() => {
-      if (panel === "sidebar") {
-        const newWidth = Math.min(
-          Math.max(info.point.x, MIN_PANEL_WIDTH),
-          MAX_SIDEBAR_WIDTH,
-        );
-        sidebarWidthRef.current = newWidth;
-        document.documentElement.style.setProperty(
-          "--sidebar-width",
-          `${newWidth}px`,
-        );
-      } else if (panel === "right") {
-        const maxRightWidth = Math.floor(window.innerWidth / 2);
-        const newWidth = Math.min(
-          Math.max(window.innerWidth - info.point.x, MIN_PANEL_WIDTH),
-          maxRightWidth,
-        );
-        rightPanelWidthRef.current = newWidth;
-        document.documentElement.style.setProperty(
-          "--right-panel-width",
-          `${newWidth}px`,
-        );
-      } else if (panel === "bottom") {
-        const maxHeight = Math.floor(window.innerHeight * MAX_TERMINAL_HEIGHT_RATIO);
-        const newHeight = Math.min(
-          Math.max(window.innerHeight - info.point.y, MIN_TERMINAL_HEIGHT),
-          maxHeight,
-        );
-        terminalHeightRef.current = newHeight;
-        document.documentElement.style.setProperty(
-          "--terminal-height",
-          `${newHeight}px`,
-        );
-      }
-      rafIdRef.current = null;
-    });
-  }, []);
-
-  const endResize = useCallback(() => {
-    if (rafIdRef.current !== null) {
-      cancelAnimationFrame(rafIdRef.current);
-      rafIdRef.current = null;
-    }
-    setSidebarWidth(sidebarWidthRef.current);
-    setRightPanelWidth(rightPanelWidthRef.current);
-    setTerminalHeight(terminalHeightRef.current);
-    document.documentElement.style.removeProperty("--sidebar-width");
-    document.documentElement.style.removeProperty("--right-panel-width");
-    document.documentElement.style.removeProperty("--terminal-height");
-    setResizing(null);
-  }, []);
-
-  useEffect(() => {
-    const COMPACT_THRESHOLD = 1100;
-
-    const handleResize = throttle(() => {
-      if (window.innerWidth < COMPACT_THRESHOLD) {
-        setShowRightPanel(false);
-      }
-    }, 100);
-
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  const getFileType = useCallback((path: string): "text" | "image" | "pdf" => {
-    const ext = path.split(".").pop()?.toLowerCase() || "";
-    if (
-      ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico"].includes(ext)
-    ) {
-      return "image";
-    }
-    if (ext === "pdf") {
-      return "pdf";
-    }
-    return "text";
-  }, []);
-
-  const getFileLanguage = useCallback((path: string): string => {
-    const ext = path.split(".").pop()?.toLowerCase() || "";
-    const languageMap: Record<string, string> = {
-      tex: "latex",
-      sty: "latex",
-      cls: "latex",
-      bib: "bibtex",
-      js: "javascript",
-      jsx: "javascript",
-      ts: "typescript",
-      tsx: "typescript",
-      py: "python",
-      md: "markdown",
-      json: "json",
-      css: "css",
-      scss: "scss",
-      less: "less",
-      html: "html",
-      htm: "html",
-      xml: "xml",
-      yaml: "yaml",
-      yml: "yaml",
-      sh: "shell",
-      bash: "shell",
-      zsh: "shell",
-      c: "c",
-      cpp: "cpp",
-      h: "c",
-      hpp: "cpp",
-      java: "java",
-      rs: "rust",
-      go: "go",
-      rb: "ruby",
-      php: "php",
-      sql: "sql",
-      r: "r",
-      lua: "lua",
-      swift: "swift",
-      kt: "kotlin",
-      scala: "scala",
-      toml: "toml",
-      ini: "ini",
-      conf: "ini",
-      dockerfile: "dockerfile",
-      makefile: "makefile",
-    };
-    return languageMap[ext] || "plaintext";
   }, []);
 
   const filesByBasename = useMemo(
@@ -2067,408 +1402,6 @@ The AI assistant will read and update this file during compilation.
     [selectedFile, daemon],
   );
 
-  const handleOpenFolder = useCallback(async () => {
-    try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const selected = await open({
-        directory: true,
-        multiple: false,
-        title: "Select LaTeX Project",
-      });
-
-      if (selected && typeof selected === "string") {
-        await daemon.setProject(selected);
-        await recentProjects.addProject(selected);
-        setShowSidebar(true);
-        setShowRightPanel(true);
-      }
-    } catch (err) {
-      console.error("Failed to open project:", err);
-    }
-  }, [daemon, recentProjects]);
-
-  const handleOpenRecentProject = useCallback(
-    async (path: string) => {
-      try {
-        await daemon.setProject(path);
-        await recentProjects.addProject(path);
-        setShowSidebar(true);
-        setShowRightPanel(true);
-      } catch (err) {
-        console.error("Failed to open project:", err);
-        toast("Failed to open project", "error");
-        recentProjects.removeProject(path);
-      }
-    },
-    [daemon, recentProjects, toast]
-  );
-
-  const handleStageAll = useCallback(() => {
-    if (!gitStatus) return;
-    const unstaged = gitStatus.changes
-      .filter((c: { staged: boolean }) => !c.staged)
-      .map((c: { path: string }) => c.path);
-    if (unstaged.length > 0) {
-      daemon.gitAdd(unstaged);
-    }
-  }, [gitStatus, daemon]);
-
-  const handleStageFile = useCallback(
-    (path: string) => {
-      daemon.gitAdd([path]);
-    },
-    [daemon],
-  );
-
-  const handleUnstageAll = useCallback(() => {
-    const stagedPaths = (daemon.gitStatus?.changes ?? [])
-      .filter((c) => c.staged)
-      .map((c) => c.path);
-    if (stagedPaths.length > 0) {
-      daemon.gitUnstage(stagedPaths);
-    }
-  }, [daemon]);
-
-  const handleUnstageFile = useCallback(
-    (path: string) => {
-      daemon.gitUnstage([path]);
-    },
-    [daemon],
-  );
-
-  const handleRemoteSubmit = useCallback(() => {
-    const trimmed = remoteUrl.trim();
-    if (!trimmed) return;
-    daemon.gitAddRemote(trimmed);
-    setRemoteUrl("");
-    setShowRemoteInput(false);
-  }, [daemon, remoteUrl]);
-
-  const handleGitPush = useCallback(async () => {
-    const result = await daemon.gitPush();
-    if (result.success) {
-      toast("Changes pushed successfully", "success");
-    } else {
-      toast(result.error || "Failed to push changes", "error");
-    }
-  }, [daemon, toast]);
-
-  const handleGitPull = useCallback(async () => {
-    const result = await daemon.gitPull();
-    if (result.success) {
-      toast("Changes pulled successfully", "success");
-    } else {
-      toast(result.error || "Failed to pull changes", "error");
-    }
-  }, [daemon, toast]);
-
-  const handleRefreshGitStatus = useCallback(() => {
-    void daemon.refreshGitStatus(true);
-  }, [daemon]);
-
-  const handleDiscardAll = useCallback(async () => {
-    const result = await daemon.gitDiscardAll();
-    if (result.success) {
-      toast("All changes discarded", "success");
-    } else {
-      toast(result.error || "Failed to discard changes", "error");
-    }
-  }, [daemon, toast]);
-
-  const handleDiscardFile = useCallback(async (path: string) => {
-    const result = await daemon.gitDiscardFile(path);
-    if (result.success) {
-      toast(`Discarded changes: ${path}`, "success");
-    } else {
-      toast(result.error || "Failed to discard file", "error");
-    }
-  }, [daemon, toast]);
-
-  const handlePublishToGitHub = useCallback(async () => {
-    setGhPublishError(null);
-
-    const status = await daemon.ghCheck();
-    if (!status.installed) {
-      toast(
-        "GitHub CLI (gh) is not installed. Install it from https://cli.github.com",
-        "error",
-      );
-      return;
-    }
-
-    if (!status.authenticated) {
-      if (daemon.isAuthenticatingGh) {
-        toast(
-          "GitHub authentication is already in progress in the terminal window.",
-          "info",
-        );
-        return;
-      }
-
-      toast(
-        "Terminal opened for GitHub login. Complete prompts there (type Y when asked), then continue in browser.",
-        "info",
-      );
-      const loginResult = await daemon.ghAuthLogin();
-      if (!loginResult.success || !loginResult.authenticated) {
-        toast(loginResult.error || "GitHub authentication failed", "error");
-        return;
-      }
-      toast("Authenticated with GitHub", "success");
-    }
-
-    setShowGitHubPublishDialog(true);
-  }, [daemon, toast]);
-
-  const handleGitHubPublish = useCallback(
-    async (name: string, isPrivate: boolean, description: string) => {
-      setGhPublishError(null);
-      const result = await daemon.ghCreateRepo(name, isPrivate, description || undefined);
-      if (result.success) {
-        setShowGitHubPublishDialog(false);
-        toast(`Repository published: ${result.url}`, "success");
-      } else {
-        setGhPublishError(result.error || "Failed to create repository");
-      }
-    },
-    [daemon, toast],
-  );
-
-  const runOpenCodePrompt = useCallback(
-    async (prompt: string): Promise<string> => {
-      if (!daemon.projectPath) {
-        throw new Error("Project path is missing");
-      }
-
-      const baseUrl = `http://localhost:${opencodePort}`;
-      const query = `?directory=${encodeURIComponent(daemon.projectPath)}`;
-      const headers = {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        "x-opencode-directory": encodeURIComponent(daemon.projectPath),
-      };
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), AI_COMMIT_TIMEOUT_MS);
-      let sessionId: string | null = null;
-
-      try {
-        const createSessionResponse = await fetch(`${baseUrl}/session${query}`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({}),
-          signal: controller.signal,
-        });
-
-        if (!createSessionResponse.ok) {
-          const errorText = await createSessionResponse.text().catch(() => "");
-          throw new Error(
-            `Failed to create OpenCode session: ${createSessionResponse.status} ${errorText}`,
-          );
-        }
-
-        const sessionData = (await createSessionResponse.json()) as {
-          id?: string;
-        };
-        if (!sessionData.id) {
-          throw new Error("OpenCode session response missing id");
-        }
-        sessionId = sessionData.id;
-        const preferred = getPreferredOpenCodeConfig();
-        const requestBody: {
-          parts: Array<{ type: "text"; text: string }>;
-          noReply: boolean;
-          agent?: string;
-          model?: { providerID: string; modelID: string };
-        } = {
-          parts: [{ type: "text", text: prompt }],
-          noReply: false,
-        };
-        if (preferred.agent) {
-          requestBody.agent = preferred.agent;
-        }
-        if (preferred.model) {
-          requestBody.model = preferred.model;
-        }
-
-        const messageResponse = await fetch(
-          `${baseUrl}/session/${sessionId}/message${query}`,
-          {
-            method: "POST",
-            headers,
-            body: JSON.stringify(requestBody),
-            signal: controller.signal,
-          },
-        );
-
-        if (!messageResponse.ok) {
-          const errorText = await messageResponse.text().catch(() => "");
-          throw new Error(
-            `OpenCode message failed: ${messageResponse.status} ${errorText}`,
-          );
-        }
-
-        const messageDataRaw = (await messageResponse.json()) as unknown;
-        const messageData = parseOpenCodeMessageResponse(messageDataRaw);
-        const initialText = extractTextParts(messageData?.parts).join("\n").trim();
-        if (initialText) {
-          return initialText;
-        }
-
-        const parentMessageId =
-          messageData?.info?.role === "user" ? messageData.info.id : undefined;
-        const startedAt = Date.now();
-        while (Date.now() - startedAt < AI_COMMIT_TIMEOUT_MS) {
-          const messagesResponse = await fetch(
-            `${baseUrl}/session/${sessionId}/message${query}`,
-            {
-              method: "GET",
-              headers,
-              signal: controller.signal,
-            },
-          );
-
-          if (!messagesResponse.ok) {
-            const errorText = await messagesResponse.text().catch(() => "");
-            throw new Error(
-              `Failed to poll OpenCode messages: ${messagesResponse.status} ${errorText}`,
-            );
-          }
-
-          const messagesData = (await messagesResponse.json()) as unknown;
-          const items = Array.isArray(messagesData)
-            ? (messagesData as OpenCodeMessageItem[])
-            : messagesData &&
-                typeof messagesData === "object" &&
-                Array.isArray(
-                  (messagesData as { messages?: OpenCodeMessageItem[] })
-                    .messages,
-                )
-              ? (messagesData as { messages: OpenCodeMessageItem[] }).messages
-              : [];
-
-          for (let i = items.length - 1; i >= 0; i--) {
-            const item = items[i];
-            const info = item?.info;
-            if (!info || info.role !== "assistant") continue;
-            if (parentMessageId && info.parentID && info.parentID !== parentMessageId) {
-              continue;
-            }
-
-            const text = extractTextParts(item.parts).join("\n").trim();
-            if (text) {
-              return text;
-            }
-
-            const errorMessage = info.error?.data?.message;
-            if (errorMessage) {
-              throw new Error(errorMessage);
-            }
-          }
-
-          await sleep(500);
-        }
-
-        throw new Error("OpenCode returned an empty response");
-      } finally {
-        clearTimeout(timeoutId);
-        if (sessionId) {
-          void fetch(`${baseUrl}/session/${sessionId}${query}`, {
-            method: "DELETE",
-            headers,
-          }).catch(() => {});
-        }
-      }
-    },
-    [daemon.projectPath, opencodePort],
-  );
-
-  const handleGenerateCommitMessageAI = useCallback(async () => {
-    if (!daemon.projectPath) {
-      toast("Please open a project first.", "error");
-      return;
-    }
-
-    if (stagedChanges.length === 0) {
-      toast("Stage files before generating commit message.", "error");
-      return;
-    }
-
-    setShowCommitInput(true);
-    setIsGeneratingCommitMessageAI(true);
-
-    try {
-      const status = await checkOpencodeStatus();
-      if (!status?.installed) {
-        toast(
-          "OpenCode is not installed. Run: npm i -g opencode-ai@latest",
-          "error",
-        );
-        return;
-      }
-
-      if (!status.running) {
-        const started = await startOpencode(daemon.projectPath);
-        if (!started) {
-          toast("Failed to start OpenCode daemon.", "error");
-          return;
-        }
-      }
-
-      const diffChunks = await Promise.all(
-        stagedChanges.map((change) => daemon.gitDiff(change.path, true)),
-      );
-      const mergedDiff = diffChunks
-        .filter((chunk) => chunk.trim().length > 0)
-        .join("\n\n")
-        .slice(0, AI_COMMIT_DIFF_LIMIT)
-        .trim();
-
-      if (!mergedDiff) {
-        toast("No textual staged diff available.", "error");
-        return;
-      }
-
-      const prompt = buildAiCommitPrompt(mergedDiff, "staged");
-      const aiRaw = await runOpenCodePrompt(prompt);
-      const aiMessage = sanitizeAiCommitMessage(aiRaw);
-
-      if (!aiMessage) {
-        toast("AI returned an empty commit message.", "error");
-        return;
-      }
-
-      setCommitMessage(aiMessage);
-      toast("AI commit draft generated.", "success");
-    } catch (error) {
-      console.error("Failed to generate AI commit message:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      toast(`AI draft failed: ${errorMessage}`, "error");
-    } finally {
-      setIsGeneratingCommitMessageAI(false);
-    }
-  }, [
-    daemon,
-    stagedChanges,
-    checkOpencodeStatus,
-    startOpencode,
-    runOpenCodePrompt,
-    toast,
-  ]);
-
-  const handleCommit = useCallback(async () => {
-    if (!commitMessage.trim()) return;
-    const result = await daemon.gitCommit(commitMessage.trim());
-    if (result.success) {
-      toast("Changes committed", "success");
-      setCommitMessage("");
-      setShowCommitInput(false);
-    } else {
-      toast(result.error || "Failed to commit", "error");
-    }
-  }, [commitMessage, daemon, toast]);
-
   const validateFileName = useCallback((name: string): string | null => {
     if (!name.trim()) {
       return "Name cannot be empty";
@@ -2499,39 +1432,13 @@ The AI assistant will read and update this file during compilation.
     [createDialog, daemon, toast],
   );
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const isMod = e.metaKey || e.ctrlKey;
-      const key = e.key.toLowerCase();
-
-      if (isMod && key === "o" && !e.shiftKey) {
-        e.preventDefault();
-        handleOpenFolder();
-        return;
-      }
-
-      if (isMod && key === "w" && !e.shiftKey) {
-        e.preventDefault();
-        if (selectedFile) {
-          handleCloseTab(selectedFile);
-        }
-        return;
-      }
-
-      // Compile with AI: Cmd/Ctrl+Shift+B
-      if (isMod && e.shiftKey && key === "b") {
-        e.preventDefault();
-        if (daemon.projectPath) {
-          handleCompileWithDetection();
-        }
-        return;
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown, { capture: true });
-    return () =>
-      window.removeEventListener("keydown", handleKeyDown, { capture: true });
-  }, [daemon, handleOpenFolder, selectedFile, handleCloseTab, handleCompileWithDetection]);
+  useKeyboardShortcuts({
+    handleOpenFolder: projectMgmt.handleOpenFolder,
+    selectedFile,
+    handleCloseTab,
+    projectPath: daemon.projectPath,
+    handleCompileWithDetection,
+  });
 
   const isShowingGitDiff =
     editorViewMode === "git-diff" &&
@@ -2793,9 +1700,9 @@ The AI assistant will read and update this file during compilation.
               )}
 
               <button
-                onClick={handleToggleRightPanel}
+                onClick={opencodeDaemon.handleToggleRightPanel}
                 className={`h-8 w-8 border border-border transition-colors flex items-center justify-center bg-background text-foreground ${
-                  showRightPanel
+                  opencodeDaemon.showRightPanel
                     ? "border-foreground"
                     : "hover:bg-accent-hover hover:border-border-dark"
                 }`}
@@ -2880,10 +1787,10 @@ The AI assistant will read and update this file during compilation.
               <aside
                 style={{
                   width:
-                    resizing === "sidebar"
+                    panelResize.resizing === "sidebar"
                       ? "var(--sidebar-width)"
-                      : sidebarWidth,
-                  willChange: resizing === "sidebar" ? "width" : undefined,
+                      : panelResize.sidebarWidth,
+                  willChange: panelResize.resizing === "sidebar" ? "width" : undefined,
                 }}
                 className="border-r border-border flex flex-col flex-shrink-0 overflow-hidden"
               >
@@ -2922,36 +1829,36 @@ The AI assistant will read and update this file during compilation.
                       gitLogEntries={daemon.gitLogEntries}
                       stagedChanges={stagedChanges}
                       unstagedChanges={unstagedChanges}
-                      showRemoteInput={showRemoteInput}
-                      remoteUrl={remoteUrl}
-                      onRemoteUrlChange={(value) => setRemoteUrl(value)}
-                      onShowRemoteInput={() => setShowRemoteInput(true)}
-                      onHideRemoteInput={() => setShowRemoteInput(false)}
-                      onSubmitRemote={handleRemoteSubmit}
+                      showRemoteInput={gitOps.showRemoteInput}
+                      remoteUrl={gitOps.remoteUrl}
+                      onRemoteUrlChange={(value) => gitOps.setRemoteUrl(value)}
+                      onShowRemoteInput={() => gitOps.setShowRemoteInput(true)}
+                      onHideRemoteInput={() => gitOps.setShowRemoteInput(false)}
+                      onSubmitRemote={gitOps.handleRemoteSubmit}
                       onInitGit={daemon.gitInit}
                       isInitializingGit={daemon.isInitializingGit}
-                      onRefreshStatus={handleRefreshGitStatus}
-                      onStageAll={handleStageAll}
-                      onDiscardAll={handleDiscardAll}
-                      onDiscardFile={handleDiscardFile}
-                      onStageFile={handleStageFile}
-                      onUnstageFile={handleUnstageFile}
-                      onUnstageAll={handleUnstageAll}
-                      showCommitInput={showCommitInput}
-                      commitMessage={commitMessage}
-                      onCommitMessageChange={(value) => setCommitMessage(value)}
-                      onShowCommitInput={() => setShowCommitInput(true)}
-                      onHideCommitInput={() => setShowCommitInput(false)}
-                      onCommit={handleCommit}
-                      onPush={handleGitPush}
-                      onPull={handleGitPull}
+                      onRefreshStatus={gitOps.handleRefreshGitStatus}
+                      onStageAll={gitOps.handleStageAll}
+                      onDiscardAll={gitOps.handleDiscardAll}
+                      onDiscardFile={gitOps.handleDiscardFile}
+                      onStageFile={gitOps.handleStageFile}
+                      onUnstageFile={gitOps.handleUnstageFile}
+                      onUnstageAll={gitOps.handleUnstageAll}
+                      showCommitInput={aiCommit.showCommitInput}
+                      commitMessage={aiCommit.commitMessage}
+                      onCommitMessageChange={(value) => aiCommit.setCommitMessage(value)}
+                      onShowCommitInput={() => aiCommit.setShowCommitInput(true)}
+                      onHideCommitInput={() => aiCommit.setShowCommitInput(false)}
+                      onCommit={aiCommit.handleCommit}
+                      onPush={gitOps.handleGitPush}
+                      onPull={gitOps.handleGitPull}
                       onPreviewDiff={handlePreviewGitDiff}
-                      onGenerateCommitMessageAI={handleGenerateCommitMessageAI}
+                      onGenerateCommitMessageAI={aiCommit.handleGenerateCommitMessageAI}
                       onOpenFile={(path) => {
                         void handleFileSelect(path);
                       }}
-                      onPublishToGitHub={handlePublishToGitHub}
-                      isGeneratingCommitMessageAI={isGeneratingCommitMessageAI}
+                      onPublishToGitHub={gitOps.handlePublishToGitHub}
+                      isGeneratingCommitMessageAI={aiCommit.isGeneratingCommitMessageAI}
                       isPushing={daemon.isPushing}
                       isPulling={daemon.isPulling}
                       isAuthenticatingGh={daemon.isAuthenticatingGh}
@@ -2965,16 +1872,16 @@ The AI assistant will read and update this file during compilation.
                   dragConstraints={{ left: 0, right: 0 }}
                   dragElastic={0}
                   dragMomentum={false}
-                  onDragStart={() => startResize("sidebar")}
+                  onDragStart={() => panelResize.startResize("sidebar")}
                   onDrag={(event, info) =>
-                    handleResizeDrag("sidebar", info)
+                    panelResize.handleResizeDrag("sidebar", info)
                   }
-                  onDragEnd={endResize}
+                  onDragEnd={panelResize.endResize}
                   className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize z-10"
                   style={{ x: 0 }}
                 />
                 <div
-                  className={`w-full h-full transition-colors ${resizing === "sidebar" ? "bg-foreground/20" : "group-hover:bg-foreground/20"}`}
+                  className={`w-full h-full transition-colors ${panelResize.resizing === "sidebar" ? "bg-foreground/20" : "group-hover:bg-foreground/20"}`}
                 />
               </div>
             </motion.div>
@@ -3021,14 +1928,14 @@ The AI assistant will read and update this file during compilation.
                     className="h-24 w-auto mb-10 hidden dark:block"
                   />
                   <button
-                    onClick={handleOpenFolder}
+                    onClick={projectMgmt.handleOpenFolder}
                     className="btn btn-primary"
                   >
                     Open Folder
                   </button>
                   <RecentProjects
                     projects={recentProjects.projects}
-                    onSelect={handleOpenRecentProject}
+                    onSelect={projectMgmt.handleOpenRecentProject}
                     onRemove={recentProjects.removeProject}
                     onClearAll={recentProjects.clearAll}
                   />
@@ -3061,9 +1968,9 @@ The AI assistant will read and update this file during compilation.
                 animate={{
                   opacity: 1,
                   height:
-                    resizing === "bottom"
+                    panelResize.resizing === "bottom"
                       ? "var(--terminal-height)"
-                      : terminalHeight,
+                      : panelResize.terminalHeight,
                 }}
                 exit={
                   prefersReducedMotion
@@ -3084,16 +1991,16 @@ The AI assistant will read and update this file during compilation.
                     dragConstraints={{ top: 0, bottom: 0 }}
                     dragElastic={0}
                     dragMomentum={false}
-                    onDragStart={() => startResize("bottom")}
+                    onDragStart={() => panelResize.startResize("bottom")}
                     onDrag={(event, info) =>
-                      handleResizeDrag("bottom", info)
+                      panelResize.handleResizeDrag("bottom", info)
                     }
-                    onDragEnd={endResize}
+                    onDragEnd={panelResize.endResize}
                     className="absolute inset-x-0 -top-1 -bottom-1 cursor-row-resize z-10"
                     style={{ y: 0 }}
                   />
                   <div
-                    className={`w-full h-full transition-colors ${resizing === "bottom" ? "bg-foreground/20" : "group-hover:bg-foreground/20"}`}
+                    className={`w-full h-full transition-colors ${panelResize.resizing === "bottom" ? "bg-foreground/20" : "group-hover:bg-foreground/20"}`}
                   />
                 </div>
                 <EditorTerminal
@@ -3109,7 +2016,7 @@ The AI assistant will read and update this file during compilation.
         </div>
 
         <AnimatePresence>
-          {showRightPanel && (
+          {opencodeDaemon.showRightPanel && (
             <motion.div
               key="right-panel-container"
               initial={
@@ -3120,9 +2027,9 @@ The AI assistant will read and update this file during compilation.
               animate={{
                 opacity: 1,
                 width:
-                  resizing === "right"
+                  panelResize.resizing === "right"
                     ? `calc(var(--right-panel-width) + 4px)`
-                    : rightPanelWidth + 4,
+                    : panelResize.rightPanelWidth + 4,
               }}
               exit={
                 prefersReducedMotion
@@ -3143,37 +2050,37 @@ The AI assistant will read and update this file during compilation.
                   dragConstraints={{ left: 0, right: 0 }}
                   dragElastic={0}
                   dragMomentum={false}
-                  onDragStart={() => startResize("right")}
-                  onDrag={(event, info) => handleResizeDrag("right", info)}
-                  onDragEnd={endResize}
+                  onDragStart={() => panelResize.startResize("right")}
+                  onDrag={(event, info) => panelResize.handleResizeDrag("right", info)}
+                  onDragEnd={panelResize.endResize}
                   className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize z-10"
                   style={{ x: 0 }}
                 />
                 <div
-                  className={`w-full h-full transition-colors ${resizing === "right" ? "bg-foreground/20" : "group-hover:bg-foreground/20"}`}
+                  className={`w-full h-full transition-colors ${panelResize.resizing === "right" ? "bg-foreground/20" : "group-hover:bg-foreground/20"}`}
                 />
               </div>
               <aside
                 style={{
                   width:
-                    resizing === "right"
+                    panelResize.resizing === "right"
                       ? "var(--right-panel-width)"
-                      : rightPanelWidth,
-                  willChange: resizing === "right" ? "width" : undefined,
+                      : panelResize.rightPanelWidth,
+                  willChange: panelResize.resizing === "right" ? "width" : undefined,
                 }}
                 className="border-l border-border flex flex-col flex-shrink-0 overflow-hidden"
               >
-                <OpenCodeErrorBoundary onReset={restartOpencode}>
+                <OpenCodeErrorBoundary onReset={opencodeDaemon.restartOpencode}>
                   <OpenCodePanel
                     className="h-full"
-                    baseUrl={`http://localhost:${opencodePort}`}
+                    baseUrl={`http://localhost:${opencodeDaemon.opencodePort}`}
                     directory={daemon.projectPath ?? undefined}
                     autoConnect={
-                      opencodeDaemonStatus === "running" && !!daemon.projectPath
+                      opencodeDaemon.opencodeDaemonStatus === "running" && !!daemon.projectPath
                     }
-                    daemonStatus={opencodeDaemonStatus}
-                    onRestartOpenCode={restartOpencode}
-                    onMaxReconnectFailed={handleMaxReconnectFailed}
+                    daemonStatus={opencodeDaemon.opencodeDaemonStatus}
+                    onRestartOpenCode={opencodeDaemon.restartOpencode}
+                    onMaxReconnectFailed={opencodeDaemon.handleMaxReconnectFailed}
                     onFileClick={handleFileSelect}
                     pendingMessage={pendingOpenCodeMessage}
                     onPendingMessageSent={() => setPendingOpenCodeMessage(null)}
@@ -3186,17 +2093,17 @@ The AI assistant will read and update this file during compilation.
       </main>
 
       <OpenCodeDisconnectedDialog
-        open={showDisconnectedDialog}
-        onClose={handleCloseDisconnectedDialog}
-        onRestart={handleRestartFromDialog}
+        open={opencodeDaemon.showDisconnectedDialog}
+        onClose={opencodeDaemon.handleCloseDisconnectedDialog}
+        onRestart={opencodeDaemon.handleRestartFromDialog}
       />
 
       <OpenCodeErrorDialog
-        open={!!opencodeError}
-        error={opencodeError ?? ""}
-        onClose={handleCloseErrorDialog}
-        onRetry={restartOpencode}
-        onKillPort={handleKillPort}
+        open={!!opencodeDaemon.opencodeError}
+        error={opencodeDaemon.opencodeError ?? ""}
+        onClose={opencodeDaemon.handleCloseErrorDialog}
+        onRetry={opencodeDaemon.restartOpencode}
+        onKillPort={opencodeDaemon.handleKillPort}
       />
 
       {createDialog && (
@@ -3237,20 +2144,20 @@ The AI assistant will read and update this file during compilation.
         onInstallComplete={handleSynctexInstallComplete}
       />
 
-      {showGitHubPublishDialog && (
+      {gitOps.showGitHubPublishDialog && (
         <GitHubPublishDialog
           defaultRepoName={
             daemon.projectPath
               ? pathSync.basename(daemon.projectPath)
               : "my-project"
           }
-          onPublish={handleGitHubPublish}
+          onPublish={gitOps.handleGitHubPublish}
           onCancel={() => {
-            setShowGitHubPublishDialog(false);
-            setGhPublishError(null);
+            gitOps.setShowGitHubPublishDialog(false);
+            gitOps.setGhPublishError(null);
           }}
           isCreating={daemon.isCreatingRepo}
-          error={ghPublishError}
+          error={gitOps.ghPublishError}
         />
       )}
 
@@ -3271,33 +2178,3 @@ The AI assistant will read and update this file during compilation.
   );
 }
 
-function OpenCodePanelSkeleton() {
-  return (
-    <div className="flex flex-col bg-background h-full">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="size-2 bg-surface-tertiary animate-pulse" />
-          <div className="h-4 w-24 bg-surface-tertiary animate-pulse" />
-        </div>
-        <div className="h-6 w-12 bg-surface-tertiary animate-pulse" />
-      </div>
-      <div className="flex-1 p-3 space-y-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="space-y-2">
-            <div
-              className="h-4 bg-surface-secondary animate-pulse"
-              style={{ width: `${60 + i * 10}%` }}
-            />
-            <div
-              className="h-4 bg-surface-secondary animate-pulse"
-              style={{ width: `${40 + i * 10}%` }}
-            />
-          </div>
-        ))}
-      </div>
-      <div className="border-t border-border p-3">
-        <div className="h-16 bg-accent-hover border border-border animate-pulse" />
-      </div>
-    </div>
-  );
-}
