@@ -42,10 +42,6 @@ export function useLatexSettings() {
     updateSettings({ mainFile });
   }, [updateSettings]);
 
-  const setCompilePrompt = useCallback((compilePrompt: string) => {
-    updateSettings({ compilePrompt });
-  }, [updateSettings]);
-
   const resetSettings = useCallback(() => {
     setSettings(DEFAULT_LATEX_SETTINGS);
   }, []);
@@ -96,7 +92,6 @@ export function useLatexSettings() {
     settings,
     updateSettings,
     setMainFile,
-    setCompilePrompt,
     resetSettings,
     // Main file detection
     detectMainFile,

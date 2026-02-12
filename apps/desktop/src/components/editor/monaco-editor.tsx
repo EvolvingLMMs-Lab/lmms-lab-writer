@@ -18,6 +18,7 @@ type Props = {
   editorSettings?: Partial<EditorSettings>;
   editorTheme?: EditorTheme;
   onContentChange?: (content: string) => void;
+  goToLine?: number;
 };
 
 type VimModeController = {
@@ -53,6 +54,7 @@ export const MonacoEditor = memo(function MonacoEditor({
   editorSettings,
   editorTheme = "one-light",
   onContentChange,
+  goToLine,
 }: Props) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
@@ -62,10 +64,28 @@ export const MonacoEditor = memo(function MonacoEditor({
   const vimStatusRef = useRef<HTMLDivElement | null>(null);
   const [editorReady, setEditorReady] = useState(false);
 
+  const pendingGoToLineRef = useRef<number>(0);
+
   const handleEditorDidMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
     setEditorReady(true);
+
+    // Apply any pending goToLine that arrived before the editor was ready
+    if (pendingGoToLineRef.current > 0) {
+      const line = pendingGoToLineRef.current;
+      pendingGoToLineRef.current = 0;
+      setTimeout(() => {
+        editor.revealLineInCenter(line);
+        editor.setPosition({ lineNumber: line, column: 1 });
+        editor.focus();
+        const decorations = editor.deltaDecorations([], [{
+          range: { startLineNumber: line, startColumn: 1, endLineNumber: line, endColumn: 1 },
+          options: { isWholeLine: true, className: "synctex-line-highlight", overviewRuler: { color: "rgba(255, 200, 0, 0.6)", position: 1 } },
+        }]);
+        setTimeout(() => editor.deltaDecorations(decorations, []), 1500);
+      }, 50);
+    }
 
     defineEditorThemes(monaco);
     registerLaTeXLanguage(monaco);
@@ -144,6 +164,50 @@ export const MonacoEditor = memo(function MonacoEditor({
       monacoRef.current.editor.setTheme(editorTheme);
     }
   }, [editorTheme]);
+
+  useEffect(() => {
+    if (!goToLine || goToLine <= 0) return;
+
+    const ed = editorRef.current;
+    if (!ed) {
+      // Editor not ready yet — store for when it mounts
+      pendingGoToLineRef.current = goToLine;
+      return;
+    }
+
+    ed.revealLineInCenter(goToLine);
+    ed.setPosition({ lineNumber: goToLine, column: 1 });
+    ed.focus();
+
+    // Briefly highlight the line
+    const decorations = ed.deltaDecorations(
+      [],
+      [
+        {
+          range: {
+            startLineNumber: goToLine,
+            startColumn: 1,
+            endLineNumber: goToLine,
+            endColumn: 1,
+          },
+          options: {
+            isWholeLine: true,
+            className: "synctex-line-highlight",
+            overviewRuler: {
+              color: "rgba(255, 200, 0, 0.6)",
+              position: 1,
+            },
+          },
+        },
+      ],
+    );
+
+    const timer = setTimeout(() => {
+      ed.deltaDecorations(decorations, []);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [goToLine]);
 
   useEffect(() => {
     const statusNode = vimStatusRef.current;

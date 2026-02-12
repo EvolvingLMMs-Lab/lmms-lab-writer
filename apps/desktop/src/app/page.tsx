@@ -36,13 +36,17 @@ import {
   LaTeXSettingsDialog,
   LaTeXInstallPrompt,
   MainFileSelectionDialog,
+  SynctexInstallDialog,
 } from "@/components/latex";
 import { RecentProjects } from "@/components/recent-projects";
 import { useRecentProjects } from "@/lib/recent-projects";
 import { pathSync } from "@/lib/path";
-import type { MainFileDetectionResult } from "@/lib/latex/types";
+import { COMPILE_PROMPT, type MainFileDetectionResult, type SynctexResult } from "@/lib/latex/types";
+const PdfViewer = dynamic(
+  () => import("@/components/editor/pdf-viewer").then((mod) => mod.PdfViewer),
+  { ssr: false },
+);
 import {
-  ArrowClockwiseIcon,
   GearIcon,
   PlayCircleIcon,
   SidebarSimpleIcon,
@@ -419,7 +423,8 @@ export default function EditorPage() {
   const [splitDropHint, setSplitDropHint] = useState<SplitPaneSide | null>(null);
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [binaryPreviewUrl, setBinaryPreviewUrl] = useState<string | null>(null);
-  const [pdfRefreshKey, setPdfRefreshKey] = useState(0);
+  const [pdfRefreshKey, _setPdfRefreshKey] = useState(0);
+  const [pendingGoToLine, setPendingGoToLine] = useState(0);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(false);
   const [showTerminal, setShowTerminal] = useState(false);
@@ -473,6 +478,10 @@ export default function EditorPage() {
   const [mainFileDetectionResult, setMainFileDetectionResult] = useState<MainFileDetectionResult | null>(null);
   const [showGitHubPublishDialog, setShowGitHubPublishDialog] = useState(false);
   const [ghPublishError, setGhPublishError] = useState<string | null>(null);
+  const [showSynctexInstallDialog, setShowSynctexInstallDialog] = useState(false);
+  const pendingSynctexRetryRef = useRef<{
+    page: number; x: number; y: number; context: "main" | "split";
+  } | null>(null);
 
   const contentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const splitContentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -581,7 +590,7 @@ The AI assistant will read and update this file during compilation.
     if (result.main_file && !result.needs_user_input) {
       setShowRightPanel(true);
       setPendingOpenCodeMessage(
-        latexSettings.settings.compilePrompt.replace("{mainFile}", result.main_file)
+        COMPILE_PROMPT.replace("{mainFile}", result.main_file)
       );
       return;
     }
@@ -606,7 +615,7 @@ The AI assistant will read and update this file during compilation.
     // Proceed with compilation
     setShowRightPanel(true);
     setPendingOpenCodeMessage(
-      latexSettings.settings.compilePrompt.replace("{mainFile}", mainFile)
+      COMPILE_PROMPT.replace("{mainFile}", mainFile)
     );
   }, [latexSettings]);
 
@@ -778,6 +787,14 @@ The AI assistant will read and update this file during compilation.
   useEffect(() => {
     checkOpencodeStatus();
   }, [checkOpencodeStatus]);
+
+  useEffect(() => {
+    if (pendingGoToLine > 0) {
+      // Give the editor time to load new file content before clearing
+      const timer = setTimeout(() => setPendingGoToLine(0), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [pendingGoToLine]);
 
   useEffect(() => {
     if (!daemon.projectPath) {
@@ -1076,6 +1093,110 @@ The AI assistant will read and update this file during compilation.
     },
     [daemon, getFileType, resolveSelectablePath, toast],
   );
+
+  const handleSynctexClick = useCallback(
+    async (page: number, x: number, y: number) => {
+      if (!daemon.projectPath || !selectedFile) return;
+
+      // Resolve the PDF path on disk
+      const pdfPath = pathSync.join(daemon.projectPath, selectedFile);
+
+      try {
+        const result = await invoke<SynctexResult>("latex_synctex_edit", {
+          pdfPath,
+          page,
+          x,
+          y,
+        });
+
+        // Normalize slashes and resolve "." segments for comparison
+        const normalize = (p: string) =>
+          p.replace(/\\/g, "/").replace(/\/\.\//g, "/").replace(/\/+/g, "/");
+
+        const normalFile = normalize(result.file);
+        const normalProject = normalize(daemon.projectPath);
+
+        let resolvedFile = normalFile;
+        if (resolvedFile.startsWith(normalProject)) {
+          resolvedFile = resolvedFile.slice(normalProject.length);
+          // Remove leading slash
+          resolvedFile = resolvedFile.replace(/^\/+/, "");
+        }
+
+        // Open the file and navigate to the line
+        await handleFileSelect(resolvedFile);
+        setPendingGoToLine(result.line);
+      } catch (err) {
+        const errorStr = String(err);
+        if (errorStr.includes("SYNCTEX_NOT_INSTALLED")) {
+          pendingSynctexRetryRef.current = { page, x, y, context: "main" };
+          setShowSynctexInstallDialog(true);
+        } else {
+          console.error("SyncTeX lookup failed:", err);
+          toast("SyncTeX lookup failed. Check that your PDF has a .synctex.gz file.", "error");
+        }
+      }
+    },
+    [daemon.projectPath, selectedFile, handleFileSelect, toast],
+  );
+
+  const handleSplitSynctexClick = useCallback(
+    async (page: number, x: number, y: number) => {
+      if (!daemon.projectPath || !splitPane?.selectedFile) return;
+
+      const pdfPath = pathSync.join(daemon.projectPath, splitPane.selectedFile);
+
+      try {
+        const result = await invoke<SynctexResult>("latex_synctex_edit", {
+          pdfPath,
+          page,
+          x,
+          y,
+        });
+
+        const normalize = (p: string) =>
+          p.replace(/\\/g, "/").replace(/\/\.\//g, "/").replace(/\/+/g, "/");
+
+        const normalFile = normalize(result.file);
+        const normalProject = normalize(daemon.projectPath);
+
+        let resolvedFile = normalFile;
+        if (resolvedFile.startsWith(normalProject)) {
+          resolvedFile = resolvedFile.slice(normalProject.length);
+          resolvedFile = resolvedFile.replace(/^\/+/, "");
+        }
+
+        await handleFileSelect(resolvedFile);
+        setPendingGoToLine(result.line);
+      } catch (err) {
+        const errorStr = String(err);
+        if (errorStr.includes("SYNCTEX_NOT_INSTALLED")) {
+          pendingSynctexRetryRef.current = { page, x, y, context: "split" };
+          setShowSynctexInstallDialog(true);
+        } else {
+          console.error("SyncTeX lookup failed:", err);
+          toast("SyncTeX lookup failed. Check that your PDF has a .synctex.gz file.", "error");
+        }
+      }
+    },
+    [daemon.projectPath, splitPane?.selectedFile, handleFileSelect, toast],
+  );
+
+  const handleSynctexInstallComplete = useCallback(() => {
+    setShowSynctexInstallDialog(false);
+    const pending = pendingSynctexRetryRef.current;
+    if (pending) {
+      pendingSynctexRetryRef.current = null;
+      // Small delay to let PATH refresh after installation
+      setTimeout(() => {
+        if (pending.context === "main") {
+          handleSynctexClick(pending.page, pending.x, pending.y);
+        } else {
+          handleSplitSynctexClick(pending.page, pending.x, pending.y);
+        }
+      }, 500);
+    }
+  }, [handleSynctexClick, handleSplitSynctexClick]);
 
   const loadGitDiffPreview = useCallback(
     async (path: string, staged: boolean) => {
@@ -1827,6 +1948,12 @@ The AI assistant will read and update this file during compilation.
                     alt={splitSelectedFile}
                     className="max-w-full max-h-full object-contain"
                   />
+                ) : splitFileType === "pdf" ? (
+                  <PdfViewer
+                    src={splitPane.binaryPreviewUrl}
+                    refreshKey={splitPane.pdfRefreshKey}
+                    onSynctexClick={handleSplitSynctexClick}
+                  />
                 ) : (
                   <iframe
                     key={splitPane.pdfRefreshKey}
@@ -1866,6 +1993,7 @@ The AI assistant will read and update this file during compilation.
       handleSplitCloseOtherTabs,
       handleSplitCloseTabsToLeft,
       handleSplitCloseTabsToRight,
+      handleSplitSynctexClick,
       handleSplitContentChange,
       getFileLanguage,
       editorSettings.settings,
@@ -2512,34 +2640,30 @@ The AI assistant will read and update this file during compilation.
           </div>
         ) : binaryPreviewUrl ? (
           <div className="flex-1 flex flex-col bg-accent-hover overflow-hidden">
-            {getFileType(selectedFile) === "pdf" && (
-              <div className="flex items-center justify-end px-2 py-1 border-b border-border bg-surface-secondary">
-                <button
-                  onClick={() => setPdfRefreshKey((k) => k + 1)}
-                  className="flex items-center gap-1.5 px-2 py-1 text-xs text-muted hover:text-foreground hover:bg-surface-tertiary rounded transition-colors"
-                  title="Refresh PDF"
-                >
-                  <ArrowClockwiseIcon className="w-3.5 h-3.5" />
-                  Refresh
-                </button>
-              </div>
-            )}
-            <div className="flex-1 flex items-center justify-center overflow-auto p-4">
-              {getFileType(selectedFile) === "image" ? (
+            {getFileType(selectedFile) === "image" ? (
+              <div className="flex-1 flex items-center justify-center overflow-auto p-4">
                 <img
                   src={binaryPreviewUrl}
                   alt={selectedFile}
                   className="max-w-full max-h-full object-contain"
                 />
-              ) : (
+              </div>
+            ) : getFileType(selectedFile) === "pdf" ? (
+              <PdfViewer
+                src={binaryPreviewUrl}
+                refreshKey={pdfRefreshKey}
+                onSynctexClick={handleSynctexClick}
+              />
+            ) : (
+              <div className="flex-1 flex items-center justify-center overflow-auto p-4">
                 <iframe
                   key={pdfRefreshKey}
                   src={binaryPreviewUrl}
                   className="w-full h-full border-0"
-                  title={`PDF: ${selectedFile}`}
+                  title={`File: ${selectedFile}`}
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         ) : isLoadingFile ? (
           <EditorSkeleton className="flex-1 min-h-0" />
@@ -2559,6 +2683,7 @@ The AI assistant will read and update this file during compilation.
                 language={getFileLanguage(selectedFile)}
                 editorSettings={editorSettings.settings}
                 editorTheme={editorSettings.editorTheme}
+                goToLine={pendingGoToLine}
                 className="h-full"
               />
             </EditorErrorBoundary>
@@ -3102,6 +3227,15 @@ The AI assistant will read and update this file during compilation.
           onCancel={handleMainFileDialogCancel}
         />
       )}
+
+      <SynctexInstallDialog
+        open={showSynctexInstallDialog}
+        onClose={() => {
+          setShowSynctexInstallDialog(false);
+          pendingSynctexRetryRef.current = null;
+        }}
+        onInstallComplete={handleSynctexInstallComplete}
+      />
 
       {showGitHubPublishDialog && (
         <GitHubPublishDialog

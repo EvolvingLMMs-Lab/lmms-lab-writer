@@ -289,6 +289,7 @@ pub async fn latex_compile(
     let mut cmd_args = vec![
         "-interaction=nonstopmode".to_string(),
         "-file-line-error".to_string(),
+        "-synctex=1".to_string(),
     ];
 
     // Add user-provided arguments
@@ -463,8 +464,6 @@ pub async fn latex_clean_aux_files(directory: String, main_file: String) -> Resu
         ".lot",
         ".fls",
         ".fdb_latexmk",
-        ".synctex.gz",
-        ".synctex",
         ".bbl",
         ".blg",
         ".nav",
@@ -480,6 +479,143 @@ pub async fn latex_clean_aux_files(directory: String, main_file: String) -> Resu
     }
 
     Ok(())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SynctexResult {
+    pub file: String,
+    pub line: u32,
+    pub column: u32,
+}
+
+#[tauri::command]
+pub async fn latex_synctex_edit(
+    pdf_path: String,
+    page: u32,
+    x: f64,
+    y: f64,
+) -> Result<SynctexResult, String> {
+    // Find the synctex binary using the same logic as compiler detection
+    let synctex_info = find_compiler("synctex").await;
+    let synctex_bin = if synctex_info.available {
+        synctex_info.path.unwrap_or_else(|| "synctex".to_string())
+    } else {
+        return Err("SYNCTEX_NOT_INSTALLED: SyncTeX binary was not found. Install a TeX distribution (TeX Live, MiKTeX, or TinyTeX) to enable PDF-to-source navigation.".to_string());
+    };
+
+    let input_spec = format!("{}:{}:{}:{}", page, x, y, pdf_path);
+    let mut cmd = command(&synctex_bin);
+    cmd.arg("edit").arg("-o").arg(&input_spec);
+
+    // Ensure PATH includes common TeX directories
+    let env_path = std::env::var("PATH").unwrap_or_default();
+    #[cfg(target_os = "macos")]
+    let env_path = {
+        if !env_path.contains("/Library/TeX/texbin") {
+            format!(
+                "/Library/TeX/texbin:/opt/homebrew/bin:/usr/local/bin:{}",
+                env_path
+            )
+        } else {
+            env_path
+        }
+    };
+    cmd.env("PATH", env_path);
+
+    let output = cmd
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run synctex: {} (bin={})", e, synctex_bin))?;
+
+    let decode_bytes = |bytes: &[u8]| -> String {
+        // Try UTF-8 first
+        if let Ok(s) = String::from_utf8(bytes.to_vec()) {
+            return s;
+        }
+        // On Windows with CJK locale, command output is often GBK-encoded
+        #[cfg(target_os = "windows")]
+        {
+            let (decoded, _, _) = encoding_rs::GBK.decode(bytes);
+            return decoded.into_owned();
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            String::from_utf8_lossy(bytes).into_owned()
+        }
+    };
+
+    if !output.status.success() {
+        let stderr = decode_bytes(&output.stderr);
+        let stdout = decode_bytes(&output.stdout);
+        return Err(format!("synctex edit failed: {}", stderr));
+    }
+
+    let stdout = decode_bytes(&output.stdout);
+
+    // Parse the output to extract Input, Line, Column
+    let mut file = String::new();
+    let mut line: u32 = 0;
+    let mut column: u32 = 0;
+
+    for output_line in stdout.lines() {
+        if let Some(val) = output_line.strip_prefix("Input:") {
+            file = val.trim().to_string();
+        } else if let Some(val) = output_line.strip_prefix("Line:") {
+            line = val.trim().parse().unwrap_or(0);
+        } else if let Some(val) = output_line.strip_prefix("Column:") {
+            column = val.trim().parse().unwrap_or(0);
+        }
+    }
+
+    if file.is_empty() || line == 0 {
+        return Err("Could not find source location for this position".to_string());
+    }
+
+    Ok(SynctexResult { file, line, column })
+}
+
+/// Quick-install synctex via tlmgr (when a TeX distribution already exists).
+/// Returns Ok(true) if tlmgr was found and install succeeded,
+/// Ok(false) if tlmgr is not available (no TeX distribution).
+#[tauri::command]
+pub async fn latex_install_synctex() -> Result<bool, String> {
+    let tlmgr_info = find_compiler("tlmgr").await;
+    if !tlmgr_info.available {
+        // No tlmgr → no TeX distribution, caller should fall back to full install
+        return Ok(false);
+    }
+
+    let tlmgr_bin = tlmgr_info.path.unwrap_or_else(|| "tlmgr".to_string());
+
+    let mut cmd = command(&tlmgr_bin);
+    cmd.args(["install", "--reinstall", "synctex"]);
+
+    // Ensure PATH includes common TeX directories
+    let env_path = std::env::var("PATH").unwrap_or_default();
+    #[cfg(target_os = "macos")]
+    let env_path = {
+        if !env_path.contains("/Library/TeX/texbin") {
+            format!(
+                "/Library/TeX/texbin:/opt/homebrew/bin:/usr/local/bin:{}",
+                env_path
+            )
+        } else {
+            env_path
+        }
+    };
+    cmd.env("PATH", env_path);
+
+    let output = cmd
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run tlmgr: {}", e))?;
+
+    if output.status.success() {
+        Ok(true)
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("tlmgr install synctex failed: {}", stderr))
+    }
 }
 
 /// Get recommended LaTeX distributions for the current platform

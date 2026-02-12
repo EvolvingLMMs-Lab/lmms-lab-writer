@@ -768,23 +768,6 @@ export function LaTeXSettingsDialog({
                 </p>
               </div>
 
-              <SectionHeader>AI Compile Prompt</SectionHeader>
-
-              <div className="py-2">
-                <textarea
-                  value={settings.compilePrompt}
-                  onChange={(e) =>
-                    onUpdateSettings({ compilePrompt: e.target.value })
-                  }
-                  placeholder="Please compile the LaTeX document..."
-                  rows={3}
-                  className="w-full px-3 py-2.5 text-sm border border-border hover:border-border-dark focus:outline-none focus:border-foreground resize-none font-mono"
-                />
-                <p className="text-xs text-muted-foreground mt-1.5">
-                  The prompt sent to AI when compiling. Use {"{mainFile}"} as placeholder for the main file path.
-                </p>
-              </div>
-
               <SectionHeader>Git</SectionHeader>
 
               <div className="flex items-center justify-between py-2">
