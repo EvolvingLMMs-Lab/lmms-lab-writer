@@ -546,7 +546,6 @@ pub async fn latex_synctex_edit(
 
     if !output.status.success() {
         let stderr = decode_bytes(&output.stderr);
-        let stdout = decode_bytes(&output.stdout);
         return Err(format!("synctex edit failed: {}", stderr));
     }
 
