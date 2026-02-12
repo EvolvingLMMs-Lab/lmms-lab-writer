@@ -497,11 +497,6 @@ pub async fn latex_synctex_edit(
 ) -> Result<SynctexResult, String> {
     // Find the synctex binary using the same logic as compiler detection
     let synctex_info = find_compiler("synctex").await;
-    eprintln!(
-        "[synctex] find_compiler result: available={}, path={:?}",
-        synctex_info.available, synctex_info.path
-    );
-
     let synctex_bin = if synctex_info.available {
         synctex_info.path.unwrap_or_else(|| "synctex".to_string())
     } else {
@@ -509,8 +504,6 @@ pub async fn latex_synctex_edit(
     };
 
     let input_spec = format!("{}:{}:{}:{}", page, x, y, pdf_path);
-    eprintln!("[synctex] running: {} edit -o {}", synctex_bin, input_spec);
-
     let mut cmd = command(&synctex_bin);
     cmd.arg("edit").arg("-o").arg(&input_spec);
 
@@ -527,7 +520,6 @@ pub async fn latex_synctex_edit(
             env_path
         }
     };
-    eprintln!("[synctex] PATH: {}", env_path);
     cmd.env("PATH", env_path);
 
     let output = cmd
@@ -555,14 +547,10 @@ pub async fn latex_synctex_edit(
     if !output.status.success() {
         let stderr = decode_bytes(&output.stderr);
         let stdout = decode_bytes(&output.stdout);
-        eprintln!("[synctex] exit code: {:?}", output.status.code());
-        eprintln!("[synctex] stderr: {}", stderr);
-        eprintln!("[synctex] stdout: {}", stdout);
         return Err(format!("synctex edit failed: {}", stderr));
     }
 
     let stdout = decode_bytes(&output.stdout);
-    eprintln!("[synctex] stdout: {}", stdout);
 
     // Parse the output to extract Input, Line, Column
     let mut file = String::new();
@@ -599,11 +587,6 @@ pub async fn latex_install_synctex() -> Result<bool, String> {
 
     let tlmgr_bin = tlmgr_info.path.unwrap_or_else(|| "tlmgr".to_string());
 
-    eprintln!(
-        "[synctex] installing synctex via: {} install --reinstall synctex",
-        tlmgr_bin
-    );
-
     let mut cmd = command(&tlmgr_bin);
     cmd.args(["install", "--reinstall", "synctex"]);
 
@@ -628,11 +611,9 @@ pub async fn latex_install_synctex() -> Result<bool, String> {
         .map_err(|e| format!("Failed to run tlmgr: {}", e))?;
 
     if output.status.success() {
-        eprintln!("[synctex] tlmgr install synctex succeeded");
         Ok(true)
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        eprintln!("[synctex] tlmgr install synctex failed: {}", stderr);
         Err(format!("tlmgr install synctex failed: {}", stderr))
     }
 }

@@ -1123,9 +1123,6 @@ The AI assistant will read and update this file during compilation.
           resolvedFile = resolvedFile.replace(/^\/+/, "");
         }
 
-        console.log("[synctex] result:", JSON.stringify(result));
-        console.log("[synctex] resolvedFile:", resolvedFile, "line:", result.line);
-
         // Open the file and navigate to the line
         await handleFileSelect(resolvedFile);
         setPendingGoToLine(result.line);
