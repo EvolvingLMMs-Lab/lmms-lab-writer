@@ -786,7 +786,8 @@ The AI assistant will read and update this file during compilation.
 
   useEffect(() => {
     if (pendingGoToLine > 0) {
-      const timer = setTimeout(() => setPendingGoToLine(0), 100);
+      // Give the editor time to load new file content before clearing
+      const timer = setTimeout(() => setPendingGoToLine(0), 500);
       return () => clearTimeout(timer);
     }
   }, [pendingGoToLine]);
@@ -1104,13 +1105,22 @@ The AI assistant will read and update this file during compilation.
           y,
         });
 
-        // Resolve the file path relative to project directory
-        let resolvedFile = result.file;
-        if (resolvedFile.startsWith(daemon.projectPath)) {
-          resolvedFile = resolvedFile.slice(daemon.projectPath.length);
-          // Remove leading slash/backslash
-          resolvedFile = resolvedFile.replace(/^[/\\]+/, "");
+        // Normalize slashes and resolve "." segments for comparison
+        const normalize = (p: string) =>
+          p.replace(/\\/g, "/").replace(/\/\.\//g, "/").replace(/\/+/g, "/");
+
+        const normalFile = normalize(result.file);
+        const normalProject = normalize(daemon.projectPath);
+
+        let resolvedFile = normalFile;
+        if (resolvedFile.startsWith(normalProject)) {
+          resolvedFile = resolvedFile.slice(normalProject.length);
+          // Remove leading slash
+          resolvedFile = resolvedFile.replace(/^\/+/, "");
         }
+
+        console.log("[synctex] result:", JSON.stringify(result));
+        console.log("[synctex] resolvedFile:", resolvedFile, "line:", result.line);
 
         // Open the file and navigate to the line
         await handleFileSelect(resolvedFile);
@@ -1136,10 +1146,16 @@ The AI assistant will read and update this file during compilation.
           y,
         });
 
-        let resolvedFile = result.file;
-        if (resolvedFile.startsWith(daemon.projectPath)) {
-          resolvedFile = resolvedFile.slice(daemon.projectPath.length);
-          resolvedFile = resolvedFile.replace(/^[/\\]+/, "");
+        const normalize = (p: string) =>
+          p.replace(/\\/g, "/").replace(/\/\.\//g, "/").replace(/\/+/g, "/");
+
+        const normalFile = normalize(result.file);
+        const normalProject = normalize(daemon.projectPath);
+
+        let resolvedFile = normalFile;
+        if (resolvedFile.startsWith(normalProject)) {
+          resolvedFile = resolvedFile.slice(normalProject.length);
+          resolvedFile = resolvedFile.replace(/^\/+/, "");
         }
 
         await handleFileSelect(resolvedFile);
