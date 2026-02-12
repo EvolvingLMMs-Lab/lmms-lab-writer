@@ -589,6 +589,56 @@ pub async fn latex_synctex_edit(
     Ok(SynctexResult { file, line, column })
 }
 
+/// Quick-install synctex via tlmgr (when a TeX distribution already exists).
+/// Returns Ok(true) if tlmgr was found and install succeeded,
+/// Ok(false) if tlmgr is not available (no TeX distribution).
+#[tauri::command]
+pub async fn latex_install_synctex() -> Result<bool, String> {
+    let tlmgr_info = find_compiler("tlmgr").await;
+    if !tlmgr_info.available {
+        // No tlmgr → no TeX distribution, caller should fall back to full install
+        return Ok(false);
+    }
+
+    let tlmgr_bin = tlmgr_info
+        .path
+        .unwrap_or_else(|| "tlmgr".to_string());
+
+    eprintln!("[synctex] installing synctex via: {} install --reinstall synctex", tlmgr_bin);
+
+    let mut cmd = command(&tlmgr_bin);
+    cmd.args(["install", "--reinstall", "synctex"]);
+
+    // Ensure PATH includes common TeX directories
+    let env_path = std::env::var("PATH").unwrap_or_default();
+    #[cfg(target_os = "macos")]
+    let env_path = {
+        if !env_path.contains("/Library/TeX/texbin") {
+            format!(
+                "/Library/TeX/texbin:/opt/homebrew/bin:/usr/local/bin:{}",
+                env_path
+            )
+        } else {
+            env_path
+        }
+    };
+    cmd.env("PATH", env_path);
+
+    let output = cmd
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run tlmgr: {}", e))?;
+
+    if output.status.success() {
+        eprintln!("[synctex] tlmgr install synctex succeeded");
+        Ok(true)
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        eprintln!("[synctex] tlmgr install synctex failed: {}", stderr);
+        Err(format!("tlmgr install synctex failed: {}", stderr))
+    }
+}
+
 /// Get recommended LaTeX distributions for the current platform
 #[tauri::command]
 pub async fn latex_get_distributions() -> Result<Vec<LaTeXDistribution>, String> {
