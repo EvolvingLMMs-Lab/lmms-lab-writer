@@ -36,6 +36,7 @@ import {
   LaTeXSettingsDialog,
   LaTeXInstallPrompt,
   MainFileSelectionDialog,
+  SynctexInstallDialog,
 } from "@/components/latex";
 import { RecentProjects } from "@/components/recent-projects";
 import { useRecentProjects } from "@/lib/recent-projects";
@@ -478,6 +479,10 @@ export default function EditorPage() {
   const [mainFileDetectionResult, setMainFileDetectionResult] = useState<MainFileDetectionResult | null>(null);
   const [showGitHubPublishDialog, setShowGitHubPublishDialog] = useState(false);
   const [ghPublishError, setGhPublishError] = useState<string | null>(null);
+  const [showSynctexInstallDialog, setShowSynctexInstallDialog] = useState(false);
+  const pendingSynctexRetryRef = useRef<{
+    page: number; x: number; y: number; context: "main" | "split";
+  } | null>(null);
 
   const contentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const splitContentSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1126,10 +1131,17 @@ The AI assistant will read and update this file during compilation.
         await handleFileSelect(resolvedFile);
         setPendingGoToLine(result.line);
       } catch (err) {
-        console.error("SyncTeX lookup failed:", err);
+        const errorStr = String(err);
+        if (errorStr.includes("SYNCTEX_NOT_INSTALLED")) {
+          pendingSynctexRetryRef.current = { page, x, y, context: "main" };
+          setShowSynctexInstallDialog(true);
+        } else {
+          console.error("SyncTeX lookup failed:", err);
+          toast("SyncTeX lookup failed. Check that your PDF has a .synctex.gz file.", "error");
+        }
       }
     },
-    [daemon.projectPath, selectedFile, handleFileSelect],
+    [daemon.projectPath, selectedFile, handleFileSelect, toast],
   );
 
   const handleSplitSynctexClick = useCallback(
@@ -1161,11 +1173,34 @@ The AI assistant will read and update this file during compilation.
         await handleFileSelect(resolvedFile);
         setPendingGoToLine(result.line);
       } catch (err) {
-        console.error("SyncTeX lookup failed:", err);
+        const errorStr = String(err);
+        if (errorStr.includes("SYNCTEX_NOT_INSTALLED")) {
+          pendingSynctexRetryRef.current = { page, x, y, context: "split" };
+          setShowSynctexInstallDialog(true);
+        } else {
+          console.error("SyncTeX lookup failed:", err);
+          toast("SyncTeX lookup failed. Check that your PDF has a .synctex.gz file.", "error");
+        }
       }
     },
-    [daemon.projectPath, splitPane?.selectedFile, handleFileSelect],
+    [daemon.projectPath, splitPane?.selectedFile, handleFileSelect, toast],
   );
+
+  const handleSynctexInstallComplete = useCallback(() => {
+    setShowSynctexInstallDialog(false);
+    const pending = pendingSynctexRetryRef.current;
+    if (pending) {
+      pendingSynctexRetryRef.current = null;
+      // Small delay to let PATH refresh after installation
+      setTimeout(() => {
+        if (pending.context === "main") {
+          handleSynctexClick(pending.page, pending.x, pending.y);
+        } else {
+          handleSplitSynctexClick(pending.page, pending.x, pending.y);
+        }
+      }, 500);
+    }
+  }, [handleSynctexClick, handleSplitSynctexClick]);
 
   const loadGitDiffPreview = useCallback(
     async (path: string, staged: boolean) => {
@@ -3195,6 +3230,15 @@ The AI assistant will read and update this file during compilation.
           onCancel={handleMainFileDialogCancel}
         />
       )}
+
+      <SynctexInstallDialog
+        open={showSynctexInstallDialog}
+        onClose={() => {
+          setShowSynctexInstallDialog(false);
+          pendingSynctexRetryRef.current = null;
+        }}
+        onInstallComplete={handleSynctexInstallComplete}
+      />
 
       {showGitHubPublishDialog && (
         <GitHubPublishDialog

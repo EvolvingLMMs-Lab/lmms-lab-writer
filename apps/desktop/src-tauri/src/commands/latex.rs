@@ -505,7 +505,7 @@ pub async fn latex_synctex_edit(
     let synctex_bin = if synctex_info.available {
         synctex_info.path.unwrap_or_else(|| "synctex".to_string())
     } else {
-        "synctex".to_string()
+        return Err("SYNCTEX_NOT_INSTALLED: SyncTeX binary was not found. Install a TeX distribution (TeX Live, MiKTeX, or TinyTeX) to enable PDF-to-source navigation.".to_string());
     };
 
     let input_spec = format!("{}:{}:{}:{}", page, x, y, pdf_path);
