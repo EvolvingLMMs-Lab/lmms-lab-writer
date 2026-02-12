@@ -497,6 +497,11 @@ pub async fn latex_synctex_edit(
 ) -> Result<SynctexResult, String> {
     // Find the synctex binary using the same logic as compiler detection
     let synctex_info = find_compiler("synctex").await;
+    eprintln!(
+        "[synctex] find_compiler result: available={}, path={:?}",
+        synctex_info.available, synctex_info.path
+    );
+
     let synctex_bin = if synctex_info.available {
         synctex_info.path.unwrap_or_else(|| "synctex".to_string())
     } else {
@@ -504,6 +509,10 @@ pub async fn latex_synctex_edit(
     };
 
     let input_spec = format!("{}:{}:{}:{}", page, x, y, pdf_path);
+    eprintln!(
+        "[synctex] running: {} edit -o {}",
+        synctex_bin, input_spec
+    );
 
     let mut cmd = command(&synctex_bin);
     cmd.arg("edit").arg("-o").arg(&input_spec);
@@ -521,19 +530,42 @@ pub async fn latex_synctex_edit(
             env_path
         }
     };
+    eprintln!("[synctex] PATH: {}", env_path);
     cmd.env("PATH", env_path);
 
     let output = cmd
         .output()
         .await
-        .map_err(|e| format!("Failed to run synctex: {}", e))?;
+        .map_err(|e| format!("Failed to run synctex: {} (bin={})", e, synctex_bin))?;
+
+    let decode_bytes = |bytes: &[u8]| -> String {
+        // Try UTF-8 first
+        if let Ok(s) = String::from_utf8(bytes.to_vec()) {
+            return s;
+        }
+        // On Windows with CJK locale, command output is often GBK-encoded
+        #[cfg(target_os = "windows")]
+        {
+            let (decoded, _, _) = encoding_rs::GBK.decode(bytes);
+            return decoded.into_owned();
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            String::from_utf8_lossy(bytes).into_owned()
+        }
+    };
 
     if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stderr = decode_bytes(&output.stderr);
+        let stdout = decode_bytes(&output.stdout);
+        eprintln!("[synctex] exit code: {:?}", output.status.code());
+        eprintln!("[synctex] stderr: {}", stderr);
+        eprintln!("[synctex] stdout: {}", stdout);
         return Err(format!("synctex edit failed: {}", stderr));
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = decode_bytes(&output.stdout);
+    eprintln!("[synctex] stdout: {}", stdout);
 
     // Parse the output to extract Input, Line, Column
     let mut file = String::new();
