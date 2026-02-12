@@ -40,7 +40,7 @@ import {
 import { RecentProjects } from "@/components/recent-projects";
 import { useRecentProjects } from "@/lib/recent-projects";
 import { pathSync } from "@/lib/path";
-import type { MainFileDetectionResult, SynctexResult } from "@/lib/latex/types";
+import { COMPILE_PROMPT, type MainFileDetectionResult, type SynctexResult } from "@/lib/latex/types";
 const PdfViewer = dynamic(
   () => import("@/components/editor/pdf-viewer").then((mod) => mod.PdfViewer),
   { ssr: false },
@@ -586,7 +586,7 @@ The AI assistant will read and update this file during compilation.
     if (result.main_file && !result.needs_user_input) {
       setShowRightPanel(true);
       setPendingOpenCodeMessage(
-        latexSettings.settings.compilePrompt.replace("{mainFile}", result.main_file)
+        COMPILE_PROMPT.replace("{mainFile}", result.main_file)
       );
       return;
     }
@@ -611,7 +611,7 @@ The AI assistant will read and update this file during compilation.
     // Proceed with compilation
     setShowRightPanel(true);
     setPendingOpenCodeMessage(
-      latexSettings.settings.compilePrompt.replace("{mainFile}", mainFile)
+      COMPILE_PROMPT.replace("{mainFile}", mainFile)
     );
   }, [latexSettings]);
 
