@@ -509,10 +509,7 @@ pub async fn latex_synctex_edit(
     };
 
     let input_spec = format!("{}:{}:{}:{}", page, x, y, pdf_path);
-    eprintln!(
-        "[synctex] running: {} edit -o {}",
-        synctex_bin, input_spec
-    );
+    eprintln!("[synctex] running: {} edit -o {}", synctex_bin, input_spec);
 
     let mut cmd = command(&synctex_bin);
     cmd.arg("edit").arg("-o").arg(&input_spec);
@@ -600,11 +597,12 @@ pub async fn latex_install_synctex() -> Result<bool, String> {
         return Ok(false);
     }
 
-    let tlmgr_bin = tlmgr_info
-        .path
-        .unwrap_or_else(|| "tlmgr".to_string());
+    let tlmgr_bin = tlmgr_info.path.unwrap_or_else(|| "tlmgr".to_string());
 
-    eprintln!("[synctex] installing synctex via: {} install --reinstall synctex", tlmgr_bin);
+    eprintln!(
+        "[synctex] installing synctex via: {} install --reinstall synctex",
+        tlmgr_bin
+    );
 
     let mut cmd = command(&tlmgr_bin);
     cmd.args(["install", "--reinstall", "synctex"]);
