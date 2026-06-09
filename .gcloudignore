@@ -1,0 +1,11 @@
+.gcloudignore
+.git
+.github
+node_modules
+.next
+apps/web/.next
+apps/desktop/src-tauri/target
+apps/video/node_modules
+apps/web/node_modules
+packages/*/node_modules
+pnpm-lock.yaml

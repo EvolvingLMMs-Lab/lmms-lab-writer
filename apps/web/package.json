@@ -10,8 +10,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.80",
+    "@ai-sdk/react": "^3.0.199",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
+    "ai": "^6.0.197",
     "framer-motion": "^12.40.0",
     "geist": "^1.7.1",
     "gray-matter": "^4.0.3",
